@@ -1,0 +1,10 @@
+# PLAYR - Robots.txt
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://oplayr.com/sitemap.xml
+
+# Disallow admin/private routes if any exist
+Disallow: /dashboard/
+Disallow: /api/

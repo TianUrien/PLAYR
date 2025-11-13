@@ -1,0 +1,17 @@
+{
+  "name": "PLAYR",
+  "short_name": "PLAYR",
+  "description": "Connect players, coaches, and clubs. Raise the sport together.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "/Favicon-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

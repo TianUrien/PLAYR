@@ -1,0 +1,254 @@
+-- 003_rls_policies.sql
+-- Row Level Security configuration for PLAYR Supabase project
+-- Run via: supabase db execute --file supabase_setup/003_rls_policies.sql
+
+SET search_path = public;
+
+-- ============================================================================
+-- ENABLE RLS ON ALL TABLES
+-- ============================================================================
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.gallery_photos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.club_media ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.playing_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vacancies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vacancy_applications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================================
+-- PROFILES POLICIES
+-- ============================================================================
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+CREATE POLICY "Users can view their own profile"
+  ON public.profiles
+  FOR SELECT
+  USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+CREATE POLICY "Users can update their own profile"
+  ON public.profiles
+  FOR UPDATE
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
+CREATE POLICY "Users can insert their own profile"
+  ON public.profiles
+  FOR INSERT
+  WITH CHECK (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Public can view onboarded profiles" ON public.profiles;
+CREATE POLICY "Public can view onboarded profiles"
+  ON public.profiles
+  FOR SELECT
+  USING (onboarding_completed = TRUE);
+
+DROP POLICY IF EXISTS "Clubs can view applicant player profiles" ON public.profiles;
+CREATE POLICY "Clubs can view applicant player profiles"
+  ON public.profiles
+  FOR SELECT
+  USING (
+    role = 'player'
+    AND EXISTS (
+      SELECT 1
+      FROM public.vacancy_applications va
+      JOIN public.vacancies v ON v.id = va.vacancy_id
+      WHERE va.player_id = public.profiles.id
+        AND v.club_id = auth.uid()
+    )
+  );
+
+-- ============================================================================
+-- GALLERY_PHOTOS POLICIES
+-- ============================================================================
+DROP POLICY IF EXISTS "Public can view all gallery photos" ON public.gallery_photos;
+CREATE POLICY "Public can view all gallery photos"
+  ON public.gallery_photos
+  FOR SELECT
+  USING (TRUE);
+
+DROP POLICY IF EXISTS "Users can manage their gallery photos" ON public.gallery_photos;
+CREATE POLICY "Users can manage their gallery photos"
+  ON public.gallery_photos
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================================
+-- CLUB_MEDIA POLICIES
+-- ============================================================================
+DROP POLICY IF EXISTS "Public can view club media" ON public.club_media;
+CREATE POLICY "Public can view club media"
+  ON public.club_media
+  FOR SELECT
+  USING (TRUE);
+
+DROP POLICY IF EXISTS "Clubs can manage their media" ON public.club_media;
+CREATE POLICY "Clubs can manage their media"
+  ON public.club_media
+  USING (auth.uid() = club_id)
+  WITH CHECK (auth.uid() = club_id);
+
+-- ============================================================================
+-- PLAYING_HISTORY POLICIES
+-- ============================================================================
+DROP POLICY IF EXISTS "Public can view all playing history" ON public.playing_history;
+CREATE POLICY "Public can view all playing history"
+  ON public.playing_history
+  FOR SELECT
+  USING (TRUE);
+
+DROP POLICY IF EXISTS "Users can manage their playing history" ON public.playing_history;
+CREATE POLICY "Users can manage their playing history"
+  ON public.playing_history
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- ============================================================================
+-- VACANCIES POLICIES
+-- ============================================================================
+DROP POLICY IF EXISTS "Public can view open vacancies" ON public.vacancies;
+CREATE POLICY "Public can view open vacancies"
+  ON public.vacancies
+  FOR SELECT
+  USING (status = 'open');
+
+DROP POLICY IF EXISTS "Clubs can manage their vacancies" ON public.vacancies;
+CREATE POLICY "Clubs can manage their vacancies"
+  ON public.vacancies
+  FOR ALL
+  USING (
+    auth.uid() = club_id
+    AND coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') = 'club'
+  )
+  WITH CHECK (
+    auth.uid() = club_id
+    AND coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') = 'club'
+  );
+
+-- ============================================================================
+-- VACANCY_APPLICATIONS POLICIES
+-- ============================================================================
+DROP POLICY IF EXISTS "Players can view their own applications" ON public.vacancy_applications;
+CREATE POLICY "Players can view their own applications"
+  ON public.vacancy_applications
+  FOR SELECT
+  USING (auth.uid() = player_id);
+
+DROP POLICY IF EXISTS "Clubs can view applications to their vacancies" ON public.vacancy_applications;
+CREATE POLICY "Clubs can view applications to their vacancies"
+  ON public.vacancy_applications
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.vacancies v
+      WHERE v.id = public.vacancy_applications.vacancy_id
+        AND v.club_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Applicants can create applications" ON public.vacancy_applications;
+CREATE POLICY "Applicants can create applications"
+  ON public.vacancy_applications
+  FOR INSERT
+  WITH CHECK (
+    auth.uid() = player_id
+    AND coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') IN ('player', 'coach')
+  );
+
+DROP POLICY IF EXISTS "Clubs can update application status" ON public.vacancy_applications;
+CREATE POLICY "Clubs can update application status"
+  ON public.vacancy_applications
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.vacancies v
+      WHERE v.id = public.vacancy_applications.vacancy_id
+        AND v.club_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM public.vacancies v
+      WHERE v.id = public.vacancy_applications.vacancy_id
+        AND v.club_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Applicants can withdraw applications" ON public.vacancy_applications;
+CREATE POLICY "Applicants can withdraw applications"
+  ON public.vacancy_applications
+  FOR UPDATE
+  USING (auth.uid() = player_id)
+  WITH CHECK (
+    auth.uid() = player_id
+    AND status = 'withdrawn'
+  );
+
+-- ============================================================================
+-- CONVERSATIONS POLICIES
+-- ============================================================================
+DROP POLICY IF EXISTS "Users can view their conversations" ON public.conversations;
+CREATE POLICY "Users can view their conversations"
+  ON public.conversations
+  FOR SELECT
+  USING (
+    participant_one_id = auth.uid()
+    OR participant_two_id = auth.uid()
+  );
+
+DROP POLICY IF EXISTS "Users can create conversations" ON public.conversations;
+CREATE POLICY "Users can create conversations"
+  ON public.conversations
+  FOR INSERT
+  WITH CHECK (
+    participant_one_id = auth.uid()
+    OR participant_two_id = auth.uid()
+  );
+
+-- Prevent direct updates from non participants
+DROP POLICY IF EXISTS "Users can update conversations" ON public.conversations;
+CREATE POLICY "Users can update conversations"
+  ON public.conversations
+  FOR UPDATE
+  USING (
+    participant_one_id = auth.uid()
+    OR participant_two_id = auth.uid()
+  );
+
+-- ============================================================================
+-- MESSAGES POLICIES
+-- ============================================================================
+DROP POLICY IF EXISTS "Users can view messages in their conversations" ON public.messages;
+DROP POLICY IF EXISTS "Users can view messages in their conversations v2" ON public.messages;
+CREATE POLICY "Users can view messages in their conversations v2"
+  ON public.messages
+  FOR SELECT
+  USING (public.user_in_conversation(conversation_id, auth.uid()));
+
+DROP POLICY IF EXISTS "Users can send messages in their conversations" ON public.messages;
+DROP POLICY IF EXISTS "Users can send messages in their conversations v2" ON public.messages;
+CREATE POLICY "Users can send messages in their conversations v2"
+  ON public.messages
+  FOR INSERT
+  WITH CHECK (
+    sender_id = auth.uid()
+    AND public.user_in_conversation(conversation_id, auth.uid())
+  );
+
+DROP POLICY IF EXISTS "Users can mark messages as read" ON public.messages;
+DROP POLICY IF EXISTS "Users can mark messages as read v2" ON public.messages;
+CREATE POLICY "Users can mark messages as read v2"
+  ON public.messages
+  FOR UPDATE
+  USING (
+    public.user_in_conversation(conversation_id, auth.uid())
+    AND sender_id <> auth.uid()
+  )
+  WITH CHECK (
+    public.user_in_conversation(conversation_id, auth.uid())
+    AND sender_id <> auth.uid()
+  );
