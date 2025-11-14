@@ -1,3 +1,4 @@
+// TODO: legacy - no current imports (Nov 2025); candidate for removal after confirming new media tab covers this
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { ClubMedia } from '@/lib/supabase'

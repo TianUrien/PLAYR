@@ -1,3 +1,4 @@
+// TODO: legacy - candidate for removal if unused after design system refactor (not routed in App.tsx)
 import { Button } from '@/components'
 import { Sparkles, Zap, Rocket, Heart, Star, Code } from 'lucide-react'
 

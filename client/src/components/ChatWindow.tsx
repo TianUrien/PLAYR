@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useId } from 'react'
+import { useState, useEffect, useRef, useCallback, useId, useLayoutEffect } from 'react'
 import { Send, ArrowLeft } from 'lucide-react'
 import { supabase, SUPABASE_URL } from '@/lib/supabase'
 import { format } from 'date-fns'
@@ -66,7 +66,8 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   const isMobile = useMediaQuery('(max-width: 767px)')
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const shouldStickToBottomRef = useRef(true)
-  const initialScrollSyncPending = useRef(true)
+  const initialScrollPendingRef = useRef(true)
+  const lastMessageIdRef = useRef<string | null>(null)
   const fallbackBaselineInnerHeightRef = useRef<number | null>(null)
   const pendingUnreadRef = useRef(false)
   const textareaId = useId()
@@ -355,7 +356,8 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
 
   useEffect(() => {
     shouldStickToBottomRef.current = true
-    initialScrollSyncPending.current = true
+    initialScrollPendingRef.current = true
+    lastMessageIdRef.current = null
     pendingUnreadRef.current = false
     setShowNewMessagesIndicator(false)
 
@@ -626,26 +628,41 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     showNewMessagesIndicator
   ])
 
-  useEffect(() => {
+  // Keeps the viewport anchored: initial mount scrolls to latest, new messages while
+  // the viewer is near the bottom (or the sender) animate into view, and manual
+  // upward scrolling is respected until the user returns to the bottom threshold.
+  useLayoutEffect(() => {
     if (!messages.length) {
+      lastMessageIdRef.current = null
       return
     }
 
-    const lastMessage = messages[messages.length - 1]
-    const isOwnMessage = lastMessage?.sender_id === currentUserId
+    const scrollEl = scrollContainerRef.current
+    if (!scrollEl) {
+      lastMessageIdRef.current = messages[messages.length - 1]?.id ?? null
+      return
+    }
+
+    const latestMessage = messages[messages.length - 1]
+    const latestId = latestMessage.id
+    const previousLastId = lastMessageIdRef.current
+    const isInitialSync = initialScrollPendingRef.current
+    const appendedMessage = previousLastId !== null && previousLastId !== latestId
+    const userIsNearBottom = isViewerAtBottom()
     const shouldAutoScroll =
-      initialScrollSyncPending.current || isOwnMessage || shouldStickToBottomRef.current
+      isInitialSync ||
+      (appendedMessage && (latestMessage.sender_id === currentUserId || userIsNearBottom || shouldStickToBottomRef.current))
 
     if (shouldAutoScroll) {
-      requestAnimationFrame(() => {
-        scrollToLatest(initialScrollSyncPending.current ? 'auto' : 'smooth')
-        shouldStickToBottomRef.current = true
-        initialScrollSyncPending.current = false
-        pendingUnreadRef.current = false
-        setShowNewMessagesIndicator(false)
-      })
+      scrollToLatest(isInitialSync ? 'auto' : 'smooth')
+      shouldStickToBottomRef.current = true
+      pendingUnreadRef.current = false
+      setShowNewMessagesIndicator(false)
     }
-  }, [messages, currentUserId, scrollToLatest])
+
+    initialScrollPendingRef.current = false
+    lastMessageIdRef.current = latestId
+  }, [messages, currentUserId, isViewerAtBottom, scrollToLatest])
 
   useEffect(() => {
     syncTextareaHeight()
