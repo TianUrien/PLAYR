@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 
 interface CommentsTabProps {
   profileId: string
+  highlightedCommentIds?: Set<string>
 }
 
 type CommentRating = Database['public']['Enums']['comment_rating']
@@ -29,7 +30,7 @@ const ratingOptions: { value: CommentRating; label: string; description: string;
   { value: 'negative', label: 'Needs Work', description: 'Flag concerns respectfully for moderators.', badgeClass: 'bg-red-100 text-red-700 border-red-200' },
 ]
 
-export default function CommentsTab({ profileId }: CommentsTabProps) {
+export default function CommentsTab({ profileId, highlightedCommentIds }: CommentsTabProps) {
   const { profile: authProfile, user } = useAuthStore()
   const { addToast } = useToastStore()
 
@@ -353,9 +354,17 @@ export default function CommentsTab({ profileId }: CommentsTabProps) {
             {comments.map((comment) => {
               const authorId = comment.author_profile_id
               const isFriend = Boolean(authorId && friendIds.has(authorId))
+              const isHighlighted = Boolean(highlightedCommentIds?.has(comment.id))
 
               return (
-                <article key={comment.id} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <article
+                  key={comment.id}
+                  className={cn(
+                    'rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-transform',
+                    isHighlighted && 'border-amber-200 shadow-lg shadow-amber-100 ring-2 ring-amber-200'
+                  )}
+                  data-highlighted={isHighlighted || undefined}
+                >
                   <div className="flex items-start gap-3">
                     <Avatar
                       src={comment.author?.avatar_url}

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MapPin, Globe, Calendar, Edit2, MessageCircle, Award } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { Avatar, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton } from '@/components'
@@ -6,8 +6,9 @@ import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import type { Profile } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useToastStore } from '@/lib/toast'
+import { useNotificationStore } from '@/lib/notifications'
 
 type TabType = 'profile' | 'journey' | 'friends' | 'comments'
 
@@ -20,10 +21,51 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
   const { profile: authProfile, user } = useAuthStore()
   const profile = profileData || authProfile
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<TabType>('profile')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const param = searchParams.get('tab') as TabType | null
+    return param && ['profile', 'journey', 'friends', 'comments'].includes(param) ? param : 'profile'
+  })
   const [showEditModal, setShowEditModal] = useState(false)
   const [sendingMessage, setSendingMessage] = useState(false)
   const { addToast } = useToastStore()
+  const claimCommentHighlights = useNotificationStore((state) => state.claimCommentHighlights)
+  const clearCommentNotifications = useNotificationStore((state) => state.clearCommentNotifications)
+  const commentHighlightVersion = useNotificationStore((state) => state.commentHighlightVersion)
+  const [highlightedComments, setHighlightedComments] = useState<Set<string>>(new Set())
+
+  const tabParam = searchParams.get('tab') as TabType | null
+
+  useEffect(() => {
+    if (!tabParam) return
+    if (tabParam !== activeTab && ['profile', 'journey', 'friends', 'comments'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [tabParam, activeTab])
+
+  useEffect(() => {
+    if (readOnly) {
+      return
+    }
+
+    if (activeTab !== 'comments') {
+      if (highlightedComments.size > 0) {
+        setHighlightedComments(new Set())
+      }
+      return
+    }
+
+    const ids = claimCommentHighlights()
+    if (ids.length > 0) {
+      setHighlightedComments((prev) => {
+        const next = new Set(prev)
+        ids.forEach((id) => next.add(id))
+        return next
+      })
+    }
+
+    void clearCommentNotifications()
+  }, [activeTab, claimCommentHighlights, clearCommentNotifications, commentHighlightVersion, highlightedComments, readOnly])
 
   if (!profile) return null
 
@@ -70,6 +112,13 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
     { id: 'friends', label: 'Friends' },
     { id: 'comments', label: 'Comments' },
   ]
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab)
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', tab)
+    setSearchParams(next, { replace: true })
+  }
 
   const getInitials = (name: string | null) => {
     if (!name) return '?'  // Return placeholder for null/undefined
@@ -185,7 +234,7 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`py-4 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === tab.id
                       ? 'border-[#6366f1] text-[#6366f1]'
@@ -330,7 +379,7 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
 
             {activeTab === 'comments' && (
               <div className="animate-fade-in">
-                <CommentsTab profileId={profile.id} />
+                <CommentsTab profileId={profile.id} highlightedCommentIds={highlightedComments} />
               </div>
             )}
           </div>

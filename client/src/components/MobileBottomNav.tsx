@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Users, Briefcase, MessageCircle, LayoutDashboard, Settings, LogOut } from 'lucide-react'
+import { Users, Briefcase, MessageCircle, LayoutDashboard, Settings, LogOut, Bell } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { Avatar, NotificationBadge } from '@/components'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
 import { useOpportunityNotifications } from '@/hooks/useOpportunityNotifications'
 import { useToastStore } from '@/lib/toast'
+import { useNotificationStore } from '@/lib/notifications'
 
 interface NavItem {
   id: string
@@ -20,12 +21,19 @@ export default function MobileBottomNav() {
   const { profile, user, signOut } = useAuthStore()
   const { count: unreadCount } = useUnreadMessages()
   const { count: opportunityCount } = useOpportunityNotifications()
+  const notificationCount = useNotificationStore((state) => state.unreadCount)
+  const toggleNotificationDrawer = useNotificationStore((state) => state.toggleDrawer)
+  const closeNotificationsDrawer = () => toggleNotificationDrawer(false)
   const { addToast } = useToastStore()
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false)
   const [isHidden, setIsHidden] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const messagingMobileV2Enabled = import.meta.env.VITE_MESSAGING_MOBILE_V2 === 'true'
+  const handleNavigate = (path: string) => {
+    closeNotificationsDrawer()
+    navigate(path)
+  }
 
   // Navigation items
   const navItems: NavItem[] = [
@@ -151,7 +159,7 @@ export default function MobileBottomNav() {
             return (
               <button
                 key={item.id}
-                onClick={() => navigate(item.path)}
+                onClick={() => handleNavigate(item.path)}
                 className={`flex flex-col items-center justify-center min-w-[64px] min-h-[48px] py-1 px-3 rounded-xl transition-all duration-200 ${
                   active 
                     ? 'text-[#6366f1]' 
@@ -188,6 +196,18 @@ export default function MobileBottomNav() {
               </button>
             )
           })}
+
+          <button
+            onClick={() => toggleNotificationDrawer()}
+            className="flex flex-col items-center justify-center min-w-[64px] min-h-[48px] py-1 px-3 rounded-xl text-gray-600 transition-all duration-200 active:bg-gray-100"
+            aria-label="Notifications"
+          >
+            <div className="relative flex items-center justify-center w-7 h-7 mb-0.5">
+              <Bell className="w-6 h-6" />
+              <NotificationBadge count={notificationCount} />
+            </div>
+            <span className="text-[10px] font-medium opacity-0">Alerts</span>
+          </button>
 
           {/* Profile Avatar with Menu */}
           <div className="relative" ref={profileMenuRef}>
@@ -237,7 +257,7 @@ export default function MobileBottomNav() {
                 <button
                   onClick={() => {
                     setProfileMenuOpen(false)
-                    navigate('/settings')
+                    handleNavigate('/settings')
                   }}
                   className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-3"
                   role="menuitem"
@@ -250,6 +270,7 @@ export default function MobileBottomNav() {
                   onClick={async () => {
                     setProfileMenuOpen(false)
                     try {
+                      closeNotificationsDrawer()
                       await signOut()
                       navigate('/')
                     } catch (error) {

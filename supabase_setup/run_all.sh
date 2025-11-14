@@ -17,6 +17,8 @@ FILES=(
   "003_rls_policies.sql"
   "004_indexes_views.sql"
   "005_storage.sql"
+  "006_friends.sql"
+  "007_notifications.sql"
 )
 
 for file in "${FILES[@]}"; do

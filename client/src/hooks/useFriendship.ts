@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
+import { useNotificationStore } from '@/lib/notifications'
 
 type FriendStatus = Database['public']['Enums']['friendship_status']
 type FriendEdge = Database['public']['Views']['profile_friend_edges']['Row']
@@ -28,6 +29,7 @@ type FriendshipState = {
 export function useFriendship(profileId: string): FriendshipState {
   const { profile: authProfile } = useAuthStore()
   const { addToast } = useToastStore()
+  const dismissNotification = useNotificationStore((state) => state.dismissBySource)
   const viewerId = authProfile?.id
   const [relationship, setRelationship] = useState<FriendEdge | null>(null)
   const [loading, setLoading] = useState(false)
@@ -148,6 +150,7 @@ export function useFriendship(profileId: string): FriendshipState {
 
         if (error) throw error
         addToast(successMessage, 'success')
+        dismissNotification('friend_request', friendshipId)
         await fetchRelationship()
       } catch (error) {
         console.error('Failed to update friendship state', error)
@@ -156,7 +159,7 @@ export function useFriendship(profileId: string): FriendshipState {
         setMutating(false)
       }
     },
-    [viewerId, relationship, addToast, fetchRelationship]
+    [viewerId, relationship, addToast, fetchRelationship, dismissNotification]
   )
 
   const acceptRequest = useCallback(async () => {

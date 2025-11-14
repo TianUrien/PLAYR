@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MapPin, Globe, Calendar, Plus, Eye, MessageCircle, Edit, Loader2 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '@/components/Header'
 import { Avatar, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton } from '@/components'
 import VacanciesTab from '@/components/VacanciesTab'
@@ -10,8 +10,12 @@ import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
 import { useToastStore } from '@/lib/toast'
+import { useNotificationStore } from '@/lib/notifications'
 
 type TabType = 'overview' | 'vacancies' | 'friends' | 'players' | 'comments'
+
+const READ_ONLY_TABS: TabType[] = ['overview', 'vacancies', 'friends', 'comments']
+const FULL_TABS: TabType[] = [...READ_ONLY_TABS, 'players']
 
 interface ClubDashboardProps {
   profileData?: Profile
@@ -23,13 +27,62 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
   const profile = profileData || authProfile
   const navigate = useNavigate()
   const { addToast } = useToastStore()
-  const [activeTab, setActiveTab] = useState<TabType>('overview')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const allowedTabs = readOnly ? READ_ONLY_TABS : FULL_TABS
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const param = searchParams.get('tab') as TabType | null
+    return param && allowedTabs.includes(param) ? param : 'overview'
+  })
   const [showEditModal, setShowEditModal] = useState(false)
   const [sendingMessage, setSendingMessage] = useState(false)
   const [triggerCreateVacancy, setTriggerCreateVacancy] = useState(false)
+  const claimCommentHighlights = useNotificationStore((state) => state.claimCommentHighlights)
+  const clearCommentNotifications = useNotificationStore((state) => state.clearCommentNotifications)
+  const commentHighlightVersion = useNotificationStore((state) => state.commentHighlightVersion)
+  const [highlightedComments, setHighlightedComments] = useState<Set<string>>(new Set())
+
+  const tabParam = searchParams.get('tab') as TabType | null
+
+  useEffect(() => {
+    if (!tabParam) return
+    if (!allowedTabs.includes(tabParam)) {
+      if (activeTab !== 'overview') {
+        setActiveTab('overview')
+      }
+      return
+    }
+
+    if (tabParam !== activeTab) {
+      setActiveTab(tabParam)
+    }
+  }, [tabParam, allowedTabs, activeTab])
+
+  useEffect(() => {
+    if (readOnly) {
+      return
+    }
+
+    if (activeTab !== 'comments') {
+      if (highlightedComments.size > 0) {
+        setHighlightedComments(new Set())
+      }
+      return
+    }
+
+    const ids = claimCommentHighlights()
+    if (ids.length > 0) {
+      setHighlightedComments((prev) => {
+        const next = new Set(prev)
+        ids.forEach((id) => next.add(id))
+        return next
+      })
+    }
+
+    void clearCommentNotifications()
+  }, [activeTab, claimCommentHighlights, clearCommentNotifications, commentHighlightVersion, highlightedComments, readOnly])
 
   const handleCreateVacancyClick = () => {
-    setActiveTab('vacancies')
+    handleTabChange('vacancies')
     setTriggerCreateVacancy(true)
   }
 
@@ -79,6 +132,16 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
   const tabs: { id: TabType; label: string }[] = readOnly
     ? baseTabs
     : [...baseTabs, { id: 'players', label: 'Players' }]
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab)
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', tab)
+    setSearchParams(next, { replace: true })
+    if (tab !== 'vacancies' && triggerCreateVacancy) {
+      setTriggerCreateVacancy(false)
+    }
+  }
 
   const getInitials = (name: string | null) => {
     if (!name) return '?'
@@ -213,7 +276,7 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`py-4 border-b-2 transition-all text-sm font-medium whitespace-nowrap ${
                     activeTab === tab.id
                       ? 'border-[#8b5cf6] text-[#8b5cf6]'
@@ -363,7 +426,7 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
 
             {activeTab === 'comments' && (
               <div className="animate-fade-in">
-                <CommentsTab profileId={profile.id} />
+                <CommentsTab profileId={profile.id} highlightedCommentIds={highlightedComments} />
               </div>
             )}
 

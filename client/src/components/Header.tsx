@@ -1,17 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MessageCircle, LogOut, Users, Briefcase, LayoutDashboard, Settings } from 'lucide-react'
+import { MessageCircle, LogOut, Users, Briefcase, LayoutDashboard, Settings, Bell } from 'lucide-react'
 import { Avatar, NotificationBadge } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
 import { useOpportunityNotifications } from '@/hooks/useOpportunityNotifications'
 import { useToastStore } from '@/lib/toast'
+import { useNotificationStore } from '@/lib/notifications'
 
 export default function Header() {
   const navigate = useNavigate()
   const { user, profile, signOut } = useAuthStore()
   const { count: unreadCount } = useUnreadMessages()
   const { count: opportunityCount } = useOpportunityNotifications()
+  const notificationCount = useNotificationStore((state) => state.unreadCount)
+  const toggleNotificationDrawer = useNotificationStore((state) => state.toggleDrawer)
+  const closeNotificationsDrawer = () => toggleNotificationDrawer(false)
   const { addToast } = useToastStore()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -77,8 +81,14 @@ export default function Header() {
     }
   }, [])
 
+  const handleNavigate = (path: string) => {
+    closeNotificationsDrawer()
+    navigate(path)
+  }
+
   const handleSignOut = async () => {
     try {
+      closeNotificationsDrawer()
       await signOut()
       navigate('/')
     } catch (error) {
@@ -97,7 +107,7 @@ export default function Header() {
           {/* Logo & Tagline */}
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => navigate('/')}
+              onClick={() => handleNavigate('/')}
               className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             >
               <img 
@@ -117,7 +127,7 @@ export default function Header() {
             {user && profile ? (
               <>
                 <button
-                  onClick={() => navigate('/community')}
+                  onClick={() => handleNavigate('/community')}
                   className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
                 >
                   <div className="flex items-center gap-2">
@@ -126,7 +136,7 @@ export default function Header() {
                   </div>
                 </button>
                 <button
-                  onClick={() => navigate('/opportunities')}
+                  onClick={() => handleNavigate('/opportunities')}
                   className="relative text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
                 >
                   <div className="flex items-center gap-2">
@@ -136,7 +146,7 @@ export default function Header() {
                   <NotificationBadge count={opportunityCount} className="-right-3 -top-2" />
                 </button>
                 <button
-                  onClick={() => navigate('/messages')}
+                  onClick={() => handleNavigate('/messages')}
                   className="relative text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
                 >
                   <div className="flex items-center gap-2">
@@ -146,7 +156,17 @@ export default function Header() {
                   <NotificationBadge count={unreadCount} />
                 </button>
                 <button
-                  onClick={() => navigate('/dashboard/profile')}
+                  onClick={() => toggleNotificationDrawer()}
+                  className="relative text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-5 h-5" />
+                    <span>Notifications</span>
+                  </div>
+                  <NotificationBadge count={notificationCount} className="-right-3 -top-2" />
+                </button>
+                <button
+                  onClick={() => handleNavigate('/dashboard/profile')}
                   className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
                 >
                   <div className="flex items-center gap-2">
@@ -181,7 +201,7 @@ export default function Header() {
                       <button
                         onClick={() => {
                           setDropdownOpen(false)
-                          navigate('/settings')
+                          handleNavigate('/settings')
                         }}
                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
                         role="menuitem"
@@ -207,7 +227,7 @@ export default function Header() {
             ) : (
               <>
                 <button
-                  onClick={() => navigate('/community')}
+                  onClick={() => handleNavigate('/community')}
                   className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
                 >
                   <div className="flex items-center gap-2">
@@ -216,7 +236,7 @@ export default function Header() {
                   </div>
                 </button>
                 <button
-                  onClick={() => navigate('/opportunities')}
+                  onClick={() => handleNavigate('/opportunities')}
                   className="relative text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
                 >
                   <div className="flex items-center gap-2">
@@ -226,13 +246,13 @@ export default function Header() {
                   <NotificationBadge count={opportunityCount} className="-right-3 -top-2" />
                 </button>
                 <button
-                  onClick={() => navigate('/')}
+                  onClick={() => handleNavigate('/')}
                   className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors px-4 py-2"
                 >
                   Sign In
                 </button>
                 <button
-                  onClick={() => navigate('/signup')}
+                  onClick={() => handleNavigate('/signup')}
                   className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                   Join PLAYR

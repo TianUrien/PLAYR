@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MapPin, Globe, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { Avatar, EditProfileModal, FriendsTab, FriendshipButton } from '@/components'
@@ -8,8 +8,9 @@ import JourneyTab from '@/components/JourneyTab'
 import CommentsTab from '@/components/CommentsTab'
 import type { Profile } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useToastStore } from '@/lib/toast'
+import { useNotificationStore } from '@/lib/notifications'
 
 type TabType = 'profile' | 'friends' | 'journey' | 'comments'
 
@@ -22,10 +23,51 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
   const { profile: authProfile, user } = useAuthStore()
   const profile = profileData || authProfile
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { addToast } = useToastStore()
-  const [activeTab, setActiveTab] = useState<TabType>('profile')
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const tabParam = searchParams.get('tab') as TabType | null
+    return tabParam && ['profile', 'friends', 'journey', 'comments'].includes(tabParam) ? tabParam : 'profile'
+  })
   const [showEditModal, setShowEditModal] = useState(false)
   const [sendingMessage, setSendingMessage] = useState(false)
+  const claimCommentHighlights = useNotificationStore((state) => state.claimCommentHighlights)
+  const clearCommentNotifications = useNotificationStore((state) => state.clearCommentNotifications)
+  const commentHighlightVersion = useNotificationStore((state) => state.commentHighlightVersion)
+  const [highlightedComments, setHighlightedComments] = useState<Set<string>>(new Set())
+
+  const tabParam = searchParams.get('tab') as TabType | null
+
+  useEffect(() => {
+    if (!tabParam) return
+    if (tabParam !== activeTab && ['profile', 'friends', 'journey', 'comments'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [tabParam, activeTab])
+
+  useEffect(() => {
+    if (readOnly) {
+      return
+    }
+
+    if (activeTab !== 'comments') {
+      if (highlightedComments.size > 0) {
+        setHighlightedComments(new Set())
+      }
+      return
+    }
+
+    const ids = claimCommentHighlights()
+    if (ids.length > 0) {
+      setHighlightedComments((prev) => {
+        const next = new Set(prev)
+        ids.forEach((id) => next.add(id))
+        return next
+      })
+    }
+
+    void clearCommentNotifications()
+  }, [activeTab, claimCommentHighlights, clearCommentNotifications, commentHighlightVersion, readOnly, highlightedComments])
 
   if (!profile) return null
 
@@ -72,6 +114,13 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
     { id: 'journey', label: 'Journey' },
     { id: 'comments', label: 'Comments' },
   ]
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab)
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', tab)
+    setSearchParams(next, { replace: true })
+  }
 
   const getInitials = (name: string | null) => {
     if (!name) return '?'  // Return placeholder for null/undefined
@@ -218,7 +267,7 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
               {tabs.map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`py-4 border-b-2 transition-all text-sm font-medium whitespace-nowrap ${
                     activeTab === tab.id
                       ? 'border-[#6366f1] text-[#6366f1]'
@@ -414,7 +463,7 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
 
             {activeTab === 'comments' && (
               <div className="animate-fade-in">
-                <CommentsTab profileId={profile.id} />
+                <CommentsTab profileId={profile.id} highlightedCommentIds={highlightedComments} />
               </div>
             )}
 

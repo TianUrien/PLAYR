@@ -381,6 +381,60 @@ export type Database = {
           },
         ]
       }
+      profile_notifications: {
+        Row: {
+          actor_profile_id: string | null
+          cleared_at: string | null
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["profile_notification_kind"]
+          payload: Json
+          read_at: string | null
+          recipient_profile_id: string
+          source_entity_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          actor_profile_id?: string | null
+          cleared_at?: string | null
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["profile_notification_kind"]
+          payload?: Json
+          read_at?: string | null
+          recipient_profile_id: string
+          source_entity_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          actor_profile_id?: string | null
+          cleared_at?: string | null
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["profile_notification_kind"]
+          payload?: Json
+          read_at?: string | null
+          recipient_profile_id?: string
+          source_entity_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_notifications_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_notifications_recipient_profile_id_fkey"
+            columns: ["recipient_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -773,10 +827,34 @@ export type Database = {
           unread_count: number
         }[]
       }
+      fetch_profile_notifications: {
+        Args: { p_limit?: number | null; p_offset?: number | null }
+        Returns: {
+          id: string
+          kind: Database["public"]["Enums"]["profile_notification_kind"]
+          source_entity_id: string | null
+          payload: Json
+          created_at: string
+          read_at: string | null
+          cleared_at: string | null
+          actor: {
+            id: string | null
+            full_name: string | null
+            role: string | null
+            username: string | null
+            avatar_url: string | null
+            base_location: string | null
+          } | null
+        }[]
+      }
       is_platform_admin: { Args: never; Returns: boolean }
       mark_opportunities_seen: {
         Args: { p_seen_at?: string }
         Returns: undefined
+      }
+      mark_profile_notifications_read: {
+        Args: { p_notification_ids?: string[] | null }
+        Returns: number
       }
       recover_zombie_accounts: {
         Args: never
@@ -786,6 +864,13 @@ export type Database = {
         }[]
       }
       release_profile_lock: { Args: { profile_id: string }; Returns: boolean }
+      clear_profile_notifications: {
+        Args: {
+          p_notification_ids?: string[] | null
+          p_kind?: Database["public"]["Enums"]["profile_notification_kind"] | null
+        }
+        Returns: number
+      }
       set_profile_comment_status: {
         Args: {
           p_comment_id: string
@@ -834,6 +919,7 @@ export type Database = {
         | "rejected"
         | "cancelled"
         | "blocked"
+      profile_notification_kind: "friend_request" | "profile_comment"
       journey_entry_type:
         | "club"
         | "national_team"
@@ -992,6 +1078,7 @@ export const Constants = {
         "cancelled",
         "blocked",
       ],
+      profile_notification_kind: ["friend_request", "profile_comment"],
       journey_entry_type: [
         "club",
         "national_team",
