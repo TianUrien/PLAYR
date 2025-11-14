@@ -86,4 +86,48 @@ BEGIN
 END
 $$;
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE t.typname = 'journey_entry_type' AND n.nspname = 'public'
+  ) THEN
+    CREATE TYPE journey_entry_type AS ENUM (
+      'club',
+      'national_team',
+      'achievement',
+      'tournament',
+      'milestone',
+      'academy',
+      'other'
+    );
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE t.typname = 'comment_status' AND n.nspname = 'public'
+  ) THEN
+    CREATE TYPE comment_status AS ENUM ('visible', 'hidden', 'reported', 'deleted');
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE t.typname = 'comment_rating' AND n.nspname = 'public'
+  ) THEN
+    CREATE TYPE comment_rating AS ENUM ('positive', 'neutral', 'negative');
+  END IF;
+END
+$$;
+
 -- Table definitions live in 002_tables.sql to avoid duplicate creation across the setup sequence.

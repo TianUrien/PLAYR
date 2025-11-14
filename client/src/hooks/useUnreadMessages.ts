@@ -20,21 +20,5 @@ export function useUnreadMessages() {
     }
   }, [initialize, reset, userId])
 
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    window.__updateUnreadBadge = adjust
-    window.__refreshUnreadBadge = () => {
-      void refresh({ bypassCache: true })
-    }
-
-    return () => {
-      delete window.__updateUnreadBadge
-      delete window.__refreshUnreadBadge
-    }
-  }, [adjust, refresh])
-
   return { count, adjust, refresh }
 }

@@ -4,12 +4,14 @@ import { MessageCircle, LogOut, Users, Briefcase, LayoutDashboard, Settings } fr
 import { Avatar, NotificationBadge } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
+import { useOpportunityNotifications } from '@/hooks/useOpportunityNotifications'
 import { useToastStore } from '@/lib/toast'
 
 export default function Header() {
   const navigate = useNavigate()
   const { user, profile, signOut } = useAuthStore()
   const { count: unreadCount } = useUnreadMessages()
+  const { count: opportunityCount } = useOpportunityNotifications()
   const { addToast } = useToastStore()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -125,12 +127,13 @@ export default function Header() {
                 </button>
                 <button
                   onClick={() => navigate('/opportunities')}
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                  className="relative text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <Briefcase className="w-5 h-5" />
                     <span>Opportunities</span>
                   </div>
+                  <NotificationBadge count={opportunityCount} className="-right-3 -top-2" />
                 </button>
                 <button
                   onClick={() => navigate('/messages')}
@@ -214,12 +217,13 @@ export default function Header() {
                 </button>
                 <button
                   onClick={() => navigate('/opportunities')}
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                  className="relative text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <Briefcase className="w-5 h-5" />
                     <span>Opportunities</span>
                   </div>
+                  <NotificationBadge count={opportunityCount} className="-right-3 -top-2" />
                 </button>
                 <button
                   onClick={() => navigate('/')}

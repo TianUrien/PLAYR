@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import Footer from './Footer'
 import MobileBottomNav from './MobileBottomNav'
+import NotificationBridge from './NotificationBridge'
 
 interface LayoutProps {
   children: ReactNode
@@ -18,6 +19,7 @@ export default function Layout({ children, className = '' }: LayoutProps) {
 
   return (
     <div className="flex flex-col min-h-screen">
+      <NotificationBridge />
       {/* Main content area - grows to push footer down */}
       <main className={`flex-1 ${className}`}>
         {children}

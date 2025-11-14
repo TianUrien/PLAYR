@@ -14,6 +14,10 @@ export { default as MemberCard } from './MemberCard'
 export { default as ResendVerificationButton } from './ResendVerificationButton'
 export { default as Toast } from './Toast'
 export { default as ToastContainer } from './ToastContainer'
+export { default as CommentsTab } from './CommentsTab'
+export { default as JourneyTab } from './JourneyTab'
+export { default as FriendsTab } from './FriendsTab'
+export { default as FriendshipButton } from './FriendshipButton'
 export { ErrorBoundary } from './ErrorBoundary'
 
 // Loading States

@@ -175,39 +175,89 @@ export type Database = {
           },
         ]
       }
+      opportunity_inbox_state: {
+        Row: {
+          last_seen_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_seen_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_seen_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_inbox_state_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       playing_history: {
         Row: {
-          achievements: string[]
+          badge_label: string | null
           club_name: string
           created_at: string
+          description: string | null
           display_order: number
           division_league: string
+          end_date: string | null
+          entry_type: Database["public"]["Enums"]["journey_entry_type"]
+          highlights: string[]
           id: string
+          image_url: string | null
+          location_city: string | null
+          location_country: string | null
           position_role: string
+          start_date: string | null
           updated_at: string
           user_id: string
           years: string
         }
         Insert: {
-          achievements?: string[]
+          badge_label?: string | null
           club_name: string
           created_at?: string
+          description?: string | null
           display_order?: number
           division_league: string
+          end_date?: string | null
+          entry_type?: Database["public"]["Enums"]["journey_entry_type"]
+          highlights?: string[]
           id?: string
+          image_url?: string | null
+          location_city?: string | null
+          location_country?: string | null
           position_role: string
+          start_date?: string | null
           updated_at?: string
           user_id: string
           years: string
         }
         Update: {
-          achievements?: string[]
+          badge_label?: string | null
           club_name?: string
           created_at?: string
+          description?: string | null
           display_order?: number
           division_league?: string
+          end_date?: string | null
+          entry_type?: Database["public"]["Enums"]["journey_entry_type"]
+          highlights?: string[]
           id?: string
+          image_url?: string | null
+          location_city?: string | null
+          location_country?: string | null
           position_role?: string
+          start_date?: string | null
           updated_at?: string
           user_id?: string
           years?: string
@@ -216,6 +266,115 @@ export type Database = {
           {
             foreignKeyName: "playing_history_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_comments: {
+        Row: {
+          author_profile_id: string
+          content: string
+          created_at: string
+          id: string
+          profile_id: string
+          rating: Database["public"]["Enums"]["comment_rating"] | null
+          status: Database["public"]["Enums"]["comment_status"]
+          updated_at: string
+        }
+        Insert: {
+          author_profile_id: string
+          content: string
+          created_at?: string
+          id?: string
+          profile_id: string
+          rating?: Database["public"]["Enums"]["comment_rating"] | null
+          status?: Database["public"]["Enums"]["comment_status"]
+          updated_at?: string
+        }
+        Update: {
+          author_profile_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          profile_id?: string
+          rating?: Database["public"]["Enums"]["comment_rating"] | null
+          status?: Database["public"]["Enums"]["comment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_comments_author_profile_id_fkey"
+            columns: ["author_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_comments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profile_friendships: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          id: string
+          pair_key_lower: string | null
+          pair_key_upper: string | null
+          requester_id: string
+          status: Database["public"]["Enums"]["friendship_status"]
+          updated_at: string
+          user_one: string
+          user_two: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          id?: string
+          pair_key_lower?: string | null
+          pair_key_upper?: string | null
+          requester_id: string
+          status?: Database["public"]["Enums"]["friendship_status"]
+          updated_at?: string
+          user_one: string
+          user_two: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          id?: string
+          pair_key_lower?: string | null
+          pair_key_upper?: string | null
+          requester_id?: string
+          status?: Database["public"]["Enums"]["friendship_status"]
+          updated_at?: string
+          user_one?: string
+          user_two?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_friendships_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_friendships_user_one_fkey"
+            columns: ["user_one"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_friendships_user_two_fkey"
+            columns: ["user_two"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -451,6 +610,23 @@ export type Database = {
       }
     }
     Views: {
+      profile_friend_edges: {
+        Row: {
+          accepted_at: string | null
+          created_at: string | null
+          friend_id: string | null
+          id: string | null
+          pair_key_lower: string | null
+          pair_key_upper: string | null
+          profile_id: string | null
+          requester_id: string | null
+          status: Database["public"]["Enums"]["friendship_status"] | null
+          updated_at: string | null
+          user_one: string | null
+          user_two: string | null
+        }
+        Relationships: []
+      }
       user_unread_counts: {
         Row: {
           unread_count: number | null
@@ -578,6 +754,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_opportunity_alerts: { Args: never; Returns: number }
       get_user_conversations: {
         Args: { p_limit?: number; p_user_id: string }
         Returns: {
@@ -596,6 +773,11 @@ export type Database = {
           unread_count: number
         }[]
       }
+      is_platform_admin: { Args: never; Returns: boolean }
+      mark_opportunities_seen: {
+        Args: { p_seen_at?: string }
+        Returns: undefined
+      }
       recover_zombie_accounts: {
         Args: never
         Returns: {
@@ -604,6 +786,32 @@ export type Database = {
         }[]
       }
       release_profile_lock: { Args: { profile_id: string }; Returns: boolean }
+      set_profile_comment_status: {
+        Args: {
+          p_comment_id: string
+          p_status: Database["public"]["Enums"]["comment_status"]
+        }
+        Returns: {
+          author_profile_id: string
+          content: string
+          created_at: string
+          id: string
+          profile_id: string
+          rating: Database["public"]["Enums"]["comment_rating"] | null
+          status: Database["public"]["Enums"]["comment_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "profile_comments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      try_parse_years_component: {
+        Args: { component: string; years: string }
+        Returns: string
+      }
       user_in_conversation: {
         Args: { p_conversation_id: string; p_user_id: string }
         Returns: boolean
@@ -618,6 +826,22 @@ export type Database = {
         | "accepted"
         | "rejected"
         | "withdrawn"
+      comment_rating: "positive" | "neutral" | "negative"
+      comment_status: "visible" | "hidden" | "reported" | "deleted"
+      friendship_status:
+        | "pending"
+        | "accepted"
+        | "rejected"
+        | "cancelled"
+        | "blocked"
+      journey_entry_type:
+        | "club"
+        | "national_team"
+        | "achievement"
+        | "tournament"
+        | "milestone"
+        | "academy"
+        | "other"
       opportunity_type: "player" | "coach"
       vacancy_gender: "Men" | "Women"
       vacancy_position: "goalkeeper" | "defender" | "midfielder" | "forward"
@@ -758,6 +982,24 @@ export const Constants = {
         "accepted",
         "rejected",
         "withdrawn",
+      ],
+      comment_rating: ["positive", "neutral", "negative"],
+      comment_status: ["visible", "hidden", "reported", "deleted"],
+      friendship_status: [
+        "pending",
+        "accepted",
+        "rejected",
+        "cancelled",
+        "blocked",
+      ],
+      journey_entry_type: [
+        "club",
+        "national_team",
+        "achievement",
+        "tournament",
+        "milestone",
+        "academy",
+        "other",
       ],
       opportunity_type: ["player", "coach"],
       vacancy_gender: ["Men", "Women"],

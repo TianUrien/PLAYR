@@ -176,6 +176,92 @@ COMMENT ON VIEW public.user_unread_counts IS 'Real-time unread message counts pe
 COMMENT ON VIEW public.user_unread_counts_secure IS 'RLS wrapper exposing unread counts to the current user only';
 
 -- ============================================================================
+-- OPPORTUNITY NOTIFICATION STATE AND HELPERS
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.opportunity_inbox_state (
+  user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT '1970-01-01 00:00:00+00'::timestamptz,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
+);
+
+ALTER TABLE public.opportunity_inbox_state ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can read their opportunity inbox state"
+  ON public.opportunity_inbox_state
+  FOR SELECT
+  USING (user_id = auth.uid());
+
+CREATE POLICY "Users can insert their opportunity inbox state"
+  ON public.opportunity_inbox_state
+  FOR INSERT
+  WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can update their opportunity inbox state"
+  ON public.opportunity_inbox_state
+  FOR UPDATE
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+CREATE TRIGGER opportunity_inbox_state_set_updated_at
+  BEFORE UPDATE ON public.opportunity_inbox_state
+  FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE OR REPLACE FUNCTION public.get_opportunity_alerts()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET SEARCH_PATH = public, extensions
+AS $$
+DECLARE
+  current_user_id UUID := auth.uid();
+  baseline TIMESTAMPTZ := '1970-01-01 00:00:00+00'::timestamptz;
+  last_seen TIMESTAMPTZ := baseline;
+BEGIN
+  IF current_user_id IS NULL THEN
+    RETURN 0;
+  END IF;
+
+  SELECT COALESCE(last_seen_at, baseline)
+    INTO last_seen
+    FROM public.opportunity_inbox_state
+   WHERE user_id = current_user_id;
+
+  RETURN (
+    SELECT COUNT(*)
+      FROM public.vacancies v
+     WHERE v.status = 'open'
+       AND COALESCE(v.published_at, v.created_at) > last_seen
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_opportunity_alerts() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.mark_opportunities_seen(p_seen_at timestamptz DEFAULT timezone('utc', now()))
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET SEARCH_PATH = public, extensions
+AS $$
+DECLARE
+  current_user_id UUID := auth.uid();
+  target_seen_at TIMESTAMPTZ := COALESCE(p_seen_at, timezone('utc', now()));
+BEGIN
+  IF current_user_id IS NULL THEN
+    RETURN;
+  END IF;
+
+  INSERT INTO public.opportunity_inbox_state (user_id, last_seen_at, updated_at)
+  VALUES (current_user_id, target_seen_at, timezone('utc', now()))
+  ON CONFLICT (user_id) DO UPDATE
+    SET last_seen_at = EXCLUDED.last_seen_at,
+        updated_at = EXCLUDED.updated_at;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.mark_opportunities_seen(timestamptz) TO authenticated;
+
+-- ============================================================================
 -- STORAGE BUCKETS & POLICIES
 -- ============================================================================
 SET search_path = storage;

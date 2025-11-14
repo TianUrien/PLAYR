@@ -4,6 +4,7 @@ import { Users, Briefcase, MessageCircle, LayoutDashboard, Settings, LogOut } fr
 import { useAuthStore } from '@/lib/auth'
 import { Avatar, NotificationBadge } from '@/components'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
+import { useOpportunityNotifications } from '@/hooks/useOpportunityNotifications'
 import { useToastStore } from '@/lib/toast'
 
 interface NavItem {
@@ -18,6 +19,7 @@ export default function MobileBottomNav() {
   const location = useLocation()
   const { profile, user, signOut } = useAuthStore()
   const { count: unreadCount } = useUnreadMessages()
+  const { count: opportunityCount } = useOpportunityNotifications()
   const { addToast } = useToastStore()
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false)
   const [isHidden, setIsHidden] = useState(false)
@@ -168,6 +170,9 @@ export default function MobileBottomNav() {
                   />
                   {item.id === 'messages' && (
                     <NotificationBadge count={unreadCount} />
+                  )}
+                  {item.id === 'opportunities' && (
+                    <NotificationBadge count={opportunityCount} />
                   )}
                   {active && (
                     <div className="absolute inset-0 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] opacity-20 rounded-full blur-md" />

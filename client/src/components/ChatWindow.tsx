@@ -9,10 +9,11 @@ import { withRetry } from '@/lib/retry'
 import { requestCache, generateCacheKey } from '@/lib/requestCache'
 import { useToastStore } from '@/lib/toast'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { useUnreadStore } from '@/lib/unread'
 
 type NullableDate = string | null
 
-interface Message {
+export interface Message {
   id: string
   conversation_id: string
   sender_id: string
@@ -55,11 +56,23 @@ interface ScrollJob {
   reason: ScrollJobReason
 }
 
+export type ChatMessageEvent =
+  | {
+      type: 'sent'
+      conversationId: string
+      message: Message
+    }
+  | {
+      type: 'read'
+      conversationId: string
+      messageIds: string[]
+    }
+
 interface ChatWindowProps {
   conversation: Conversation
   currentUserId: string
   onBack: () => void
-  onMessageSent: () => void
+  onMessageSent?: (event: ChatMessageEvent) => void
   onConversationCreated: (conversation: Conversation) => void
   onConversationRead?: (conversationId: string) => void
 }
@@ -91,6 +104,13 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const oldestLoadedTimestampRef = useRef<string | null>(null)
+  const initializeUnreadStore = useUnreadStore(state => state.initialize)
+  const adjustUnreadCount = useUnreadStore(state => state.adjust)
+  const refreshUnreadCount = useUnreadStore(state => state.refresh)
+
+  useEffect(() => {
+    void initializeUnreadStore(currentUserId || null)
+  }, [currentUserId, initializeUnreadStore])
 
   useEffect(() => {
     setHasMoreMessages(true)
@@ -322,16 +342,17 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       }
 
       requestCache.invalidate(cacheKey)
-      onMessageSent()
+      if (onMessageSent && pendingIds.length > 0 && conversation.id) {
+        onMessageSent({
+          type: 'read',
+          conversationId: conversation.id,
+          messageIds: pendingIds
+        })
+      }
 
-      if (typeof window !== 'undefined') {
-        const decrement = pendingIds.length
-        if (decrement > 0 && window.__updateUnreadBadge) {
-          window.__updateUnreadBadge(-decrement)
-        }
-        if (window.__refreshUnreadBadge) {
-          window.__refreshUnreadBadge()
-        }
+      if (pendingIds.length > 0) {
+        adjustUnreadCount(-pendingIds.length)
+        void refreshUnreadCount({ bypassCache: true })
       }
     } catch (error) {
       logger.error('Error marking messages as read in database:', error)
@@ -342,7 +363,16 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
 
       pendingIds.forEach(id => pendingReadIdsRef.current.add(id))
     }
-  }, [conversation.id, conversation.isPending, currentUserId, onConversationRead, onMessageSent, syncMessagesState])
+  }, [
+    adjustUnreadCount,
+    conversation.id,
+    conversation.isPending,
+    currentUserId,
+    onConversationRead,
+    onMessageSent,
+    refreshUnreadCount,
+    syncMessagesState
+  ])
 
   const queueReadReceipt = useCallback(
     (message: Message) => {
@@ -367,6 +397,22 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     },
     [currentUserId, flushPendingReadReceipts]
   )
+
+  const markConversationAsRead = useCallback(() => {
+    if (!conversation.id || conversation.isPending) {
+      return
+    }
+
+    const unreadMessages = messagesRef.current.filter(
+      msg => msg.sender_id !== currentUserId && !msg.read_at
+    )
+
+    if (!unreadMessages.length) {
+      return
+    }
+
+    unreadMessages.forEach(queueReadReceipt)
+  }, [conversation.id, conversation.isPending, currentUserId, queueReadReceipt])
 
   // Marks incoming messages as read once ~60% of the bubble is visible in the scroll container.
   useEffect(() => {
@@ -744,6 +790,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
 
       if (atBottom) {
         setPendingNewMessagesCount(0)
+        markConversationAsRead()
       }
     }
 
@@ -772,6 +819,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     hasMoreMessages,
     isLoadingMore,
     isViewerAtBottom,
+    markConversationAsRead,
     loadOlderMessages,
     scrollToLatest
   ])
@@ -841,9 +889,14 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     }
 
     lastMessageIdRef.current = latestId
+
+    if (shouldStickToBottomRef.current) {
+      markConversationAsRead()
+    }
   }, [
     currentUserId,
     isViewerAtBottom,
+    markConversationAsRead,
     messages,
     scheduleScrollJob,
     setPendingNewMessagesCount,
@@ -964,6 +1017,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       inputRef.current?.focus()
 
       const conversationIdForMetrics = activeConversationId
+      let deliveredMessage: Message | null = null
 
       await monitor.measure(
         'send_message',
@@ -989,13 +1043,20 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
           if (data && data[0]) {
             logger.debug('Message sent successfully, replacing optimistic message')
             const persisted = data[0] as Message
+            deliveredMessage = persisted
             syncMessagesState(prev => prev.map(msg => (msg.id === optimisticId ? persisted : msg)))
           }
         },
         { conversationId: conversationIdForMetrics }
       )
 
-      onMessageSent()
+      if (onMessageSent) {
+        onMessageSent({
+          type: 'sent',
+          conversationId: conversationIdForMetrics,
+          message: deliveredMessage ?? optimisticMessage
+        })
+      }
 
       if (newlyCreatedConversation) {
         onConversationCreated(newlyCreatedConversation)
@@ -1069,9 +1130,9 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       }`}
     >
       <div
-        className={`z-40 flex items-center gap-3 border-b border-gray-200 bg-white pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] py-4 shadow-sm transition-colors md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] ${
-          isMobile ? 'pt-[calc(env(safe-area-inset-top)+1rem)]' : ''
-        }`}
+        className={`sticky z-40 flex items-center gap-3 border-b border-gray-200 bg-white pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] py-4 shadow-sm transition-colors md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] ${
+          isMobile ? 'top-[calc(var(--app-header-offset,0px))] pt-[calc(env(safe-area-inset-top)+1rem)]' : 'top-0'
+        } md:top-0`}
       >
         <button
           onClick={onBack}
@@ -1121,8 +1182,8 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
         ref={scrollContainerRef}
         className={`min-h-0 overflow-y-auto overscroll-contain pt-6 pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] ${
           isMobile
-            ? 'pb-[calc(var(--chat-composer-height,72px)+var(--chat-safe-area-bottom,0px)+0.75rem)]'
-            : 'pb-24 md:pb-20'
+            ? 'pb-[calc(var(--chat-composer-height,72px)+var(--chat-safe-area-bottom,0px)+0.25rem)]'
+            : 'pb-20 md:pb-16'
         }`}
       >
         {messages.length === 0 ? (
@@ -1214,9 +1275,9 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       <form
         onSubmit={handleSendMessage}
         data-chat-composer="true"
-        className={`border-t border-gray-200 bg-white/95 pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] py-4 backdrop-blur md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] ${
+        className={`border-t border-gray-200 bg-white/95 pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] py-3.5 backdrop-blur md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] ${
           isMobile
-            ? 'fixed bottom-0 left-0 right-0 z-40 shadow-lg pb-[calc(1rem+var(--chat-safe-area-bottom,0px))]'
+            ? 'fixed bottom-0 left-0 right-0 z-40 shadow-lg pb-[calc(0.75rem+var(--chat-safe-area-bottom,0px))]'
             : ''
         }`}
       >
@@ -1256,7 +1317,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
           <button
             type="submit"
             disabled={isSendDisabled}
-            className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white shadow-lg transition-all duration-200 hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-300 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white shadow-lg transition-all duration-200 hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-300 disabled:cursor-not-allowed disabled:opacity-60 md:h-12 md:w-12"
             aria-label="Send message"
           >
             {sending ? (

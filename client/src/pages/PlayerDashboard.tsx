@@ -1,16 +1,17 @@
 import { useState } from 'react'
 import { MapPin, Globe, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, EditProfileModal } from '@/components'
+import { Avatar, EditProfileModal, FriendsTab, FriendshipButton } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
-import HistoryTab from '@/components/HistoryTab'
+import JourneyTab from '@/components/JourneyTab'
+import CommentsTab from '@/components/CommentsTab'
 import type { Profile } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useToastStore } from '@/lib/toast'
 
-type TabType = 'profile' | 'media' | 'history' | 'achievements' | 'availability'
+type TabType = 'profile' | 'friends' | 'journey' | 'comments'
 
 interface PlayerDashboardProps {
   profileData?: Profile
@@ -67,10 +68,9 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
 
   const tabs: { id: TabType; label: string }[] = [
     { id: 'profile', label: 'Profile' },
-    { id: 'media', label: 'Media' },
-    { id: 'history', label: 'History' },
-    { id: 'achievements', label: 'Achievements' },
-    { id: 'availability', label: 'Availability' },
+    { id: 'friends', label: 'Friends' },
+    { id: 'journey', label: 'Journey' },
+    { id: 'comments', label: 'Comments' },
   ]
 
   const getInitials = (name: string | null) => {
@@ -127,11 +127,12 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
                   {profile.full_name}
                 </h1>
                 {readOnly ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
                       <Eye className="w-4 h-4" />
                       Public View
                     </div>
+                    <FriendshipButton profileId={profile.id} />
                     <button
                       onClick={handleSendMessage}
                       disabled={sendingMessage}
@@ -393,32 +394,33 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
                     )}
                   </div>
                 </section>
+
+                <section className="space-y-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Media</h2>
+                    <p className="text-gray-600">Highlight video and gallery now live on your main profile.</p>
+                  </div>
+
+                  <MediaTab profileId={profile.id} readOnly={readOnly} />
+                </section>
               </div>
             )}
 
-            {activeTab === 'media' && (
+            {activeTab === 'journey' && (
               <div className="animate-fade-in">
-                <MediaTab profileId={profile.id} readOnly={readOnly} />
+                <JourneyTab profileId={profile.id} readOnly={readOnly} />
               </div>
             )}
 
-            {activeTab === 'history' && (
+            {activeTab === 'comments' && (
               <div className="animate-fade-in">
-                <HistoryTab profileId={profile.id} readOnly={readOnly} />
+                <CommentsTab profileId={profile.id} />
               </div>
             )}
 
-            {activeTab !== 'profile' && activeTab !== 'media' && activeTab !== 'history' && (
-              <div className="text-center py-12 animate-fade-in">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">📋</span>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {tabs.find(t => t.id === activeTab)?.label} Coming Soon
-                </h3>
-                <p className="text-gray-600">
-                  This section is under development and will be available soon.
-                </p>
+            {activeTab === 'friends' && (
+              <div className="animate-fade-in">
+                <FriendsTab profileId={profile.id} readOnly={readOnly} />
               </div>
             )}
           </div>

@@ -1,17 +1,17 @@
 import { useState } from 'react'
 import { MapPin, Globe, Calendar, Plus, Eye, MessageCircle, Edit, Loader2 } from 'lucide-react'
-import { useAuthStore } from '@/lib/auth'
-import { Avatar, EditProfileModal } from '@/components'
+import { useNavigate } from 'react-router-dom'
 import Header from '@/components/Header'
+import { Avatar, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton } from '@/components'
 import VacanciesTab from '@/components/VacanciesTab'
 import ClubMediaTab from '@/components/ClubMediaTab'
+import Skeleton from '@/components/Skeleton'
+import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
-import { useNavigate } from 'react-router-dom'
 import { useToastStore } from '@/lib/toast'
-import Skeleton from '@/components/Skeleton'
 
-type TabType = 'overview' | 'media' | 'vacancies' | 'players'
+type TabType = 'overview' | 'vacancies' | 'friends' | 'players' | 'comments'
 
 interface ClubDashboardProps {
   profileData?: Profile
@@ -28,36 +28,32 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
   const [sendingMessage, setSendingMessage] = useState(false)
   const [triggerCreateVacancy, setTriggerCreateVacancy] = useState(false)
 
-
   const handleCreateVacancyClick = () => {
-    // Switch to vacancies tab
     setActiveTab('vacancies')
-    // Trigger the vacancy creation modal
     setTriggerCreateVacancy(true)
   }
 
   const handleSendMessage = async () => {
     if (!user || !profileData) return
-    
+
     setSendingMessage(true)
     try {
-      // Check if conversation already exists
       const { data: existingConv } = await supabase
         .from('conversations')
         .select('id')
-        .or(`and(participant_one_id.eq.${user.id},participant_two_id.eq.${profileData.id}),and(participant_one_id.eq.${profileData.id},participant_two_id.eq.${user.id})`)
+        .or(
+          `and(participant_one_id.eq.${user.id},participant_two_id.eq.${profileData.id}),and(participant_one_id.eq.${profileData.id},participant_two_id.eq.${user.id})`
+        )
         .single()
 
       if (existingConv) {
-        // Navigate to existing conversation
         navigate(`/messages?conversation=${existingConv.id}`)
       } else {
-        // Create new conversation
         const { data: newConv, error } = await supabase
           .from('conversations')
           .insert({
             participant_one_id: user.id,
-            participant_two_id: profileData.id
+            participant_two_id: profileData.id,
           })
           .select('id')
           .single()
@@ -73,30 +69,27 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
     }
   }
 
+  const baseTabs: { id: TabType; label: string }[] = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'vacancies', label: 'Vacancies' },
+    { id: 'friends', label: 'Friends' },
+    { id: 'comments', label: 'Comments' },
+  ]
+
   const tabs: { id: TabType; label: string }[] = readOnly
-    ? [
-        { id: 'overview', label: 'Overview' },
-        { id: 'media', label: 'Media' },
-        { id: 'vacancies', label: 'Vacancies' },
-      ]
-    : [
-        { id: 'overview', label: 'Overview' },
-        { id: 'media', label: 'Media' },
-        { id: 'vacancies', label: 'Vacancies' },
-        { id: 'players', label: 'Players' },
-      ]
+    ? baseTabs
+    : [...baseTabs, { id: 'players', label: 'Players' }]
 
   const getInitials = (name: string | null) => {
-    if (!name) return '?'  // Return placeholder for null/undefined
-    
+    if (!name) return '?'
     return name
       .trim()
       .split(' ')
-      .filter(n => n.length > 0)  // Handle multiple spaces
-      .map(n => n[0])
+      .filter(Boolean)
+      .map((part) => part[0])
       .join('')
       .toUpperCase()
-      .slice(0, 2)  // Limit to 2 characters
+      .slice(0, 2)
   }
 
   if (!profile) {
@@ -123,7 +116,7 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
           <div className="rounded-2xl bg-white shadow-sm">
             <div className="sticky top-[68px] z-40 border-b border-gray-200 bg-white/90 backdrop-blur">
               <div className="flex gap-6 overflow-x-auto px-6 py-4">
-                {tabs.map(tab => (
+                {tabs.map((tab) => (
                   <div key={tab.id} className="flex flex-col items-start space-y-2">
                     <Skeleton width={80} height={24} />
                   </div>
@@ -146,10 +139,8 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
       <Header />
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-12">
-        {/* Club Header */}
         <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm mb-6 animate-fade-in">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-            {/* Club Logo */}
             <Avatar
               src={profile.avatar_url}
               initials={getInitials(profile.full_name)}
@@ -157,18 +148,16 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
               className="flex-shrink-0"
             />
 
-            {/* Info */}
             <div className="flex-1">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
-                <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
-                  {profile.full_name}
-                </h1>
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-900">{profile.full_name}</h1>
                 {readOnly ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
                       <Eye className="w-4 h-4" />
                       Public View
                     </div>
+                    <FriendshipButton profileId={profile.id} />
                     <button
                       onClick={handleSendMessage}
                       disabled={sendingMessage}
@@ -183,7 +172,7 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
                     </button>
                   </div>
                 ) : (
-                  <button 
+                  <button
                     onClick={() => setShowEditModal(true)}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
                   >
@@ -218,12 +207,10 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
           </div>
         </div>
 
-        {/* Tabs Card */}
         <div className="bg-white rounded-2xl shadow-sm animate-slide-in-up">
-          {/* Tab Navigation */}
           <div className="sticky top-[68px] z-40 border-b border-gray-200 bg-white/90 backdrop-blur">
             <nav className="flex min-w-max gap-8 px-6 overflow-x-auto">
-              {tabs.map(tab => (
+              {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
@@ -239,18 +226,14 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
             </nav>
           </div>
 
-          {/* Tab Content */}
           <div className="p-6 md:p-8">
             {activeTab === 'overview' && (
               <div className="space-y-8 animate-fade-in">
-                {/* Quick Actions - Only show for club owners */}
                 {!readOnly && (
                   <div className="bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] rounded-xl p-6 text-white">
                     <h3 className="text-lg font-semibold mb-2">Quick Actions</h3>
-                    <p className="text-blue-100 mb-4 text-sm">
-                      Manage your club and find the best talent
-                    </p>
-                    <button 
+                    <p className="text-blue-100 mb-4 text-sm">Manage your club and find the best talent</p>
+                    <button
                       onClick={handleCreateVacancyClick}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#6366f1] rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
                     >
@@ -260,56 +243,43 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
                   </div>
                 )}
 
-                {/* Club Information */}
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-6">Club Information</h2>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Club Name
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Club Name</label>
                       <p className="text-gray-900 font-medium">{profile.full_name}</p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Location
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                       <p className="text-gray-900">{profile.base_location}</p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Country
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
                       <p className="text-gray-900">{profile.nationality}</p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Year Founded
-                      </label>
-                      <p className={profile.year_founded ? "text-gray-900" : "text-gray-500 italic"}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Year Founded</label>
+                      <p className={profile.year_founded ? 'text-gray-900' : 'text-gray-500 italic'}>
                         {profile.year_founded || 'Not specified'}
                       </p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        League/Division
-                      </label>
-                      <p className={profile.league_division ? "text-gray-900" : "text-gray-500 italic"}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">League/Division</label>
+                      <p className={profile.league_division ? 'text-gray-900' : 'text-gray-500 italic'}>
                         {profile.league_division || 'Not specified'}
                       </p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Website
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
                       {profile.website ? (
-                        <a 
+                        <a
                           href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -323,11 +293,9 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Contact Email
-                      </label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
                       {profile.contact_email ? (
-                        <a 
+                        <a
                           href={`mailto:${profile.contact_email}`}
                           className="text-[#6366f1] hover:text-[#4f46e5] underline"
                         >
@@ -339,31 +307,33 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
                     </div>
                   </div>
 
-                  {/* Club Bio */}
                   <div className="mt-8">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      About the Club
-                    </label>
-                    <p className={profile.club_bio ? "text-gray-700 leading-relaxed" : "text-gray-500 italic"}>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">About the Club</label>
+                    <p className={profile.club_bio ? 'text-gray-700 leading-relaxed' : 'text-gray-500 italic'}>
                       {profile.club_bio || 'No description provided'}
                     </p>
                   </div>
 
-                  {/* Club History */}
                   <div className="mt-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Club History
-                    </label>
-                    <p className={profile.club_history ? "text-gray-700 leading-relaxed" : "text-gray-500 italic"}>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Club History</label>
+                    <p className={profile.club_history ? 'text-gray-700 leading-relaxed' : 'text-gray-500 italic'}>
                       {profile.club_history || 'No history provided'}
                     </p>
                   </div>
                 </div>
 
-                {/* Edit Button - Only show for club owners */}
+                <section className="space-y-4 pt-6 border-t border-gray-200">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Media</h2>
+                    <p className="text-gray-600 text-sm">Club gallery content now surfaces directly on your overview.</p>
+                  </div>
+
+                  <ClubMediaTab clubId={profile.id} readOnly={readOnly} />
+                </section>
+
                 {!readOnly && (
                   <div className="pt-6 border-t border-gray-200">
-                    <button 
+                    <button
                       onClick={() => setShowEditModal(true)}
                       className="px-6 py-3 bg-[#8b5cf6] text-white rounded-lg hover:bg-[#7c3aed] transition-colors font-medium"
                     >
@@ -376,21 +346,24 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
 
             {activeTab === 'vacancies' && (
               <div className="animate-fade-in">
-                <VacanciesTab 
-                  profileId={profile.id} 
-                  readOnly={readOnly} 
+                <VacanciesTab
+                  profileId={profile.id}
+                  readOnly={readOnly}
                   triggerCreate={triggerCreateVacancy}
                   onCreateTriggered={() => setTriggerCreateVacancy(false)}
                 />
               </div>
             )}
 
-            {activeTab === 'media' && (
+            {activeTab === 'friends' && (
               <div className="animate-fade-in">
-                <ClubMediaTab 
-                  clubId={profile.id} 
-                  readOnly={readOnly}
-                />
+                <FriendsTab profileId={profile.id} readOnly={readOnly} />
+              </div>
+            )}
+
+            {activeTab === 'comments' && (
+              <div className="animate-fade-in">
+                <CommentsTab profileId={profile.id} />
               </div>
             )}
 
@@ -399,24 +372,15 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="text-2xl">👥</span>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Players Coming Soon
-                </h3>
-                <p className="text-gray-600">
-                  This section is under development and will be available soon.
-                </p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Club Community Coming Soon</h3>
+                <p className="text-gray-600">We&apos;re building better tools to manage your player roster and alumni.</p>
               </div>
             )}
           </div>
         </div>
       </main>
 
-      {/* Edit Profile Modal */}
-      <EditProfileModal
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        role="club"
-      />
+      <EditProfileModal isOpen={showEditModal} onClose={() => setShowEditModal(false)} role="club" />
     </div>
   )
 }

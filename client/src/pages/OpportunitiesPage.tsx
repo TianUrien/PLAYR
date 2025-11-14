@@ -12,6 +12,7 @@ import { VacancyCardSkeleton } from '../components/Skeleton'
 import { requestCache } from '@/lib/requestCache'
 import { monitor } from '@/lib/monitor'
 import { logger } from '@/lib/logger'
+import { useOpportunityNotifications } from '@/hooks/useOpportunityNotifications'
 
 interface FiltersState {
   opportunityType: 'all' | 'player' | 'coach'
@@ -39,6 +40,7 @@ export default function OpportunitiesPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [sortBy, setSortBy] = useState<'newest'>('newest')
   const [showFilters, setShowFilters] = useState(false)
+  const [isSyncingNewVacancies, setIsSyncingNewVacancies] = useState(false)
   
   const [filters, setFilters] = useState<FiltersState>({
     opportunityType: 'all',
@@ -49,9 +51,16 @@ export default function OpportunitiesPage() {
     benefits: [],
     priority: 'all',
   })
+  const { count: opportunityCount, markSeen, refresh: refreshOpportunityNotifications } = useOpportunityNotifications()
 
-  const fetchVacancies = useCallback(async () => {
-    setIsLoading(true)
+  const fetchVacancies = useCallback(async (options?: { skipCache?: boolean; silent?: boolean }) => {
+    if (!options?.silent) {
+      setIsLoading(true)
+    }
+
+    if (options?.skipCache) {
+      requestCache.invalidate('open-vacancies')
+    }
     
     await monitor.measure('fetch_vacancies', async () => {
       try {
@@ -94,7 +103,7 @@ export default function OpportunitiesPage() {
 
             return { vacanciesData, clubsMap }
           },
-          5000 // 5 second cache for vacancies (reduced from 20s)
+          options?.skipCache ? 0 : 5000 // disable cache when explicitly requesting fresh data
         )
 
         setVacancies((vacanciesData as Vacancy[]) || [])
@@ -102,7 +111,9 @@ export default function OpportunitiesPage() {
       } catch (error) {
         logger.error('Error fetching vacancies:', error)
       } finally {
-        setIsLoading(false)
+        if (!options?.silent) {
+          setIsLoading(false)
+        }
       }
     })
   }, [])
@@ -144,7 +155,26 @@ export default function OpportunitiesPage() {
   useEffect(() => {
     fetchVacancies()
     fetchUserApplications()
-  }, [fetchVacancies, fetchUserApplications])
+    void markSeen()
+  }, [fetchVacancies, fetchUserApplications, markSeen])
+
+  const handleSyncNewVacancies = useCallback(async () => {
+    if (isSyncingNewVacancies) {
+      return
+    }
+
+    setIsSyncingNewVacancies(true)
+    try {
+      await fetchVacancies({ skipCache: true, silent: true })
+      await fetchUserApplications({ skipCache: true })
+      await refreshOpportunityNotifications({ bypassCache: true })
+      await markSeen()
+    } catch (error) {
+      logger.error('Failed to sync new vacancies:', error)
+    } finally {
+      setIsSyncingNewVacancies(false)
+    }
+  }, [fetchVacancies, fetchUserApplications, isSyncingNewVacancies, markSeen, refreshOpportunityNotifications])
 
   // Apply filters
   useEffect(() => {
@@ -277,6 +307,27 @@ export default function OpportunitiesPage() {
             Discover field hockey opportunities from clubs around the world
           </p>
         </div>
+
+        {opportunityCount > 0 && (
+          <div className="bg-blue-50 border border-blue-100 text-blue-900 rounded-xl p-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <p className="font-semibold">{opportunityCount === 1 ? 'New opportunity available' : `${opportunityCount} new opportunities available`}</p>
+              <p className="text-sm text-blue-900/80">
+                {opportunityCount === 1 ? 'A new vacancy was just published.' : 'Fresh vacancies were published since you opened this page.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                className="border-blue-300 text-blue-700 bg-white hover:bg-blue-100 disabled:opacity-60"
+                disabled={isSyncingNewVacancies}
+                onClick={handleSyncNewVacancies}
+              >
+                {isSyncingNewVacancies ? 'Updating…' : 'View latest'}
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Controls Bar */}
         <div className="bg-white rounded-xl p-4 mb-6 shadow-sm">

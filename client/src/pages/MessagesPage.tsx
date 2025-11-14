@@ -4,7 +4,7 @@ import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { useSearchParams } from 'react-router-dom'
 import ConversationList from '@/components/ConversationList'
-import ChatWindow from '@/components/ChatWindow'
+import ChatWindow, { type ChatMessageEvent } from '@/components/ChatWindow'
 import Header from '@/components/Header'
 import { ConversationSkeleton } from '@/components/Skeleton'
 import { requestCache } from '@/lib/requestCache'
@@ -338,9 +338,6 @@ export default function MessagesPage() {
 
   const selectedConversation = combinedConversations.find((conv) => conv.id === selectedConversationId)
   const hasActiveConversation = Boolean(selectedConversation)
-  const isMobileConversation = Boolean(isMobile && selectedConversation)
-  const shouldUseImmersiveConversation = Boolean(messagingMobileV2Enabled && isMobileConversation)
-  const showImmersiveConversation = isMobileConversation
   const isFullBleedMobileLayout = Boolean(messagingMobileV2Enabled && isMobile)
 
   const handleSelectConversation = useCallback(
@@ -451,39 +448,159 @@ export default function MessagesPage() {
     [user?.id]
   )
 
-  if (shouldUseImmersiveConversation && selectedConversation) {
-    return (
-      <div className="flex h-screen-dvh min-h-screen-dvh flex-col bg-gray-50">
-        <div className="flex flex-1 overflow-hidden">
-          <ChatWindow
-            conversation={selectedConversation}
-            currentUserId={user?.id || ''}
-            onBack={handleBackToList}
-            onMessageSent={() => {}}
-            onConversationCreated={handleConversationCreated}
-            onConversationRead={handleConversationRead}
-          />
-        </div>
-      </div>
-    )
-  }
+  const handleConversationMessageEvent = useCallback(
+    (event: ChatMessageEvent) => {
+      if (event.type === 'sent') {
+        setConversations(prev => {
+          const existing = prev.find(conv => conv.id === event.conversationId)
+          if (!existing) {
+            return prev
+          }
 
-  if (showImmersiveConversation && selectedConversation) {
-    return (
-      <div className="flex h-screen-dvh min-h-screen-dvh flex-col bg-gray-50">
-        <div className="flex flex-1 overflow-hidden">
-          <ChatWindow
-            conversation={selectedConversation}
-            currentUserId={user?.id || ''}
-            onBack={handleBackToList}
-            onMessageSent={() => {}}
-            onConversationCreated={handleConversationCreated}
-            onConversationRead={handleConversationRead}
-          />
-        </div>
-      </div>
-    )
-  }
+          const updatedConversation: Conversation = {
+            ...existing,
+            lastMessage: {
+              content: event.message.content,
+              sent_at: event.message.sent_at,
+              sender_id: event.message.sender_id
+            },
+            last_message_at: event.message.sent_at,
+            unreadCount: existing.unreadCount ?? 0
+          }
+
+          const others = prev.filter(conv => conv.id !== event.conversationId)
+          return [updatedConversation, ...others]
+        })
+      } else if (event.type === 'read') {
+        setConversations(prev =>
+          prev.map(conv =>
+            conv.id === event.conversationId
+              ? { ...conv, unreadCount: 0 }
+              : conv
+          )
+        )
+      }
+    },
+    []
+  )
+
+  useEffect(() => {
+    if (!user?.id || !selectedConversationId) {
+      return
+    }
+
+    const alreadyLoaded = combinedConversations.some(conv => conv.id === selectedConversationId)
+    if (alreadyLoaded) {
+      return
+    }
+
+    let cancelled = false
+
+    const hydrateConversation = async () => {
+      try {
+        const { data: conversationRow, error } = await supabase
+          .from('conversations')
+          .select('*')
+          .eq('id', selectedConversationId)
+          .maybeSingle()
+
+        if (cancelled) return
+
+        if (error || !conversationRow) {
+          logger.warn('Conversation id from URL not found', { selectedConversationId, error })
+          setSelectedConversationId(null)
+          setSearchParams(prev => {
+            const next = new URLSearchParams(prev)
+            next.delete('conversation')
+            return next
+          })
+          return
+        }
+
+        if (conversationRow.participant_one_id !== user.id && conversationRow.participant_two_id !== user.id) {
+          logger.warn('Conversation does not belong to current user', { selectedConversationId })
+          setSelectedConversationId(null)
+          setSearchParams(prev => {
+            const next = new URLSearchParams(prev)
+            next.delete('conversation')
+            return next
+          })
+          return
+        }
+
+        const otherParticipantId =
+          conversationRow.participant_one_id === user.id
+            ? conversationRow.participant_two_id
+            : conversationRow.participant_one_id
+
+        const [profileResult, lastMessageResult, unreadCountResult] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id, full_name, username, avatar_url, role')
+            .eq('id', otherParticipantId)
+            .maybeSingle(),
+          supabase
+            .from('messages')
+            .select('content, sent_at, sender_id')
+            .eq('conversation_id', conversationRow.id)
+            .order('sent_at', { ascending: false })
+            .limit(1),
+          supabase
+            .from('messages')
+            .select('id', { count: 'exact', head: true })
+            .eq('conversation_id', conversationRow.id)
+            .neq('sender_id', user.id)
+            .is('read_at', null)
+        ])
+
+        if (cancelled) return
+
+        const profileData = profileResult.data
+        const lastMessageData = (lastMessageResult.data && lastMessageResult.data[0]) || null
+        const unreadCount = unreadCountResult.count ?? 0
+
+        const hydratedConversation: Conversation = {
+          id: conversationRow.id,
+          participant_one_id: conversationRow.participant_one_id,
+          participant_two_id: conversationRow.participant_two_id,
+          created_at: conversationRow.created_at,
+          updated_at: conversationRow.updated_at,
+          last_message_at: conversationRow.last_message_at,
+          otherParticipant: profileData
+            ? {
+                id: profileData.id,
+                full_name: profileData.full_name || '',
+                username: profileData.username,
+                avatar_url: profileData.avatar_url,
+                role: (profileData.role ?? 'player') as 'player' | 'coach' | 'club'
+              }
+            : undefined,
+          lastMessage: lastMessageData
+            ? {
+                content: lastMessageData.content,
+                sent_at: lastMessageData.sent_at,
+                sender_id: lastMessageData.sender_id
+              }
+            : undefined,
+          unreadCount
+        }
+
+        setConversations(prev => {
+          const withoutCurrent = prev.filter(conv => conv.id !== hydratedConversation.id)
+          return [hydratedConversation, ...withoutCurrent]
+        })
+      } catch (error) {
+        if (cancelled) return
+        logger.error('Failed to hydrate conversation from URL', { error, selectedConversationId })
+      }
+    }
+
+    hydrateConversation()
+
+    return () => {
+      cancelled = true
+    }
+  }, [combinedConversations, selectedConversationId, setSearchParams, user?.id])
 
   const rootContainerClasses = isFullBleedMobileLayout
     ? 'bg-white min-h-screen-dvh md:min-h-screen'
@@ -597,10 +714,7 @@ export default function MessagesPage() {
                   conversation={selectedConversation}
                   currentUserId={user?.id || ''}
                   onBack={handleBackToList}
-                  onMessageSent={() => {
-                    // Mark messages as read, but don't force full refresh
-                    // Real-time subscription will handle conversation list updates
-                  }}
+                  onMessageSent={handleConversationMessageEvent}
                   onConversationCreated={handleConversationCreated}
                   onConversationRead={handleConversationRead}
                 />

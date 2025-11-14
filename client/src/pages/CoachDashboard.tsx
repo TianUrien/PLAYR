@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { MapPin, Globe, Calendar, Edit2, MessageCircle, Award } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, EditProfileModal } from '@/components'
+import { Avatar, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import type { Profile } from '@/lib/supabase'
@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useToastStore } from '@/lib/toast'
 
-type TabType = 'profile' | 'media' | 'experience'
+type TabType = 'profile' | 'journey' | 'friends' | 'comments'
 
 interface CoachDashboardProps {
   profileData?: Profile
@@ -66,8 +66,9 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
 
   const tabs: { id: TabType; label: string }[] = [
     { id: 'profile', label: 'Profile' },
-    { id: 'media', label: 'Media' },
-    { id: 'experience', label: 'Experience' },
+    { id: 'journey', label: 'Journey' },
+    { id: 'friends', label: 'Friends' },
+    { id: 'comments', label: 'Comments' },
   ]
 
   const getInitials = (name: string | null) => {
@@ -143,14 +144,17 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
                     Edit Profile
                   </button>
                 ) : (
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={sendingMessage}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium disabled:opacity-50"
-                  >
-                    <MessageCircle className="w-4 h-4" />
-                    {sendingMessage ? 'Loading...' : 'Send Message'}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <FriendshipButton profileId={profile.id} />
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={sendingMessage}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium disabled:opacity-50"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      {sendingMessage ? 'Loading...' : 'Send Message'}
+                    </button>
+                  </div>
                 )}
               </div>
 
@@ -299,29 +303,34 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
                     </div>
                   </div>
                 )}
+
+                <section className="space-y-4 pt-6 border-t border-gray-200">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Media</h3>
+                    <p className="text-sm text-gray-600">Highlight video and gallery appear directly on your profile.</p>
+                  </div>
+
+                  <MediaTab profileId={profile.id} readOnly={readOnly} />
+                </section>
               </div>
             )}
 
-            {/* Media Tab */}
-            {activeTab === 'media' && (
-              <MediaTab
-                profileId={profile.id}
-                readOnly={readOnly}
-              />
+            {/* Journey Tab */}
+            {activeTab === 'journey' && (
+              <div className="animate-fade-in">
+                <JourneyTab profileId={profile.id} readOnly={readOnly} />
+              </div>
             )}
 
-            {/* Experience Tab - Coming Soon */}
-            {activeTab === 'experience' && (
-              <div className="text-center py-12 animate-fade-in">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Award className="w-8 h-8 text-purple-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Coaching Experience Coming Soon
-                </h3>
-                <p className="text-gray-600">
-                  This section will display your coaching history, achievements, and certifications.
-                </p>
+            {activeTab === 'friends' && (
+              <div className="animate-fade-in">
+                <FriendsTab profileId={profile.id} readOnly={readOnly} />
+              </div>
+            )}
+
+            {activeTab === 'comments' && (
+              <div className="animate-fade-in">
+                <CommentsTab profileId={profile.id} />
               </div>
             )}
           </div>

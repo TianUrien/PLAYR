@@ -48,6 +48,19 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
+DO $$ BEGIN
+  CREATE TYPE journey_entry_type AS ENUM (
+    'club',
+    'national_team',
+    'achievement',
+    'tournament',
+    'milestone',
+    'academy',
+    'other'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ============================================================================
 -- PROFILES TABLE
 -- ============================================================================
@@ -130,7 +143,15 @@ CREATE TABLE IF NOT EXISTS public.playing_history (
   position_role TEXT NOT NULL,
   years TEXT NOT NULL,
   division_league TEXT NOT NULL,
-  achievements TEXT[] NOT NULL DEFAULT '{}',
+  highlights TEXT[] NOT NULL DEFAULT '{}',
+  entry_type journey_entry_type NOT NULL DEFAULT 'club',
+  location_city TEXT,
+  location_country TEXT,
+  start_date DATE,
+  end_date DATE,
+  description TEXT,
+  badge_label TEXT,
+  image_url TEXT,
   display_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())

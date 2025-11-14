@@ -100,6 +100,95 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- =========================================================================
+-- PLATFORM ADMIN HELPER
+-- =========================================================================
+CREATE OR REPLACE FUNCTION public.is_platform_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT COALESCE(
+    (auth.jwt() -> 'app_metadata' ->> 'is_admin')::BOOLEAN,
+    FALSE
+  );
+$$;
+
+COMMENT ON FUNCTION public.is_platform_admin IS 'Evaluates current JWT claims to determine admin/moderator privileges.';
+
+-- =========================================================================
+-- PROFILE COMMENT RATE LIMITING
+-- =========================================================================
+CREATE OR REPLACE FUNCTION public.enforce_profile_comment_rate_limit()
+RETURNS TRIGGER AS $$
+DECLARE
+  limit_per_day CONSTANT INTEGER := 5;
+  window_start TIMESTAMPTZ := timezone('utc', now()) - interval '1 day';
+  recent_total INTEGER;
+BEGIN
+  IF NEW.author_profile_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT COUNT(*)
+  INTO recent_total
+  FROM public.profile_comments
+  WHERE author_profile_id = NEW.author_profile_id
+    AND created_at >= window_start
+    AND status <> 'deleted';
+
+  IF recent_total >= limit_per_day THEN
+    RAISE EXCEPTION 'comment_rate_limit_exceeded'
+      USING DETAIL = format('Limit of %s comments per 24h reached', limit_per_day);
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+COMMENT ON FUNCTION public.enforce_profile_comment_rate_limit IS 'Prevents users from posting more than 5 comments in a rolling 24h period.';
+
+-- =========================================================================
+-- PROFILE COMMENT MODERATION RPC
+-- =========================================================================
+CREATE OR REPLACE FUNCTION public.set_profile_comment_status(
+  p_comment_id UUID,
+  p_status comment_status
+)
+RETURNS public.profile_comments
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  updated_comment public.profile_comments;
+  requester UUID := auth.uid();
+BEGIN
+  IF requester IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated';
+  END IF;
+
+  IF NOT public.is_platform_admin() AND p_status NOT IN ('visible', 'hidden') THEN
+    RAISE EXCEPTION 'status_not_permitted';
+  END IF;
+
+  UPDATE public.profile_comments
+  SET status = p_status,
+      updated_at = timezone('utc', now())
+  WHERE id = p_comment_id
+    AND (profile_id = requester OR public.is_platform_admin())
+  RETURNING * INTO updated_comment;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'not_authorized';
+  END IF;
+
+  RETURN updated_comment;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.set_profile_comment_status(UUID, comment_status) TO authenticated;
+COMMENT ON FUNCTION public.set_profile_comment_status IS 'Allows owners (or admins) to toggle visibility/hidden status for comments on their profile.';
 CREATE OR REPLACE FUNCTION public.release_profile_lock(profile_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
@@ -469,6 +558,19 @@ CREATE TRIGGER set_club_media_updated_at
   BEFORE UPDATE ON public.club_media
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Profile comments triggers
+DROP TRIGGER IF EXISTS set_profile_comments_updated_at ON public.profile_comments;
+CREATE TRIGGER set_profile_comments_updated_at
+  BEFORE UPDATE ON public.profile_comments
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+DROP TRIGGER IF EXISTS profile_comments_rate_limit ON public.profile_comments;
+CREATE TRIGGER profile_comments_rate_limit
+  BEFORE INSERT ON public.profile_comments
+  FOR EACH ROW
+  EXECUTE FUNCTION public.enforce_profile_comment_rate_limit();
 
 -- Conversations triggers
 DROP TRIGGER IF EXISTS set_conversations_updated_at ON public.conversations;

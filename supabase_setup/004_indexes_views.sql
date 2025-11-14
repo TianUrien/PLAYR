@@ -11,6 +11,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gallery_photos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.club_media ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.playing_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profile_comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vacancies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.vacancy_applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
@@ -103,6 +104,43 @@ CREATE POLICY "Users can manage their playing history"
   ON public.playing_history
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
+
+-- =========================================================================
+-- PROFILE_COMMENTS POLICIES
+-- =========================================================================
+DROP POLICY IF EXISTS "Visible comments are public" ON public.profile_comments;
+CREATE POLICY "Visible comments are public"
+  ON public.profile_comments
+  FOR SELECT
+  USING (
+    status = 'visible'
+    OR profile_id = auth.uid()
+    OR author_profile_id = auth.uid()
+    OR public.is_platform_admin()
+  );
+
+DROP POLICY IF EXISTS "Users can create comments" ON public.profile_comments;
+CREATE POLICY "Users can create comments"
+  ON public.profile_comments
+  FOR INSERT
+  WITH CHECK (
+    auth.uid() = author_profile_id
+    AND author_profile_id <> profile_id
+  );
+
+DROP POLICY IF EXISTS "Authors can edit comments" ON public.profile_comments;
+CREATE POLICY "Authors can edit comments"
+  ON public.profile_comments
+  FOR UPDATE
+  USING (auth.uid() = author_profile_id)
+  WITH CHECK (auth.uid() = author_profile_id);
+
+DROP POLICY IF EXISTS "Admins can manage comments" ON public.profile_comments;
+CREATE POLICY "Admins can manage comments"
+  ON public.profile_comments
+  FOR ALL
+  USING (public.is_platform_admin())
+  WITH CHECK (public.is_platform_admin());
 
 -- ============================================================================
 -- VACANCIES POLICIES

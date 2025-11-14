@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS public.conversations CASCADE;
 DROP TABLE IF EXISTS public.vacancy_applications CASCADE;
 DROP TABLE IF EXISTS public.vacancies CASCADE;
 DROP TABLE IF EXISTS public.playing_history CASCADE;
+DROP TABLE IF EXISTS public.profile_comments CASCADE;
 DROP TABLE IF EXISTS public.club_media CASCADE;
 DROP TABLE IF EXISTS public.gallery_photos CASCADE;
 DROP TABLE IF EXISTS public.profiles CASCADE;
@@ -92,13 +93,46 @@ CREATE TABLE public.playing_history (
   position_role TEXT NOT NULL,
   years TEXT NOT NULL,
   division_league TEXT NOT NULL,
-  achievements TEXT[] NOT NULL DEFAULT '{}',
+  highlights TEXT[] NOT NULL DEFAULT '{}',
+  entry_type journey_entry_type NOT NULL DEFAULT 'club',
+  location_city TEXT,
+  location_country TEXT,
+  start_date DATE,
+  end_date DATE,
+  description TEXT,
+  badge_label TEXT,
+  image_url TEXT,
   display_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
 );
 
 COMMENT ON TABLE public.playing_history IS 'Chronological history for player/coach careers';
+
+-- ============================================================================
+-- PROFILE COMMENTS
+-- ============================================================================
+CREATE TABLE public.profile_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  author_profile_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  content TEXT NOT NULL CHECK (char_length(content) BETWEEN 10 AND 1000),
+  rating comment_rating,
+  status comment_status NOT NULL DEFAULT 'visible',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
+);
+
+CREATE INDEX profile_comments_profile_id_idx ON public.profile_comments (profile_id);
+CREATE INDEX profile_comments_author_profile_id_idx ON public.profile_comments (author_profile_id);
+CREATE UNIQUE INDEX profile_comments_active_unique
+  ON public.profile_comments (profile_id, author_profile_id)
+  WHERE status IN ('visible', 'hidden', 'reported');
+
+COMMENT ON TABLE public.profile_comments IS 'Peer feedback and testimonials tied to public profiles.';
+COMMENT ON COLUMN public.profile_comments.profile_id IS 'Profile receiving the comment.';
+COMMENT ON COLUMN public.profile_comments.author_profile_id IS 'Profile that authored the comment.';
+COMMENT ON COLUMN public.profile_comments.status IS 'Moderation lifecycle: visible | hidden | reported | deleted.';
 
 -- ============================================================================
 -- VACANCIES
