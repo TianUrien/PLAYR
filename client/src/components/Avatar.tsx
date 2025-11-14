@@ -22,11 +22,13 @@ export default function Avatar({ src, alt, initials, size = 'md', className, loa
   const [imageError, setImageError] = useState(false)
 
   return (
-    <div className={cn(
-      "relative rounded-full overflow-hidden bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] flex items-center justify-center text-white font-semibold",
-      sizeClasses[size],
-      className
-    )}>
+    <div
+      className={cn(
+        'relative aspect-square rounded-full overflow-hidden bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] font-semibold text-white flex items-center justify-center flex-shrink-0',
+        sizeClasses[size],
+        className
+      )}
+    >
       {src && !imageError ? (
         <>
           {!imageLoaded && (
@@ -36,7 +38,7 @@ export default function Avatar({ src, alt, initials, size = 'md', className, loa
             src={src} 
             alt={alt || 'Avatar'} 
             className={cn(
-              "w-full h-full object-cover transition-opacity duration-200",
+              'absolute inset-0 h-full w-full object-cover transition-opacity duration-200',
               imageLoaded ? "opacity-100" : "opacity-0"
             )}
             loading={loading}

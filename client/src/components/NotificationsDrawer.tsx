@@ -83,6 +83,15 @@ export default function NotificationsDrawer() {
     navigate('/dashboard/profile?tab=comments')
   }
 
+  const resolvePublicProfilePath = (actor?: (typeof notifications)[number]['actor']) => {
+    if (!actor?.id) {
+      return null
+    }
+
+    const role = actor.role?.toLowerCase()
+    return role === 'club' ? `/clubs/id/${actor.id}` : `/players/id/${actor.id}`
+  }
+
   const renderFriendRequest = (notification: (typeof notifications)[number]) => {
     const actor = notification.actor
     const fullName = actor.fullName || actor.username || 'PLAYR member'
@@ -91,35 +100,66 @@ export default function NotificationsDrawer() {
     const displayTime = formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
 
     const friendshipId = notification.sourceEntityId
+    const profilePath = resolvePublicProfilePath(actor)
+    const navigateToProfile = () => {
+      if (!profilePath) {
+        return
+      }
+      toggleDrawer(false)
+      navigate(profilePath)
+    }
 
     return (
-      <div key={notification.id} className="flex items-start gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
-        <Avatar src={actor.avatarUrl ?? undefined} initials={(fullName || '?').slice(0, 2)} size="md" />
-        <div className="flex-1 space-y-2">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="font-semibold text-gray-900">{fullName}</p>
-              <p className="text-sm text-gray-600 capitalize">{role}</p>
-              {location && <p className="text-xs text-gray-500">{location}</p>}
-            </div>
-            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
-              <UserPlus className="h-3.5 w-3.5" />
-              Friend request
-            </span>
+      <div
+        key={notification.id}
+        className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:p-5"
+      >
+        <div className="flex items-start gap-3 sm:items-center">
+          <button
+            type="button"
+            onClick={navigateToProfile}
+            disabled={!profilePath}
+            aria-label={`View ${fullName} profile`}
+            className="group flex-shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed"
+          >
+            <Avatar
+              src={actor.avatarUrl ?? undefined}
+              initials={(fullName || '?').slice(0, 2)}
+              size="md"
+              className="transition group-hover:scale-[1.02]"
+            />
+          </button>
+          <div className="space-y-1">
+            <button
+              type="button"
+              onClick={navigateToProfile}
+              disabled={!profilePath}
+              className="text-left text-base font-semibold text-gray-900 transition hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:text-gray-400"
+            >
+              {fullName}
+            </button>
+            <p className="text-sm text-gray-600 capitalize">{role}</p>
+            {location && <p className="text-xs text-gray-500">{location}</p>}
+            <div className="text-xs text-gray-500">{displayTime}</div>
           </div>
-          <div className="text-xs text-gray-500">{displayTime}</div>
-          <div className="flex flex-wrap gap-3">
+        </div>
+        <div className="flex flex-col gap-3 sm:items-end">
+          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
+            <UserPlus className="h-3.5 w-3.5" />
+            Friend request
+          </span>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <button
               onClick={() => friendshipId && handleFriendRequest(friendshipId, 'accept')}
               disabled={!friendshipId || pendingFriendshipId === friendshipId}
-              className="inline-flex flex-1 items-center justify-center rounded-xl bg-[#6366f1] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4f46e5] disabled:opacity-60"
+              className="inline-flex flex-1 items-center justify-center rounded-xl bg-[#6366f1] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4f46e5] disabled:opacity-60 sm:min-w-[120px]"
             >
               Accept
             </button>
             <button
               onClick={() => friendshipId && handleFriendRequest(friendshipId, 'decline')}
               disabled={!friendshipId || pendingFriendshipId === friendshipId}
-              className="inline-flex flex-1 items-center justify-center rounded-xl border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
+              className="inline-flex flex-1 items-center justify-center rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-60 sm:min-w-[120px]"
             >
               Decline
             </button>
@@ -140,14 +180,14 @@ export default function NotificationsDrawer() {
       <button
         key={notification.id}
         onClick={handleCommentNavigate}
-        className="w-full rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+        className="w-full rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition hover:border-indigo-200 hover:shadow-md sm:p-5"
       >
         <div className="flex items-start gap-3">
           <Avatar src={actor.avatarUrl ?? undefined} initials={(fullName || '?').slice(0, 2)} size="md" />
           <div className="flex-1">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-semibold text-gray-900">{fullName}</p>
+                <p className="text-base font-semibold text-gray-900">{fullName}</p>
                 <p className="text-xs uppercase tracking-wide text-gray-500">{role}</p>
               </div>
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
@@ -155,7 +195,7 @@ export default function NotificationsDrawer() {
                 Commented
               </span>
             </div>
-            <p className="mt-2 text-sm text-gray-700 line-clamp-2">{snippet}</p>
+            <p className="mt-2 text-sm text-gray-700 line-clamp-3 sm:line-clamp-2">{snippet}</p>
             <p className="mt-2 text-xs text-gray-500">{displayTime}</p>
           </div>
         </div>
@@ -194,37 +234,41 @@ export default function NotificationsDrawer() {
       />
       <aside
         className={cn(
-          'fixed inset-y-0 right-0 z-50 w-full max-w-md transform bg-white shadow-2xl transition-transform duration-200',
+          'fixed inset-y-0 right-0 z-50 flex w-full max-w-full transform bg-white shadow-2xl transition-transform duration-200 sm:max-w-md lg:max-w-lg',
           isOpen ? 'translate-x-0' : 'translate-x-full'
         )}
       >
-        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <div className="flex items-center gap-2">
-            <div className="rounded-full bg-indigo-50 p-2 text-indigo-600">
-              <Bell className="h-5 w-5" />
+        <div className="flex h-full w-full flex-col">
+          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 sm:px-6">
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-indigo-50 p-2 text-indigo-600">
+                <Bell className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-base font-semibold text-gray-900">Notifications</p>
+                <p className="text-sm text-gray-500">Friend requests and profile comments.</p>
+              </div>
             </div>
-            <div>
-              <p className="text-base font-semibold text-gray-900">Notifications</p>
-              <p className="text-sm text-gray-500">Stay on top of friend requests and comments.</p>
+            <button
+              onClick={() => toggleDrawer(false)}
+              className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700"
+              aria-label="Close notifications"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto bg-gray-50 px-4 py-5 sm:px-6 sm:py-6 md:bg-white">
+            <div className="space-y-6">
+              <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-5 md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Friend Requests</h3>
+                {friendRequestSection}
+              </section>
+              <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-5 md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">New Comments</h3>
+                {commentSection}
+              </section>
             </div>
           </div>
-          <button
-            onClick={() => toggleDrawer(false)}
-            className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700"
-            aria-label="Close notifications"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="flex h-[calc(100%-80px)] flex-col gap-6 overflow-y-auto px-6 py-6">
-          <section>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Friend Requests</h3>
-            {friendRequestSection}
-          </section>
-          <section>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">New Comments</h3>
-            {commentSection}
-          </section>
         </div>
       </aside>
     </>

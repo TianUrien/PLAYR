@@ -11,6 +11,7 @@ import { requestCache } from '@/lib/requestCache'
 import { monitor } from '@/lib/monitor'
 import { logger } from '@/lib/logger'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { useUnreadMessages } from '@/hooks/useUnreadMessages'
 
 interface Conversation {
   id: string
@@ -45,6 +46,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true)
   const isMobile = useMediaQuery('(max-width: 767px)')
   const messagingMobileV2Enabled = import.meta.env.VITE_MESSAGING_MOBILE_V2 === 'true'
+  const { adjust: adjustUnreadCount, refresh: refreshUnreadCount } = useUnreadMessages()
 
   // Set selected conversation from URL parameter
   useEffect(() => {
@@ -342,6 +344,8 @@ export default function MessagesPage() {
 
   const handleSelectConversation = useCallback(
     (conversationId: string) => {
+      const selected = combinedConversations.find((conv) => conv.id === conversationId)
+
       setSelectedConversationId(conversationId)
       setConversations(prev =>
         prev.map(conv =>
@@ -354,7 +358,13 @@ export default function MessagesPage() {
         )
       )
 
-      const selected = combinedConversations.find((conv) => conv.id === conversationId)
+      if (selected && !selected.isPending) {
+        const unreadDelta = selected.unreadCount ?? 0
+        if (unreadDelta > 0) {
+          adjustUnreadCount(-unreadDelta)
+          void refreshUnreadCount({ bypassCache: true })
+        }
+      }
 
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev)
@@ -377,7 +387,7 @@ export default function MessagesPage() {
         return next
       })
     },
-    [combinedConversations, setSearchParams, user?.id]
+    [adjustUnreadCount, combinedConversations, refreshUnreadCount, setSearchParams, user?.id]
   )
 
   const handleBackToList = useCallback(() => {

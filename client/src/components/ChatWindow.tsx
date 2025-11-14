@@ -398,7 +398,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     [currentUserId, flushPendingReadReceipts]
   )
 
-  const markConversationAsRead = useCallback(() => {
+  const markConversationAsRead = useCallback((options?: { immediate?: boolean }) => {
     if (!conversation.id || conversation.isPending) {
       return
     }
@@ -412,7 +412,15 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     }
 
     unreadMessages.forEach(queueReadReceipt)
-  }, [conversation.id, conversation.isPending, currentUserId, queueReadReceipt])
+
+    if (options?.immediate) {
+      if (readFlushTimeoutRef.current !== null) {
+        window.clearTimeout(readFlushTimeoutRef.current)
+        readFlushTimeoutRef.current = null
+      }
+      void flushPendingReadReceipts()
+    }
+  }, [conversation.id, conversation.isPending, currentUserId, flushPendingReadReceipts, queueReadReceipt])
 
   // Marks incoming messages as read once ~60% of the bubble is visible in the scroll container.
   useEffect(() => {
@@ -569,6 +577,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     const loadConversation = async () => {
       await fetchMessages()
       if (cancelled) return
+      markConversationAsRead({ immediate: true })
     }
 
     loadConversation()
@@ -581,7 +590,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       }
       void flushPendingReadReceipts()
     }
-  }, [conversation.id, conversation.isPending, fetchMessages, flushPendingReadReceipts, syncMessagesState])
+  }, [conversation.id, conversation.isPending, fetchMessages, flushPendingReadReceipts, markConversationAsRead, syncMessagesState])
 
   useEffect(() => {
     if (!conversation.id || conversation.isPending) return
