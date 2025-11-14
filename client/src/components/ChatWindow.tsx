@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useId, useLayoutEffect } from 'react'
+import { useState, useEffect, useRef, useCallback, useId, useLayoutEffect, useMemo } from 'react'
 import { Send, ArrowLeft } from 'lucide-react'
 import { supabase, SUPABASE_URL } from '@/lib/supabase'
 import { format } from 'date-fns'
@@ -43,6 +43,17 @@ interface Conversation {
 const COMPOSER_MIN_HEIGHT = 48
 const COMPOSER_MAX_HEIGHT = 160
 const MESSAGES_PAGE_SIZE = 50
+const SCROLL_RETRY_LIMIT = 8
+
+type ScrollJobReason = 'initial' | 'append-self' | 'append-inbound' | 'input' | 'manual'
+
+interface ScrollJob {
+  type: 'bottom' | 'message'
+  messageId?: string
+  behavior: ScrollBehavior
+  attempts: number
+  reason: ScrollJobReason
+}
 
 interface ChatWindowProps {
   conversation: Conversation
@@ -58,7 +69,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [showNewMessagesIndicator, setShowNewMessagesIndicator] = useState(false)
+  const [pendingNewMessagesCount, setPendingNewMessagesCount] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const messagesRef = useRef<Message[]>([])
@@ -69,7 +80,12 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   const initialScrollPendingRef = useRef(true)
   const lastMessageIdRef = useRef<string | null>(null)
   const fallbackBaselineInnerHeightRef = useRef<number | null>(null)
-  const pendingUnreadRef = useRef(false)
+  const messageRefs = useRef(new Map<string, HTMLDivElement>())
+  const pendingScrollJobRef = useRef<ScrollJob | null>(null)
+  const nextScrollFrameRef = useRef<number | null>(null)
+  const intersectionObserverRef = useRef<IntersectionObserver | null>(null)
+  const pendingReadIdsRef = useRef(new Set<string>())
+  const readFlushTimeoutRef = useRef<number | null>(null)
   const textareaId = useId()
   const textareaCharCountId = `${textareaId}-counter`
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
@@ -102,10 +118,115 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     const scrollEl = scrollContainerRef.current
     if (scrollEl) {
       scrollEl.scrollTo({ top: scrollEl.scrollHeight, behavior })
+      return true
+    }
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior })
+      return true
+    }
+    return false
+  }, [])
+
+  const scrollToMessage = useCallback(
+    (messageId: string, behavior: ScrollBehavior = 'auto') => {
+      const container = scrollContainerRef.current
+      const target = messageRefs.current.get(messageId)
+      if (!container || !target) {
+        return false
+      }
+
+      const containerRect = container.getBoundingClientRect()
+      const targetRect = target.getBoundingClientRect()
+      const top = Math.max(targetRect.top - containerRect.top + container.scrollTop - 16, 0)
+      container.scrollTo({ top, behavior })
+      return true
+    },
+    []
+  )
+
+  const runScrollJob = useCallback((): void => {
+    const job = pendingScrollJobRef.current
+    if (!job) {
+      nextScrollFrameRef.current = null
       return
     }
-    messagesEndRef.current?.scrollIntoView({ behavior })
-  }, [])
+
+    const didScroll =
+      job.type === 'bottom'
+        ? scrollToLatest(job.behavior)
+        : job.messageId
+        ? scrollToMessage(job.messageId, job.behavior)
+        : false
+
+    if (didScroll) {
+      if (job.reason === 'initial') {
+        initialScrollPendingRef.current = false
+      }
+
+      if (job.type === 'bottom') {
+        shouldStickToBottomRef.current = true
+      }
+
+      if (job.reason === 'append-inbound' || job.reason === 'append-self' || job.reason === 'input' || job.reason === 'manual') {
+        setPendingNewMessagesCount(0)
+      }
+
+      pendingScrollJobRef.current = null
+      nextScrollFrameRef.current = null
+      return
+    }
+
+    if (job.attempts >= SCROLL_RETRY_LIMIT) {
+      if (job.reason === 'initial') {
+        initialScrollPendingRef.current = false
+      }
+      pendingScrollJobRef.current = null
+      nextScrollFrameRef.current = null
+      return
+    }
+
+    pendingScrollJobRef.current = { ...job, attempts: job.attempts + 1 }
+    nextScrollFrameRef.current = requestAnimationFrame(() => runScrollJob())
+  }, [scrollToLatest, scrollToMessage, setPendingNewMessagesCount])
+
+  const scheduleScrollJob = useCallback(
+    (job: Omit<ScrollJob, 'attempts'>) => {
+      if (job.type === 'message' && !job.messageId) {
+        return
+      }
+
+      pendingScrollJobRef.current = { ...job, attempts: 0 }
+
+      if (nextScrollFrameRef.current !== null) {
+        cancelAnimationFrame(nextScrollFrameRef.current)
+      }
+
+      nextScrollFrameRef.current = requestAnimationFrame(() => runScrollJob())
+    },
+    [runScrollJob]
+  )
+
+  const setMessageRef = useCallback(
+    (messageId: string) => (node: HTMLDivElement | null) => {
+      const refs = messageRefs.current
+      const existing = refs.get(messageId)
+
+      if (node) {
+        if (existing && existing !== node) {
+          intersectionObserverRef.current?.unobserve(existing)
+          refs.delete(messageId)
+        }
+        refs.set(messageId, node)
+        if (intersectionObserverRef.current) {
+          intersectionObserverRef.current.observe(node)
+        }
+      } else if (existing) {
+        intersectionObserverRef.current?.unobserve(existing)
+        refs.delete(messageId)
+      }
+    },
+    []
+  )
 
   const isViewerAtBottom = useCallback(() => {
     const scrollEl = scrollContainerRef.current
@@ -113,7 +234,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       return true
     }
     const distanceFromBottom = scrollEl.scrollHeight - (scrollEl.scrollTop + scrollEl.clientHeight)
-    return distanceFromBottom <= 96
+    return distanceFromBottom <= 120
   }, [])
 
   const syncTextareaHeight = useCallback(() => {
@@ -165,113 +286,131 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     }
   }, [conversation.id, conversation.isPending, syncMessagesState])
 
-  const markMessagesAsRead = useCallback(
-    async (messagesOverride?: Message[], options?: { force?: boolean }): Promise<number> => {
-      if (!conversation.id || conversation.isPending) {
-        return 0
+  const flushPendingReadReceipts = useCallback(async () => {
+    if (!conversation.id || conversation.isPending) {
+      pendingReadIdsRef.current.clear()
+      return
+    }
+
+    const pendingIds = Array.from(pendingReadIdsRef.current)
+    if (!pendingIds.length) {
+      return
+    }
+
+    pendingReadIdsRef.current.clear()
+    const optimisticIds = new Set(pendingIds)
+    const now = new Date().toISOString()
+    const cacheKey = generateCacheKey('unread_count', { userId: currentUserId })
+
+    syncMessagesState(prev =>
+      prev.map(msg => (optimisticIds.has(msg.id) ? { ...msg, read_at: now } : msg))
+    )
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ read_at: now })
+        .in('id', pendingIds)
+        .eq('conversation_id', conversation.id)
+        .neq('sender_id', currentUserId)
+        .is('read_at', null)
+
+      if (error) throw error
+
+      if (onConversationRead && pendingIds.length > 0) {
+        onConversationRead(conversation.id)
       }
 
-      const snapshot = messagesOverride ?? messagesRef.current
-      if (!snapshot.length) {
-        logger.debug('No messages loaded yet, skipping mark-as-read')
-        return 0
-      }
-
-      const unreadMessages = snapshot.filter(
-        msg => msg.sender_id !== currentUserId && !msg.read_at
-      )
-      const unreadCount = unreadMessages.length
-
-      if (unreadCount === 0) {
-        logger.debug('No unread messages to mark, skipping')
-        return 0
-      }
-
-      const force = options?.force ?? false
-
-      if (!force && !isViewerAtBottom()) {
-        logger.debug('Viewer is not at bottom; deferring read receipts')
-        pendingUnreadRef.current = true
-        return 0
-      }
-
-      logger.debug(`Found ${unreadCount} unread messages to mark as read`)
-
-      if (typeof window !== 'undefined' && window.__updateUnreadBadge) {
-        window.__updateUnreadBadge(-unreadCount)
-        logger.debug(`Optimistically decremented badge by ${unreadCount}`)
-      }
-
-      const now = new Date().toISOString()
-      const applyReadState = (source: Message[]) =>
-        source.map(msg =>
-          msg.sender_id !== currentUserId && !msg.read_at
-            ? { ...msg, read_at: now }
-            : msg
-        )
-
-      if (messagesOverride) {
-        syncMessagesState(applyReadState(snapshot))
-      } else {
-        syncMessagesState(prev => applyReadState(prev))
-      }
-
-      const cacheKey = generateCacheKey('unread_count', { userId: currentUserId })
       requestCache.invalidate(cacheKey)
       onMessageSent()
 
-      try {
-        const { error } = await supabase
-          .from('messages')
-          .update({ read_at: now })
-          .eq('conversation_id', conversation.id)
-          .neq('sender_id', currentUserId)
-          .is('read_at', null)
-
-        if (error) throw error
-
-        logger.debug('Database confirmed messages as read', {
-          conversationId: conversation.id,
-          unreadCount
-        })
-
-        if (onConversationRead) {
-          onConversationRead(conversation.id)
+      if (typeof window !== 'undefined') {
+        const decrement = pendingIds.length
+        if (decrement > 0 && window.__updateUnreadBadge) {
+          window.__updateUnreadBadge(-decrement)
         }
-
-        requestCache.invalidate(cacheKey)
-        if (typeof window !== 'undefined' && window.__refreshUnreadBadge) {
+        if (window.__refreshUnreadBadge) {
           window.__refreshUnreadBadge()
         }
-        pendingUnreadRef.current = false
-        setShowNewMessagesIndicator(false)
-        return unreadCount
-      } catch (error) {
-        logger.error('Error marking messages as read in database:', error)
-
-        if (typeof window !== 'undefined' && window.__updateUnreadBadge) {
-          window.__updateUnreadBadge(unreadCount)
-        }
-
-        syncMessagesState(snapshot)
-        pendingUnreadRef.current = true
-        if (!force) {
-          setShowNewMessagesIndicator(true)
-        }
-        return -unreadCount
       }
+    } catch (error) {
+      logger.error('Error marking messages as read in database:', error)
+
+      syncMessagesState(prev =>
+        prev.map(msg => (optimisticIds.has(msg.id) ? { ...msg, read_at: null } : msg))
+      )
+
+      pendingIds.forEach(id => pendingReadIdsRef.current.add(id))
+    }
+  }, [conversation.id, conversation.isPending, currentUserId, onConversationRead, onMessageSent, syncMessagesState])
+
+  const queueReadReceipt = useCallback(
+    (message: Message) => {
+      if (message.sender_id === currentUserId || message.read_at) {
+        return
+      }
+
+      if (pendingReadIdsRef.current.has(message.id)) {
+        return
+      }
+
+      pendingReadIdsRef.current.add(message.id)
+
+      if (readFlushTimeoutRef.current !== null) {
+        return
+      }
+
+      readFlushTimeoutRef.current = window.setTimeout(() => {
+        readFlushTimeoutRef.current = null
+        void flushPendingReadReceipts()
+      }, 200)
     },
-    [
-      conversation.id,
-      conversation.isPending,
-      currentUserId,
-      isViewerAtBottom,
-      onConversationRead,
-      onMessageSent,
-      setShowNewMessagesIndicator,
-      syncMessagesState
-    ]
+    [currentUserId, flushPendingReadReceipts]
   )
+
+  // Marks incoming messages as read once ~60% of the bubble is visible in the scroll container.
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting || entry.intersectionRatio < 0.6) {
+            return
+          }
+
+          const target = entry.target as HTMLElement
+          const messageId = target.getAttribute('data-message-id')
+          if (!messageId) {
+            return
+          }
+
+          const message = messagesRef.current.find(msg => msg.id === messageId)
+          if (!message) {
+            return
+          }
+
+          queueReadReceipt(message)
+        })
+      },
+      {
+        root: container,
+        threshold: [0.6],
+        rootMargin: '0px 0px -32px 0px'
+      }
+    )
+
+    intersectionObserverRef.current = observer
+    messageRefs.current.forEach(node => observer.observe(node))
+
+    return () => {
+      observer.disconnect()
+      intersectionObserverRef.current = null
+    }
+  }, [conversation.id, queueReadReceipt])
 
   const loadOlderMessages = useCallback(async () => {
     if (!conversation.id || isLoadingMore || !hasMoreMessages) {
@@ -347,19 +486,31 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   }, [conversation.id, hasMoreMessages, isLoadingMore, syncMessagesState])
 
   const handleJumpToLatest = useCallback(() => {
-    scrollToLatest('smooth')
     shouldStickToBottomRef.current = true
-    pendingUnreadRef.current = false
-    setShowNewMessagesIndicator(false)
-    void markMessagesAsRead(undefined, { force: true })
-  }, [markMessagesAsRead, scrollToLatest])
+    setPendingNewMessagesCount(0)
+    scheduleScrollJob({ type: 'bottom', behavior: 'smooth', reason: 'manual' })
+  }, [scheduleScrollJob])
 
   useEffect(() => {
     shouldStickToBottomRef.current = true
     initialScrollPendingRef.current = true
     lastMessageIdRef.current = null
-    pendingUnreadRef.current = false
-    setShowNewMessagesIndicator(false)
+    setPendingNewMessagesCount(0)
+    messageRefs.current.clear()
+    pendingReadIdsRef.current.clear()
+    if (readFlushTimeoutRef.current !== null) {
+      window.clearTimeout(readFlushTimeoutRef.current)
+      readFlushTimeoutRef.current = null
+    }
+    if (intersectionObserverRef.current) {
+      intersectionObserverRef.current.disconnect()
+      intersectionObserverRef.current = null
+    }
+    if (nextScrollFrameRef.current !== null) {
+      cancelAnimationFrame(nextScrollFrameRef.current)
+      nextScrollFrameRef.current = null
+    }
+    pendingScrollJobRef.current = null
 
     if (!conversation.id || conversation.isPending) {
       setLoading(false)
@@ -370,27 +521,21 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     let cancelled = false
 
     const loadConversation = async () => {
-      const fetched = await fetchMessages()
+      await fetchMessages()
       if (cancelled) return
-
-  const marked = await markMessagesAsRead(fetched, { force: true })
-      if (cancelled) return
-
-      if (marked <= 0) {
-        const cacheKey = generateCacheKey('unread_count', { userId: currentUserId })
-        requestCache.invalidate(cacheKey)
-        if (typeof window !== 'undefined' && window.__refreshUnreadBadge) {
-          window.__refreshUnreadBadge()
-        }
-      }
     }
 
     loadConversation()
 
     return () => {
       cancelled = true
+      if (readFlushTimeoutRef.current !== null) {
+        window.clearTimeout(readFlushTimeoutRef.current)
+        readFlushTimeoutRef.current = null
+      }
+      void flushPendingReadReceipts()
     }
-  }, [conversation.id, conversation.isPending, currentUserId, fetchMessages, markMessagesAsRead, syncMessagesState])
+  }, [conversation.id, conversation.isPending, fetchMessages, flushPendingReadReceipts, syncMessagesState])
 
   useEffect(() => {
     if (!conversation.id || conversation.isPending) return
@@ -423,11 +568,13 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
 
           if (newMessage.sender_id !== currentUserId) {
             if (isViewerAtBottom()) {
-              void markMessagesAsRead(undefined, { force: false })
+              shouldStickToBottomRef.current = true
             } else {
-              pendingUnreadRef.current = true
-              setShowNewMessagesIndicator(true)
+              shouldStickToBottomRef.current = false
+              setPendingNewMessagesCount(count => count + 1)
             }
+          } else {
+            shouldStickToBottomRef.current = true
           }
         }
       )
@@ -451,15 +598,27 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [
-    conversation.id,
-    conversation.isPending,
-    currentUserId,
-    isViewerAtBottom,
-    markMessagesAsRead,
-    setShowNewMessagesIndicator,
-    syncMessagesState
-  ])
+  }, [conversation.id, conversation.isPending, currentUserId, isViewerAtBottom, syncMessagesState])
+
+  useEffect(() => {
+    return () => {
+      if (readFlushTimeoutRef.current !== null) {
+        window.clearTimeout(readFlushTimeoutRef.current)
+        readFlushTimeoutRef.current = null
+      }
+      void flushPendingReadReceipts()
+    }
+  }, [flushPendingReadReceipts])
+
+  useEffect(() => {
+    return () => {
+      if (nextScrollFrameRef.current !== null) {
+        cancelAnimationFrame(nextScrollFrameRef.current)
+        nextScrollFrameRef.current = null
+      }
+      pendingScrollJobRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     if (!isMobile || typeof window === 'undefined') {
@@ -584,14 +743,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       shouldStickToBottomRef.current = atBottom
 
       if (atBottom) {
-        if (showNewMessagesIndicator) {
-          setShowNewMessagesIndicator(false)
-        }
-
-        if (pendingUnreadRef.current) {
-          pendingUnreadRef.current = false
-          void markMessagesAsRead(undefined, { force: false })
-        }
+        setPendingNewMessagesCount(0)
       }
     }
 
@@ -602,7 +754,6 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       const observer = new ResizeObserver(() => {
         if (shouldStickToBottomRef.current) {
           scrollToLatest('auto')
-          shouldStickToBottomRef.current = true
         }
       })
       observer.observe(scrollEl)
@@ -622,24 +773,40 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     isLoadingMore,
     isViewerAtBottom,
     loadOlderMessages,
-    markMessagesAsRead,
-    scrollToLatest,
-    setShowNewMessagesIndicator,
-    showNewMessagesIndicator
+    scrollToLatest
   ])
 
-  // Keeps the viewport anchored: initial mount scrolls to latest, new messages while
-  // the viewer is near the bottom (or the sender) animate into view, and manual
+  const unreadMetadata = useMemo(() => {
+    let firstUnreadId: string | null = null
+    let firstUnreadIndex = -1
+    let unreadCount = 0
+
+    messages.forEach((msg, index) => {
+      if (msg.sender_id !== currentUserId && !msg.read_at) {
+        unreadCount += 1
+        if (firstUnreadId === null) {
+          firstUnreadId = msg.id
+          firstUnreadIndex = index
+        }
+      }
+    })
+
+    return { firstUnreadId, firstUnreadIndex, unreadCount }
+  }, [messages, currentUserId])
+
+  const hasReadReceipts = useMemo(
+    () => messages.some(msg => msg.sender_id !== currentUserId && Boolean(msg.read_at)),
+    [messages, currentUserId]
+  )
+
+  const shouldRenderUnreadSeparator = hasReadReceipts && unreadMetadata.unreadCount > 0 && unreadMetadata.firstUnreadId !== null
+
+  // Keeps the viewport anchored: initial mount scrolls to the first unread (if any),
+  // new messages while the viewer is near the bottom animate into view, and manual
   // upward scrolling is respected until the user returns to the bottom threshold.
   useLayoutEffect(() => {
     if (!messages.length) {
       lastMessageIdRef.current = null
-      return
-    }
-
-    const scrollEl = scrollContainerRef.current
-    if (!scrollEl) {
-      lastMessageIdRef.current = messages[messages.length - 1]?.id ?? null
       return
     }
 
@@ -648,21 +815,41 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     const previousLastId = lastMessageIdRef.current
     const isInitialSync = initialScrollPendingRef.current
     const appendedMessage = previousLastId !== null && previousLastId !== latestId
-    const userIsNearBottom = isViewerAtBottom()
-    const shouldAutoScroll =
-      isInitialSync ||
-      (appendedMessage && (latestMessage.sender_id === currentUserId || userIsNearBottom || shouldStickToBottomRef.current))
 
-    if (shouldAutoScroll) {
-      scrollToLatest(isInitialSync ? 'auto' : 'smooth')
-      shouldStickToBottomRef.current = true
-      pendingUnreadRef.current = false
-      setShowNewMessagesIndicator(false)
+    if (isInitialSync) {
+      if (shouldRenderUnreadSeparator && unreadMetadata.firstUnreadId) {
+        shouldStickToBottomRef.current = false
+        scheduleScrollJob({
+          type: 'message',
+          messageId: unreadMetadata.firstUnreadId,
+          behavior: 'auto',
+          reason: 'initial'
+        })
+      } else {
+        shouldStickToBottomRef.current = true
+        scheduleScrollJob({ type: 'bottom', behavior: 'auto', reason: 'initial' })
+      }
+    } else if (appendedMessage) {
+      if (latestMessage.sender_id === currentUserId) {
+        shouldStickToBottomRef.current = true
+        setPendingNewMessagesCount(0)
+        scheduleScrollJob({ type: 'bottom', behavior: 'smooth', reason: 'append-self' })
+      } else if (isViewerAtBottom() || shouldStickToBottomRef.current) {
+        shouldStickToBottomRef.current = true
+        scheduleScrollJob({ type: 'bottom', behavior: 'smooth', reason: 'append-inbound' })
+      }
     }
 
-    initialScrollPendingRef.current = false
     lastMessageIdRef.current = latestId
-  }, [messages, currentUserId, isViewerAtBottom, scrollToLatest])
+  }, [
+    currentUserId,
+    isViewerAtBottom,
+    messages,
+    scheduleScrollJob,
+    setPendingNewMessagesCount,
+    shouldRenderUnreadSeparator,
+    unreadMetadata.firstUnreadId
+  ])
 
   useEffect(() => {
     syncTextareaHeight()
@@ -877,13 +1064,13 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
 
   return (
     <div
-      className={`flex h-full w-full min-h-0 flex-col bg-gray-50 ${
+      className={`grid h-full w-full min-h-0 grid-rows-[auto,1fr,auto] overflow-hidden bg-gray-50 ${
         isMobile ? 'pb-[var(--chat-safe-area-bottom,0px)]' : ''
       }`}
     >
       <div
-        className={`flex flex-shrink-0 items-center gap-3 border-b border-gray-200 bg-white pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] py-4 shadow-sm md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] ${
-          isMobile ? 'sticky top-0 z-40 pt-[calc(env(safe-area-inset-top)+1rem)]' : 'sticky top-[var(--app-header-offset,0px)] z-30'
+        className={`z-40 flex items-center gap-3 border-b border-gray-200 bg-white pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] py-4 shadow-sm transition-colors md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] ${
+          isMobile ? 'pt-[calc(env(safe-area-inset-top)+1rem)]' : ''
         }`}
       >
         <button
@@ -932,7 +1119,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
 
       <div
         ref={scrollContainerRef}
-        className={`flex-1 min-h-0 overflow-y-auto overscroll-contain pt-6 pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] ${
+        className={`min-h-0 overflow-y-auto overscroll-contain pt-6 pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] ${
           isMobile
             ? 'pb-[calc(var(--chat-composer-height,72px)+var(--chat-safe-area-bottom,0px)+0.75rem)]'
             : 'pb-24 md:pb-20'
@@ -956,12 +1143,25 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
                 const showTimestamp =
                   index === 0 ||
                   new Date(message.sent_at).getTime() - new Date(messages[index - 1].sent_at).getTime() > 300000
+                const isUnreadMarker =
+                  shouldRenderUnreadSeparator &&
+                  unreadMetadata.firstUnreadId === message.id &&
+                  !isMyMessage
 
                 return (
-                  <div key={message.id}>
+                  <div
+                    key={message.id}
+                    ref={setMessageRef(message.id)}
+                    data-message-id={message.id}
+                  >
                     {showTimestamp && (
                       <div className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-gray-400">
                         {format(new Date(message.sent_at), 'MMM d, yyyy h:mm a')}
+                      </div>
+                    )}
+                    {isUnreadMarker && (
+                      <div className="mb-2 flex items-center justify-center text-xs font-semibold uppercase tracking-wide text-purple-500">
+                        --- NEW MESSAGES ---
                       </div>
                     )}
                     <div className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}>
@@ -996,14 +1196,14 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
               })}
               <div ref={messagesEndRef} />
             </div>
-            {showNewMessagesIndicator && (
-              <div className="sticky bottom-4 flex justify-center pb-2">
+            {pendingNewMessagesCount > 0 && (
+              <div className="sticky bottom-4 z-10 flex justify-center pb-2">
                 <button
                   type="button"
                   onClick={handleJumpToLatest}
                   className="inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-sm font-semibold text-gray-900 shadow-lg ring-1 ring-gray-200 backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500 hover:shadow-xl"
                 >
-                  New messages, tap to jump
+                  {`⬇ ${pendingNewMessagesCount} new message${pendingNewMessagesCount > 1 ? 's' : ''}`}
                 </button>
               </div>
             )}
@@ -1014,7 +1214,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       <form
         onSubmit={handleSendMessage}
         data-chat-composer="true"
-        className={`flex-shrink-0 border-t border-gray-200 bg-white/95 pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] py-4 backdrop-blur md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] ${
+        className={`border-t border-gray-200 bg-white/95 pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] py-4 backdrop-blur md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] ${
           isMobile
             ? 'fixed bottom-0 left-0 right-0 z-40 shadow-lg pb-[calc(1rem+var(--chat-safe-area-bottom,0px))]'
             : ''
@@ -1033,6 +1233,11 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
                 syncTextareaHeight()
               }}
               onKeyDown={handleKeyDown}
+              onFocus={() => {
+                shouldStickToBottomRef.current = true
+                setPendingNewMessagesCount(0)
+                scheduleScrollJob({ type: 'bottom', behavior: 'smooth', reason: 'input' })
+              }}
               placeholder="Type a message..."
               rows={1}
               maxLength={1000}

@@ -470,8 +470,8 @@ export default function MessagesPage() {
 
   if (showImmersiveConversation && selectedConversation) {
     return (
-      <div className="flex min-h-screen flex-col bg-gray-50">
-        <div className="flex-1 flex">
+      <div className="flex h-screen-dvh min-h-screen-dvh flex-col bg-gray-50">
+        <div className="flex flex-1 overflow-hidden">
           <ChatWindow
             conversation={selectedConversation}
             currentUserId={user?.id || ''}
@@ -531,8 +531,8 @@ export default function MessagesPage() {
     : 'mx-auto max-w-7xl px-4 pb-12 pt-[calc(var(--app-header-offset,0px)+1.5rem)] md:px-6'
 
   const containerClasses = isFullBleedMobileLayout
-    ? 'flex min-h-[calc(100dvh-var(--app-header-offset,0px))] flex-col bg-white'
-    : `flex min-h-[calc(100vh-var(--app-header-offset,0px)-4rem)] flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm ${
+    ? 'flex h-[calc(100dvh-var(--app-header-offset,0px))] flex-col overflow-hidden bg-white'
+    : `flex h-[calc(100vh-var(--app-header-offset,0px)-4rem)] flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm ${
         messagingMobileV2Enabled ? 'min-h-chat-card' : ''
       }`
 
