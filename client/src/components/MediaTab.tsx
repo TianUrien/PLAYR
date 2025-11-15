@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type ReactNode } from 'react'
 import { Video, Plus, Upload, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
@@ -13,12 +13,18 @@ import ConfirmActionModal from './ConfirmActionModal'
 import MediaLightbox from './MediaLightbox'
 import Skeleton from './Skeleton'
 
+interface MediaTabHeaderRenderProps {
+  canManageVideo: boolean
+  openManageModal: () => void
+}
+
 interface MediaTabProps {
   profileId?: string
   readOnly?: boolean
+  renderHeader?: (props: MediaTabHeaderRenderProps) => ReactNode
 }
 
-export default function MediaTab({ profileId, readOnly = false }: MediaTabProps) {
+export default function MediaTab({ profileId, readOnly = false, renderHeader }: MediaTabProps) {
   const { user, profile: authProfile } = useAuthStore()
   const targetUserId = profileId || user?.id
   const { addToast } = useToastStore()
@@ -37,6 +43,9 @@ export default function MediaTab({ profileId, readOnly = false }: MediaTabProps)
   // Use the target profile if viewing someone else, otherwise use auth profile
   const displayProfile = targetProfile || authProfile
   const isPlayerProfile = displayProfile?.role === 'player'
+  const canManageHighlightVideo = Boolean(!readOnly && displayProfile?.highlight_video_url)
+
+  const openManageModal = () => setShowAddVideoModal(true)
 
   // Fetch the profile data for the user being viewed
   useEffect(() => {
@@ -237,20 +246,18 @@ export default function MediaTab({ profileId, readOnly = false }: MediaTabProps)
       {/* Highlight Video Section - Only show for players */}
       {isLoadingProfile || isPlayerProfile ? (
         <div>
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">Highlight Video</h2>
-              <p className="text-sm text-gray-600">Showcase your best moments and skills</p>
-            </div>
-            {!readOnly && displayProfile?.highlight_video_url && (
-              <Button
-                variant="outline"
-                onClick={() => setShowAddVideoModal(true)}
-              >
-                Manage
-              </Button>
-            )}
-          </div>
+          {(() => {
+            const headerContent = renderHeader
+              ? renderHeader({ canManageVideo: canManageHighlightVideo, openManageModal })
+              : canManageHighlightVideo && (
+                  <div className="flex items-center justify-end">
+                    <Button variant="outline" onClick={openManageModal}>
+                      Manage
+                    </Button>
+                  </div>
+                )
+            return headerContent ? <div className="mb-3">{headerContent}</div> : null
+          })()}
 
           {isLoadingProfile ? (
             <div className="space-y-4">

@@ -4,6 +4,7 @@ import { useAuthStore } from '@/lib/auth'
 import { Avatar, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
+import Button from '@/components/Button'
 import type { Profile } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -353,13 +354,21 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
                   </div>
                 )}
 
-                <section className="space-y-4 pt-6 border-t border-gray-200">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Media</h3>
-                    <p className="text-sm text-gray-600">Highlight video and gallery appear directly on your profile.</p>
-                  </div>
-
-                  <MediaTab profileId={profile.id} readOnly={readOnly} />
+                <section className="space-y-3 pt-6 border-t border-gray-200">
+                  <MediaTab
+                    profileId={profile.id}
+                    readOnly={readOnly}
+                    renderHeader={({ canManageVideo, openManageModal }) => (
+                      <div className="flex items-center justify-between gap-3">
+                        <h2 className="text-2xl font-bold text-gray-900">Highlight Video</h2>
+                        {canManageVideo && (
+                          <Button variant="outline" size="sm" onClick={openManageModal}>
+                            Manage
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  />
                 </section>
               </div>
             )}
