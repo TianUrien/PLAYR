@@ -15,20 +15,26 @@ import {
   Star,
   Trash2,
   Trophy,
+  Upload,
   X,
 } from 'lucide-react'
 import { differenceInMonths, format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
+import { optimizeImage, validateImage } from '@/lib/imageOptimization'
 import type { PlayingHistory } from '@/lib/supabase'
 import Button from './Button'
 import Skeleton from './Skeleton'
 
-type EditableJourneyEntry = PlayingHistory & {
+type EditableJourneyEntry = Omit<
+  PlayingHistory,
+  'highlights' | 'start_date' | 'end_date' | 'entry_type' | 'badge_label'
+> & {
   highlights: string[]
   start_date: string | null
   end_date: string | null
+  entry_type: JourneyType | null
   startMonthDraft?: string
   startYearDraft?: string
   endMonthDraft?: string
@@ -52,13 +58,13 @@ const entryTypeMeta: Record<JourneyType, EntryTypeMeta> = {
     icon: Building2,
   },
   national_team: {
-    label: 'National',
+    label: 'Representative Team',
     dotClass: 'bg-emerald-500/95 text-white',
     badgeClass: 'bg-emerald-50 text-emerald-700',
     icon: Globe2,
   },
   achievement: {
-    label: 'Achievement',
+    label: 'Achievement / Award',
     dotClass: 'bg-amber-500/95 text-white',
     badgeClass: 'bg-amber-50 text-amber-700',
     icon: Trophy,
@@ -89,9 +95,11 @@ const entryTypeMeta: Record<JourneyType, EntryTypeMeta> = {
   },
 }
 
-const ENTRY_TYPES: { id: JourneyType; label: string }[] = (
-  Object.keys(entryTypeMeta) as JourneyType[]
-).map(id => ({ id, label: entryTypeMeta[id].label }))
+const ENTRY_TYPES: { id: JourneyType; label: string }[] = [
+  { id: 'club', label: entryTypeMeta.club.label },
+  { id: 'national_team', label: entryTypeMeta.national_team.label },
+  { id: 'achievement', label: entryTypeMeta.achievement.label },
+]
 
 const MONTH_OPTIONS = [
   'January',
@@ -110,6 +118,19 @@ const MONTH_OPTIONS = [
 
 const CURRENT_YEAR = new Date().getUTCFullYear()
 const YEAR_OPTIONS = Array.from({ length: 70 }, (_, index) => CURRENT_YEAR + 5 - index).map(year => String(year))
+const JOURNEY_BUCKET = 'journey'
+
+const extractJourneyStoragePath = (url: string | null) => {
+  if (!url) return null
+  const marker = `/storage/v1/object/public/${JOURNEY_BUCKET}/`
+  const index = url.indexOf(marker)
+  if (index === -1) {
+    const legacyIndex = url.indexOf(`${JOURNEY_BUCKET}/`)
+    if (legacyIndex === -1) return null
+    return url.slice(legacyIndex + JOURNEY_BUCKET.length + 1)
+  }
+  return url.slice(index + marker.length)
+}
 
 interface JourneyTabProps {
   profileId?: string
@@ -127,6 +148,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
   const [editedEntries, setEditedEntries] = useState<EditableJourneyEntry[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
+  const [uploadingImageId, setUploadingImageId] = useState<string | null>(null)
 
   const normalizeDate = (value: string | null) => {
     if (!value) return null
@@ -160,13 +182,15 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       if (error) throw error
 
       const normalized = (data || []).map(entry => {
+        const { badge_label: _unusedBadge, ...rest } = entry
+        void _unusedBadge
         const start = normalizeDate(entry.start_date)
         const end = normalizeDate(entry.end_date)
         const startDraft = seedDrafts(start)
         const endDraft = seedDrafts(end)
 
         return {
-          ...entry,
+          ...rest,
           highlights: entry.highlights ?? [],
           start_date: start,
           end_date: end,
@@ -216,19 +240,18 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       {
         id: `temp-${Date.now()}`,
         user_id: user?.id || '',
+        entry_type: null,
         club_name: '',
         position_role: '',
         years: '',
         division_league: '',
         highlights: [],
-        entry_type: 'club',
         location_city: '',
         location_country: '',
         start_date: null,
         end_date: null,
         description: '',
-        badge_label: '',
-        image_url: '',
+        image_url: null,
         display_order: prev.length,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -324,6 +347,107 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
     )
   }
 
+  const handleImageUpload = async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) {
+      addToast('Please sign in to upload images.', 'info')
+      return
+    }
+
+    const input = event.target
+    const files = input.files
+    if (!files?.length) {
+      return
+    }
+
+    const file = files[0]
+    const validation = validateImage(file)
+    if (!validation.valid) {
+      addToast(validation.error ?? 'Invalid image file.', 'error')
+      input.value = ''
+      return
+    }
+
+    const entry = editedEntries[index]
+    if (!entry) {
+      input.value = ''
+      return
+    }
+
+    setUploadingImageId(entry.id)
+
+    try {
+      const optimizedFile = await optimizeImage(file, {
+        maxWidth: 800,
+        maxHeight: 800,
+        maxSizeMB: 1,
+        mimeType: file.type === 'image/png' ? 'image/png' : 'image/jpeg',
+      })
+
+      const extension = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+      const fileName = `${user.id}/journey/${Date.now()}_${Math.random().toString(36).slice(2)}.${extension}`
+
+      const { error: uploadError } = await supabase.storage
+        .from(JOURNEY_BUCKET)
+        .upload(fileName, optimizedFile, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data } = supabase.storage.from(JOURNEY_BUCKET).getPublicUrl(fileName)
+
+      const previousUrl = entry.image_url
+      updateField(index, 'image_url', data.publicUrl as EditableJourneyEntry['image_url'])
+
+      if (previousUrl) {
+        const previousPath = extractJourneyStoragePath(previousUrl)
+        if (previousPath) {
+          await supabase.storage.from(JOURNEY_BUCKET).remove([previousPath]).catch(error => {
+            console.error('Failed to clean up previous journey image:', error)
+          })
+        }
+      }
+
+      addToast('Image uploaded successfully.', 'success')
+    } catch (error) {
+      console.error('Error uploading journey image:', error)
+      addToast('Failed to upload image. Please try again.', 'error')
+    } finally {
+      setUploadingImageId(null)
+      input.value = ''
+    }
+  }
+
+  const handleRemoveImage = async (index: number) => {
+    const entry = editedEntries[index]
+    if (!entry) {
+      return
+    }
+
+    if (!entry.image_url) {
+      updateField(index, 'image_url', null as EditableJourneyEntry['image_url'])
+      return
+    }
+
+    const filePath = extractJourneyStoragePath(entry.image_url)
+    setUploadingImageId(entry.id)
+
+    try {
+      if (filePath) {
+        const { error } = await supabase.storage.from(JOURNEY_BUCKET).remove([filePath])
+        if (error) {
+          throw error
+        }
+      }
+
+      updateField(index, 'image_url', null as EditableJourneyEntry['image_url'])
+      addToast('Image removed.', 'success')
+    } catch (error) {
+      console.error('Error removing journey image:', error)
+      addToast('Failed to remove image. Please try again.', 'error')
+    } finally {
+      setUploadingImageId(null)
+    }
+  }
+
   const validate = () => {
     const nextErrors: Record<string, string> = {}
     let valid = true
@@ -343,6 +467,10 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       }
       if (!entry.start_date) {
         nextErrors[`${index}-start_date`] = 'Start month and year are required'
+        valid = false
+      }
+      if (!entry.entry_type) {
+        nextErrors[`${index}-entry_type`] = 'Category is required'
         valid = false
       }
     })
@@ -370,6 +498,10 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       }
 
       const toPersist = editedEntries.map((entry, index) => {
+        const entryType = entry.entry_type
+        if (!entryType) {
+          throw new Error('Entry type missing during save')
+        }
         const startDate = entry.start_date
         const endDate = entry.end_date
         const yearsText = startDate
@@ -378,32 +510,34 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
 
         return {
           id: entry.id,
-          user_id: user.id,
-          club_name: entry.club_name,
-          position_role: entry.position_role,
-          division_league: entry.division_league,
-          years: yearsText || entry.years,
-          highlights: entry.highlights.filter(highlight => highlight.trim() !== ''),
-          entry_type: entry.entry_type,
-          location_city: entry.location_city,
-          location_country: entry.location_country,
-          start_date: startDate,
-          end_date: endDate,
-          description: entry.description,
-          badge_label: entry.badge_label,
-          image_url: entry.image_url,
-          display_order: editedEntries.length - index,
+          isNew: entry.id.startsWith('temp-'),
+          payload: {
+            user_id: user.id,
+            club_name: entry.club_name,
+            position_role: entry.position_role,
+            division_league: entry.division_league,
+            years: yearsText || entry.years,
+            highlights: entry.highlights.filter(highlight => highlight.trim() !== ''),
+            entry_type: entryType,
+            location_city: entry.location_city,
+            location_country: entry.location_country,
+            start_date: startDate,
+            end_date: endDate,
+            description: entry.description,
+            image_url: entry.image_url,
+            display_order: editedEntries.length - index,
+          },
         }
       })
 
       for (const entry of toPersist) {
-        if (entry.id.startsWith('temp-')) {
-          const { error: insertError } = await supabase.from('playing_history').insert(entry)
+        if (entry.isNew) {
+          const { error: insertError } = await supabase.from('playing_history').insert(entry.payload)
           if (insertError) throw insertError
         } else {
           const { error: updateError } = await supabase
             .from('playing_history')
-            .update(entry)
+            .update(entry.payload)
             .eq('id', entry.id)
           if (updateError) throw updateError
         }
@@ -504,7 +638,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
         <div className="absolute left-4 top-0 bottom-0 w-px bg-gradient-to-b from-indigo-100 via-gray-200 to-transparent" />
         <div className="space-y-10">
           {ordered.map((entry, index) => {
-            const meta = entryTypeMeta[entry.entry_type]
+            const meta = entry.entry_type ? entryTypeMeta[entry.entry_type] : entryTypeMeta.club
             const Icon = meta.icon
             const startLabel = formatMonthLabel(entry.start_date)
             const endLabel = entry.end_date ? formatMonthLabel(entry.end_date) : 'Present'
@@ -554,7 +688,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
                         </div>
                       </div>
                       <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${meta.badgeClass}`}>
-                        {entry.badge_label?.trim() || meta.label}
+                        {meta.label}
                       </span>
                     </div>
 
@@ -637,16 +771,28 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
               </label>
               <select
                 id={`journey-category-${entry.id}`}
-                value={entry.entry_type}
-                onChange={event => updateField(index, 'entry_type', event.target.value as JourneyType)}
-                className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
+                value={entry.entry_type ?? ''}
+                onChange={event =>
+                  updateField(
+                    index,
+                    'entry_type',
+                    event.target.value ? (event.target.value as JourneyType) : null
+                  )
+                }
+                className={`mt-1 w-full rounded-lg border bg-white px-4 py-2.5 focus:border-transparent focus:ring-2 focus:ring-indigo-500 ${errors[`${index}-entry_type`] ? 'border-red-400' : 'border-gray-300'}`}
               >
+                <option value="" disabled>
+                  Select category...
+                </option>
                 {ENTRY_TYPES.map(option => (
                   <option key={option.id} value={option.id}>
                     {option.label}
                   </option>
                 ))}
               </select>
+              {errors[`${index}-entry_type`] && (
+                <p className="mt-1 text-sm text-red-600">{errors[`${index}-entry_type`]}</p>
+              )}
             </div>
 
             <div>
@@ -789,32 +935,58 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
               />
             </div>
 
-            <div>
-              <label htmlFor={`journey-badge-${entry.id}`} className="text-sm font-medium text-gray-700">
-                Badge label
-              </label>
-              <input
-                id={`journey-badge-${entry.id}`}
-                type="text"
-                value={entry.badge_label || ''}
-                onChange={event => updateField(index, 'badge_label', event.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
-                placeholder="Club"
-              />
-            </div>
+            <div className="md:col-span-2">
+              <label className="text-sm font-medium text-gray-700">Logo / Image</label>
+              <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start">
+                {entry.image_url ? (
+                  <img
+                    src={entry.image_url}
+                    alt="Journey logo preview"
+                    className="h-20 w-20 rounded-xl object-cover"
+                  />
+                ) : (
+                  <div className="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-gray-400">
+                    <ImageIcon className="h-6 w-6" />
+                  </div>
+                )}
 
-            <div>
-              <label htmlFor={`journey-image-${entry.id}`} className="text-sm font-medium text-gray-700">
-                Image URL
-              </label>
-              <input
-                id={`journey-image-${entry.id}`}
-                type="url"
-                value={entry.image_url || ''}
-                onChange={event => updateField(index, 'image_url', event.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:border-transparent focus:ring-2 focus:ring-indigo-500"
-                placeholder="https://..."
-              />
+                <div className="flex flex-col gap-2">
+                  <label
+                    className={`inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition ${uploadingImageId === entry.id ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:border-indigo-400 hover:text-indigo-600'}`}
+                  >
+                    {uploadingImageId === entry.id ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Uploading…
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4" />
+                        {entry.image_url ? 'Replace image' : 'Upload image'}
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      className="sr-only"
+                      onChange={event => handleImageUpload(index, event)}
+                      disabled={uploadingImageId === entry.id}
+                    />
+                  </label>
+                  {entry.image_url && (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(index)}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-500"
+                      disabled={uploadingImageId === entry.id}
+                    >
+                      <X className="h-4 w-4" />
+                      Remove image
+                    </button>
+                  )}
+                  <p className="text-xs text-gray-500">PNG or JPG, up to 1MB.</p>
+                </div>
+              </div>
             </div>
           </div>
 
