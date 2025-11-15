@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { initializeAuth } from '@/lib/auth'
 import { ProtectedRoute, ErrorBoundary, Layout } from '@/components'
 import ToastContainer from '@/components/ToastContainer'
+import { ProfileImagePreviewProvider } from '@/components/ProfileImagePreviewProvider'
 import Landing from '@/pages/Landing'
 import SignUp from '@/pages/SignUp'
 import AuthCallback from '@/pages/AuthCallback'
@@ -59,11 +60,12 @@ function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
-        <ToastContainer />
-        <ProtectedRoute>
-          <Layout>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
+        <ProfileImagePreviewProvider>
+          <ToastContainer />
+          <ProtectedRoute>
+            <Layout>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
                 {/* Public Routes (allowlisted in ProtectedRoute) */}
                 <Route path="/" element={<Landing />} />
                 <Route path="/signup" element={<SignUp />} />
@@ -86,12 +88,13 @@ function App() {
                 <Route path="/clubs/:username" element={<PublicClubProfile />} />
                 <Route path="/clubs/id/:id" element={<PublicClubProfile />} />
                 
-                {/* Fallback */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Suspense>
-          </Layout>
-        </ProtectedRoute>
+                  {/* Fallback */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Suspense>
+            </Layout>
+          </ProtectedRoute>
+        </ProfileImagePreviewProvider>
       </BrowserRouter>
     </ErrorBoundary>
   )

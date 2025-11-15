@@ -24,6 +24,7 @@ import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import { optimizeImage, validateImage } from '@/lib/imageOptimization'
 import type { PlayingHistory } from '@/lib/supabase'
+import { deleteStorageObject, extractStoragePath } from '@/lib/storage'
 import Button from './Button'
 import Skeleton from './Skeleton'
 
@@ -145,18 +146,6 @@ const createEmptyJourneyEntry = (userId: string): EditableJourneyEntry => ({
   endMonthDraft: '',
   endYearDraft: '',
 })
-
-const extractJourneyStoragePath = (url: string | null) => {
-  if (!url) return null
-  const marker = `/storage/v1/object/public/${JOURNEY_BUCKET}/`
-  const index = url.indexOf(marker)
-  if (index === -1) {
-    const legacyIndex = url.indexOf(`${JOURNEY_BUCKET}/`)
-    if (legacyIndex === -1) return null
-    return url.slice(legacyIndex + JOURNEY_BUCKET.length + 1)
-  }
-  return url.slice(index + marker.length)
-}
 
 interface JourneyTabProps {
   profileId?: string
@@ -401,13 +390,8 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       const previousUrl = activeEntryDraft.image_url
       updateField('image_url', data.publicUrl as EditableJourneyEntry['image_url'])
 
-      if (previousUrl) {
-        const previousPath = extractJourneyStoragePath(previousUrl)
-        if (previousPath) {
-          await supabase.storage.from(JOURNEY_BUCKET).remove([previousPath]).catch(error => {
-            console.error('Failed to clean up previous journey image:', error)
-          })
-        }
+      if (previousUrl && previousUrl !== data.publicUrl) {
+        await deleteStorageObject({ bucket: JOURNEY_BUCKET, publicUrl: previousUrl, context: 'journey:replace-image' })
       }
 
       addToast('Image uploaded successfully.', 'success')
@@ -428,15 +412,11 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       return
     }
 
-    const filePath = extractJourneyStoragePath(activeEntryDraft.image_url)
     setUploadingImageId(activeEntryDraft.id)
 
     try {
-      if (filePath) {
-        const { error } = await supabase.storage.from(JOURNEY_BUCKET).remove([filePath])
-        if (error) {
-          throw error
-        }
+      if (activeEntryDraft.image_url) {
+        await deleteStorageObject({ bucket: JOURNEY_BUCKET, publicUrl: activeEntryDraft.image_url, context: 'journey:remove-image' })
       }
 
       updateField('image_url', null as EditableJourneyEntry['image_url'])
@@ -538,10 +518,17 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       }
     }
 
+    const entryToDelete = journey.find(entry => entry.id === entryId)
+    const entryImagePath = entryToDelete?.image_url ? extractStoragePath(entryToDelete.image_url, JOURNEY_BUCKET) : null
+
     setSavingEntryId(entryId)
     try {
       const { error } = await supabase.from('playing_history').delete().eq('id', entryId)
       if (error) throw error
+
+      if (entryImagePath) {
+        await deleteStorageObject({ bucket: JOURNEY_BUCKET, path: entryImagePath, context: 'journey:delete-entry' })
+      }
 
       await fetchJourney()
       resetFormState()

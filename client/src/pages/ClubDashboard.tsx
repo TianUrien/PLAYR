@@ -209,6 +209,9 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
               initials={getInitials(profile.full_name)}
               size="xl"
               className="flex-shrink-0"
+              alt={profile.full_name}
+              enablePreview
+              previewTitle={profile.full_name}
             />
 
             <div className="flex-1">

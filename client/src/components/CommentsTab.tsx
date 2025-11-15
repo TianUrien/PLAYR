@@ -370,6 +370,9 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
                       src={comment.author?.avatar_url}
                       initials={getInitials(comment.author?.full_name ?? comment.author?.username ?? null)}
                       size="md"
+                      alt={comment.author?.full_name || comment.author?.username || 'Former PLAYR member'}
+                      enablePreview
+                      previewTitle={comment.author?.full_name || comment.author?.username || undefined}
                     />
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">

@@ -153,6 +153,10 @@ export default function FriendsTab({ profileId, readOnly = false }: FriendsTabPr
             src={connection.friend?.avatar_url}
             initials={getInitials(connection.friend?.full_name || connection.friend?.username)}
             size="md"
+            alt={connection.friend?.full_name || connection.friend?.username || undefined}
+            enablePreview
+            previewTitle={connection.friend?.full_name || connection.friend?.username || undefined}
+            previewInteraction="pointer"
           />
           <div>
             <p className="font-semibold text-gray-900">{connection.friend?.full_name || connection.friend?.username || 'PLAYR Member'}</p>
@@ -194,6 +198,10 @@ export default function FriendsTab({ profileId, readOnly = false }: FriendsTabPr
             src={connection.friend?.avatar_url}
             initials={getInitials(connection.friend?.full_name || connection.friend?.username)}
             size="md"
+            alt={connection.friend?.full_name || connection.friend?.username || undefined}
+            enablePreview
+            previewTitle={connection.friend?.full_name || connection.friend?.username || undefined}
+            previewInteraction="pointer"
           />
           <div>
             <p className="font-semibold text-gray-900">{connection.friend?.full_name || connection.friend?.username || 'PLAYR Member'}</p>

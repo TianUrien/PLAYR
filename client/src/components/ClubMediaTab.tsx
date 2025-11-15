@@ -7,6 +7,7 @@ import type { ClubMedia } from '@/lib/supabase'
 import ConfirmActionModal from './ConfirmActionModal'
 import MediaLightbox from './MediaLightbox'
 import Skeleton from './Skeleton'
+import { deleteStorageObject } from '@/lib/storage'
 
 interface ClubMediaTabProps {
   clubId?: string
@@ -188,15 +189,7 @@ export default function ClubMediaTab({ clubId, readOnly = false }: ClubMediaTabP
 
     setDeletingId(pendingDelete.id)
     try {
-      const urlParts = pendingDelete.file_url.split('/club-media/')
-      if (urlParts.length < 2) throw new Error('Invalid file URL')
-      const filePath = urlParts[1]
-
-      const { error: storageError } = await supabase.storage
-        .from('club-media')
-        .remove([filePath])
-
-      if (storageError) throw storageError
+      await deleteStorageObject({ bucket: 'club-media', publicUrl: pendingDelete.file_url, context: 'club-media:delete' })
 
       const { error: dbError } = await supabase
         .from('club_media')

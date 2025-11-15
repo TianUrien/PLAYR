@@ -1,5 +1,6 @@
 import { formatDistanceToNow } from 'date-fns'
 import { SUPABASE_URL } from '@/lib/supabase'
+import Avatar from './Avatar'
 
 interface Conversation {
   id: string
@@ -43,12 +44,23 @@ export default function ConversationList({
   const getAvatarUrl = (avatarUrl: string | null) => {
     if (!avatarUrl) return null
     if (avatarUrl.startsWith('http')) return avatarUrl
-  return `${SUPABASE_URL}/storage/v1/object/public/avatars/${avatarUrl}`
+    return `${SUPABASE_URL}/storage/v1/object/public/avatars/${avatarUrl}`
   }
 
   const truncateMessage = (message: string, maxLength: number = 50) => {
     if (message.length <= maxLength) return message
     return message.substring(0, maxLength) + '...'
+  }
+
+  const getInitials = (value?: string | null) => {
+    if (!value) return '?'
+    return value
+      .trim()
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]!.toUpperCase())
+      .join('')
   }
 
   return (
@@ -65,6 +77,11 @@ export default function ConversationList({
               : 'bg-purple-50 hover:bg-purple-50'
             : 'hover:bg-gray-50'
         }`
+        const participantName =
+          conversation.otherParticipant?.full_name ||
+          conversation.otherParticipant?.username ||
+          'PLAYR Member'
+        const avatarInitials = getInitials(participantName)
 
         return (
           <button
@@ -74,48 +91,48 @@ export default function ConversationList({
           >
             {/* Avatar */}
             <div className="relative flex-shrink-0">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={conversation.otherParticipant?.full_name}
-                  className="w-12 h-12 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white font-semibold text-lg">
-                  {conversation.otherParticipant?.full_name?.charAt(0).toUpperCase()}
-                </div>
-              )}
-              {/* Online indicator - placeholder for future feature */}
+              <Avatar
+                src={avatarUrl}
+                alt={participantName}
+                initials={avatarInitials}
+                className="w-12 h-12 text-lg shadow-sm"
+                enablePreview
+                previewTitle={participantName}
+                previewInteraction="pointer"
+              />
+              {/* Online indicator placeholder */}
               {/* <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div> */}
             </div>
 
             {/* Conversation Info */}
             <div className="flex-1 min-w-0 text-left">
-              <div className="flex items-center justify-between mb-1">
+              <div className="mb-1 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <h3
-                    className={`font-semibold text-gray-900 truncate ${isUnread ? 'font-bold' : ''} ${
-                      isCompact ? 'text-sm' : ''
+                    className={`truncate font-semibold text-gray-900 ${
+                      isUnread ? 'font-bold' : ''
+                    } ${isCompact ? 'text-sm' : ''}`}
+                  >
+                    {participantName}
+                  </h3>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                      conversation.otherParticipant?.role === 'club'
+                        ? 'bg-orange-50 text-orange-700'
+                        : conversation.otherParticipant?.role === 'coach'
+                        ? 'bg-purple-50 text-purple-700'
+                        : 'bg-blue-50 text-blue-700'
                     }`}
                   >
-                    {conversation.otherParticipant?.full_name}
-                  </h3>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                    conversation.otherParticipant?.role === 'club'
-                      ? 'bg-orange-50 text-orange-700'
-                      : conversation.otherParticipant?.role === 'coach'
-                      ? 'bg-purple-50 text-purple-700'
-                      : 'bg-blue-50 text-blue-700'
-                  }`}>
-                    {conversation.otherParticipant?.role === 'club' 
-                      ? 'Club' 
+                    {conversation.otherParticipant?.role === 'club'
+                      ? 'Club'
                       : conversation.otherParticipant?.role === 'coach'
                       ? 'Coach'
                       : 'Player'}
                   </span>
                 </div>
                 {conversation.last_message_at && (
-                  <span className="text-xs text-gray-500 flex-shrink-0">
+                  <span className="flex-shrink-0 text-xs text-gray-500">
                     {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
                   </span>
                 )}
@@ -124,13 +141,15 @@ export default function ConversationList({
               {/* Last Message Preview */}
               {conversation.lastMessage && (
                 <div className="flex items-center justify-between">
-                  <p className={`text-sm truncate ${isUnread ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>
+                  <p
+                    className={`text-sm truncate ${
+                      isUnread ? 'text-gray-900 font-medium' : 'text-gray-600'
+                    }`}
+                  >
                     {isSentByMe && <span className="text-gray-500">You: </span>}
                     {truncateMessage(conversation.lastMessage.content)}
                   </p>
-                  {isUnread && (
-                    <span className="ml-2 w-2 h-2 bg-purple-600 rounded-full flex-shrink-0"></span>
-                  )}
+                  {isUnread && <span className="ml-2 h-2 w-2 flex-shrink-0 rounded-full bg-purple-600"></span>}
                 </div>
               )}
             </div>

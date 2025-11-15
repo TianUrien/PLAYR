@@ -168,6 +168,9 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
               initials={getInitials(profile.full_name)}
               size="xl"
               className="flex-shrink-0"
+              alt={profile.full_name}
+              enablePreview
+              previewTitle={profile.full_name}
             />
 
             {/* Info */}

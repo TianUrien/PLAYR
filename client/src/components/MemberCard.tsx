@@ -115,8 +115,11 @@ export default function MemberCard({
       <div className="flex items-center gap-4 mb-4">
         <Avatar
           src={avatar_url}
+          alt={full_name}
           initials={full_name ? full_name.split(' ').map(n => n[0]).join('') : '?'}
           size="lg"
+          enablePreview
+          previewTitle={full_name}
         />
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-gray-900 truncate">{full_name}</h3>

@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useId, useLayoutEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { Send, ArrowLeft } from 'lucide-react'
 import { supabase, SUPABASE_URL } from '@/lib/supabase'
 import { format } from 'date-fns'
 import { ChatWindowSkeleton } from './Skeleton'
+import Avatar from './Avatar'
 import { monitor } from '@/lib/monitor'
 import { logger } from '@/lib/logger'
 import { withRetry } from '@/lib/retry'
@@ -54,6 +56,12 @@ interface ScrollJob {
   behavior: ScrollBehavior
   attempts: number
   reason: ScrollJobReason
+}
+
+const buildPublicProfilePath = (participant?: ConversationParticipant) => {
+  if (!participant) return null
+  const slug = participant.username ? participant.username : `id/${participant.id}`
+  return participant.role === 'club' ? `/clubs/${slug}` : `/players/${slug}`
 }
 
 export type ChatMessageEvent =
@@ -1110,6 +1118,11 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   }
 
   const avatarUrl = getAvatarUrl(conversation.otherParticipant?.avatar_url || null)
+  const participantName =
+    conversation.otherParticipant?.full_name ||
+    conversation.otherParticipant?.username ||
+    'PLAYR Member'
+  const profilePath = buildPublicProfilePath(conversation.otherParticipant)
 
   if (loading) {
     return (
@@ -1151,22 +1164,41 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
           <ArrowLeft className="h-5 w-5 text-gray-600" />
         </button>
 
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt={conversation.otherParticipant?.full_name}
-            className="h-12 w-12 rounded-full object-cover shadow-sm"
-          />
+        {profilePath ? (
+          <Link
+            to={profilePath}
+            className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500"
+            aria-label={`View ${participantName} profile`}
+          >
+            <Avatar
+              src={avatarUrl}
+              alt={participantName}
+              initials={conversation.otherParticipant?.full_name?.charAt(0).toUpperCase() || 'P'}
+              className="h-12 w-12 text-lg shadow-sm"
+              enablePreview={false}
+            />
+          </Link>
         ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-purple-600 text-lg font-semibold text-white shadow-sm">
-            {conversation.otherParticipant?.full_name?.charAt(0).toUpperCase()}
-          </div>
+          <Avatar
+            src={avatarUrl}
+            alt={participantName}
+            initials={conversation.otherParticipant?.full_name?.charAt(0).toUpperCase() || 'P'}
+            className="h-12 w-12 text-lg shadow-sm"
+            enablePreview={false}
+          />
         )}
 
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-semibold text-gray-900 md:text-xl">
-            {conversation.otherParticipant?.full_name}
-          </h2>
+          {profilePath ? (
+            <Link
+              to={profilePath}
+              className="block truncate text-lg font-semibold text-gray-900 transition hover:text-purple-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500 md:text-xl"
+            >
+              {participantName}
+            </Link>
+          ) : (
+            <h2 className="truncate text-lg font-semibold text-gray-900 md:text-xl">{participantName}</h2>
+          )}
           <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
             <span
               className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium md:text-sm ${

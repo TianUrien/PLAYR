@@ -5,8 +5,9 @@ import { Input, Button } from '@/components'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
-import { optimizeImage, validateImage } from '@/lib/imageOptimization'
+import { optimizeAvatarImage, validateImage } from '@/lib/imageOptimization'
 import { invalidateProfile } from '@/lib/profile'
+import { deleteStorageObject } from '@/lib/storage'
 
 type UserRole = 'player' | 'coach' | 'club'
 
@@ -32,7 +33,7 @@ export default function CompleteProfile() {
   const { user, profile, loading: authLoading, profileStatus } = useAuthStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [avatarUrl, setAvatarUrl] = useState<string>('')
+  const [avatarUrl, setAvatarUrl] = useState<string>(profile?.avatar_url || '')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [fallbackRole, setFallbackRole] = useState<UserRole | null>(null)
   const [fallbackEmail, setFallbackEmail] = useState<string>('')
@@ -136,16 +137,10 @@ export default function CompleteProfile() {
 
       // Optimize image before upload
       logger.debug('Optimizing avatar image...')
-      const optimizedFile = await optimizeImage(file, {
-        maxWidth: 800,
-        maxHeight: 800,
-        maxSizeMB: 0.5, // 500KB max for avatars
-        quality: 0.85
-      })
+      const optimizedFile = await optimizeAvatarImage(file)
 
-      const fileExt = optimizedFile.name.split('.').pop()
-      const fileName = `${user.id}-${Math.random()}.${fileExt}`
-      const filePath = `${fileName}`
+      const fileExt = optimizedFile.name.split('.').pop() || 'jpg'
+      const filePath = `${user.id}/avatar_${Date.now()}.${fileExt}`
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -157,7 +152,11 @@ export default function CompleteProfile() {
         .from('avatars')
         .getPublicUrl(filePath)
 
+      const previousUrl = avatarUrl || profile?.avatar_url || null
       setAvatarUrl(publicUrl)
+      if (previousUrl && previousUrl !== publicUrl) {
+        await deleteStorageObject({ bucket: 'avatars', publicUrl: previousUrl, context: 'complete-profile:replace-avatar' })
+      }
       logger.info('Avatar uploaded successfully')
     } catch (err) {
       logger.error('Error uploading avatar:', err)

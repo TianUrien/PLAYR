@@ -12,6 +12,7 @@ import { useToastStore } from '@/lib/toast'
 import ConfirmActionModal from './ConfirmActionModal'
 import MediaLightbox from './MediaLightbox'
 import Skeleton from './Skeleton'
+import { deleteStorageObject } from '@/lib/storage'
 
 interface MediaTabHeaderRenderProps {
   canManageVideo: boolean
@@ -189,15 +190,7 @@ export default function MediaTab({ profileId, readOnly = false, renderHeader }: 
 
     setDeletingPhotoId(photoPendingDelete.id)
     try {
-      const urlParts = photoPendingDelete.photo_url.split('/gallery/')
-      if (urlParts.length < 2) throw new Error('Invalid photo URL')
-      const filePath = urlParts[1]
-
-      const { error: storageError } = await supabase.storage
-        .from('gallery')
-        .remove([filePath])
-
-      if (storageError) throw storageError
+      await deleteStorageObject({ bucket: 'gallery', publicUrl: photoPendingDelete.photo_url, context: 'media-tab:delete-photo' })
 
       const { error: dbError } = await supabase
         .from('gallery_photos')

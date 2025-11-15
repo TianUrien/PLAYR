@@ -158,17 +158,14 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
           <div className="flex flex-col md:flex-row gap-6">
             {/* Avatar */}
             <div className="flex-shrink-0">
-              {profile.avatar_url ? (
-                <Avatar
-                  src={profile.avatar_url}
-                  alt={profile.full_name ?? undefined}
-                  size="xl"
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center text-white text-2xl font-bold">
-                  {getInitials(profile.full_name)}
-                </div>
-              )}
+              <Avatar
+                src={profile.avatar_url}
+                alt={profile.full_name ?? undefined}
+                initials={getInitials(profile.full_name)}
+                size="xl"
+                enablePreview
+                previewTitle={profile.full_name ?? undefined}
+              />
             </div>
 
             {/* Info */}

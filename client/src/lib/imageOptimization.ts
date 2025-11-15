@@ -11,6 +11,8 @@ interface OptimizeOptions {
   maxSizeMB?: number
   quality?: number
   mimeType?: string
+  forceSquare?: boolean
+  squareSize?: number
 }
 
 const DEFAULT_OPTIONS: Required<OptimizeOptions> = {
@@ -18,7 +20,9 @@ const DEFAULT_OPTIONS: Required<OptimizeOptions> = {
   maxHeight: 1200,
   maxSizeMB: 1,
   quality: 0.8, // 0-1 scale
-  mimeType: 'image/jpeg'
+  mimeType: 'image/jpeg',
+  forceSquare: false,
+  squareSize: 512,
 }
 
 /**
@@ -56,26 +60,53 @@ export async function optimizeImage(
     // Load image
     const img = await loadImage(file)
     
-    // Calculate new dimensions
-    const { width, height } = calculateDimensions(
-      img.width,
-      img.height,
-      opts.maxWidth,
-      opts.maxHeight
-    )
-    
-    // Resize and compress
+    const shouldForceSquare = opts.forceSquare
     const canvas = document.createElement('canvas')
-    canvas.width = width
-    canvas.height = height
-    
+    let drawSourceX = 0
+    let drawSourceY = 0
+    let drawSourceWidth = img.width
+    let drawSourceHeight = img.height
+
+    if (shouldForceSquare) {
+      const sourceSide = Math.min(img.width, img.height)
+      const targetSide = Math.min(opts.squareSize, sourceSide)
+      drawSourceX = (img.width - sourceSide) / 2
+      drawSourceY = (img.height - sourceSide) / 2
+      drawSourceWidth = sourceSide
+      drawSourceHeight = sourceSide
+      canvas.width = targetSide
+      canvas.height = targetSide
+    } else {
+      const { width, height } = calculateDimensions(
+        img.width,
+        img.height,
+        opts.maxWidth,
+        opts.maxHeight
+      )
+      canvas.width = width
+      canvas.height = height
+    }
+    const targetWidth = canvas.width
+    const targetHeight = canvas.height
+
+    // Resize and compress
     const ctx = canvas.getContext('2d')
     if (!ctx) {
       throw new Error('Failed to get canvas context')
     }
     
     // Draw resized image
-    ctx.drawImage(img, 0, 0, width, height)
+    ctx.drawImage(
+      img,
+      drawSourceX,
+      drawSourceY,
+      drawSourceWidth,
+      drawSourceHeight,
+      0,
+      0,
+      targetWidth,
+      targetHeight
+    )
     
     // Convert to blob with compression
     const blob = await canvasToBlob(canvas, opts.mimeType, opts.quality)
@@ -111,6 +142,19 @@ export async function optimizeImage(
     logger.error('Error optimizing image, using original:', error)
     return file // Return original on error
   }
+}
+
+export async function optimizeAvatarImage(file: File): Promise<File> {
+  const isPng = file.type === 'image/png'
+  return optimizeImage(file, {
+    maxWidth: 1024,
+    maxHeight: 1024,
+    maxSizeMB: 1.5,
+    quality: 0.92,
+    mimeType: isPng ? 'image/png' : 'image/jpeg',
+    forceSquare: true,
+    squareSize: 512,
+  })
 }
 
 /**

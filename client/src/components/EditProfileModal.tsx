@@ -5,10 +5,11 @@ import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
 import { Button, Input } from '@/components'
 import { logger } from '@/lib/logger'
-import { optimizeImage, validateImage } from '@/lib/imageOptimization'
+import { optimizeAvatarImage, validateImage } from '@/lib/imageOptimization'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { invalidateProfile } from '@/lib/profile'
 import { useToastStore } from '@/lib/toast'
+import { deleteStorageObject } from '@/lib/storage'
 
 interface EditProfileModalProps {
   isOpen: boolean
@@ -92,16 +93,10 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
 
       // Optimize image before upload
       logger.debug('Optimizing avatar image...')
-      const optimizedFile = await optimizeImage(file, {
-        maxWidth: 800, // Avatars don't need to be huge
-        maxHeight: 800,
-        maxSizeMB: 0.5, // 500KB max for avatars
-        quality: 0.85
-      });
+      const optimizedFile = await optimizeAvatarImage(file);
 
-      const fileExt = optimizedFile.name.split('.').pop();
-      const fileName = `${profile.id}-${Math.random()}.${fileExt}`;
-      const filePath = `${fileName}`;
+      const fileExt = optimizedFile.name.split('.').pop() || 'jpg';
+      const filePath = `${profile.id}/avatar_${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -113,7 +108,11 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
         .from('avatars')
         .getPublicUrl(filePath);
 
-      setFormData({ ...formData, avatar_url: publicUrl });
+      const previousUrl = formData.avatar_url || profile.avatar_url || null
+      setFormData(prev => ({ ...prev, avatar_url: publicUrl }))
+      if (previousUrl && previousUrl !== publicUrl) {
+        await deleteStorageObject({ bucket: 'avatars', publicUrl: previousUrl, context: 'edit-profile:replace-avatar' })
+      }
       logger.info('Avatar uploaded successfully')
     } catch (error) {
       logger.error('Error uploading avatar:', error);
