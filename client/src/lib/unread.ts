@@ -19,8 +19,6 @@ interface UnreadState {
   reset: () => void
 }
 
-let refreshTimeout: ReturnType<typeof setTimeout> | null = null
-
 const fetchUnreadCount = async (userId: string, options?: RefreshOptions): Promise<number> => {
   const cacheKey = generateCacheKey('unread_count', { userId })
   if (options?.bypassCache) {
@@ -66,10 +64,6 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
     if (channel) {
       supabase.removeChannel(channel)
     }
-    if (refreshTimeout) {
-      clearTimeout(refreshTimeout)
-      refreshTimeout = null
-    }
     set({ count: 0, loading: false, userId: null, channel: null })
   },
 
@@ -98,72 +92,39 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
       return
     }
 
-    if (currentUserId !== userId) {
-      if (existingChannel) {
-        await supabase.removeChannel(existingChannel)
-      }
-      set({ channel: null, userId })
-      await refresh({ bypassCache: true })
-    } else if (!existingChannel) {
-      await refresh({ bypassCache: true })
+    const shouldResubscribe = currentUserId !== userId || !existingChannel
+
+    if (currentUserId !== userId && existingChannel) {
+      await supabase.removeChannel(existingChannel)
     }
 
-    if (!get().channel) {
-      const queueRefresh = () => {
-        if (refreshTimeout) {
-          clearTimeout(refreshTimeout)
+    set({ userId, channel: shouldResubscribe ? null : existingChannel })
+    await refresh({ bypassCache: true })
+
+    if (!shouldResubscribe && existingChannel) {
+      return
+    }
+
+    const channel = supabase
+      .channel(`unread-counter-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_unread_counters',
+          filter: `user_id=eq.${userId}`
+        },
+        payload => {
+          const nextCount = typeof payload.new?.unread_count === 'number'
+            ? payload.new.unread_count
+            : Math.max(0, Number(payload.old?.unread_count) || 0)
+
+          set({ count: nextCount })
         }
+      )
+      .subscribe()
 
-        refreshTimeout = setTimeout(() => {
-          get().refresh({ bypassCache: true })
-        }, 250)
-      }
-
-      const channel = supabase
-        .channel(`unread-conversations-${userId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'conversations',
-            filter: `participant_one_id=eq.${userId}`
-          },
-          queueRefresh
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'conversations',
-            filter: `participant_two_id=eq.${userId}`
-          },
-          queueRefresh
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'conversations',
-            filter: `participant_one_id=eq.${userId}`
-          },
-          queueRefresh
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'conversations',
-            filter: `participant_two_id=eq.${userId}`
-          },
-          queueRefresh
-        )
-        .subscribe()
-
-      set({ channel })
-    }
+    set({ channel })
   }
 }))

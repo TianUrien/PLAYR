@@ -23,22 +23,12 @@ RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.status = 'open' AND (OLD.status IS DISTINCT FROM 'open') AND NEW.published_at IS NULL THEN
     NEW.published_at = timezone('utc', now());
-  AS $$
-  DECLARE
-    requester_role TEXT := auth.role();
-    requester_id UUID := auth.uid();
-    target_profile public.profiles;
-    updated_profile public.profiles;
-    new_role TEXT;
-  BEGIN
-    SELECT * INTO target_profile
-    FROM public.profiles
-    WHERE id = p_user_id
-    FOR UPDATE;
+  END IF;
 
-    IF NOT FOUND THEN
-      RAISE EXCEPTION 'Profile not found for user %', p_user_id;
-    END IF;
+  IF NEW.status = 'closed' AND (OLD.status IS DISTINCT FROM 'closed') AND NEW.closed_at IS NULL THEN
+    NEW.closed_at = timezone('utc', now());
+  END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -48,19 +38,11 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.update_conversation_timestamp()
 RETURNS TRIGGER AS $$
-
-      IF p_role IS NOT NULL AND p_role <> target_profile.role THEN
-        RAISE EXCEPTION 'Profile role is managed by PLAYR staff';
-      END IF;
-
-      new_role := target_profile.role;
-    ELSE
-      new_role := COALESCE(p_role, target_profile.role);
 BEGIN
   UPDATE public.conversations
   SET
     last_message_at = NEW.sent_at,
-      role = new_role,
+    updated_at = timezone('utc', now())
   WHERE id = NEW.conversation_id;
 
   RETURN NEW;
@@ -91,6 +73,7 @@ BEGIN
     NEW.participant_one_id := NEW.participant_two_id;
     NEW.participant_two_id := tmp;
   END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -115,6 +98,13 @@ CREATE OR REPLACE FUNCTION public.acquire_profile_lock(profile_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN pg_try_advisory_lock(hashtext(profile_id::TEXT));
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION public.release_profile_lock(profile_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN pg_advisory_unlock(hashtext(profile_id::TEXT));
 END;
 $$ LANGUAGE plpgsql;
 
@@ -207,13 +197,6 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.set_profile_comment_status(UUID, comment_status) TO authenticated;
 COMMENT ON FUNCTION public.set_profile_comment_status IS 'Allows owners (or admins) to toggle visibility/hidden status for comments on their profile.';
-CREATE OR REPLACE FUNCTION public.release_profile_lock(profile_id UUID)
-RETURNS BOOLEAN AS $$
-BEGIN
-  RETURN pg_advisory_unlock(hashtext(profile_id::TEXT));
-END;
-$$ LANGUAGE plpgsql;
-
 -- ============================================================================
 -- USER CONVERSATION GUARD (USED BY RLS)
 -- ============================================================================
@@ -363,6 +346,10 @@ BEGIN
     updated_at = timezone('utc', now())
   WHERE id = p_user_id
   RETURNING * INTO updated_profile;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Profile not found for user %', p_user_id;
+  END IF;
 
   RETURN updated_profile;
 END;

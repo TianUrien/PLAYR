@@ -1,105 +1,117 @@
-create type public.friendship_status as enum (
-  'pending',
-  'accepted',
-  'rejected',
-  'cancelled',
-  'blocked'
-
-as $$
-create table public.profile_friendships (
-  actor_id uuid := auth.uid();
-  actor_role text := auth.role();
-begin
-  id uuid primary key default gen_random_uuid(),
-  user_one uuid not null references public.profiles (id) on delete cascade,
-  user_two uuid not null references public.profiles (id) on delete cascade,
-  requester_id uuid not null references public.profiles (id) on delete cascade,
-  status public.friendship_status not null default 'pending',
-  created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now()),
-
-  if tg_op = 'UPDATE' then
-    if actor_role <> 'service_role' then
-      if actor_id is null or (actor_id <> old.user_one and actor_id <> old.user_two) then
-        raise exception 'Only friendship participants can update the relationship';
-      end if;
-
-      if new.user_one <> old.user_one or new.user_two <> old.user_two or new.requester_id <> old.requester_id then
-        raise exception 'Friendship participants are immutable';
-      end if;
-
-      if new.status = 'accepted' then
-        if old.status <> 'pending' then
-          raise exception 'Only pending friendships can be accepted';
-        end if;
-        if actor_id = old.requester_id then
-          raise exception 'Requester cannot accept their own friendship request';
-        end if;
-      end if;
-
-      if new.status in ('cancelled', 'rejected') and actor_id <> old.requester_id then
-        raise exception 'Only the requester can cancel or reject a friendship';
-      end if;
-
-      if new.status = 'pending' and old.status <> 'pending' then
-        raise exception 'Friendships cannot revert to pending';
-      end if;
-    end if;
-  end if;
-  accepted_at timestamptz,
-  pair_key_lower uuid generated always as (least(user_one, user_two)) stored,
-  pair_key_upper uuid generated always as (greatest(user_one, user_two)) stored,
-  constraint profile_friendships_participants_different check (user_one <> user_two),
-  constraint profile_friendships_requester_in_pair check (requester_id = user_one or requester_id = user_two)
-);
-
-create unique index if not exists profile_friendships_pair_key_idx
-  on public.profile_friendships (pair_key_lower, pair_key_upper);
-
-create index if not exists profile_friendships_status_idx on public.profile_friendships (status);
-create index if not exists profile_friendships_requester_idx on public.profile_friendships (requester_id);
-
-create or replace function public.handle_friendship_state()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if new.user_one = new.user_two then
-    raise exception 'Cannot create friendship with yourself';
-  end if;
-
-  if new.requester_id is null or (new.requester_id <> new.user_one and new.requester_id <> new.user_two) then
-    raise exception 'Requester must be part of the friendship';
-  end if;
-
-  if new.status = 'accepted' then
-    if new.accepted_at is null then
-      new.accepted_at := timezone('utc', now());
-    end if;
-  else
-    new.accepted_at := null;
-  end if;
-
-  if tg_op = 'INSERT' then
-    new.created_at := coalesce(new.created_at, timezone('utc', now()));
-  end if;
-
-  return new;
-end;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE t.typname = 'friendship_status'
+      AND n.nspname = 'public'
+  ) THEN
+    CREATE TYPE public.friendship_status AS ENUM (
+      'pending',
+      'accepted',
+      'rejected',
+      'cancelled',
+      'blocked'
+    );
+  END IF;
+END
 $$;
 
-create trigger profile_friendships_handle_state
-before insert or update on public.profile_friendships
-for each row execute function public.handle_friendship_state();
+CREATE TABLE IF NOT EXISTS public.profile_friendships (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_one UUID NOT NULL REFERENCES public.profiles (id) ON DELETE CASCADE,
+  user_two UUID NOT NULL REFERENCES public.profiles (id) ON DELETE CASCADE,
+  requester_id UUID NOT NULL REFERENCES public.profiles (id) ON DELETE CASCADE,
+  status public.friendship_status NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+  accepted_at TIMESTAMPTZ,
+  pair_key_lower UUID GENERATED ALWAYS AS (LEAST(user_one, user_two)) STORED,
+  pair_key_upper UUID GENERATED ALWAYS AS (GREATEST(user_one, user_two)) STORED,
+  CONSTRAINT profile_friendships_participants_different CHECK (user_one <> user_two),
+  CONSTRAINT profile_friendships_requester_in_pair CHECK (requester_id = user_one OR requester_id = user_two)
+);
 
-create trigger profile_friendships_set_updated_at
-before update on public.profile_friendships
-for each row execute function public.handle_updated_at();
+CREATE UNIQUE INDEX IF NOT EXISTS profile_friendships_pair_key_idx
+  ON public.profile_friendships (pair_key_lower, pair_key_upper);
 
-create or replace view public.profile_friend_edges as
-select
+CREATE INDEX IF NOT EXISTS profile_friendships_status_idx ON public.profile_friendships (status);
+CREATE INDEX IF NOT EXISTS profile_friendships_requester_idx ON public.profile_friendships (requester_id);
+
+CREATE OR REPLACE FUNCTION public.handle_friendship_state()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  actor_id UUID := auth.uid();
+  actor_role TEXT := auth.role();
+BEGIN
+  IF NEW.user_one = NEW.user_two THEN
+    RAISE EXCEPTION 'Cannot create friendship with yourself';
+  END IF;
+
+  IF NEW.requester_id IS NULL OR (NEW.requester_id <> NEW.user_one AND NEW.requester_id <> NEW.user_two) THEN
+    RAISE EXCEPTION 'Requester must be part of the friendship';
+  END IF;
+
+  IF TG_OP = 'UPDATE' THEN
+    IF actor_role <> 'service_role' THEN
+      IF actor_id IS NULL OR (actor_id <> OLD.user_one AND actor_id <> OLD.user_two) THEN
+        RAISE EXCEPTION 'Only friendship participants can update the relationship';
+      END IF;
+
+      IF NEW.user_one <> OLD.user_one OR NEW.user_two <> OLD.user_two OR NEW.requester_id <> OLD.requester_id THEN
+        RAISE EXCEPTION 'Friendship participants are immutable';
+      END IF;
+
+      IF NEW.status = 'accepted' THEN
+        IF OLD.status <> 'pending' THEN
+          RAISE EXCEPTION 'Only pending friendships can be accepted';
+        END IF;
+        IF actor_id = OLD.requester_id THEN
+          RAISE EXCEPTION 'Requester cannot accept their own friendship request';
+        END IF;
+      END IF;
+
+      IF NEW.status IN ('cancelled', 'rejected') AND actor_id <> OLD.requester_id THEN
+        RAISE EXCEPTION 'Only the requester can cancel or reject a friendship';
+      END IF;
+
+      IF NEW.status = 'pending' AND OLD.status <> 'pending' THEN
+        RAISE EXCEPTION 'Friendships cannot revert to pending';
+      END IF;
+    END IF;
+  END IF;
+
+  IF NEW.status = 'accepted' THEN
+    IF NEW.accepted_at IS NULL THEN
+      NEW.accepted_at := timezone('utc', now());
+    END IF;
+  ELSE
+    NEW.accepted_at := NULL;
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    NEW.created_at := COALESCE(NEW.created_at, timezone('utc', now()));
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER profile_friendships_handle_state
+BEFORE INSERT OR UPDATE ON public.profile_friendships
+FOR EACH ROW EXECUTE FUNCTION public.handle_friendship_state();
+
+CREATE TRIGGER profile_friendships_set_updated_at
+BEFORE UPDATE ON public.profile_friendships
+FOR EACH ROW EXECUTE FUNCTION public.handle_updated_at();
+
+CREATE OR REPLACE VIEW public.profile_friend_edges AS
+SELECT
   pf.id,
   pf.user_one,
   pf.user_two,
@@ -110,11 +122,11 @@ select
   pf.accepted_at,
   pf.pair_key_lower,
   pf.pair_key_upper,
-  pf.user_one as profile_id,
-  pf.user_two as friend_id
-from public.profile_friendships pf
-union all
-select
+  pf.user_one AS profile_id,
+  pf.user_two AS friend_id
+FROM public.profile_friendships pf
+UNION ALL
+SELECT
   pf.id,
   pf.user_one,
   pf.user_two,
@@ -125,75 +137,80 @@ select
   pf.accepted_at,
   pf.pair_key_lower,
   pf.pair_key_upper,
-  pf.user_two as profile_id,
-  pf.user_one as friend_id
-from public.profile_friendships pf;
+  pf.user_two AS profile_id,
+  pf.user_one AS friend_id
+FROM public.profile_friendships pf;
 
-alter table public.profile_friendships enable row level security;
+ALTER TABLE public.profile_friendships ENABLE ROW LEVEL SECURITY;
 
-create policy "friendships readable"
-  on public.profile_friendships
-  for select
-  using (
+DROP POLICY IF EXISTS "friendships readable" ON public.profile_friendships;
+CREATE POLICY "friendships readable"
+  ON public.profile_friendships
+  FOR SELECT
+  USING (
     status = 'accepted'
-    or auth.uid() = user_one
-    or auth.uid() = user_two
-    or auth.role() = 'service_role'
+    OR auth.uid() = user_one
+    OR auth.uid() = user_two
+    OR auth.role() = 'service_role'
   );
 
-create policy "friendships insert"
-  on public.profile_friendships
-  for insert
-  with check (
+DROP POLICY IF EXISTS "friendships insert" ON public.profile_friendships;
+CREATE POLICY "friendships insert"
+  ON public.profile_friendships
+  FOR INSERT
+  WITH CHECK (
     auth.role() = 'service_role'
-    or (
+    OR (
       auth.uid() = requester_id
-      and (auth.uid() = user_one or auth.uid() = user_two)
-      and status = 'pending'
+      AND (auth.uid() = user_one OR auth.uid() = user_two)
+      AND status = 'pending'
     )
   );
 
-drop policy if exists "friendships update" on public.profile_friendships;
+DROP POLICY IF EXISTS "friendships update" ON public.profile_friendships;
+DROP POLICY IF EXISTS "friendships requester update" ON public.profile_friendships;
+DROP POLICY IF EXISTS "friendships recipient update" ON public.profile_friendships;
 
-create policy "friendships requester update"
-  on public.profile_friendships
-  for update
-  using (
+CREATE POLICY "friendships requester update"
+  ON public.profile_friendships
+  FOR UPDATE
+  USING (
     auth.role() = 'service_role'
-    or auth.uid() = requester_id
+    OR auth.uid() = requester_id
   )
-  with check (
+  WITH CHECK (
     auth.role() = 'service_role'
-    or (
+    OR (
       auth.uid() = requester_id
-      and status in ('pending', 'cancelled', 'rejected', 'blocked')
+      AND status IN ('pending', 'cancelled', 'rejected', 'blocked')
     )
   );
 
-create policy "friendships recipient update"
-  on public.profile_friendships
-  for update
-  using (
+CREATE POLICY "friendships recipient update"
+  ON public.profile_friendships
+  FOR UPDATE
+  USING (
     auth.role() = 'service_role'
-    or (
+    OR (
       auth.uid() <> requester_id
-      and (auth.uid() = user_one or auth.uid() = user_two)
+      AND (auth.uid() = user_one OR auth.uid() = user_two)
     )
   )
-  with check (
+  WITH CHECK (
     auth.role() = 'service_role'
-    or (
+    OR (
       auth.uid() <> requester_id
-      and (auth.uid() = user_one or auth.uid() = user_two)
-      and status in ('accepted', 'blocked')
+      AND (auth.uid() = user_one OR auth.uid() = user_two)
+      AND status IN ('accepted', 'blocked')
     )
   );
 
-create policy "friendships delete"
-  on public.profile_friendships
-  for delete
-  using (
+DROP POLICY IF EXISTS "friendships delete" ON public.profile_friendships;
+CREATE POLICY "friendships delete"
+  ON public.profile_friendships
+  FOR DELETE
+  USING (
     auth.role() = 'service_role'
-    or auth.uid() = user_one
-    or auth.uid() = user_two
+    OR auth.uid() = user_one
+    OR auth.uid() = user_two
   );

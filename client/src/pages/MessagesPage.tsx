@@ -222,57 +222,7 @@ export default function MessagesPage() {
     }
   }, [searchParams, user?.id, conversations, pendingConversation, setSearchParams])
 
-  const activeConversationIds = useMemo(() => {
-    return conversations.map((conv) => conv.id).sort()
-  }, [conversations])
-
-  const conversationFilter = useMemo(() => {
-    if (activeConversationIds.length === 0) {
-      return ''
-    }
-    const quotedIds = activeConversationIds.map((id) => `"${id}"`).join(',')
-    return `conversation_id=in.(${quotedIds})`
-  }, [activeConversationIds])
-
-  // Set up scoped real-time subscription for relevant conversations only
-  useEffect(() => {
-    if (!user?.id || !conversationFilter) {
-      return
-    }
-    const channel = supabase
-      .channel(`messages-realtime:${user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: conversationFilter
-        },
-        () => {
-          void fetchConversations({ force: true })
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-          filter: conversationFilter
-        },
-        () => {
-          void fetchConversations({ force: true })
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [user?.id, conversationFilter, fetchConversations])
-
-  // Listen for newly created conversations that involve the current user
+  // Participant-scoped realtime: refresh whenever any conversation involving the user changes
   useEffect(() => {
     if (!user?.id) {
       return
@@ -283,11 +233,11 @@ export default function MessagesPage() {
     }
 
     const channel = supabase
-      .channel(`conversations-realtime:${user.id}`)
+      .channel(`conversation-events:${user.id}`)
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'conversations',
           filter: `participant_one_id=eq.${user.id}`
@@ -297,7 +247,7 @@ export default function MessagesPage() {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'conversations',
           filter: `participant_two_id=eq.${user.id}`

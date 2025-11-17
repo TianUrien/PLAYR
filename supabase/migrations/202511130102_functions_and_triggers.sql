@@ -65,24 +65,15 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.normalize_conversation_participants()
 RETURNS TRIGGER AS $$
-AS $$
 DECLARE
-  requester_role TEXT := auth.role();
-  requester_id UUID := auth.uid();
-  target_profile public.profiles;
-  updated_profile public.profiles;
-  new_role TEXT;
+  tmp UUID;
 BEGIN
-  SELECT * INTO target_profile
-  FROM public.profiles
-  WHERE id = p_user_id
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Profile not found for user %', p_user_id;
-  END IF;
+  IF NEW.participant_one_id > NEW.participant_two_id THEN
+    tmp := NEW.participant_one_id;
+    NEW.participant_one_id := NEW.participant_two_id;
     NEW.participant_two_id := tmp;
   END IF;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -90,19 +81,11 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 -- PROFILE UPDATE SAFETY
 -- ============================================================================
-
-    IF p_role IS NOT NULL AND p_role <> target_profile.role THEN
-      RAISE EXCEPTION 'Profile role is managed by PLAYR staff';
-    END IF;
-
-    new_role := target_profile.role;
-  ELSE
-    new_role := COALESCE(p_role, target_profile.role);
 CREATE OR REPLACE FUNCTION public.check_concurrent_profile_update()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.avatar_url IS DISTINCT FROM OLD.avatar_url THEN
-    role = new_role,
+    PERFORM pg_sleep(0.05);
   END IF;
   RETURN NEW;
 END;
@@ -274,6 +257,10 @@ BEGIN
     updated_at = timezone('utc', now())
   WHERE id = p_user_id
   RETURNING * INTO updated_profile;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Profile not found for user %', p_user_id;
+  END IF;
 
   RETURN updated_profile;
 END;

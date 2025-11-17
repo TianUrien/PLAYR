@@ -1,13 +1,18 @@
 // deno-lint-ignore-file no-explicit-any
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 
 interface DeleteAccountResponse {
   success: boolean
   error?: string
+  correlationId?: string
+  durationMs?: number
+  status?: 'complete' | 'partial'
+  warnings?: string[]
   deletedData?: {
     profiles: number
     messages: number
+    archivedMessages?: number
     conversations: number
     applications: number
     playerMedia: number
@@ -15,28 +20,198 @@ interface DeleteAccountResponse {
     playingHistory: number
     vacancies: number
     storageFiles: number
+    notifications?: number
+    friendships?: number
+    unreadCounters?: number
+  }
+}
+
+type LogMeta = Record<string, unknown>
+
+type SupabaseServerClient = SupabaseClient<any, any, any>
+
+type StorageTarget = {
+  bucket: string
+  prefix: string
+  label: string
+}
+
+const STORAGE_BUCKETS = ['avatars', 'gallery', 'club-media', 'player-media', 'journey'] as const
+const STORAGE_PAGE_SIZE = 100
+const DB_BATCH_SIZE = 2000
+const DELETE_RELATIONS_FUNCTION = 'hard_delete_profile_relations'
+
+const createLogger = (correlationId: string) => ({
+  info: (message: string, meta?: LogMeta) => console.log(`[DELETE_ACCOUNT][${correlationId}] ${message}`, meta ?? ''),
+  warn: (message: string, meta?: LogMeta) => console.warn(`[DELETE_ACCOUNT][${correlationId}] ${message}`, meta ?? ''),
+  error: (message: string, meta?: LogMeta) => console.error(`[DELETE_ACCOUNT][${correlationId}] ${message}`, meta ?? ''),
+})
+
+const sanitizeBearerToken = (authHeader: string | null): string => {
+  if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
+    throw new Error('Missing authorization header')
+  }
+
+  const token = authHeader.slice(7).trim()
+  if (!token) {
+    throw new Error('Invalid authorization token')
+  }
+
+  return token
+}
+
+const normalizePrefix = (prefix: string): string => prefix.replace(/^\/+/, '').replace(/\/+$/, '')
+
+const getStorageTargets = (userId: string): StorageTarget[] =>
+  STORAGE_BUCKETS.map((bucket) => ({
+    bucket,
+    prefix: userId,
+    label: bucket,
+  }))
+
+const deleteStoragePrefix = async (client: SupabaseServerClient, target: StorageTarget): Promise<number> => {
+  const normalizedPrefix = normalizePrefix(target.prefix)
+  if (!normalizedPrefix) {
+    return 0
+  }
+
+  const objectsToDelete: string[] = []
+
+  const collectObjects = async (path: string) => {
+    let offset = 0
+
+    while (true) {
+      const { data, error } = await client.storage.from(target.bucket).list(path, {
+        limit: STORAGE_PAGE_SIZE,
+        offset,
+      })
+
+      if (error) {
+        if (isMissingStorageFolder(error)) {
+          return
+        }
+        throw error
+      }
+
+      if (!data || data.length === 0) {
+        break
+      }
+
+      for (const entry of data) {
+        const nextPath = path ? `${path}/${entry.name}` : entry.name
+        if ((entry as { id?: string | null }).id) {
+          objectsToDelete.push(nextPath)
+        } else {
+          await collectObjects(nextPath)
+        }
+      }
+
+      if (data.length < STORAGE_PAGE_SIZE) {
+        break
+      }
+
+      offset += STORAGE_PAGE_SIZE
+    }
+  }
+
+  await collectObjects(normalizedPrefix)
+
+  if (objectsToDelete.length === 0) {
+    return 0
+  }
+
+  let removed = 0
+  for (let index = 0; index < objectsToDelete.length; index += STORAGE_PAGE_SIZE) {
+    const chunk = objectsToDelete.slice(index, index + STORAGE_PAGE_SIZE)
+    const { error: removeError } = await client.storage.from(target.bucket).remove(chunk)
+    if (removeError) {
+      throw removeError
+    }
+    removed += chunk.length
+  }
+
+  return removed
+}
+
+const isMissingStorageFolder = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const maybeError = error as { message?: string; statusCode?: number | string }
+  if (maybeError.statusCode === 404 || maybeError.statusCode === '404') {
+    return true
+  }
+
+  return Boolean(maybeError.message?.toLowerCase().includes('not found'))
+}
+
+const applyDeletionSummary = (
+  deletedData: NonNullable<DeleteAccountResponse['deletedData']>,
+  summary?: Record<string, number | null>
+) => {
+  if (!summary) {
+    return
+  }
+
+  const pick = (key: string): number => Number(summary[key] ?? 0)
+
+  deletedData.applications = pick('applications')
+  deletedData.vacancies = pick('vacancies')
+  deletedData.playingHistory = pick('playingHistory')
+  deletedData.playerMedia = pick('galleryPhotos')
+  deletedData.clubMedia = pick('clubMedia')
+  deletedData.messages = pick('messages')
+  deletedData.conversations = pick('conversations')
+  deletedData.profiles = pick('profiles')
+
+  const archived = pick('archivedMessages')
+  if (archived > 0) {
+    deletedData.archivedMessages = archived
+  }
+
+  const notifications = pick('profileNotifications')
+  if (notifications > 0) {
+    deletedData.notifications = notifications
+  }
+
+  const friendships = pick('friendships')
+  if (friendships > 0) {
+    deletedData.friendships = friendships
+  }
+
+  const unreadCounters = pick('unreadCounters')
+  if (unreadCounters > 0) {
+    deletedData.unreadCounters = unreadCounters
   }
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  if (req.method !== 'POST') {
+    return new Response('Method Not Allowed', {
+      headers: corsHeaders,
+      status: 405,
+    })
+  }
+
+  const correlationId = crypto.randomUUID()
+  const logger = createLogger(correlationId)
+  const startedAt = performance.now()
+
   try {
-    // Get JWT from Authorization header
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      throw new Error('Missing authorization header')
+    const token = sanitizeBearerToken(req.headers.get('Authorization'))
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase credentials are not configured')
     }
 
-    const token = authHeader.replace('Bearer ', '')
-
-    // Create Supabase client with user's JWT
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
@@ -44,17 +219,18 @@ Deno.serve(async (req) => {
       },
     })
 
-    // Verify the JWT and get user
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token)
+
     if (authError || !user) {
       throw new Error('Invalid or expired token')
     }
 
-    console.log(`[DELETE ACCOUNT] Starting deletion for user: ${user.id}`)
+    logger.info('Beginning account deletion', { userId: user.id })
 
-    // Track what we delete for response
-    const deletedData = {
+    const deletedData: NonNullable<DeleteAccountResponse['deletedData']> = {
       profiles: 0,
       messages: 0,
       conversations: 0,
@@ -66,197 +242,73 @@ Deno.serve(async (req) => {
       storageFiles: 0,
     }
 
-    // ========================================
-    // STEP 1: Delete Storage Files
-    // ========================================
-    console.log('[DELETE ACCOUNT] Step 1: Deleting storage files...')
-    
+    const warnings: string[] = []
+
+    for (const target of getStorageTargets(user.id)) {
+      try {
+        const removed = await deleteStoragePrefix(supabase, target)
+        if (removed > 0) {
+          deletedData.storageFiles += removed
+          logger.info('Removed storage files', { bucket: target.bucket, removed })
+        }
+      } catch (storageError) {
+        logger.warn('Storage cleanup failed', { bucket: target.bucket, error: storageError })
+        warnings.push(`Failed to purge ${target.bucket}/${target.prefix}`)
+      }
+    }
+
     try {
-      // Delete avatar from avatars bucket
-      const { data: avatarFiles } = await supabase.storage
-        .from('avatars')
-        .list(user.id)
+      const { data, error } = await supabase.rpc(DELETE_RELATIONS_FUNCTION, {
+        p_user_id: user.id,
+        p_batch: DB_BATCH_SIZE,
+      })
 
-      if (avatarFiles && avatarFiles.length > 0) {
-        const avatarPaths = avatarFiles.map(file => `${user.id}/${file.name}`)
-        await supabase.storage.from('avatars').remove(avatarPaths)
-        deletedData.storageFiles += avatarFiles.length
-        console.log(`[DELETE ACCOUNT] Deleted ${avatarFiles.length} avatar files`)
+      if (error) {
+        throw error
       }
 
-      // Delete player media from player-media bucket
-      const { data: playerMediaFiles } = await supabase.storage
-        .from('player-media')
-        .list(user.id)
-
-      if (playerMediaFiles && playerMediaFiles.length > 0) {
-        const playerMediaPaths = playerMediaFiles.map(file => `${user.id}/${file.name}`)
-        await supabase.storage.from('player-media').remove(playerMediaPaths)
-        deletedData.storageFiles += playerMediaFiles.length
-        console.log(`[DELETE ACCOUNT] Deleted ${playerMediaFiles.length} player media files`)
-      }
-
-      // Delete club media from club-media bucket
-      const { data: clubMediaFiles } = await supabase.storage
-        .from('club-media')
-        .list(user.id)
-
-      if (clubMediaFiles && clubMediaFiles.length > 0) {
-        const clubMediaPaths = clubMediaFiles.map(file => `${user.id}/${file.name}`)
-        await supabase.storage.from('club-media').remove(clubMediaPaths)
-        deletedData.storageFiles += clubMediaFiles.length
-        console.log(`[DELETE ACCOUNT] Deleted ${clubMediaFiles.length} club media files`)
-      }
-    } catch (storageError) {
-      console.error('[DELETE ACCOUNT] Storage deletion error:', storageError)
-      // Continue with database deletion even if storage fails
+      applyDeletionSummary(deletedData, data ?? undefined)
+      logger.info('Relational cleanup complete', { counts: data })
+    } catch (dbError) {
+      logger.error('Database cleanup failed', { error: dbError })
+      throw new Error('Failed to delete profile data')
     }
 
-    // ========================================
-    // STEP 2: Delete Database Records
-    // ========================================
-    console.log('[DELETE ACCOUNT] Step 2: Deleting database records...')
-
-    // Delete vacancy applications (where user is applicant)
-    const { error: applicationsError, count: applicationsCount } = await supabase
-      .from('vacancy_applications')
-      .delete({ count: 'exact' })
-      .eq('applicant_id', user.id)
-
-    if (applicationsError) {
-      console.error('[DELETE ACCOUNT] Error deleting applications:', applicationsError)
-    } else {
-      deletedData.applications = applicationsCount || 0
-      console.log(`[DELETE ACCOUNT] Deleted ${applicationsCount} applications`)
-    }
-
-    // Delete vacancies (if user is a club)
-    const { error: vacanciesError, count: vacanciesCount } = await supabase
-      .from('vacancies')
-      .delete({ count: 'exact' })
-      .eq('club_id', user.id)
-
-    if (vacanciesError) {
-      console.error('[DELETE ACCOUNT] Error deleting vacancies:', vacanciesError)
-    } else {
-      deletedData.vacancies = vacanciesCount || 0
-      console.log(`[DELETE ACCOUNT] Deleted ${vacanciesCount} vacancies`)
-    }
-
-    // Delete playing history
-    const { error: historyError, count: historyCount } = await supabase
-      .from('playing_history')
-      .delete({ count: 'exact' })
-      .eq('player_id', user.id)
-
-    if (historyError) {
-      console.error('[DELETE ACCOUNT] Error deleting playing history:', historyError)
-    } else {
-      deletedData.playingHistory = historyCount || 0
-      console.log(`[DELETE ACCOUNT] Deleted ${historyCount} playing history records`)
-    }
-
-    // Delete player media records
-    const { error: playerMediaError, count: playerMediaCount } = await supabase
-      .from('player_media')
-      .delete({ count: 'exact' })
-      .eq('player_id', user.id)
-
-    if (playerMediaError) {
-      console.error('[DELETE ACCOUNT] Error deleting player media:', playerMediaError)
-    } else {
-      deletedData.playerMedia = playerMediaCount || 0
-      console.log(`[DELETE ACCOUNT] Deleted ${playerMediaCount} player media records`)
-    }
-
-    // Delete club media records
-    const { error: clubMediaError, count: clubMediaCount } = await supabase
-      .from('club_media')
-      .delete({ count: 'exact' })
-      .eq('club_id', user.id)
-
-    if (clubMediaError) {
-      console.error('[DELETE ACCOUNT] Error deleting club media:', clubMediaError)
-    } else {
-      deletedData.clubMedia = clubMediaCount || 0
-      console.log(`[DELETE ACCOUNT] Deleted ${clubMediaCount} club media records`)
-    }
-
-    // Delete messages where user is sender
-    const { error: messagesError, count: messagesCount } = await supabase
-      .from('messages')
-      .delete({ count: 'exact' })
-      .eq('sender_id', user.id)
-
-    if (messagesError) {
-      console.error('[DELETE ACCOUNT] Error deleting messages:', messagesError)
-    } else {
-      deletedData.messages = messagesCount || 0
-      console.log(`[DELETE ACCOUNT] Deleted ${messagesCount} messages`)
-    }
-
-    // Delete conversations where user is a participant
-    const { error: conversationsError, count: conversationsCount } = await supabase
-      .from('conversations')
-      .delete({ count: 'exact' })
-      .or(`participant_one_id.eq.${user.id},participant_two_id.eq.${user.id}`)
-
-    if (conversationsError) {
-      console.error('[DELETE ACCOUNT] Error deleting conversations:', conversationsError)
-    } else {
-      deletedData.conversations = conversationsCount || 0
-      console.log(`[DELETE ACCOUNT] Deleted ${conversationsCount} conversations`)
-    }
-
-    // Delete profile
-    const { error: profileError, count: profileCount } = await supabase
-      .from('profiles')
-      .delete({ count: 'exact' })
-      .eq('id', user.id)
-
-    if (profileError) {
-      console.error('[DELETE ACCOUNT] Error deleting profile:', profileError)
-      throw new Error('Failed to delete profile')
-    } else {
-      deletedData.profiles = profileCount || 0
-      console.log(`[DELETE ACCOUNT] Deleted profile`)
-    }
-
-    // ========================================
-    // STEP 3: Delete Auth User
-    // ========================================
-    console.log('[DELETE ACCOUNT] Step 3: Deleting auth user...')
-    
     const { error: deleteUserError } = await supabase.auth.admin.deleteUser(user.id)
-
     if (deleteUserError) {
-      console.error('[DELETE ACCOUNT] Error deleting auth user:', deleteUserError)
+      logger.error('Auth deletion failed', { error: deleteUserError })
       throw new Error('Failed to delete auth user')
     }
 
-    console.log(`[DELETE ACCOUNT] Successfully deleted account for user: ${user.id}`)
-    console.log(`[DELETE ACCOUNT] Summary:`, deletedData)
+    const durationMs = Math.round(performance.now() - startedAt)
+    logger.info('Account deletion completed', { durationMs, warnings })
+
+    const success = warnings.length === 0
 
     const response: DeleteAccountResponse = {
-      success: true,
+      success,
+      correlationId,
+      durationMs,
+      status: success ? 'complete' : 'partial',
+      warnings: warnings.length ? warnings : undefined,
       deletedData,
     }
 
     return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Correlation-Id': correlationId },
       status: 200,
     })
-
   } catch (error: any) {
-    console.error('[DELETE ACCOUNT] Error:', error)
-    
+    logger.error('Delete-account error', { error })
+
     const response: DeleteAccountResponse = {
       success: false,
-      error: error.message || 'An unexpected error occurred',
+      error: error?.message || 'An unexpected error occurred',
+      correlationId,
     }
 
     return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Correlation-Id': correlationId },
       status: 400,
     })
   }

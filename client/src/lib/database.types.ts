@@ -543,6 +543,32 @@ export type Database = {
         }
         Relationships: []
       }
+      user_unread_counters: {
+        Row: {
+          unread_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          unread_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          unread_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_unread_counters_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vacancies: {
         Row: {
           application_deadline: string | null
@@ -701,6 +727,7 @@ export type Database = {
       }
       user_unread_counts: {
         Row: {
+          updated_at: string | null
           unread_count: number | null
           user_id: string | null
         }
@@ -708,6 +735,7 @@ export type Database = {
       }
       user_unread_counts_secure: {
         Row: {
+          updated_at: string | null
           unread_count: number | null
           user_id: string | null
         }
