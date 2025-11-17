@@ -111,21 +111,39 @@ export type Database = {
       }
       gallery_photos: {
         Row: {
+          alt_text: string | null
+          caption: string | null
           created_at: string
           id: string
+          file_name: string | null
+          file_size: number | null
+          order_index: number
           photo_url: string
+          updated_at: string
           user_id: string
         }
         Insert: {
+          alt_text?: string | null
+          caption?: string | null
           created_at?: string
           id?: string
+          file_name?: string | null
+          file_size?: number | null
+          order_index?: number
           photo_url: string
+          updated_at?: string
           user_id: string
         }
         Update: {
+          alt_text?: string | null
+          caption?: string | null
           created_at?: string
           id?: string
+          file_name?: string | null
+          file_size?: number | null
+          order_index?: number
           photo_url?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

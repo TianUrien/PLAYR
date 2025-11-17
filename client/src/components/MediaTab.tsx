@@ -1,18 +1,15 @@
-import { useState, useEffect, useCallback, type ReactNode } from 'react'
-import { Video, Plus, Upload, Trash2 } from 'lucide-react'
+import { useState, useEffect, type ReactNode } from 'react'
+import { Video, Upload, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
-import type { GalleryPhoto, Profile } from '@/lib/supabase'
+import type { Profile } from '@/lib/supabase'
 import Button from './Button'
 import AddVideoLinkModal from './AddVideoLinkModal'
-import { optimizeImage, validateImage } from '@/lib/imageOptimization'
-import { logger } from '@/lib/logger'
 import { invalidateProfile } from '@/lib/profile'
 import { useToastStore } from '@/lib/toast'
 import ConfirmActionModal from './ConfirmActionModal'
-import MediaLightbox from './MediaLightbox'
 import Skeleton from './Skeleton'
-import { deleteStorageObject } from '@/lib/storage'
+import GalleryManager from './GalleryManager'
 
 interface MediaTabHeaderRenderProps {
   canManageVideo: boolean
@@ -32,14 +29,8 @@ export default function MediaTab({ profileId, readOnly = false, renderHeader }: 
   const [isLoadingProfile, setIsLoadingProfile] = useState(true)
   const [targetProfile, setTargetProfile] = useState<Profile | null>(null)
   const [showAddVideoModal, setShowAddVideoModal] = useState(false)
-  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([])
-  const [isLoadingPhotos, setIsLoadingPhotos] = useState(true)
-  const [isUploading, setIsUploading] = useState(false)
-  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null)
   const [deletingVideo, setDeletingVideo] = useState(false)
-  const [photoPendingDelete, setPhotoPendingDelete] = useState<GalleryPhoto | null>(null)
   const [showVideoDeleteModal, setShowVideoDeleteModal] = useState(false)
-  const [previewPhoto, setPreviewPhoto] = useState<GalleryPhoto | null>(null)
 
   // Use the target profile if viewing someone else, otherwise use auth profile
   const displayProfile = targetProfile || authProfile
@@ -90,126 +81,6 @@ export default function MediaTab({ profileId, readOnly = false, renderHeader }: 
   }, [targetUserId, user?.id, authProfile])
 
   // Fetch gallery photos
-  const fetchGalleryPhotos = useCallback(async () => {
-    if (!targetUserId) return
-    
-    setIsLoadingPhotos(true)
-    try {
-      const { data, error } = await supabase
-        .from('gallery_photos')
-        .select('*')
-        .eq('user_id', targetUserId)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setGalleryPhotos(data || [])
-    } catch (error) {
-      console.error('Error fetching gallery photos:', error)
-    } finally {
-      setIsLoadingPhotos(false)
-    }
-  }, [targetUserId])
-
-  useEffect(() => {
-    fetchGalleryPhotos()
-  }, [fetchGalleryPhotos])
-
-  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
-    if (!files || files.length === 0 || !user) return
-
-    setIsUploading(true)
-
-    try {
-      // Upload all selected files
-      for (const file of Array.from(files)) {
-        // Validate file
-        const validation = validateImage(file)
-        if (!validation.valid) {
-          addToast(`${file.name}: ${validation.error}`, 'error')
-          continue
-        }
-
-        // Optimize image before upload
-        logger.debug(`Optimizing ${file.name}...`)
-        const optimizedFile = await optimizeImage(file, {
-          maxWidth: 1200,
-          maxHeight: 1200,
-          maxSizeMB: 1, // 1MB max for gallery photos
-          quality: 0.85
-        })
-
-        // Create unique filename
-        const fileExt = optimizedFile.name.split('.').pop()
-        const fileName = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-
-        // Upload to storage
-        const { error: uploadError } = await supabase.storage
-          .from('gallery')
-          .upload(fileName, optimizedFile)
-
-        if (uploadError) throw uploadError
-
-        // Get public URL
-        const { data: urlData } = supabase.storage
-          .from('gallery')
-          .getPublicUrl(fileName)
-
-        // Save to database
-        const { error: dbError } = await supabase
-          .from('gallery_photos')
-          .insert({
-            user_id: user.id,
-            photo_url: urlData.publicUrl
-          })
-
-        if (dbError) throw dbError
-      }
-
-      // Refresh gallery
-      await fetchGalleryPhotos()
-      logger.info(`Successfully uploaded ${files.length} photo(s)`)
-      addToast(`Uploaded ${files.length} photo${files.length === 1 ? '' : 's'} successfully.`, 'success')
-    } catch (error) {
-      logger.error('Error uploading photos:', error)
-      addToast('Failed to upload photos. Please try again.', 'error')
-    } finally {
-      setIsUploading(false)
-      // Reset input
-      event.target.value = ''
-    }
-  }
-
-  const requestPhotoDelete = (photo: GalleryPhoto) => {
-    if (deletingPhotoId) return
-    setPhotoPendingDelete(photo)
-  }
-
-  const confirmPhotoDelete = async () => {
-    if (!photoPendingDelete) return
-
-    setDeletingPhotoId(photoPendingDelete.id)
-    try {
-      await deleteStorageObject({ bucket: 'gallery', publicUrl: photoPendingDelete.photo_url, context: 'media-tab:delete-photo' })
-
-      const { error: dbError } = await supabase
-        .from('gallery_photos')
-        .delete()
-        .eq('id', photoPendingDelete.id)
-
-      if (dbError) throw dbError
-
-      setGalleryPhotos(prev => prev.filter(p => p.id !== photoPendingDelete.id))
-      addToast('Photo removed from gallery.', 'success')
-    } catch (error) {
-      console.error('Error deleting photo:', error)
-      addToast('Failed to delete photo. Please try again.', 'error')
-    } finally {
-      setDeletingPhotoId(null)
-      setPhotoPendingDelete(null)
-    }
-  }
-
   const confirmVideoDelete = async () => {
     if (!user || deletingVideo) return
 
@@ -233,6 +104,9 @@ export default function MediaTab({ profileId, readOnly = false, renderHeader }: 
       setDeletingVideo(false)
     }
   }
+
+  const canManageGallery = Boolean(!readOnly && targetUserId && targetUserId === user?.id)
+  const galleryEmptyCopy = canManageGallery ? 'No photos yet. Start building your gallery!' : 'No photos in gallery yet.'
 
   return (
     <div className="space-y-8">
@@ -305,122 +179,21 @@ export default function MediaTab({ profileId, readOnly = false, renderHeader }: 
         </div>
       ) : null}
 
-      {/* Gallery Section */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Gallery</h2>
-            <p className="text-sm text-gray-600">Share your best field hockey moments in Instagram-style</p>
-          </div>
-          {!readOnly && (
-            <label className="cursor-pointer">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                className="hidden"
-                disabled={isUploading}
-              />
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-playr-primary text-white rounded-lg hover:bg-playr-primary/90 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
-                <Plus className="w-4 h-4" />
-                {isUploading ? 'Uploading...' : 'Add Photo'}
-              </div>
-            </label>
-          )}
-        </div>
-
-        {isLoadingPhotos ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="aspect-[3/4] w-full" variant="rectangular" />
-            ))}
-          </div>
-        ) : galleryPhotos.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-gray-300 p-8 text-center sm:p-12">
-            <p className="mb-4 text-gray-600">
-              {readOnly ? 'No photos in gallery yet.' : 'No photos yet. Start building your gallery!'}
-            </p>
-            {!readOnly && (
-              <label className="cursor-pointer">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
-                <div className="mx-auto inline-flex items-center gap-2 rounded-lg bg-playr-primary px-4 py-2 font-semibold text-white transition-all hover:bg-playr-primary/90">
-                  <Plus className="h-4 w-4" />
-                  Add Photo
-                </div>
-              </label>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {galleryPhotos.map((photo) => (
-              <div key={photo.id} className="group relative aspect-[3/4] overflow-hidden rounded-lg">
-                <img
-                  src={photo.photo_url}
-                  alt="Gallery"
-                  className="h-full w-full object-cover"
-                />
-                <button
-                  onClick={() => setPreviewPhoto(photo)}
-                  className="absolute inset-0 z-10 rounded-lg bg-black/0 opacity-0 transition-all focus-visible:ring-2 focus-visible:ring-white group-hover:bg-black/10 group-hover:opacity-100"
-                  aria-label="View photo"
-                  type="button"
-                />
-                {!readOnly && (
-                  <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-black bg-opacity-0 transition-all group-hover:bg-opacity-40">
-                    <button
-                      onClick={() => requestPhotoDelete(photo)}
-                      disabled={deletingPhotoId === photo.id}
-                      className="pointer-events-auto opacity-0 group-hover:opacity-100 rounded-full bg-red-500 p-3 text-white transition-all hover:bg-red-600 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-red-600 disabled:cursor-not-allowed disabled:opacity-50"
-                      title="Delete photo"
-                      aria-label="Delete photo"
-                      type="button"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <GalleryManager
+        mode="profile"
+        entityId={targetUserId}
+        readOnly={!canManageGallery}
+        title="Gallery"
+        description="Share your best field hockey moments in Instagram-style"
+        emptyStateDescription={galleryEmptyCopy}
+        addButtonLabel="Add Photo"
+      />
 
       {/* Add Video Link Modal */}
       <AddVideoLinkModal
         isOpen={showAddVideoModal}
         onClose={() => setShowAddVideoModal(false)}
         currentVideoUrl={displayProfile?.highlight_video_url || ''}
-      />
-
-      <ConfirmActionModal
-        isOpen={Boolean(photoPendingDelete)}
-        onClose={() => setPhotoPendingDelete(null)}
-        onConfirm={confirmPhotoDelete}
-        confirmLabel="Delete Photo"
-        confirmTone="danger"
-        confirmLoading={Boolean(deletingPhotoId)}
-        loadingLabel="Deleting..."
-        title="Remove photo from gallery?"
-        description="This will permanently delete the photo from your media gallery."
-        icon={<Trash2 className="h-6 w-6" />}
-        body={photoPendingDelete ? (
-          <div className="space-y-3">
-            <p>Once deleted, teammates and coaches will no longer see this image on your profile.</p>
-            <img
-              src={photoPendingDelete.photo_url}
-              alt="Photo scheduled for deletion"
-              className="h-48 w-full rounded-lg object-cover"
-              loading="lazy"
-            />
-          </div>
-        ) : undefined}
       />
 
       <ConfirmActionModal
@@ -436,10 +209,6 @@ export default function MediaTab({ profileId, readOnly = false, renderHeader }: 
         icon={<Video className="h-6 w-6" />}
       />
 
-      <MediaLightbox
-        media={previewPhoto ? { id: previewPhoto.id, url: previewPhoto.photo_url } : null}
-        onClose={() => setPreviewPhoto(null)}
-      />
     </div>
   )
 }

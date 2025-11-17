@@ -69,6 +69,9 @@ CREATE INDEX idx_vacancy_apps_player_status
 CREATE INDEX idx_gallery_photos_user_created
   ON public.gallery_photos (user_id, created_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_gallery_photos_user_order
+  ON public.gallery_photos (user_id, order_index, created_at DESC);
+
 CREATE INDEX idx_playing_history_user_display
   ON public.playing_history (user_id, display_order DESC);
 

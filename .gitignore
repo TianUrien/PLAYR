@@ -5,6 +5,7 @@
 
 # Supabase temporary files
 supabase/.temp/
+supabase/supabase/
 
 # OS files
 .DS_Store

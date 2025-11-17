@@ -59,7 +59,14 @@ CREATE TABLE public.gallery_photos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   photo_url TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now())
+  caption TEXT,
+  alt_text TEXT,
+  file_name TEXT,
+  file_size INTEGER,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc', now()),
+  CONSTRAINT gallery_photos_file_size_check CHECK (file_size IS NULL OR file_size >= 0)
 );
 
 COMMENT ON TABLE public.gallery_photos IS 'Stores public gallery images for a profile (player & coach media tab)';
