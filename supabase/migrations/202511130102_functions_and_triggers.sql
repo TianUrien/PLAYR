@@ -65,12 +65,22 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.normalize_conversation_participants()
 RETURNS TRIGGER AS $$
+AS $$
 DECLARE
-  tmp UUID;
+  requester_role TEXT := auth.role();
+  requester_id UUID := auth.uid();
+  target_profile public.profiles;
+  updated_profile public.profiles;
+  new_role TEXT;
 BEGIN
-  IF NEW.participant_one_id > NEW.participant_two_id THEN
-    tmp := NEW.participant_one_id;
-    NEW.participant_one_id := NEW.participant_two_id;
+  SELECT * INTO target_profile
+  FROM public.profiles
+  WHERE id = p_user_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Profile not found for user %', p_user_id;
+  END IF;
     NEW.participant_two_id := tmp;
   END IF;
   RETURN NEW;
@@ -80,11 +90,19 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 -- PROFILE UPDATE SAFETY
 -- ============================================================================
+
+    IF p_role IS NOT NULL AND p_role <> target_profile.role THEN
+      RAISE EXCEPTION 'Profile role is managed by PLAYR staff';
+    END IF;
+
+    new_role := target_profile.role;
+  ELSE
+    new_role := COALESCE(p_role, target_profile.role);
 CREATE OR REPLACE FUNCTION public.check_concurrent_profile_update()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.avatar_url IS DISTINCT FROM OLD.avatar_url THEN
-    PERFORM pg_sleep(0.05); -- discourage rapid conflicting uploads
+    role = new_role,
   END IF;
   RETURN NEW;
 END;
@@ -142,8 +160,20 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  requester_role TEXT := auth.role();
+  requester_id UUID := auth.uid();
   new_profile public.profiles;
 BEGIN
+  IF requester_role <> 'service_role' THEN
+    IF requester_id IS NULL THEN
+      RAISE EXCEPTION 'create_profile_for_new_user requires authentication' USING ERRCODE = '42501';
+    END IF;
+
+    IF requester_id <> user_id THEN
+      RAISE EXCEPTION 'Cannot create or update profile % as user %', user_id, requester_id USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
   INSERT INTO public.profiles (
     id,
     email,
@@ -174,7 +204,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.create_profile_for_new_user(UUID, TEXT, TEXT) TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.create_profile_for_new_user(UUID, TEXT, TEXT) TO authenticated, service_role;
 COMMENT ON FUNCTION public.create_profile_for_new_user IS 'Idempotent helper to ensure a profile row exists after auth signup.';
 
 CREATE OR REPLACE FUNCTION public.complete_user_profile(
@@ -205,8 +235,20 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+  requester_role TEXT := auth.role();
+  requester_id UUID := auth.uid();
   updated_profile public.profiles;
 BEGIN
+  IF requester_role <> 'service_role' THEN
+    IF requester_id IS NULL THEN
+      RAISE EXCEPTION 'complete_user_profile requires authentication' USING ERRCODE = '42501';
+    END IF;
+
+    IF requester_id <> p_user_id THEN
+      RAISE EXCEPTION 'Cannot complete profile % as user %', p_user_id, requester_id USING ERRCODE = '42501';
+    END IF;
+  END IF;
+
   UPDATE public.profiles
   SET
     role = COALESCE(p_role, role),
@@ -232,10 +274,6 @@ BEGIN
     updated_at = timezone('utc', now())
   WHERE id = p_user_id
   RETURNING * INTO updated_profile;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Profile not found for user %', p_user_id;
-  END IF;
 
   RETURN updated_profile;
 END;
@@ -348,7 +386,17 @@ SECURITY DEFINER
 STABLE
 SET search_path = public
 AS $$
+DECLARE
+  v_requesting_user UUID := auth.uid();
 BEGIN
+  IF v_requesting_user IS NULL THEN
+    RAISE EXCEPTION 'get_user_conversations requires authentication' USING ERRCODE = '42501';
+  END IF;
+
+  IF v_requesting_user <> p_user_id THEN
+    RAISE EXCEPTION 'get_user_conversations access denied for %', p_user_id USING ERRCODE = '42501';
+  END IF;
+
   RETURN QUERY
   WITH user_conversations AS (
     SELECT

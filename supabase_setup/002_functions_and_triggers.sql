@@ -206,6 +206,12 @@ CREATE TABLE public.conversations (
 
 COMMENT ON TABLE public.conversations IS 'Direct message channel between two profiles';
 
+CREATE UNIQUE INDEX conversations_participant_pair_unique
+  ON public.conversations (
+    LEAST(participant_one_id, participant_two_id),
+    GREATEST(participant_one_id, participant_two_id)
+  );
+
 -- ============================================================================
 -- MESSAGES
 -- ============================================================================

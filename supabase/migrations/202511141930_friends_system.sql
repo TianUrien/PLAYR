@@ -4,9 +4,12 @@ create type public.friendship_status as enum (
   'rejected',
   'cancelled',
   'blocked'
-);
 
+as $$
 create table public.profile_friendships (
+  actor_id uuid := auth.uid();
+  actor_role text := auth.role();
+begin
   id uuid primary key default gen_random_uuid(),
   user_one uuid not null references public.profiles (id) on delete cascade,
   user_two uuid not null references public.profiles (id) on delete cascade,
@@ -14,6 +17,35 @@ create table public.profile_friendships (
   status public.friendship_status not null default 'pending',
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
+
+  if tg_op = 'UPDATE' then
+    if actor_role <> 'service_role' then
+      if actor_id is null or (actor_id <> old.user_one and actor_id <> old.user_two) then
+        raise exception 'Only friendship participants can update the relationship';
+      end if;
+
+      if new.user_one <> old.user_one or new.user_two <> old.user_two or new.requester_id <> old.requester_id then
+        raise exception 'Friendship participants are immutable';
+      end if;
+
+      if new.status = 'accepted' then
+        if old.status <> 'pending' then
+          raise exception 'Only pending friendships can be accepted';
+        end if;
+        if actor_id = old.requester_id then
+          raise exception 'Requester cannot accept their own friendship request';
+        end if;
+      end if;
+
+      if new.status in ('cancelled', 'rejected') and actor_id <> old.requester_id then
+        raise exception 'Only the requester can cancel or reject a friendship';
+      end if;
+
+      if new.status = 'pending' and old.status <> 'pending' then
+        raise exception 'Friendships cannot revert to pending';
+      end if;
+    end if;
+  end if;
   accepted_at timestamptz,
   pair_key_lower uuid generated always as (least(user_one, user_two)) stored,
   pair_key_upper uuid generated always as (greatest(user_one, user_two)) stored,
@@ -121,18 +153,40 @@ create policy "friendships insert"
     )
   );
 
-create policy "friendships update"
+drop policy if exists "friendships update" on public.profile_friendships;
+
+create policy "friendships requester update"
   on public.profile_friendships
   for update
   using (
     auth.role() = 'service_role'
-    or auth.uid() = user_one
-    or auth.uid() = user_two
+    or auth.uid() = requester_id
   )
   with check (
     auth.role() = 'service_role'
-    or auth.uid() = user_one
-    or auth.uid() = user_two
+    or (
+      auth.uid() = requester_id
+      and status in ('pending', 'cancelled', 'rejected', 'blocked')
+    )
+  );
+
+create policy "friendships recipient update"
+  on public.profile_friendships
+  for update
+  using (
+    auth.role() = 'service_role'
+    or (
+      auth.uid() <> requester_id
+      and (auth.uid() = user_one or auth.uid() = user_two)
+    )
+  )
+  with check (
+    auth.role() = 'service_role'
+    or (
+      auth.uid() <> requester_id
+      and (auth.uid() = user_one or auth.uid() = user_two)
+      and status in ('accepted', 'blocked')
+    )
   );
 
 create policy "friendships delete"

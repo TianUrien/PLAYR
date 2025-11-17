@@ -9,6 +9,7 @@ import CommentsTab from '@/components/CommentsTab'
 import Button from '@/components/Button'
 import type { Profile } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
+import { isUniqueViolationError } from '@/lib/supabaseErrors'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useToastStore } from '@/lib/toast'
 import { useNotificationStore } from '@/lib/notifications'
@@ -74,33 +75,58 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
 
   const handleSendMessage = async () => {
     if (!user || !profileData) return
-    
+
     setSendingMessage(true)
     try {
-      // Check if conversation already exists
-      const { data: existingConv } = await supabase
+      const { data: existingConv, error: fetchError } = await supabase
         .from('conversations')
         .select('id')
-        .or(`and(participant_one_id.eq.${user.id},participant_two_id.eq.${profileData.id}),and(participant_one_id.eq.${profileData.id},participant_two_id.eq.${user.id})`)
+        .or(
+          `and(participant_one_id.eq.${user.id},participant_two_id.eq.${profileData.id}),and(participant_one_id.eq.${profileData.id},participant_two_id.eq.${user.id})`
+        )
+        .maybeSingle()
+
+      if (fetchError) throw fetchError
+
+      if (existingConv?.id) {
+        navigate(`/messages?conversation=${existingConv.id}`)
+        return
+      }
+
+      const { data: newConv, error: insertError } = await supabase
+        .from('conversations')
+        .insert({
+          participant_one_id: user.id,
+          participant_two_id: profileData.id
+        })
+        .select('id')
         .single()
 
-      if (existingConv) {
-        // Navigate to existing conversation
-        navigate(`/messages?conversation=${existingConv.id}`)
-      } else {
-        // Create new conversation
-        const { data: newConv, error } = await supabase
-          .from('conversations')
-          .insert({
-            participant_one_id: user.id,
-            participant_two_id: profileData.id
-          })
-          .select('id')
-          .single()
+      if (insertError) {
+        if (isUniqueViolationError(insertError)) {
+          const { data: refetchedConv, error: refetchError } = await supabase
+            .from('conversations')
+            .select('id')
+            .or(
+              `and(participant_one_id.eq.${user.id},participant_two_id.eq.${profileData.id}),and(participant_one_id.eq.${profileData.id},participant_two_id.eq.${user.id})`
+            )
+            .maybeSingle()
 
-        if (error) throw error
-        navigate(`/messages?conversation=${newConv.id}`)
+          if (refetchError) throw refetchError
+          if (refetchedConv?.id) {
+            navigate(`/messages?conversation=${refetchedConv.id}`)
+            return
+          }
+        }
+
+        throw insertError
       }
+
+      if (!newConv?.id) {
+        throw new Error('Conversation insert returned no data')
+      }
+
+      navigate(`/messages?conversation=${newConv.id}`)
     } catch (error) {
       console.error('Error creating conversation:', error)
       addToast('Failed to start conversation. Please try again.', 'error')
@@ -172,8 +198,6 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
               enablePreview
               previewTitle={profile.full_name}
             />
-
-            {/* Info */}
             <div className="flex-1">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
                 <h1 className="text-3xl md:text-4xl font-bold text-gray-900">
@@ -196,7 +220,7 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
                     </button>
                   </div>
                 ) : (
-                  <button 
+                  <button
                     onClick={() => setShowEditModal(true)}
                     className="inline-flex items-center gap-2 px-4 py-2 bg-[#6366f1] text-white rounded-lg hover:bg-[#4f46e5] transition-colors text-sm font-medium"
                   >

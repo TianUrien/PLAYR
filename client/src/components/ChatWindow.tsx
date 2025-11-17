@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useId, useLayoutEffect, useMe
 import { Link } from 'react-router-dom'
 import { Send, ArrowLeft } from 'lucide-react'
 import { supabase, SUPABASE_URL } from '@/lib/supabase'
+import { isUniqueViolationError } from '@/lib/supabaseErrors'
 import { format } from 'date-fns'
 import { ChatWindowSkeleton } from './Skeleton'
 import Avatar from './Avatar'
@@ -983,12 +984,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
           conversationCreatedForSend = true
         } catch (creationError: unknown) {
           const parsedError = creationError as { code?: string; message?: string; details?: string }
-          const isUniqueViolation =
-            parsedError?.code === '23505' ||
-            parsedError?.message?.includes('duplicate key value') ||
-            parsedError?.details?.includes('already exists')
-
-          if (!isUniqueViolation) {
+          if (!isUniqueViolationError(parsedError)) {
             throw creationError
           }
 

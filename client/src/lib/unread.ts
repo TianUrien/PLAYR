@@ -109,21 +109,58 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
     }
 
     if (!get().channel) {
-      const channel = supabase
-        .channel(`unread-messages-${userId}`)
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'messages'
-        }, () => {
-          if (refreshTimeout) {
-            clearTimeout(refreshTimeout)
-          }
+      const queueRefresh = () => {
+        if (refreshTimeout) {
+          clearTimeout(refreshTimeout)
+        }
 
-          refreshTimeout = setTimeout(() => {
-            get().refresh({ bypassCache: true })
-          }, 250)
-        })
+        refreshTimeout = setTimeout(() => {
+          get().refresh({ bypassCache: true })
+        }, 250)
+      }
+
+      const channel = supabase
+        .channel(`unread-conversations-${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'conversations',
+            filter: `participant_one_id=eq.${userId}`
+          },
+          queueRefresh
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'conversations',
+            filter: `participant_two_id=eq.${userId}`
+          },
+          queueRefresh
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'conversations',
+            filter: `participant_one_id=eq.${userId}`
+          },
+          queueRefresh
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'conversations',
+            filter: `participant_two_id=eq.${userId}`
+          },
+          queueRefresh
+        )
         .subscribe()
 
       set({ channel })

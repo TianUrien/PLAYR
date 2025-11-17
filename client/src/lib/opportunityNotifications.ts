@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { requestCache, generateCacheKey } from './requestCache'
 import { monitor } from './monitor'
@@ -12,12 +11,13 @@ interface OpportunityNotificationState {
   count: number
   loading: boolean
   userId: string | null
-  channel: RealtimeChannel | null
   initialize: (userId: string | null) => Promise<void>
   refresh: (options?: RefreshOptions) => Promise<number>
   markSeen: () => Promise<void>
   reset: () => void
 }
+
+let refreshInterval: ReturnType<typeof setInterval> | null = null
 
 const fetchOpportunityCount = async (userId: string, options?: RefreshOptions): Promise<number> => {
   const cacheKey = generateCacheKey('opportunity_alerts', { userId })
@@ -71,14 +71,13 @@ export const useOpportunityNotificationStore = create<OpportunityNotificationSta
   count: 0,
   loading: false,
   userId: null,
-  channel: null,
 
   reset: () => {
-    const { channel } = get()
-    if (channel) {
-      supabase.removeChannel(channel)
+    if (refreshInterval) {
+      clearInterval(refreshInterval)
+      refreshInterval = null
     }
-    set({ count: 0, loading: false, userId: null, channel: null })
+    set({ count: 0, loading: false, userId: null })
   },
 
   refresh: async (options?: RefreshOptions) => {
@@ -95,7 +94,7 @@ export const useOpportunityNotificationStore = create<OpportunityNotificationSta
   },
 
   initialize: async (userId: string | null) => {
-    const { userId: currentUserId, channel: currentChannel, refresh } = get()
+    const { userId: currentUserId, refresh } = get()
 
     if (!userId) {
       get().reset()
@@ -103,50 +102,16 @@ export const useOpportunityNotificationStore = create<OpportunityNotificationSta
     }
 
     if (currentUserId !== userId) {
-      if (currentChannel) {
-        await supabase.removeChannel(currentChannel)
-      }
-      set({ channel: null, userId })
+      set({ userId })
       await refresh({ bypassCache: true })
-    } else if (!currentChannel) {
+    } else {
       await refresh({ bypassCache: true })
     }
 
-    if (!get().channel) {
-      const channel = supabase
-        .channel(`vacancies-feed-${userId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'vacancies'
-          },
-          payload => {
-            const nextStatus = (payload.new as { status?: string } | null)?.status
-            if (nextStatus === 'open') {
-              void get().refresh({ bypassCache: true })
-            }
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'vacancies'
-          },
-          payload => {
-            const nextStatus = (payload.new as { status?: string } | null)?.status
-            const prevStatus = (payload.old as { status?: string } | null)?.status
-            if (nextStatus === 'open' && prevStatus !== 'open') {
-              void get().refresh({ bypassCache: true })
-            }
-          }
-        )
-        .subscribe()
-
-      set({ channel })
+    if (!refreshInterval) {
+      refreshInterval = setInterval(() => {
+        void get().refresh({ bypassCache: true })
+      }, 60000)
     }
   },
 

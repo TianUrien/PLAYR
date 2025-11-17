@@ -9,6 +9,7 @@ import Skeleton from '@/components/Skeleton'
 import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
+import { isUniqueViolationError } from '@/lib/supabaseErrors'
 import { useToastStore } from '@/lib/toast'
 import { useNotificationStore } from '@/lib/notifications'
 
@@ -91,29 +92,55 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
 
     setSendingMessage(true)
     try {
-      const { data: existingConv } = await supabase
+      const { data: existingConv, error: fetchError } = await supabase
         .from('conversations')
         .select('id')
         .or(
           `and(participant_one_id.eq.${user.id},participant_two_id.eq.${profileData.id}),and(participant_one_id.eq.${profileData.id},participant_two_id.eq.${user.id})`
         )
+        .maybeSingle()
+
+      if (fetchError) throw fetchError
+
+      if (existingConv?.id) {
+        navigate(`/messages?conversation=${existingConv.id}`)
+        return
+      }
+
+      const { data: newConv, error: insertError } = await supabase
+        .from('conversations')
+        .insert({
+          participant_one_id: user.id,
+          participant_two_id: profileData.id
+        })
+        .select('id')
         .single()
 
-      if (existingConv) {
-        navigate(`/messages?conversation=${existingConv.id}`)
-      } else {
-        const { data: newConv, error } = await supabase
-          .from('conversations')
-          .insert({
-            participant_one_id: user.id,
-            participant_two_id: profileData.id,
-          })
-          .select('id')
-          .single()
+      if (insertError) {
+        if (isUniqueViolationError(insertError)) {
+          const { data: refetchedConv, error: refetchError } = await supabase
+            .from('conversations')
+            .select('id')
+            .or(
+              `and(participant_one_id.eq.${user.id},participant_two_id.eq.${profileData.id}),and(participant_one_id.eq.${profileData.id},participant_two_id.eq.${user.id})`
+            )
+            .maybeSingle()
 
-        if (error) throw error
-        navigate(`/messages?conversation=${newConv.id}`)
+          if (refetchError) throw refetchError
+          if (refetchedConv?.id) {
+            navigate(`/messages?conversation=${refetchedConv.id}`)
+            return
+          }
+        }
+
+        throw insertError
       }
+
+      if (!newConv?.id) {
+        throw new Error('Conversation insert returned no data')
+      }
+
+      navigate(`/messages?conversation=${newConv.id}`)
     } catch (error) {
       console.error('Error creating conversation:', error)
       addToast('Failed to start conversation. Please try again.', 'error')
