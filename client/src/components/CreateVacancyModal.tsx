@@ -47,6 +47,14 @@ const buildInitialFormData = (vacancy?: Vacancy | null): Partial<VacancyInsert> 
   contact_phone: vacancy?.contact_phone || '',
 })
 
+const getVacancyDraftKey = (profileId: string) => `vacancyDraft:new:${profileId}`
+
+type VacancyDraftStorage = {
+  formData: Partial<VacancyInsert>
+  newRequirement: string
+  newCustomBenefit: string
+}
+
 export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editingVacancy }: CreateVacancyModalProps) {
   const { user } = useAuthStore()
   const [isLoading, setIsLoading] = useState(false)
@@ -75,24 +83,58 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
   const contactPhoneFieldId = useId()
   const newRequirementFieldId = useId()
   const newCustomBenefitFieldId = useId()
+  const vacancyDraftSaveTimeoutRef = useRef<number | null>(null)
+  const vacancyDraftRestoringRef = useRef(false)
+
+  const clearVacancyDraft = useCallback(() => {
+    if (typeof window === 'undefined' || !user) return
+    const draftKey = getVacancyDraftKey(user.id)
+    window.localStorage.removeItem(draftKey)
+  }, [user])
 
   const handleClose = useCallback(() => {
     if (isLoading) {
       return
     }
+    if (!editingVacancy) {
+      clearVacancyDraft()
+    }
     onClose()
-  }, [isLoading, onClose])
+  }, [clearVacancyDraft, editingVacancy, isLoading, onClose])
 
   useFocusTrap({ containerRef: dialogRef, isActive: isOpen, initialFocusRef: opportunityTypeRef })
 
   useEffect(() => {
-    if (isOpen) {
-      setFormData(buildInitialFormData(editingVacancy))
-      setErrors({})
-      setNewRequirement('')
-      setNewCustomBenefit('')
+    if (!isOpen) {
+      return
     }
-  }, [editingVacancy, isOpen])
+
+    setErrors({})
+    setNewRequirement('')
+    setNewCustomBenefit('')
+
+    if (!editingVacancy && user && typeof window !== 'undefined') {
+      const draftKey = getVacancyDraftKey(user.id)
+      const rawDraft = window.localStorage.getItem(draftKey)
+      if (rawDraft) {
+        try {
+          const parsed = JSON.parse(rawDraft) as VacancyDraftStorage
+          const base = buildInitialFormData(null)
+          setFormData({ ...base, ...(parsed.formData || {}) })
+          setNewRequirement(parsed.newRequirement ?? '')
+          setNewCustomBenefit(parsed.newCustomBenefit ?? '')
+          vacancyDraftRestoringRef.current = true
+          addToast('Vacancy draft restored.', 'info')
+          return
+        } catch (error) {
+          console.error('Failed to restore vacancy draft', error)
+          window.localStorage.removeItem(draftKey)
+        }
+      }
+    }
+
+    setFormData(buildInitialFormData(editingVacancy))
+  }, [addToast, editingVacancy, isOpen, user])
 
   useEffect(() => {
     if (!isOpen) {
@@ -117,6 +159,54 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
       document.body.style.overflow = originalOverflow
     }
   }, [handleClose, isOpen])
+
+  useEffect(() => {
+    if (!isOpen || editingVacancy || !user) {
+      if (vacancyDraftSaveTimeoutRef.current && typeof window !== 'undefined') {
+        window.clearTimeout(vacancyDraftSaveTimeoutRef.current)
+        vacancyDraftSaveTimeoutRef.current = null
+      }
+      return
+    }
+
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    if (vacancyDraftRestoringRef.current) {
+      vacancyDraftRestoringRef.current = false
+      return
+    }
+
+    if (vacancyDraftSaveTimeoutRef.current) {
+      window.clearTimeout(vacancyDraftSaveTimeoutRef.current)
+      vacancyDraftSaveTimeoutRef.current = null
+    }
+
+    vacancyDraftSaveTimeoutRef.current = window.setTimeout(() => {
+      try {
+        const payload: VacancyDraftStorage = {
+          formData,
+          newRequirement,
+          newCustomBenefit,
+        }
+        window.localStorage.setItem(getVacancyDraftKey(user.id), JSON.stringify(payload))
+      } catch (error) {
+        console.error('Failed to persist vacancy draft', error)
+      } finally {
+        vacancyDraftSaveTimeoutRef.current = null
+      }
+    }, 600)
+  }, [editingVacancy, formData, isOpen, newCustomBenefit, newRequirement, user])
+
+  useEffect(() => {
+    return () => {
+      if (vacancyDraftSaveTimeoutRef.current && typeof window !== 'undefined') {
+        window.clearTimeout(vacancyDraftSaveTimeoutRef.current)
+        vacancyDraftSaveTimeoutRef.current = null
+      }
+    }
+  }, [])
 
   if (!isOpen) return null
 
@@ -250,6 +340,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
 
         if (error) throw error
         addToast('Opportunity created successfully.', 'success')
+        clearVacancyDraft()
       }
 
       onSuccess()

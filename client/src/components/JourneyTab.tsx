@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ComponentType } from 'react'
+import { useState, useEffect, useCallback, useRef, type ComponentType } from 'react'
 import {
   Building2,
   Calendar,
@@ -51,6 +51,12 @@ type EntryTypeMeta = {
   badgeClass: string
   icon: ComponentType<{ className?: string }>
 }
+
+type JourneyDraftContext = { type: 'new' } | { type: 'edit'; entryId: string }
+
+const getJourneyDraftContextKey = (userId: string) => `journeyDraft:context:${userId}`
+const getJourneyDraftKey = (context: JourneyDraftContext, userId: string) =>
+  context.type === 'new' ? `journeyDraft:new:${userId}` : `journeyDraft:edit:${context.entryId}`
 
 const entryTypeMeta: Record<JourneyType, EntryTypeMeta> = {
   club: {
@@ -164,6 +170,73 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [savingEntryId, setSavingEntryId] = useState<string | 'new-entry' | null>(null)
   const [uploadingImageId, setUploadingImageId] = useState<string | null>(null)
+  const [activeDraftContext, setActiveDraftContext] = useState<JourneyDraftContext | null>(null)
+  const journeyDraftSaveTimeoutRef = useRef<number | null>(null)
+  const journeyDraftRestoredRef = useRef(false)
+
+  const canManage = Boolean(!readOnly && user && targetUserId === user.id)
+
+  const persistJourneyDraft = useCallback(
+    (draft: EditableJourneyEntry, context: JourneyDraftContext) => {
+      if (typeof window === 'undefined' || !user) return
+      try {
+        const draftKey = getJourneyDraftKey(context, user.id)
+        window.localStorage.setItem(draftKey, JSON.stringify(draft))
+        window.localStorage.setItem(getJourneyDraftContextKey(user.id), JSON.stringify(context))
+      } catch (error) {
+        console.error('Failed to persist journey draft', error)
+      }
+    },
+    [user]
+  )
+
+  const clearJourneyDraftStorage = useCallback(
+    (contextOverride?: JourneyDraftContext | null) => {
+      if (typeof window === 'undefined' || !user) return
+
+      const contextKey = getJourneyDraftContextKey(user.id)
+      let storedContext: JourneyDraftContext | null = null
+      const rawContext = window.localStorage.getItem(contextKey)
+      if (rawContext) {
+        try {
+          storedContext = JSON.parse(rawContext) as JourneyDraftContext
+        } catch {
+          storedContext = null
+        }
+      }
+
+      const targetContext = contextOverride ?? activeDraftContext ?? storedContext
+      if (!targetContext) {
+        if (!contextOverride && !activeDraftContext) {
+          window.localStorage.removeItem(contextKey)
+        }
+        return
+      }
+
+      const draftKey = getJourneyDraftKey(targetContext, user.id)
+      window.localStorage.removeItem(draftKey)
+
+      const contextsMatch =
+        storedContext?.type === targetContext.type &&
+        (targetContext.type === 'new' || (storedContext?.type === 'edit' && storedContext.entryId === targetContext.entryId))
+
+      if (!contextOverride || contextsMatch) {
+        window.localStorage.removeItem(contextKey)
+      }
+    },
+    [activeDraftContext, user]
+  )
+
+  const resetFormState = (options?: { preserveDraft?: boolean }) => {
+    if (!options?.preserveDraft) {
+      clearJourneyDraftStorage()
+    }
+    setActiveFormType(null)
+    setActiveEntryDraft(null)
+    setActiveDraftContext(null)
+    setFormErrors({})
+    setUploadingImageId(null)
+  }
 
   const normalizeDate = (value: string | null) => {
     if (!value) return null
@@ -231,14 +304,61 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
     }
   }, [targetUserId, fetchJourney])
 
-  const canManage = Boolean(!readOnly && user && targetUserId === user.id)
+  useEffect(() => {
+    if (!canManage || !user) return
+    if (typeof window === 'undefined') return
+    if (journeyDraftRestoredRef.current) return
+    if (activeEntryDraft || activeFormType) return
 
-  const resetFormState = () => {
-    setActiveFormType(null)
-    setActiveEntryDraft(null)
-    setFormErrors({})
-    setUploadingImageId(null)
-  }
+    const contextKey = getJourneyDraftContextKey(user.id)
+    const rawContext = window.localStorage.getItem(contextKey)
+    if (!rawContext) return
+
+    try {
+      const parsedContext = JSON.parse(rawContext) as JourneyDraftContext
+      const draftKey = getJourneyDraftKey(parsedContext, user.id)
+      const rawDraft = window.localStorage.getItem(draftKey)
+      if (!rawDraft) {
+        window.localStorage.removeItem(contextKey)
+        return
+      }
+
+      const parsedDraft = JSON.parse(rawDraft) as EditableJourneyEntry
+      setActiveFormType(parsedContext.type === 'new' ? 'new' : parsedContext.entryId)
+      setActiveEntryDraft(parsedDraft)
+      setActiveDraftContext(parsedContext)
+      journeyDraftRestoredRef.current = true
+      addToast('Journey draft restored.', 'info')
+    } catch (error) {
+      console.error('Failed to restore journey draft', error)
+      window.localStorage.removeItem(contextKey)
+    }
+  }, [activeEntryDraft, activeFormType, addToast, canManage, user])
+
+  useEffect(() => {
+    if (!canManage || !user) return
+    if (!activeEntryDraft || !activeDraftContext) return
+    if (typeof window === 'undefined') return
+
+    if (journeyDraftSaveTimeoutRef.current) {
+      window.clearTimeout(journeyDraftSaveTimeoutRef.current)
+      journeyDraftSaveTimeoutRef.current = null
+    }
+
+    journeyDraftSaveTimeoutRef.current = window.setTimeout(() => {
+      persistJourneyDraft(activeEntryDraft, activeDraftContext)
+      journeyDraftSaveTimeoutRef.current = null
+    }, 600)
+  }, [activeDraftContext, activeEntryDraft, canManage, persistJourneyDraft, user])
+
+  useEffect(() => {
+    return () => {
+      if (journeyDraftSaveTimeoutRef.current && typeof window !== 'undefined') {
+        window.clearTimeout(journeyDraftSaveTimeoutRef.current)
+        journeyDraftSaveTimeoutRef.current = null
+      }
+    }
+  }, [])
 
   const startNewEntryForm = () => {
     if (!canManage || !user) {
@@ -248,16 +368,16 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
 
     setActiveFormType('new')
     setActiveEntryDraft(createEmptyJourneyEntry(user.id))
+    setActiveDraftContext({ type: 'new' })
     setFormErrors({})
   }
 
   const startEditEntry = (entry: EditableJourneyEntry) => {
-    if (!canManage) return
+    if (!canManage || !user) return
     const startDraft = seedDrafts(entry.start_date)
     const endDraft = seedDrafts(entry.end_date)
 
-    setActiveFormType(entry.id)
-    setActiveEntryDraft({
+    let nextDraft: EditableJourneyEntry = {
       ...entry,
       highlights: [...(entry.highlights ?? [])],
       startMonthDraft: startDraft.month,
@@ -265,7 +385,23 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       endMonthDraft: endDraft.month,
       endYearDraft: endDraft.year,
       isCurrent: entry.end_date === null,
-    })
+    }
+
+    if (typeof window !== 'undefined') {
+      try {
+        const storedDraftKey = getJourneyDraftKey({ type: 'edit', entryId: entry.id }, user.id)
+        const storedDraft = window.localStorage.getItem(storedDraftKey)
+        if (storedDraft) {
+          nextDraft = JSON.parse(storedDraft) as EditableJourneyEntry
+        }
+      } catch (error) {
+        console.error('Failed to load saved journey draft', error)
+      }
+    }
+
+    setActiveFormType(entry.id)
+    setActiveEntryDraft(nextDraft)
+    setActiveDraftContext({ type: 'edit', entryId: entry.id })
     setFormErrors({})
   }
 
@@ -530,6 +666,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
         await deleteStorageObject({ bucket: JOURNEY_BUCKET, path: entryImagePath, context: 'journey:delete-entry' })
       }
 
+      clearJourneyDraftStorage({ type: 'edit', entryId })
       await fetchJourney()
       resetFormState()
       addToast('Journey entry removed.', 'success')
@@ -847,7 +984,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
         <div className="flex flex-wrap justify-end gap-3 border-top border-gray-100 pt-4">
           <button
             type="button"
-            onClick={resetFormState}
+            onClick={() => resetFormState()}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <X className="h-4 w-4" />
@@ -909,7 +1046,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
                   </div>
                   <button
                     type="button"
-                    onClick={resetFormState}
+                    onClick={() => resetFormState()}
                     className="inline-flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-gray-700"
                   >
                     <X className="h-4 w-4" />
