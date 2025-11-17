@@ -227,14 +227,14 @@ export default function NotificationsDrawer() {
     <>
       <div
         className={cn(
-          'fixed inset-0 z-40 bg-gray-900/30 transition-opacity duration-200',
+          'fixed inset-0 z-50 bg-gray-900/30 transition-opacity duration-200',
           isOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
         )}
         onClick={() => toggleDrawer(false)}
       />
       <aside
         className={cn(
-          'fixed inset-y-0 right-0 z-50 flex w-full max-w-full transform bg-white shadow-2xl transition-transform duration-200 sm:max-w-md lg:max-w-lg',
+          'fixed inset-y-0 right-0 z-[60] flex w-full max-w-full transform bg-white shadow-2xl transition-transform duration-200 sm:max-w-md lg:max-w-lg',
           isOpen ? 'translate-x-0' : 'translate-x-full'
         )}
       >

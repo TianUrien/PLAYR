@@ -97,13 +97,9 @@ export default function SignUp() {
 
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
-      <div className="absolute inset-0">
-        <img 
-          src="/hero-desktop.webp"
-          alt="Field Hockey"
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
+      <div className="absolute inset-0" aria-hidden="true">
+        <div className="h-full w-full bg-gradient-to-b from-black via-[#050505] to-black/70 md:hidden" />
+        <div className="hidden h-full w-full md:block bg-[url('/hero-desktop.webp')] bg-cover bg-center" />
         <div className="absolute inset-0 bg-black/70" />
       </div>
 

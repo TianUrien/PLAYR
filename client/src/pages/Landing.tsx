@@ -100,15 +100,10 @@ export default function Landing() {
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Background Image with Overlay */}
-      <div className="absolute inset-0">
-        <img 
-          src="/hero-desktop.webp"
-          alt="Field Hockey"
-          className="w-full h-full object-cover"
-          fetchPriority="high"
-          loading="eager"
-        />
-        {/* Mobile gradient: lighter for readability */}
+      <div className="absolute inset-0" aria-hidden="true">
+        <div className="h-full w-full bg-gradient-to-b from-black/80 via-black/60 to-black/30 md:hidden" />
+        <div className="hidden h-full w-full md:block bg-[url('/hero-desktop.webp')] bg-cover bg-center" />
+        {/* Overlay gradient for readability */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-black/30 lg:from-black/70 lg:via-black/60 lg:to-black/80" />
       </div>
 

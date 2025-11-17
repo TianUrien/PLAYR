@@ -261,6 +261,8 @@ function VideoEmbed({ url }: { url: string }) {
         src={embedUrl}
         className="absolute top-0 left-0 w-full h-full"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        loading="lazy"
+        referrerPolicy="strict-origin-when-cross-origin"
         allowFullScreen
         title="Highlight video player"
       />

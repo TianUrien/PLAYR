@@ -385,9 +385,9 @@ export default function OpportunitiesPage() {
           </div>
         </div>
 
-        <div className="flex gap-6">
+        <div className="flex flex-col gap-6 lg:flex-row">
           {/* Filters Panel - Desktop */}
-          <aside className={`${showFilters ? 'block' : 'hidden'} md:block w-full md:w-72 flex-shrink-0`}>
+          <aside className={`${showFilters ? 'block' : 'hidden'} md:block w-full lg:w-72 flex-shrink-0`}>
             <div className="bg-white rounded-xl p-6 shadow-sm sticky top-24 space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-900">Filters</h2>

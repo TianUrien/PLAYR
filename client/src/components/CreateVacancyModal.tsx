@@ -414,7 +414,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Opportunity Type */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor={opportunityTypeFieldId}>
@@ -480,7 +480,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
 
               {/* Position and Gender - Only show for player opportunities */}
               {formData.opportunity_type === 'player' && (
-              <div className="grid grid-cols-2 gap-4 animate-in fade-in duration-200">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-in fade-in duration-200">
                 {/* Position */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -559,7 +559,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Location <span className="text-red-500">*</span>
                 </label>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <label htmlFor={locationCityFieldId} className="sr-only">
                     City
                   </label>
@@ -598,7 +598,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Start Date */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor={startDateFieldId}>
@@ -806,7 +806,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {/* Contact Email */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor={contactEmailFieldId}>

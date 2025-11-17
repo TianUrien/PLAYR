@@ -572,9 +572,9 @@ export default function MessagesPage() {
     return (
       <div className={rootContainerClasses}>
         <Header />
-        <div className="flex items-center justify-center pt-20 h-[calc(100vh-80px)]">
+        <div className="flex items-center justify-center pt-20 h-[calc(100dvh-80px)]">
           <main className="max-w-7xl mx-auto px-4 md:px-6 w-full">
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden h-[calc(100vh-140px)]">
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden h-[calc(100dvh-140px)]">
               <div className="flex h-full">
                 {/* Conversation List Skeleton */}
                 <div className="w-full md:w-96 border-r border-gray-200 flex flex-col">
@@ -609,7 +609,7 @@ export default function MessagesPage() {
 
   const containerClasses = isFullBleedMobileLayout
     ? 'flex h-[calc(100dvh-var(--app-header-offset,0px))] flex-col overflow-hidden bg-white'
-    : `flex h-[calc(100vh-var(--app-header-offset,0px)-4rem)] flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm ${
+    : `flex h-[calc(100dvh-var(--app-header-offset,0px)-4rem)] flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm ${
         messagingMobileV2Enabled ? 'min-h-chat-card' : ''
       }`
 

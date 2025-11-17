@@ -660,7 +660,7 @@ export default function GalleryManager({
                         <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
                           <button
                             onClick={() => moveMedia(item.id, 'up')}
-                            className="px-2 py-1 text-gray-500 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b5cf6] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                            className="tap-target px-2 py-1 text-gray-500 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b5cf6] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                             disabled={index === 0}
                             type="button"
                           >
@@ -669,7 +669,7 @@ export default function GalleryManager({
                           </button>
                           <button
                             onClick={() => moveMedia(item.id, 'down')}
-                            className="px-2 py-1 text-gray-500 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b5cf6] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                            className="tap-target px-2 py-1 text-gray-500 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b5cf6] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                             disabled={index === media.length - 1}
                             type="button"
                           >

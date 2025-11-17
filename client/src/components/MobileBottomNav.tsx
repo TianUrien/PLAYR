@@ -151,7 +151,7 @@ export default function MobileBottomNav() {
       <nav 
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-gray-200/50 shadow-lg pb-[max(env(safe-area-inset-bottom),0.5rem)]"
       >
-        <div className="flex items-center justify-around px-2 pt-2">
+        <div className="flex items-center justify-between px-2 pt-2 gap-1">
           {navItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.path)
@@ -160,7 +160,7 @@ export default function MobileBottomNav() {
               <button
                 key={item.id}
                 onClick={() => handleNavigate(item.path)}
-                className={`flex flex-col items-center justify-center min-w-[64px] min-h-[48px] py-1 px-3 rounded-xl transition-all duration-200 ${
+                className={`flex flex-col items-center justify-center min-w-[48px] min-h-[44px] py-1 px-2 rounded-xl transition-all duration-200 ${
                   active 
                     ? 'text-[#6366f1]' 
                     : 'text-gray-600 active:bg-gray-100'
@@ -199,7 +199,7 @@ export default function MobileBottomNav() {
 
           <button
             onClick={() => toggleNotificationDrawer()}
-            className="flex flex-col items-center justify-center min-w-[64px] min-h-[48px] py-1 px-3 rounded-xl text-gray-600 transition-all duration-200 active:bg-gray-100"
+            className="flex flex-col items-center justify-center min-w-[48px] min-h-[44px] py-1 px-2 rounded-xl text-gray-600 transition-all duration-200 active:bg-gray-100"
             aria-label="Notifications"
           >
             <div className="relative flex items-center justify-center w-7 h-7 mb-0.5">
@@ -213,7 +213,7 @@ export default function MobileBottomNav() {
           <div className="relative" ref={profileMenuRef}>
             <button
               onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-              className={`flex flex-col items-center justify-center min-w-[64px] min-h-[48px] py-1 px-3 rounded-xl transition-all duration-200 ${
+              className={`flex flex-col items-center justify-center min-w-[48px] min-h-[44px] py-1 px-2 rounded-xl transition-all duration-200 ${
                 profileMenuOpen || location.pathname === '/dashboard/profile'
                   ? 'text-[#6366f1]'
                   : 'text-gray-600 active:bg-gray-100'
