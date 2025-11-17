@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { MessageSquare, MessageSquarePlus, Send, ShieldAlert, UserCheck } from 'lucide-react'
+import { MessageSquare, MessageSquarePlus, ShieldAlert, UserCheck } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 import type { Profile } from '@/lib/supabase'
@@ -8,6 +8,7 @@ import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import Avatar from './Avatar'
 import { cn } from '@/lib/utils'
+import ConfirmActionModal from './ConfirmActionModal'
 
 interface CommentsTabProps {
   profileId: string
@@ -36,9 +37,15 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
 
   const [comments, setComments] = useState<CommentWithAuthor[]>([])
   const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [content, setContent] = useState('')
-  const [rating, setRating] = useState<CommentRating | ''>('')
+  const [creating, setCreating] = useState(false)
+  const [composerContent, setComposerContent] = useState('')
+  const [composerRating, setComposerRating] = useState<CommentRating | ''>('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [editContent, setEditContent] = useState('')
+  const [editRating, setEditRating] = useState<CommentRating | ''>('')
+  const [editing, setEditing] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deleteLoading, setDeleteLoading] = useState(false)
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
 
   const canComment = Boolean(user && authProfile && authProfile.id !== profileId)
@@ -110,97 +117,144 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
 
   useEffect(() => {
     if (!existingComment) {
-      setContent('')
-      setRating('')
+      setEditContent('')
+      setEditRating('')
+      setIsEditing(false)
       return
     }
 
-    setContent(existingComment.content)
-    setRating(existingComment.rating ?? '')
+    setEditContent(existingComment.content)
+    setEditRating(existingComment.rating ?? '')
   }, [existingComment])
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const upsertComment = useCallback((next: CommentWithAuthor) => {
+    setComments((prev) => {
+      const others = prev.filter((comment) => comment.id !== next.id)
+      return [next, ...others]
+    })
+  }, [])
+
+  const handleCreateComment = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!canComment || !authProfile) {
       addToast('You need to sign in with a profile to leave a comment.', 'error')
       return
     }
 
-    const trimmed = content.trim()
+    const trimmed = composerContent.trim()
     if (trimmed.length < MIN_LENGTH) {
       addToast(`Comments must be at least ${MIN_LENGTH} characters.`, 'error')
       return
     }
 
-    setSubmitting(true)
+    if (!composerRating) {
+      addToast('Select a sentiment to post your comment.', 'error')
+      return
+    }
 
+    setCreating(true)
     try {
-      const payload = {
-        content: trimmed,
-        rating: rating || null,
-        status: 'visible' as CommentRow['status'],
-      }
-
-      let updatedComment: CommentWithAuthor | null = null
-
-      if (existingComment) {
-        const { data, error } = await supabase
-          .from('profile_comments')
-          .update(payload)
-          .eq('id', existingComment.id)
-          .select(`
-            *,
-            author:profiles!profile_comments_author_profile_id_fkey (
-              id,
-              full_name,
-              avatar_url,
-              role,
-              username
-            )
-          `)
-          .single()
-
-        if (error) throw error
-        updatedComment = data as CommentWithAuthor
-        addToast('Your comment was updated.', 'success')
-      } else {
-        const { data, error } = await supabase
-          .from('profile_comments')
-          .insert({
-            profile_id: profileId,
-            author_profile_id: authProfile.id,
-            ...payload,
-          })
-          .select(`
-            *,
-            author:profiles!profile_comments_author_profile_id_fkey (
-              id,
-              full_name,
-              avatar_url,
-              role,
-              username
-            )
-          `)
-          .single()
-
-        if (error) throw error
-        updatedComment = data as CommentWithAuthor
-        addToast('Thanks for sharing feedback!', 'success')
-      }
-
-      if (updatedComment) {
-        setComments((prev) => {
-          const others = prev.filter((comment) => comment.id !== updatedComment!.id)
-          return [updatedComment!, ...others]
+      const { data, error } = await supabase
+        .from('profile_comments')
+        .insert({
+          profile_id: profileId,
+          author_profile_id: authProfile.id,
+          content: trimmed,
+          rating: composerRating,
+          status: 'visible' as CommentRow['status'],
         })
-      }
+        .select(`
+          *,
+          author:profiles!profile_comments_author_profile_id_fkey (
+            id,
+            full_name,
+            avatar_url,
+            role,
+            username
+          )
+        `)
+        .single()
+
+      if (error) throw error
+      upsertComment(data as CommentWithAuthor)
+      setComposerContent('')
+      setComposerRating('')
+      addToast('Thanks for sharing feedback!', 'success')
     } catch (error) {
-      console.error('Failed to save comment', error)
-      addToast('Unable to save your comment. Please try again.', 'error')
+      console.error('Failed to post comment', error)
+      addToast('Unable to post your comment. Please try again.', 'error')
     } finally {
-      setSubmitting(false)
+      setCreating(false)
     }
   }
+
+  const handleEditComment = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!existingComment) return
+
+    const trimmed = editContent.trim()
+    if (trimmed.length < MIN_LENGTH) {
+      addToast(`Comments must be at least ${MIN_LENGTH} characters.`, 'error')
+      return
+    }
+
+    if (!editRating) {
+      addToast('Select a sentiment before saving changes.', 'error')
+      return
+    }
+
+    setEditing(true)
+    try {
+      const { data, error } = await supabase
+        .from('profile_comments')
+        .update({ content: trimmed, rating: editRating, status: 'visible' as CommentRow['status'] })
+        .eq('id', existingComment.id)
+        .select(`
+          *,
+          author:profiles!profile_comments_author_profile_id_fkey (
+            id,
+            full_name,
+            avatar_url,
+            role,
+            username
+          )
+        `)
+        .single()
+
+      if (error) throw error
+      upsertComment(data as CommentWithAuthor)
+      setIsEditing(false)
+      addToast('Your comment was updated.', 'success')
+    } catch (error) {
+      console.error('Failed to update comment', error)
+      addToast('Unable to save your changes. Please try again.', 'error')
+    } finally {
+      setEditing(false)
+    }
+  }
+
+  const handleDeleteComment = async () => {
+    if (!existingComment) return
+    setDeleteLoading(true)
+
+    try {
+      const { error } = await supabase.from('profile_comments').delete().eq('id', existingComment.id)
+      if (error) throw error
+      setComments((prev) => prev.filter((comment) => comment.id !== existingComment.id))
+      setDeleteModalOpen(false)
+      addToast('Comment deleted.', 'success')
+    } catch (error) {
+      console.error('Failed to delete comment', error)
+      addToast('Unable to delete your comment. Please try again.', 'error')
+    } finally {
+      setDeleteLoading(false)
+    }
+  }
+
+  const otherComments = useMemo(() => {
+    if (!existingComment) return comments
+    return comments.filter((comment) => comment.id !== existingComment.id)
+  }, [comments, existingComment])
 
   const getInitials = (name?: string | null) => {
     if (!name) return '?'
@@ -211,6 +265,17 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
       .map((part) => part[0]?.toUpperCase())
       .slice(0, 2)
       .join('') || '?'
+  }
+
+  const renderRatingBadge = (value?: CommentRating | null) => {
+    if (!value) return null
+    const option = ratingOptions.find((entry) => entry.value === value)
+    if (!option) return null
+    return (
+      <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize', option.badgeClass)}>
+        {option.label}
+      </span>
+    )
   }
 
   return (
@@ -231,80 +296,81 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
       </section>
 
       {canComment ? (
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="bg-[#eef2ff] text-[#4f46e5] rounded-full p-2">
-              <MessageSquarePlus className="h-4 w-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900">
-                Share your experience
-              </p>
-              <p className="text-xs text-gray-500">
-                Be constructive and professional—your name appears publicly.
-              </p>
-            </div>
-          </div>
-
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="comment-content" className="sr-only">
-                Comment
-              </label>
-              <textarea
-                id="comment-content"
-                value={content}
-                onChange={(event) => setContent(event.target.value.slice(0, MAX_LENGTH))}
-                rows={4}
-                placeholder="Tell clubs, coaches, and players why this profile stands out..."
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-[#6366f1] focus:ring-[#6366f1]"
-              />
-              <div className="mt-1 flex justify-between text-xs text-gray-500">
-                <span>Min {MIN_LENGTH} characters</span>
-                <span>
-                  {content.trim().length}/{MAX_LENGTH}
-                </span>
+        !existingComment && (
+          <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-[#eef2ff] text-[#4f46e5] rounded-full p-2">
+                <MessageSquarePlus className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  Share your experience
+                </p>
+                <p className="text-xs text-gray-500">
+                  Be constructive and professional—your name appears publicly.
+                </p>
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
-              {ratingOptions.map((option) => (
-                <label
-                  key={option.value}
-                  className={cn(
-                    'cursor-pointer rounded-xl border px-4 py-3 text-sm shadow-sm transition hover:border-[#6366f1] hover:shadow-md',
-                    rating === option.value ? 'border-[#6366f1] bg-[#eef2ff] text-[#4f46e5]' : 'border-gray-200 bg-white text-gray-700'
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="comment-rating"
-                    value={option.value}
-                    className="sr-only"
-                    checked={rating === option.value}
-                    onChange={() => setRating(option.value)}
-                  />
-                  <p className="font-semibold">{option.label}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{option.description}</p>
+            <form className="space-y-4" onSubmit={handleCreateComment}>
+              <div>
+                <label htmlFor="comment-content" className="sr-only">
+                  Comment
                 </label>
-              ))}
-            </div>
+                <textarea
+                  id="comment-content"
+                  value={composerContent}
+                  onChange={(event) => setComposerContent(event.target.value.slice(0, MAX_LENGTH))}
+                  rows={4}
+                  placeholder="Tell clubs, coaches, and players why this profile stands out..."
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-[#6366f1] focus:ring-[#6366f1]"
+                />
+                <div className="mt-1 flex justify-between text-xs text-gray-500">
+                  <span>Min {MIN_LENGTH} characters</span>
+                  <span>
+                    {composerContent.trim().length}/{MAX_LENGTH}
+                  </span>
+                </div>
+              </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-gray-500">
-                Comments follow community guidelines. Moderators may hide content that violates the code of conduct.
-              </p>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition disabled:opacity-60"
-              >
-                {submitting ? 'Saving...' : existingComment ? 'Update Comment' : 'Post Comment'}
-                <Send className="h-4 w-4" />
-              </button>
-            </div>
-          </form>
-        </section>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {ratingOptions.map((option) => (
+                  <label
+                    key={option.value}
+                    className={cn(
+                      'cursor-pointer rounded-xl border px-4 py-3 text-sm shadow-sm transition hover:border-[#6366f1] hover:shadow-md',
+                      composerRating === option.value ? 'border-[#6366f1] bg-[#eef2ff] text-[#4f46e5]' : 'border-gray-200 bg-white text-gray-700'
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="comment-rating"
+                      value={option.value}
+                      className="sr-only"
+                      checked={composerRating === option.value}
+                      onChange={() => setComposerRating(option.value)}
+                    />
+                    <p className="font-semibold">{option.label}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{option.description}</p>
+                  </label>
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-gray-500">
+                  Comments follow community guidelines. Moderators may hide content that violates the code of conduct.
+                </p>
+                <button
+                  type="submit"
+                  disabled={creating}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition disabled:opacity-60"
+                >
+                  {creating ? 'Posting...' : 'Post Comment'}
+                </button>
+              </div>
+            </form>
+          </section>
+        )
       ) : (
         <section className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
           <div className="flex items-center gap-3">
@@ -321,6 +387,123 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
       )}
 
       <section className="space-y-4">
+        {existingComment && (
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Your Comment</p>
+            <article
+              className={cn(
+                'rounded-2xl border border-gray-100 bg-white p-5 shadow-sm',
+                highlightedCommentIds?.has(existingComment.id) && 'border-amber-200 shadow-lg shadow-amber-100 ring-2 ring-amber-200'
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <Avatar
+                  src={existingComment.author?.avatar_url}
+                  initials={getInitials(existingComment.author?.full_name ?? existingComment.author?.username ?? null)}
+                  size="md"
+                  alt={existingComment.author?.full_name || existingComment.author?.username || 'PLAYR member'}
+                  enablePreview
+                  previewTitle={existingComment.author?.full_name || existingComment.author?.username || undefined}
+                />
+                <div className="flex-1 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {existingComment.author?.full_name || existingComment.author?.username || 'PLAYR member'}
+                      </p>
+                      <p className="text-xs uppercase tracking-wide text-gray-500">
+                        {existingComment.author?.role ?? 'member'}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                      <span>{formatDistanceToNow(new Date(existingComment.created_at), { addSuffix: true })}</span>
+                      {renderRatingBadge(existingComment.rating)}
+                    </div>
+                  </div>
+
+                  {isEditing ? (
+                    <form className="space-y-4" onSubmit={handleEditComment}>
+                      <textarea
+                        aria-label="Edit comment"
+                        value={editContent}
+                        onChange={(event) => setEditContent(event.target.value.slice(0, MAX_LENGTH))}
+                        rows={4}
+                        className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-[#6366f1] focus:ring-[#6366f1]"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500">
+                        <span>Min {MIN_LENGTH} characters</span>
+                        <span>{editContent.trim().length}/{MAX_LENGTH}</span>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        {ratingOptions.map((option) => (
+                          <label
+                            key={option.value}
+                            className={cn(
+                              'cursor-pointer rounded-xl border px-4 py-3 text-sm shadow-sm transition hover:border-[#6366f1] hover:shadow-md',
+                              editRating === option.value ? 'border-[#6366f1] bg-[#eef2ff] text-[#4f46e5]' : 'border-gray-200 bg-white text-gray-700'
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name="edit-comment-rating"
+                              value={option.value}
+                              className="sr-only"
+                              checked={editRating === option.value}
+                              onChange={() => setEditRating(option.value)}
+                            />
+                            <p className="font-semibold">{option.label}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{option.description}</p>
+                          </label>
+                        ))}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditing(false)}
+                          className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={editing}
+                          className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-4 py-2 text-sm font-semibold text-white shadow disabled:opacity-60"
+                        >
+                          {editing ? 'Saving…' : 'Save changes'}
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-line">
+                        {existingComment.content}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setIsEditing(true)}
+                          className="inline-flex items-center rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteModalOpen(true)}
+                          className="inline-flex items-center rounded-lg border border-red-200 px-3 py-1.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </article>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex flex-col gap-4">
             {Array.from({ length: 3 }).map((_, index) => (
@@ -351,7 +534,10 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
           </div>
         ) : (
           <div className="space-y-4">
-            {comments.map((comment) => {
+            {existingComment && otherComments.length > 0 && (
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Other Comments</p>
+            )}
+            {otherComments.map((comment) => {
               const authorId = comment.author_profile_id
               const isFriend = Boolean(authorId && friendIds.has(authorId))
               const isHighlighted = Boolean(highlightedCommentIds?.has(comment.id))
@@ -394,16 +580,7 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
                           <span>
                             {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
                           </span>
-                          {comment.rating && (
-                            <span
-                              className={cn(
-                                'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize',
-                                ratingOptions.find((option) => option.value === comment.rating)?.badgeClass ?? 'bg-gray-100 text-gray-700'
-                              )}
-                            >
-                              {comment.rating}
-                            </span>
-                          )}
+                          {renderRatingBadge(comment.rating)}
                         </div>
                       </div>
                       <p className="mt-3 text-sm leading-relaxed text-gray-700 whitespace-pre-line">
@@ -417,6 +594,18 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
           </div>
         )}
       </section>
+
+      <ConfirmActionModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDeleteComment}
+        title="Delete comment?"
+        description="This action cannot be undone."
+        confirmLabel="Delete"
+        confirmTone="danger"
+        confirmLoading={deleteLoading}
+        loadingLabel="Deleting..."
+      />
     </div>
   )
 }
