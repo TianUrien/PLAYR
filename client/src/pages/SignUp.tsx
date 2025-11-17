@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Building2, Briefcase } from 'lucide-react'
 import { Input, Button } from '@/components'
 import { supabase } from '@/lib/supabase'
+import { getAuthRedirectUrl } from '@/lib/siteUrl'
 import { logger } from '@/lib/logger'
 
 type UserRole = 'player' | 'coach' | 'club'
@@ -52,7 +53,7 @@ export default function SignUp() {
         email: formData.email,
         password: formData.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: getAuthRedirectUrl(),
           data: {
             role: selectedRole, // Store in user_metadata
           }

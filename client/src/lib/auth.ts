@@ -3,6 +3,7 @@ import type { User, PostgrestError, Session, AuthError } from '@supabase/supabas
 import { AuthApiError } from '@supabase/supabase-js'
 import type { Profile, ProfileInsert } from './supabase'
 import { supabase } from './supabase'
+import { getAuthRedirectUrl } from './siteUrl'
 import { requestCache, generateCacheKey } from './requestCache'
 import { monitor } from './monitor'
 import { logger } from './logger'
@@ -314,7 +315,7 @@ export const resendVerificationEmail = async (email: string): Promise<{ success:
       type: 'signup',
       email: email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: getAuthRedirectUrl(),
       }
     })
 
