@@ -8,10 +8,9 @@ import ConfirmActionModal from './ConfirmActionModal'
 import MediaLightbox from './MediaLightbox'
 import Skeleton from './Skeleton'
 import { deleteStorageObject } from '@/lib/storage'
-import { optimizeImage, type OptimizeOptions } from '@/lib/imageOptimization'
+import { optimizeImage, type OptimizeOptions, validateImage } from '@/lib/imageOptimization'
 
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'] as const
-const FILE_INPUT_ACCEPT = '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp'
+const FILE_INPUT_ACCEPT = '.jpg,.jpeg,.png,image/jpeg,image/png'
 const MAX_BATCH_UPLOAD = 10
 
 export type GalleryMode = 'club' | 'profile'
@@ -157,16 +156,8 @@ export default function GalleryManager({
   }, [targetEntityId, fetchMedia])
 
   const validateFile = (file: File): string | null => {
-    if (!ALLOWED_MIME_TYPES.includes(file.type as (typeof ALLOWED_MIME_TYPES)[number])) {
-      return 'Only JPG/JPEG, PNG, or WebP images are allowed'
-    }
-
-    const maxBytes = config.maxFileSizeMB * 1024 * 1024
-    if (file.size > maxBytes) {
-      return `File size must be less than ${config.maxFileSizeMB}MB`
-    }
-
-    return null
+    const validation = validateImage(file, { maxFileSizeMB: config.maxFileSizeMB })
+    return validation.valid ? null : validation.error || 'Invalid image'
   }
 
   const handleFileUpload = async (files: FileList | null) => {
@@ -249,9 +240,10 @@ export default function GalleryManager({
         )
       } catch (error) {
         console.error('Error uploading file:', error)
+        const message = error instanceof Error ? error.message : 'Upload failed. Please use PNG or JPG up to 10MB.'
         setUploadProgress((prev) =>
           prev.map((item, idx) =>
-            idx === i ? { ...item, status: 'error', error: 'Upload failed' } : item
+            idx === i ? { ...item, status: 'error', error: message } : item
           )
         )
       }
@@ -537,7 +529,7 @@ export default function GalleryManager({
             Drag and drop photos here, or click to browse
           </p>
           <p className="text-sm text-gray-500">
-            JPG/JPEG, PNG, or WebP • Max 10MB per file • Up to 10 files at once
+            JPG/JPEG or PNG • Max {config.maxFileSizeMB}MB per file • Up to {MAX_BATCH_UPLOAD} files at once
           </p>
         </div>
       )}

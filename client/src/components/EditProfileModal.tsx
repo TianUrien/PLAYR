@@ -148,7 +148,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
 
     try {
       // Validate image
-      const validation = validateImage(file);
+      const validation = validateImage(file, { maxFileSizeMB: 5 })
       if (!validation.valid) {
         setError(validation.error || 'Invalid image');
         return;
@@ -179,7 +179,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       logger.info('Avatar uploaded successfully')
     } catch (error) {
       logger.error('Error uploading avatar:', error);
-      setError('Failed to upload avatar');
+      setError('We couldn’t upload this image. Please use PNG or JPG up to 5MB.');
     }
   };
 
@@ -350,13 +350,13 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   >
                     {formData.avatar_url ? 'Change Image' : 'Upload Image'}
                   </button>
-                  <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 5MB</p>
+                  <p className="text-xs text-gray-500 mt-1">PNG or JPG, up to 5MB</p>
                 </div>
               </div>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                 onChange={handleAvatarUpload}
                 className="hidden"
                 aria-label="Profile picture upload"

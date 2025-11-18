@@ -5,7 +5,7 @@
 
 import { logger } from './logger'
 
-interface OptimizeOptions {
+export interface OptimizeOptions {
   maxWidth?: number
   maxHeight?: number
   maxSizeMB?: number
@@ -237,25 +237,35 @@ function canvasToBlob(
 /**
  * Validate image file before upload
  */
-export function validateImage(file: File): { valid: boolean; error?: string } {
-  // Check file type
-  if (!file.type.startsWith('image/')) {
-    return { valid: false, error: 'File must be an image' }
+export type ImageValidationOptions = {
+  maxFileSizeMB: number
+  allowedMimeTypes?: string[]
+}
+
+const DEFAULT_ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/jpg']
+
+export function validateImage(file: File, options: ImageValidationOptions): { valid: boolean; error?: string } {
+  const { maxFileSizeMB, allowedMimeTypes = DEFAULT_ALLOWED_MIME_TYPES } = options
+
+  const normalizedName = file.name?.toLowerCase() ?? ''
+  const hasValidExtension = normalizedName.endsWith('.jpg') || normalizedName.endsWith('.jpeg') || normalizedName.endsWith('.png')
+  const hasValidMime = allowedMimeTypes.includes(file.type.toLowerCase())
+
+  if (!hasValidExtension || !hasValidMime) {
+    return { valid: false, error: 'Only JPG/JPEG or PNG images are allowed.' }
   }
-  
-  // Check file size (before optimization - allow up to 10MB)
-  const maxSizeBeforeOptimization = 10 * 1024 * 1024 // 10MB
-  if (file.size > maxSizeBeforeOptimization) {
+
+  const maxBytes = maxFileSizeMB * 1024 * 1024
+  if (file.size > maxBytes) {
     return {
       valid: false,
-      error: `Image is too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum 10 MB.`
+      error: `Image is too large. Max ${maxFileSizeMB}MB.`,
     }
   }
-  
-  // Check file name
+
   if (!file.name || file.name.length > 255) {
     return { valid: false, error: 'Invalid file name' }
   }
-  
+
   return { valid: true }
 }

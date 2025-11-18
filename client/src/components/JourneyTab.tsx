@@ -495,7 +495,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
     }
 
     const file = files[0]
-    const validation = validateImage(file)
+    const validation = validateImage(file, { maxFileSizeMB: 5 })
     if (!validation.valid) {
       addToast(validation.error ?? 'Invalid image file.', 'error')
       input.value = ''
@@ -533,7 +533,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       addToast('Image uploaded successfully.', 'success')
     } catch (error) {
       console.error('Error uploading journey image:', error)
-      addToast('Failed to upload image. Please try again.', 'error')
+      addToast('We couldn’t upload this image. Please use PNG or JPG up to 5MB.', 'error')
     } finally {
       setUploadingImageId(null)
       input.value = ''
@@ -924,7 +924,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
                   )}
                   <input
                     type="file"
-                    accept="image/png,image/jpeg,image/webp"
+                    accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                     className="sr-only"
                     onChange={handleImageUpload}
                     disabled={uploadingImageId === entry.id}
@@ -941,7 +941,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
                     Remove image
                   </button>
                 )}
-                <p className="text-xs text-gray-500">PNG or JPG, up to 1MB.</p>
+                <p className="text-xs text-gray-500">PNG or JPG, up to 5MB.</p>
               </div>
             </div>
           </div>

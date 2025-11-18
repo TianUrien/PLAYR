@@ -129,7 +129,7 @@ export default function CompleteProfile() {
       setError('')
 
       // Validate image
-      const validation = validateImage(file)
+      const validation = validateImage(file, { maxFileSizeMB: 5 })
       if (!validation.valid) {
         setError(validation.error || 'Invalid image')
         return
@@ -160,7 +160,7 @@ export default function CompleteProfile() {
       logger.info('Avatar uploaded successfully')
     } catch (err) {
       logger.error('Error uploading avatar:', err)
-      setError('Failed to upload avatar. You can add one later from your profile.')
+      setError('We couldn’t upload this image. Please use PNG or JPG up to 5MB.')
     } finally {
       setUploadingAvatar(false)
     }
@@ -414,13 +414,13 @@ export default function CompleteProfile() {
                       'Upload Photo'
                     )}
                   </button>
-                  <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 5MB</p>
+                  <p className="text-xs text-gray-500 mt-1">PNG or JPG, up to 5MB</p>
                 </div>
               </div>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
                 onChange={handleAvatarUpload}
                 className="hidden"
                 disabled={uploadingAvatar}
