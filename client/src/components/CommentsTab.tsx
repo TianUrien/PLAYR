@@ -239,9 +239,18 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
     setDeleteLoading(true)
 
     try {
-      const { error } = await supabase.from('profile_comments').delete().eq('id', existingComment.id)
-      if (error) throw error
-      setComments((prev) => prev.filter((comment) => comment.id !== existingComment.id))
+      const { error, data } = await supabase
+        .from('profile_comments')
+        .delete()
+        .eq('id', existingComment.id)
+        .select('id')
+        .maybeSingle()
+
+      if (error || !data) {
+        throw error ?? new Error('Comment not found or already removed')
+      }
+
+      setComments((prev) => prev.filter((comment) => comment.id !== data.id))
       setDeleteModalOpen(false)
       addToast('Comment deleted.', 'success')
     } catch (error) {
