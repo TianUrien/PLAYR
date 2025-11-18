@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MessageCircle, User } from 'lucide-react'
-import { Avatar } from '@/components'
+import { Avatar, RoleBadge } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { useToastStore } from '@/lib/toast'
@@ -102,13 +102,6 @@ export default function MemberCard({
   // Format join date
   const joinedText = formatDistanceToNow(new Date(created_at), { addSuffix: true })
 
-  // Role badge styles
-  const roleBadgeStyles = {
-    player: 'bg-blue-100 text-blue-700',
-    coach: 'bg-purple-100 text-purple-700',
-    club: 'bg-orange-100 text-orange-700',
-  }
-
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
       {/* Avatar with lazy loading */}
@@ -123,13 +116,7 @@ export default function MemberCard({
         />
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-gray-900 truncate">{full_name}</h3>
-          <span
-            className={`inline-block px-2 py-1 rounded-full text-xs font-medium capitalize ${
-              roleBadgeStyles[role]
-            }`}
-          >
-            {role}
-          </span>
+          <RoleBadge role={role} className="mt-1" />
         </div>
       </div>
 

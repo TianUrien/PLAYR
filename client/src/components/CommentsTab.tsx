@@ -7,6 +7,7 @@ import type { Profile } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import Avatar from './Avatar'
+import RoleBadge from './RoleBadge'
 import { cn } from '@/lib/utils'
 import ConfirmActionModal from './ConfirmActionModal'
 
@@ -408,12 +409,12 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
                 <div className="flex-1 space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <p className="font-semibold text-gray-900">
-                        {existingComment.author?.full_name || existingComment.author?.username || 'PLAYR member'}
-                      </p>
-                      <p className="text-xs uppercase tracking-wide text-gray-500">
-                        {existingComment.author?.role ?? 'member'}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-gray-900">
+                          {existingComment.author?.full_name || existingComment.author?.username || 'PLAYR member'}
+                        </p>
+                        <RoleBadge role={existingComment.author?.role} />
+                      </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                       <span>{formatDistanceToNow(new Date(existingComment.created_at), { addSuffix: true })}</span>
@@ -563,12 +564,12 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                         <div>
-                          <p className="font-semibold text-gray-900">
-                            {comment.author?.full_name || comment.author?.username || 'Former PLAYR member'}
-                          </p>
-                          <p className="text-xs uppercase tracking-wide text-gray-500">
-                            {comment.author?.role ?? 'member'}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-semibold text-gray-900">
+                              {comment.author?.full_name || comment.author?.username || 'Former PLAYR member'}
+                            </p>
+                            <RoleBadge role={comment.author?.role} />
+                          </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                           {isFriend && (
