@@ -284,6 +284,10 @@
     animation: scaleIn 0.25s ease-out;
   }
 
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+  }
+
   /* Accessibility */
   .sr-only {
     position: absolute;

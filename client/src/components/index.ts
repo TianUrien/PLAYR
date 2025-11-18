@@ -19,6 +19,7 @@ export { default as CommentsTab } from './CommentsTab'
 export { default as JourneyTab } from './JourneyTab'
 export { default as FriendsTab } from './FriendsTab'
 export { default as FriendshipButton } from './FriendshipButton'
+export { default as ScrollableTabs } from './ScrollableTabs'
 export { ErrorBoundary } from './ErrorBoundary'
 
 // Loading States

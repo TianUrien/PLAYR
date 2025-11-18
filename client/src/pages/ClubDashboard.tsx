@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { MapPin, Globe, Calendar, Plus, Eye, MessageCircle, Edit, Loader2 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '@/components/Header'
-import { Avatar, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton } from '@/components'
+import { Avatar, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, ScrollableTabs } from '@/components'
 import VacanciesTab from '@/components/VacanciesTab'
 import ClubMediaTab from '@/components/ClubMediaTab'
 import Skeleton from '@/components/Skeleton'
@@ -302,21 +302,14 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
 
         <div className="bg-white rounded-2xl shadow-sm animate-slide-in-up">
           <div className="sticky top-[68px] z-40 border-b border-gray-200 bg-white/90 backdrop-blur">
-            <nav className="flex min-w-max gap-8 px-6 overflow-x-auto">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`py-4 border-b-2 transition-all text-sm font-medium whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? 'border-[#8b5cf6] text-[#8b5cf6]'
-                      : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
+            <ScrollableTabs
+              tabs={tabs}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              className="gap-8 px-6"
+              activeClassName="border-[#8b5cf6] text-[#8b5cf6]"
+              inactiveClassName="border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
+            />
           </div>
 
           <div className="p-6 md:p-8">

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { MapPin, Globe, Calendar, Edit2, MessageCircle, Award } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton } from '@/components'
+import { Avatar, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, ScrollableTabs } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import Button from '@/components/Button'
@@ -254,21 +254,14 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
         {/* Tabs */}
         <div className="bg-white rounded-2xl shadow-sm">
           <div className="border-b border-gray-200">
-            <nav className="flex gap-8 px-6">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`py-4 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-[#6366f1] text-[#6366f1]'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
+            <ScrollableTabs
+              tabs={tabs}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              className="gap-8 px-6"
+              activeClassName="border-[#6366f1] text-[#6366f1]"
+              inactiveClassName="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            />
           </div>
 
           <div className="p-6">

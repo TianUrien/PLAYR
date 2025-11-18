@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { MapPin, Globe, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, EditProfileModal, FriendsTab, FriendshipButton } from '@/components'
+import { Avatar, EditProfileModal, FriendsTab, FriendshipButton, ScrollableTabs } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import JourneyTab from '@/components/JourneyTab'
@@ -291,21 +291,14 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
         <div className="bg-white rounded-2xl shadow-sm animate-slide-in-up">
           {/* Tab Navigation */}
           <div className="border-b border-gray-200 overflow-x-auto">
-            <nav className="flex gap-8 px-6 min-w-max">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`py-4 border-b-2 transition-all text-sm font-medium whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? 'border-[#6366f1] text-[#6366f1]'
-                      : 'border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
+              <ScrollableTabs
+                tabs={tabs}
+                activeTab={activeTab}
+                onTabChange={handleTabChange}
+                className="gap-8 px-6"
+                activeClassName="border-[#6366f1] text-[#6366f1]"
+                inactiveClassName="border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
+              />
           </div>
 
           {/* Tab Content */}
