@@ -3,6 +3,7 @@ import { X, AlertTriangle, Loader2 } from 'lucide-react'
 import { supabase, SUPABASE_URL } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
+import { clearAllProfileDraftsForUser } from '@/lib/profileDrafts'
 
 interface DeleteAccountModalProps {
   isOpen: boolean
@@ -11,7 +12,7 @@ interface DeleteAccountModalProps {
 }
 
 export default function DeleteAccountModal({ isOpen, onClose, userEmail }: DeleteAccountModalProps) {
-  const { signOut } = useAuthStore()
+  const { signOut, profile } = useAuthStore()
   const [confirmText, setConfirmText] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -82,6 +83,10 @@ export default function DeleteAccountModal({ isOpen, onClose, userEmail }: Delet
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to delete account')
+      }
+
+      if (profile?.id) {
+        clearAllProfileDraftsForUser(profile.id)
       }
 
       // Success - sign out and redirect

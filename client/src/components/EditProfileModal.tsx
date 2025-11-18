@@ -10,6 +10,7 @@ import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { invalidateProfile } from '@/lib/profile'
 import { useToastStore } from '@/lib/toast'
 import { deleteStorageObject } from '@/lib/storage'
+import { clearProfileDraft, loadProfileDraft, saveProfileDraft } from '@/lib/profileDrafts'
 
 interface EditProfileModalProps {
   isOpen: boolean
@@ -17,36 +18,61 @@ interface EditProfileModalProps {
   role: 'player' | 'coach' | 'club'
 }
 
+type ProfileFormData = {
+  full_name: string
+  base_location: string
+  nationality: string
+  date_of_birth: string
+  position: string
+  secondary_position: string
+  gender: string
+  passport_1: string
+  passport_2: string
+  current_club: string
+  year_founded: string
+  league_division: string
+  website: string
+  contact_email: string
+  club_bio: string
+  club_history: string
+  bio: string
+  avatar_url: string
+}
+
+const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
+  full_name: profile?.full_name || '',
+  base_location: profile?.base_location || '',
+  nationality: profile?.nationality || '',
+  date_of_birth: profile?.date_of_birth || '',
+  position: profile?.position || '',
+  secondary_position: profile?.secondary_position || '',
+  gender: profile?.gender || '',
+  passport_1: profile?.passport_1 || '',
+  passport_2: profile?.passport_2 || '',
+  current_club: profile?.current_club || '',
+  year_founded: profile?.year_founded?.toString() || '',
+  league_division: profile?.league_division || '',
+  website: profile?.website || '',
+  contact_email: profile?.contact_email || '',
+  club_bio: profile?.club_bio || '',
+  club_history: profile?.club_history || '',
+  bio: profile?.bio || '',
+  avatar_url: profile?.avatar_url || '',
+})
+
 export default function EditProfileModal({ isOpen, onClose, role }: EditProfileModalProps) {
   const { profile, setProfile } = useAuthStore()
   const { addToast } = useToastStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement | null>(null)
+  const modalOpenRef = useRef(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const titleId = useId()
+  const activeProfileId = profile?.id ?? null
 
-  const [formData, setFormData] = useState({
-    full_name: profile?.full_name || '',
-    base_location: profile?.base_location || '',
-    nationality: profile?.nationality || '',
-    date_of_birth: profile?.date_of_birth || '',
-    position: profile?.position || '',
-    secondary_position: profile?.secondary_position || '',
-    gender: profile?.gender || '',
-    passport_1: profile?.passport_1 || '',
-    passport_2: profile?.passport_2 || '',
-    current_club: profile?.current_club || '',
-    year_founded: profile?.year_founded?.toString() || '',
-    league_division: profile?.league_division || '',
-    website: profile?.website || '',
-    contact_email: profile?.contact_email || '',
-    club_bio: profile?.club_bio || '',
-    club_history: profile?.club_history || '',
-    bio: profile?.bio || '',
-    avatar_url: profile?.avatar_url || '',
-  })
+  const [formData, setFormData] = useState<ProfileFormData>(() => buildInitialFormData(profile))
 
   const handleDismiss = useCallback(() => {
     if (loading) {
@@ -72,6 +98,43 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleDismiss, isOpen, profile])
+
+  useEffect(() => {
+    if (!profile) return
+
+    const justOpened = isOpen && !modalOpenRef.current
+    modalOpenRef.current = isOpen
+    if (!justOpened) return
+
+    const baseState = buildInitialFormData(profile)
+    const draft = loadProfileDraft<ProfileFormData>(profile.id, role)
+
+    if (draft) {
+      setFormData({ ...baseState, ...draft })
+    } else {
+      setFormData(baseState)
+    }
+  }, [isOpen, profile, role])
+
+  useEffect(() => {
+    if (!isOpen || !activeProfileId) return
+
+    const timeoutId = typeof window === 'undefined'
+      ? null
+      : window.setTimeout(() => {
+          saveProfileDraft(activeProfileId, role, formData)
+        }, 400)
+
+    if (timeoutId === null && typeof window === 'undefined') {
+      saveProfileDraft(activeProfileId, role, formData)
+    }
+
+    return () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId)
+      }
+    }
+  }, [activeProfileId, formData, isOpen, role])
 
   if (!isOpen || !profile) return null
 
@@ -211,6 +274,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
 
       // Force refresh from server to pick up computed fields/triggers
       await invalidateProfile({ userId: profileId, reason: 'profile-updated' })
+      clearProfileDraft(profileId, role)
     } catch (err) {
       logger.error('Profile update error:', err)
       logger.error('Error type:', typeof err)
