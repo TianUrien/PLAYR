@@ -1,4 +1,6 @@
+import { useRef } from 'react'
 import { formatDistanceToNow } from 'date-fns'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { SUPABASE_URL } from '@/lib/supabase'
 import Avatar from './Avatar'
 
@@ -40,6 +42,13 @@ export default function ConversationList({
   variant = 'default'
 }: ConversationListProps) {
   const isCompact = variant === 'compact'
+  const parentRef = useRef<HTMLDivElement>(null)
+  const rowVirtualizer = useVirtualizer({
+    count: conversations.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => (isCompact ? 68 : 92),
+    overscan: 6
+  })
 
   const getAvatarUrl = (avatarUrl: string | null) => {
     if (!avatarUrl) return null
@@ -59,103 +68,107 @@ export default function ConversationList({
       .split(' ')
       .filter(Boolean)
       .slice(0, 2)
-      .map((part) => part[0]!.toUpperCase())
+      .map(part => part[0]!.toUpperCase())
       .join('')
   }
 
+  const virtualItems = rowVirtualizer.getVirtualItems()
+
   return (
-    <div className="divide-y divide-gray-100">
-      {conversations.map((conversation) => {
-        const isSelected = conversation.id === selectedConversationId
-        const avatarUrl = getAvatarUrl(conversation.otherParticipant?.avatar_url || null)
-        const isUnread = (conversation.unreadCount || 0) > 0
-        const isSentByMe = conversation.lastMessage?.sender_id === currentUserId
-        const buttonClasses = `w-full flex items-start gap-3 ${isCompact ? 'px-3 py-3' : 'p-4'} transition-colors ${
-          isSelected
-            ? isCompact
-              ? 'bg-gray-100 hover:bg-gray-100'
-              : 'bg-purple-50 hover:bg-purple-50'
-            : 'hover:bg-gray-50'
-        }`
-        const participantName =
-          conversation.otherParticipant?.full_name ||
-          conversation.otherParticipant?.username ||
-          'PLAYR Member'
-        const avatarInitials = getInitials(participantName)
+    <div ref={parentRef} className="h-full overflow-y-auto">
+      <div className="relative w-full" style={{ height: rowVirtualizer.getTotalSize() }}>
+        {virtualItems.map(virtualRow => {
+          const conversation = conversations[virtualRow.index]
+          if (!conversation) {
+            return null
+          }
 
-        return (
-          <button
-            key={conversation.id}
-            onClick={() => onSelectConversation(conversation.id)}
-            className={buttonClasses}
-          >
-            {/* Avatar */}
-            <div className="relative flex-shrink-0">
-              <Avatar
-                src={avatarUrl}
-                alt={participantName}
-                initials={avatarInitials}
-                className="w-12 h-12 text-lg shadow-sm"
-                enablePreview
-                previewTitle={participantName}
-                previewInteraction="pointer"
-              />
-              {/* Online indicator placeholder */}
-              {/* <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div> */}
-            </div>
+          const isSelected = conversation.id === selectedConversationId
+          const avatarUrl = getAvatarUrl(conversation.otherParticipant?.avatar_url || null)
+          const isUnread = (conversation.unreadCount || 0) > 0
+          const isSentByMe = conversation.lastMessage?.sender_id === currentUserId
+          const buttonClasses = `w-full flex items-start gap-3 ${isCompact ? 'px-3 py-3' : 'p-4'} transition-colors ${
+            isSelected
+              ? isCompact
+                ? 'bg-gray-100 hover:bg-gray-100'
+                : 'bg-purple-50 hover:bg-purple-50'
+              : 'hover:bg-gray-50'
+          }`
+          const participantName =
+            conversation.otherParticipant?.full_name ||
+            conversation.otherParticipant?.username ||
+            'PLAYR Member'
+          const avatarInitials = getInitials(participantName)
 
-            {/* Conversation Info */}
-            <div className="flex-1 min-w-0 text-left">
-              <div className="mb-1 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h3
-                    className={`truncate font-semibold text-gray-900 ${
-                      isUnread ? 'font-bold' : ''
-                    } ${isCompact ? 'text-sm' : ''}`}
-                  >
-                    {participantName}
-                  </h3>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                      conversation.otherParticipant?.role === 'club'
-                        ? 'bg-orange-50 text-orange-700'
-                        : conversation.otherParticipant?.role === 'coach'
-                        ? 'bg-purple-50 text-purple-700'
-                        : 'bg-blue-50 text-blue-700'
-                    }`}
-                  >
-                    {conversation.otherParticipant?.role === 'club'
-                      ? 'Club'
-                      : conversation.otherParticipant?.role === 'coach'
-                      ? 'Coach'
-                      : 'Player'}
-                  </span>
+          return (
+            <div
+              key={conversation.id}
+              ref={rowVirtualizer.measureElement}
+              data-index={virtualRow.index}
+              className="absolute left-0 w-full border-b border-gray-100"
+              style={{ transform: `translateY(${virtualRow.start}px)` }}
+            >
+              <button onClick={() => onSelectConversation(conversation.id)} className={buttonClasses}>
+                <div className="relative flex-shrink-0">
+                  <Avatar
+                    src={avatarUrl}
+                    alt={participantName}
+                    initials={avatarInitials}
+                    className="w-12 h-12 text-lg shadow-sm"
+                    enablePreview
+                    previewTitle={participantName}
+                    previewInteraction="pointer"
+                  />
                 </div>
-                {conversation.last_message_at && (
-                  <span className="flex-shrink-0 text-xs text-gray-500">
-                    {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
-                  </span>
-                )}
-              </div>
 
-              {/* Last Message Preview */}
-              {conversation.lastMessage && (
-                <div className="flex items-center justify-between">
-                  <p
-                    className={`text-sm truncate ${
-                      isUnread ? 'text-gray-900 font-medium' : 'text-gray-600'
-                    }`}
-                  >
-                    {isSentByMe && <span className="text-gray-500">You: </span>}
-                    {truncateMessage(conversation.lastMessage.content)}
-                  </p>
-                  {isUnread && <span className="ml-2 h-2 w-2 flex-shrink-0 rounded-full bg-purple-600"></span>}
+                <div className="flex-1 min-w-0 text-left">
+                  <div className="mb-1 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h3
+                        className={`truncate font-semibold text-gray-900 ${
+                          isUnread ? 'font-bold' : ''
+                        } ${isCompact ? 'text-sm' : ''}`}
+                      >
+                        {participantName}
+                      </h3>
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          conversation.otherParticipant?.role === 'club'
+                            ? 'bg-orange-50 text-orange-700'
+                            : conversation.otherParticipant?.role === 'coach'
+                            ? 'bg-purple-50 text-purple-700'
+                            : 'bg-blue-50 text-blue-700'
+                        }`}
+                      >
+                        {conversation.otherParticipant?.role === 'club'
+                          ? 'Club'
+                          : conversation.otherParticipant?.role === 'coach'
+                          ? 'Coach'
+                          : 'Player'}
+                      </span>
+                    </div>
+                    {conversation.last_message_at && (
+                      <span className="flex-shrink-0 text-xs text-gray-500">
+                        {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
+                      </span>
+                    )}
+                  </div>
+
+                  {conversation.lastMessage && (
+                    <div className="flex items-center justify-between">
+                      <p className={`text-sm truncate ${isUnread ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>
+                        {isSentByMe && <span className="text-gray-500">You: </span>}
+                        {truncateMessage(conversation.lastMessage.content)}
+                      </p>
+                      {isUnread && <span className="ml-2 h-2 w-2 flex-shrink-0 rounded-full bg-purple-600"></span>}
+                    </div>
+                  )}
                 </div>
-              )}
+              </button>
             </div>
-          </button>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }

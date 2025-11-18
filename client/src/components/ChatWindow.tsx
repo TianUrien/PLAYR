@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useId, useLayoutEffect, useMemo } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { Link } from 'react-router-dom'
 import { Send, ArrowLeft } from 'lucide-react'
 import { supabase, SUPABASE_URL } from '@/lib/supabase'
@@ -123,13 +124,18 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [pendingNewMessagesCount, setPendingNewMessagesCount] = useState(0)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const messagesRef = useRef<Message[]>([])
   const fetchMessagesPromiseRef = useRef<Promise<Message[]> | null>(null)
   const { addToast } = useToastStore()
   const isMobile = useMediaQuery('(max-width: 767px)')
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const messageVirtualizer = useVirtualizer({
+    count: messages.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 120,
+    overscan: 12
+  })
   const shouldStickToBottomRef = useRef(true)
   const initialScrollPendingRef = useRef(true)
   const lastMessageIdRef = useRef<string | null>(null)
@@ -231,28 +237,31 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       scrollEl.scrollTo({ top: scrollEl.scrollHeight, behavior })
       return true
     }
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior })
-      return true
+    if (messages.length > 0) {
+      messageVirtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
     }
     return false
-  }, [])
+  }, [messageVirtualizer, messages.length])
 
   const scrollToMessage = useCallback(
     (messageId: string, behavior: ScrollBehavior = 'auto') => {
       const container = scrollContainerRef.current
       const target = messageRefs.current.get(messageId)
-      if (!container || !target) {
-        return false
+      if (container && target) {
+        const containerRect = container.getBoundingClientRect()
+        const targetRect = target.getBoundingClientRect()
+        const top = Math.max(targetRect.top - containerRect.top + container.scrollTop - 16, 0)
+        container.scrollTo({ top, behavior })
+        return true
       }
 
-      const containerRect = container.getBoundingClientRect()
-      const targetRect = target.getBoundingClientRect()
-      const top = Math.max(targetRect.top - containerRect.top + container.scrollTop - 16, 0)
-      container.scrollTo({ top, behavior })
-      return true
+      const fallbackIndex = messages.findIndex(msg => msg.id === messageId)
+      if (fallbackIndex >= 0) {
+        messageVirtualizer.scrollToIndex(fallbackIndex, { align: 'start' })
+      }
+      return false
     },
-    []
+    [messages, messageVirtualizer]
   )
 
   const runScrollJob = useCallback((): void => {
@@ -331,12 +340,13 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
         if (intersectionObserverRef.current) {
           intersectionObserverRef.current.observe(node)
         }
+        messageVirtualizer.measureElement(node)
       } else if (existing) {
         intersectionObserverRef.current?.unobserve(existing)
         refs.delete(messageId)
       }
     },
-    []
+    [messageVirtualizer]
   )
 
   const isViewerAtBottom = useCallback(() => {
@@ -1336,65 +1346,84 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
                 Loading earlier messages…
               </div>
             )}
-            <div className="flex flex-col gap-4">
-              {messages.map((message, index) => {
-                const isMyMessage = message.sender_id === currentUserId
-                const isPending = message.id.startsWith('optimistic-')
-                const showTimestamp =
-                  index === 0 ||
-                  new Date(message.sent_at).getTime() - new Date(messages[index - 1].sent_at).getTime() > 300000
-                const isUnreadMarker =
-                  shouldRenderUnreadSeparator &&
-                  unreadMetadata.firstUnreadId === message.id &&
-                  !isMyMessage
+            <div className="relative">
+              <div
+                className="relative w-full"
+                style={{ height: messageVirtualizer.getTotalSize() }}
+              >
+                {messageVirtualizer.getVirtualItems().map(virtualRow => {
+                  const message = messages[virtualRow.index]
+                  if (!message) {
+                    return null
+                  }
 
-                return (
-                  <div
-                    key={message.id}
-                    ref={setMessageRef(message.id)}
-                    data-message-id={message.id}
-                  >
-                    {showTimestamp && (
-                      <div className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-gray-400">
-                        {format(new Date(message.sent_at), 'MMM d, yyyy h:mm a')}
-                      </div>
-                    )}
-                    {isUnreadMarker && (
-                      <div className="mb-2 flex items-center justify-center text-xs font-semibold uppercase tracking-wide text-purple-500">
-                        --- NEW MESSAGES ---
-                      </div>
-                    )}
-                    <div className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}>
-                      <div
-                        className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm md:max-w-[70%] ${
-                          isMyMessage
-                            ? isPending
-                              ? 'bg-gradient-to-br from-[#6366f1]/70 to-[#8b5cf6]/70 text-white'
-                              : 'bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white'
-                            : 'bg-white text-gray-900'
-                        } ${!isMyMessage ? 'border border-gray-200' : ''}`}
-                      >
-                        <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
-                        <div className="mt-2 flex items-center gap-2 text-xs">
-                          <p className={isMyMessage ? 'text-purple-100' : 'text-gray-500'}>
-                            {format(new Date(message.sent_at), 'h:mm a')}
-                          </p>
-                          {isPending && (
-                            <span className="flex items-center gap-1 text-purple-100">
-                              <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24">
-                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                              </svg>
-                              Sending
-                            </span>
-                          )}
+                  const isMyMessage = message.sender_id === currentUserId
+                  const isPending = message.id.startsWith('optimistic-')
+                  const previousMessage = virtualRow.index > 0 ? messages[virtualRow.index - 1] : null
+                  const showTimestamp =
+                    virtualRow.index === 0 ||
+                    (previousMessage &&
+                      new Date(message.sent_at).getTime() - new Date(previousMessage.sent_at).getTime() > 300000)
+                  const isUnreadMarker =
+                    shouldRenderUnreadSeparator &&
+                    unreadMetadata.firstUnreadId === message.id &&
+                    !isMyMessage
+
+                  return (
+                    <div
+                      key={message.id}
+                      ref={setMessageRef(message.id)}
+                      data-message-id={message.id}
+                      data-index={virtualRow.index}
+                      className="absolute left-0 w-full"
+                      style={{
+                        transform: `translateY(${virtualRow.start}px)`,
+                        top: 0,
+                      }}
+                    >
+                      <div className="pb-4">
+                        {showTimestamp && (
+                          <div className="mb-3 text-center text-xs font-medium uppercase tracking-wide text-gray-400">
+                            {format(new Date(message.sent_at), 'MMM d, yyyy h:mm a')}
+                          </div>
+                        )}
+                        {isUnreadMarker && (
+                          <div className="mb-2 flex items-center justify-center text-xs font-semibold uppercase tracking-wide text-purple-500">
+                            --- NEW MESSAGES ---
+                          </div>
+                        )}
+                        <div className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}>
+                          <div
+                            className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm md:max-w-[70%] ${
+                              isMyMessage
+                                ? isPending
+                                  ? 'bg-gradient-to-br from-[#6366f1]/70 to-[#8b5cf6]/70 text-white'
+                                  : 'bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white'
+                                : 'bg-white text-gray-900'
+                            } ${!isMyMessage ? 'border border-gray-200' : ''}`}
+                          >
+                            <p className="whitespace-pre-wrap break-words leading-relaxed">{message.content}</p>
+                            <div className="mt-2 flex items-center gap-2 text-xs">
+                              <p className={isMyMessage ? 'text-purple-100' : 'text-gray-500'}>
+                                {format(new Date(message.sent_at), 'h:mm a')}
+                              </p>
+                              {isPending && (
+                                <span className="flex items-center gap-1 text-purple-100">
+                                  <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                  </svg>
+                                  Sending
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
-              <div ref={messagesEndRef} />
+                  )
+                })}
+              </div>
             </div>
             {pendingNewMessagesCount > 0 && (
               <div className="sticky bottom-4 z-10 flex justify-center pb-2">

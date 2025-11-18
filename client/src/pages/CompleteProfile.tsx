@@ -30,6 +30,8 @@ type UserRole = 'player' | 'coach' | 'club'
 export default function CompleteProfile() {
   const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const profilePrefilledRef = useRef(false)
+  const contactPrefilledRef = useRef<string | null>(null)
   const { user, profile, loading: authLoading, profileStatus } = useAuthStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -70,7 +72,7 @@ export default function CompleteProfile() {
 
   // Use profile data from auth store - no need to fetch again
   const userRole = (profile?.role as UserRole | null) ?? fallbackRole ?? (user?.user_metadata?.role as UserRole | undefined) ?? null
-  const profileEmail = profile?.email ?? user?.email ?? fallbackEmail ?? ''
+  const contactEmailFallback = profile?.contact_email ?? profile?.email ?? user?.email ?? fallbackEmail ?? ''
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -102,22 +104,70 @@ export default function CompleteProfile() {
     if (!user) {
       console.log('[COMPLETE_PROFILE] No user, redirecting to signup')
       navigate('/signup', { replace: true })
+    }
+  }, [user, profile, authLoading, navigate, profileStatus])
+
+  useEffect(() => {
+    if (!contactEmailFallback) {
       return
     }
 
-    // Pre-fill email if available
-    if (profileEmail) {
-      setFormData(prev => ({ ...prev, contactEmail: profileEmail }))
-    }
-  }, [user, profile, authLoading, navigate, profileStatus, profileEmail])
+    setFormData(prev => {
+      if (prev.contactEmail && prev.contactEmail !== contactPrefilledRef.current) {
+        return prev
+      }
+      contactPrefilledRef.current = contactEmailFallback
+      return { ...prev, contactEmail: contactEmailFallback }
+    })
+  }, [contactEmailFallback])
 
   useEffect(() => {
-    if (authLoading) return
-    if (profile?.full_name) {
-      logger.debug('[COMPLETE_PROFILE] Profile complete, navigating to dashboard')
-      navigate('/dashboard/profile', { replace: true })
+    if (!profile || profilePrefilledRef.current) {
+      return
     }
-  }, [authLoading, profile?.full_name, navigate, profile])
+
+    profilePrefilledRef.current = true
+    setFormData(prev => {
+      const next = { ...prev }
+      next.city = profile.base_location ?? prev.city
+      next.nationality = profile.nationality ?? prev.nationality
+
+      if (profile.role === 'club') {
+        next.clubName = profile.full_name ?? prev.clubName
+        next.country = profile.nationality ?? prev.country
+        next.yearFounded = profile.year_founded ? String(profile.year_founded) : prev.yearFounded
+        next.leagueDivision = profile.league_division ?? prev.leagueDivision
+        next.website = profile.website ?? prev.website
+        next.contactEmail = profile.contact_email ?? next.contactEmail
+        next.clubBio = profile.club_bio ?? prev.clubBio
+        next.clubHistory = profile.club_history ?? prev.clubHistory
+      } else {
+        next.fullName = profile.full_name ?? prev.fullName
+        next.gender = profile.gender ?? prev.gender
+        next.dateOfBirth = profile.date_of_birth ?? prev.dateOfBirth
+
+        if (profile.role === 'player') {
+          next.position = profile.position ?? prev.position
+          next.secondaryPosition = profile.secondary_position ?? prev.secondaryPosition
+        }
+
+        if (profile.role === 'coach') {
+          next.passport1 = profile.passport_1 ?? prev.passport1
+          next.passport2 = profile.passport_2 ?? prev.passport2
+        }
+      }
+
+      return next
+    })
+
+    if (profile.contact_email) {
+      contactPrefilledRef.current = profile.contact_email
+    }
+
+    if (profile.avatar_url) {
+      setAvatarUrl(profile.avatar_url)
+    }
+  }, [profile])
 
   // Handle avatar upload
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -262,13 +312,11 @@ export default function CompleteProfile() {
 
       logger.debug('Updated profile verified:', verifiedProfile)
 
-    // CRITICAL: Refresh the auth store
-    // This ensures DashboardRouter detects the update and redirects
-    await invalidateProfile({ userId: user.id, reason: 'complete-profile' })
+      // CRITICAL: Refresh the auth store so dependent routes pick up the update
+      await invalidateProfile({ userId: user.id, reason: 'complete-profile' })
       
       logger.debug('Auth store refreshed - profile now complete')
-      
-      // Note: Removed navigation - DashboardRouter will detect profile update and redirect
+      navigate('/dashboard/profile', { replace: true })
 
     } catch (err) {
       logger.error('Complete profile error:', err)

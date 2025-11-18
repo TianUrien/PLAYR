@@ -6,6 +6,10 @@ import { requestCache, generateCacheKey } from './requestCache'
 import type { Database, Json } from './database.types'
 
 const NOTIFICATION_LIMIT = 40
+const HEARTBEAT_INTERVAL_MS = 60_000
+const CHANNEL_RECONNECT_BASE_DELAY_MS = 2000
+const CHANNEL_RECONNECT_MAX_DELAY_MS = 30_000
+let lifecycleListenersBound = false
 
 type NotificationKind = Database['public']['Enums']['profile_notification_kind']
 
@@ -45,7 +49,10 @@ interface NotificationState {
   pendingFriendshipId: string | null
   pendingCommentHighlights: Set<string>
   commentHighlightVersion: number
-  initialize: (userId: string | null) => Promise<void>
+  heartbeatIntervalId: number | null
+  reconnectTimeoutId: number | null
+  reconnectAttempts: number
+  initialize: (userId: string | null, options?: { force?: boolean }) => Promise<void>
   toggleDrawer: (open?: boolean) => void
   refresh: (options?: RefreshOptions) => Promise<void>
   markAllRead: () => Promise<void>
@@ -175,55 +182,137 @@ const upsertNotification = (
   }
 }
 
-export const useNotificationStore = create<NotificationState>((set, get) => ({
-  notifications: [],
-  unreadCount: 0,
-  isDrawerOpen: false,
-  loading: false,
-  userId: null,
-  channel: null,
-  pendingFriendshipId: null,
-  pendingCommentHighlights: new Set<string>(),
-  commentHighlightVersion: 0,
+export const useNotificationStore = create<NotificationState>((set, get) => {
+  const isBrowser = typeof window !== 'undefined'
+  const isOnline = () => (typeof navigator === 'undefined' ? true : navigator.onLine)
+  const isPageHidden = () => (typeof document === 'undefined' ? false : document.visibilityState === 'hidden')
 
-  toggleDrawer: (open) => {
-    const currentOpen = get().isDrawerOpen
-    const nextOpen = typeof open === 'boolean' ? open : !currentOpen
-    if (currentOpen === nextOpen) {
+  const clearHeartbeat = () => {
+    const heartbeatIntervalId = get().heartbeatIntervalId
+    if (heartbeatIntervalId !== null && isBrowser) {
+      window.clearInterval(heartbeatIntervalId)
+      set({ heartbeatIntervalId: null })
+    }
+  }
+
+  const clearReconnectTimeout = () => {
+    const reconnectTimeoutId = get().reconnectTimeoutId
+    if (reconnectTimeoutId !== null && isBrowser) {
+      window.clearTimeout(reconnectTimeoutId)
+      set({ reconnectTimeoutId: null })
+    }
+  }
+
+  const scheduleReconnect = () => {
+    if (!isBrowser || !isOnline()) {
       return
     }
-    set({ isDrawerOpen: nextOpen })
-  },
+    clearHeartbeat()
+    const { reconnectTimeoutId, reconnectAttempts, userId } = get()
+    if (reconnectTimeoutId !== null || !userId) {
+      return
+    }
+    const delay = Math.min(
+      CHANNEL_RECONNECT_BASE_DELAY_MS * Math.pow(2, reconnectAttempts),
+      CHANNEL_RECONNECT_MAX_DELAY_MS
+    )
+    const timeoutId = window.setTimeout(() => {
+      set({ reconnectTimeoutId: null, reconnectAttempts: reconnectAttempts + 1 })
+      void get().initialize(userId, { force: true })
+    }, delay)
+    set({ reconnectTimeoutId: timeoutId })
+  }
 
-  initialize: async (userId: string | null) => {
-    const { userId: currentUserId, channel } = get()
+  const performHeartbeat = () => {
+    if (!isBrowser || isPageHidden()) {
+      return
+    }
 
+    const { userId, channel } = get()
     if (!userId) {
-      if (channel) {
-        await supabase.removeChannel(channel)
-      }
-      set({
-        userId: null,
-        channel: null,
-        notifications: [],
-        unreadCount: 0,
-        pendingCommentHighlights: new Set<string>(),
-        commentHighlightVersion: 0,
+      return
+    }
+
+    void get().refresh({ bypassCache: true })
+
+    if (!channel) {
+      scheduleReconnect()
+      return
+    }
+
+    channel
+      .send({
+        type: 'broadcast',
+        event: 'heartbeat',
+        payload: { timestamp: Date.now() },
       })
+      .then((response) => {
+        if (response !== 'ok') {
+          scheduleReconnect()
+        }
+      })
+      .catch((error) => {
+        console.error('[NOTIFICATIONS] Heartbeat failed', error)
+        scheduleReconnect()
+      })
+  }
+
+  const startHeartbeat = () => {
+    if (!isBrowser) {
+      return
+    }
+    clearHeartbeat()
+    performHeartbeat()
+    const intervalId = window.setInterval(() => {
+      performHeartbeat()
+    }, HEARTBEAT_INTERVAL_MS)
+    set({ heartbeatIntervalId: intervalId })
+  }
+
+  const bindLifecycleEvents = () => {
+    if (!isBrowser || lifecycleListenersBound) {
       return
     }
 
-    if (currentUserId === userId && channel) {
-      return
+    const handleVisibilityChange = () => {
+      if (!isPageHidden()) {
+        performHeartbeat()
+      }
     }
 
+    const handleOnline = () => {
+      const { userId } = get()
+      if (!userId) {
+        return
+      }
+      clearHeartbeat()
+      clearReconnectTimeout()
+      set({ reconnectAttempts: 0 })
+      void get().initialize(userId, { force: true })
+    }
+
+    const handleOffline = () => {
+      clearHeartbeat()
+      clearReconnectTimeout()
+    }
+
+    window.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    lifecycleListenersBound = true
+  }
+
+  const teardownChannel = async () => {
+    const { channel } = get()
+    clearHeartbeat()
+    clearReconnectTimeout()
     if (channel) {
       await supabase.removeChannel(channel)
     }
+  }
 
-    set({ userId, channel: null })
-    await get().refresh({ bypassCache: true })
-
+  const attachChannel = (userId: string) => {
     const nextChannel = supabase
       .channel(`profile-notifications-${userId}`)
       .on(
@@ -246,140 +335,209 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
           }))
         }
       )
-      .subscribe()
-
-    set({ channel: nextChannel })
-  },
-
-  refresh: async (options?: RefreshOptions) => {
-    const { userId } = get()
-    if (!userId) {
-      set({ notifications: [], unreadCount: 0 })
-      return
-    }
-
-    set({ loading: true })
-    const rows = await fetchNotifications(userId, options)
-
-    let pendingHighlights = get().pendingCommentHighlights
-    let highlightVersion = get().commentHighlightVersion
-
-    rows.forEach((notification) => {
-      const commentId = extractCommentId(notification)
-      if (commentId && !notification.readAt && !notification.clearedAt) {
-        if (!pendingHighlights.has(commentId)) {
-          const clone = new Set(pendingHighlights)
-          clone.add(commentId)
-          pendingHighlights = clone
-          highlightVersion += 1
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          set({ reconnectAttempts: 0 })
+          clearReconnectTimeout()
+          startHeartbeat()
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          scheduleReconnect()
         }
+      })
+
+    return nextChannel
+  }
+
+  return {
+    notifications: [],
+    unreadCount: 0,
+    isDrawerOpen: false,
+    loading: false,
+    userId: null,
+    channel: null,
+    pendingFriendshipId: null,
+    pendingCommentHighlights: new Set<string>(),
+    commentHighlightVersion: 0,
+    heartbeatIntervalId: null,
+    reconnectTimeoutId: null,
+    reconnectAttempts: 0,
+
+    toggleDrawer: (open) => {
+      const currentOpen = get().isDrawerOpen
+      const nextOpen = typeof open === 'boolean' ? open : !currentOpen
+      if (currentOpen === nextOpen) {
+        return
       }
-    })
+      set({ isDrawerOpen: nextOpen })
+    },
 
-    const unreadCount = rows.filter((item) => !item.readAt && !item.clearedAt).length
+    initialize: async (userId: string | null, options?: { force?: boolean }) => {
+      const { userId: currentUserId, channel } = get()
 
-    set({ notifications: rows, unreadCount, loading: false, pendingCommentHighlights: pendingHighlights, commentHighlightVersion: highlightVersion })
-  },
+      if (!userId) {
+        await teardownChannel()
+        set({
+          userId: null,
+          channel: null,
+          notifications: [],
+          unreadCount: 0,
+          pendingCommentHighlights: new Set<string>(),
+          commentHighlightVersion: 0,
+          reconnectAttempts: 0,
+        })
+        return
+      }
 
-  markAllRead: async () => {
-    const { userId } = get()
-    if (!userId) {
-      return
-    }
+      bindLifecycleEvents()
 
-    const { error } = await supabase.rpc('mark_profile_notifications_read')
-    if (error) {
-      console.error('[NOTIFICATIONS] Failed to mark notifications read', error)
-      return
-    }
+      if (!options?.force && currentUserId === userId && channel) {
+        return
+      }
 
-    set((state) => ({
-      notifications: state.notifications.map((item) => ({
-        ...item,
-        readAt: item.readAt ?? new Date().toISOString(),
-      })),
-      unreadCount: 0,
-    }))
-  },
+      await teardownChannel()
+      set({ userId, channel: null })
+      await get().refresh({ bypassCache: true })
 
-  clearCommentNotifications: async () => {
-    const { userId } = get()
-    if (!userId) {
-      return
-    }
+      const nextChannel = attachChannel(userId)
+      set({ channel: nextChannel })
+    },
 
-    const { error } = await supabase.rpc('clear_profile_notifications', {
-      p_kind: 'profile_comment',
-    })
+    refresh: async (options?: RefreshOptions) => {
+      const { userId } = get()
+      if (!userId) {
+        set({ notifications: [], unreadCount: 0 })
+        return
+      }
 
-    if (error) {
-      console.error('[NOTIFICATIONS] Failed to clear comment notifications', error)
-      return
-    }
+      set({ loading: true })
+      const rows = await fetchNotifications(userId, options)
 
-    set((state) => {
-      const next = state.notifications.filter((item) => item.kind !== 'profile_comment')
-      const unreadCount = next.filter((item) => !item.readAt).length
-      return {
-        notifications: next,
+      let pendingHighlights = get().pendingCommentHighlights
+      let highlightVersion = get().commentHighlightVersion
+
+      rows.forEach((notification) => {
+        const commentId = extractCommentId(notification)
+        if (commentId && !notification.readAt && !notification.clearedAt) {
+          if (!pendingHighlights.has(commentId)) {
+            const clone = new Set(pendingHighlights)
+            clone.add(commentId)
+            pendingHighlights = clone
+            highlightVersion += 1
+          }
+        }
+      })
+
+      const unreadCount = rows.filter((item) => !item.readAt && !item.clearedAt).length
+
+      set({
+        notifications: rows,
         unreadCount,
-        pendingCommentHighlights: new Set<string>(),
-        commentHighlightVersion: state.commentHighlightVersion + 1,
+        loading: false,
+        pendingCommentHighlights: pendingHighlights,
+        commentHighlightVersion: highlightVersion,
+      })
+    },
+
+    markAllRead: async () => {
+      const { userId } = get()
+      if (!userId) {
+        return
       }
-    })
-  },
 
-  claimCommentHighlights: () => {
-    const { pendingCommentHighlights } = get()
-    if (pendingCommentHighlights.size === 0) {
-      return []
-    }
-
-    const ids = Array.from(pendingCommentHighlights)
-    set({ pendingCommentHighlights: new Set<string>(), commentHighlightVersion: get().commentHighlightVersion + 1 })
-    return ids
-  },
-
-  respondToFriendRequest: async ({ friendshipId, action }) => {
-    if (!friendshipId) {
-      return false
-    }
-
-    set({ pendingFriendshipId: friendshipId })
-
-    try {
-      const nextStatus = action === 'accept' ? 'accepted' : 'rejected'
-      const { error } = await supabase
-        .from('profile_friendships')
-        .update({ status: nextStatus })
-        .eq('id', friendshipId)
-
+      const { error } = await supabase.rpc('mark_profile_notifications_read')
       if (error) {
-        console.error('[NOTIFICATIONS] Failed to update friend request', error)
-        return false
+        console.error('[NOTIFICATIONS] Failed to mark notifications read', error)
+        return
       }
 
       set((state) => ({
-        pendingFriendshipId: null,
-        notifications: state.notifications.filter((item) => item.sourceEntityId !== friendshipId),
-        unreadCount: state.notifications.filter((item) => item.sourceEntityId !== friendshipId && !item.readAt).length,
+        notifications: state.notifications.map((item) => ({
+          ...item,
+          readAt: item.readAt ?? new Date().toISOString(),
+        })),
+        unreadCount: 0,
       }))
+    },
 
-      return true
-    } finally {
-      set((state) => (state.pendingFriendshipId === friendshipId ? { pendingFriendshipId: null } : {}))
-    }
-  },
+    clearCommentNotifications: async () => {
+      const { userId } = get()
+      if (!userId) {
+        return
+      }
 
-  dismissBySource: (kind, sourceId) => {
-    if (!sourceId) {
-      return
-    }
+      const { error } = await supabase.rpc('clear_profile_notifications', {
+        p_kind: 'profile_comment',
+      })
 
-    set((state) => {
-      const next = state.notifications.filter((item) => !(item.kind === kind && item.sourceEntityId === sourceId))
-      const unreadCount = next.filter((item) => !item.readAt).length
-      return { notifications: next, unreadCount }
-    })
-  },
-}))
+      if (error) {
+        console.error('[NOTIFICATIONS] Failed to clear comment notifications', error)
+        return
+      }
+
+      set((state) => {
+        const next = state.notifications.filter((item) => item.kind !== 'profile_comment')
+        const unreadCount = next.filter((item) => !item.readAt).length
+        return {
+          notifications: next,
+          unreadCount,
+          pendingCommentHighlights: new Set<string>(),
+          commentHighlightVersion: state.commentHighlightVersion + 1,
+        }
+      })
+    },
+
+    claimCommentHighlights: () => {
+      const { pendingCommentHighlights } = get()
+      if (pendingCommentHighlights.size === 0) {
+        return []
+      }
+
+      const ids = Array.from(pendingCommentHighlights)
+      set({ pendingCommentHighlights: new Set<string>(), commentHighlightVersion: get().commentHighlightVersion + 1 })
+      return ids
+    },
+
+    respondToFriendRequest: async ({ friendshipId, action }) => {
+      if (!friendshipId) {
+        return false
+      }
+
+      set({ pendingFriendshipId: friendshipId })
+
+      try {
+        const nextStatus = action === 'accept' ? 'accepted' : 'rejected'
+        const { error } = await supabase
+          .from('profile_friendships')
+          .update({ status: nextStatus })
+          .eq('id', friendshipId)
+
+        if (error) {
+          console.error('[NOTIFICATIONS] Failed to update friend request', error)
+          return false
+        }
+
+        set((state) => ({
+          pendingFriendshipId: null,
+          notifications: state.notifications.filter((item) => item.sourceEntityId !== friendshipId),
+          unreadCount: state.notifications.filter((item) => item.sourceEntityId !== friendshipId && !item.readAt).length,
+        }))
+
+        return true
+      } finally {
+        set((state) => (state.pendingFriendshipId === friendshipId ? { pendingFriendshipId: null } : {}))
+      }
+    },
+
+    dismissBySource: (kind, sourceId) => {
+      if (!sourceId) {
+        return
+      }
+
+      set((state) => {
+        const next = state.notifications.filter((item) => !(item.kind === kind && item.sourceEntityId === sourceId))
+        const unreadCount = next.filter((item) => !item.readAt).length
+        return { notifications: next, unreadCount }
+      })
+    },
+  }
+})

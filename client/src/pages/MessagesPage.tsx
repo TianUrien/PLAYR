@@ -644,7 +644,7 @@ export default function MessagesPage() {
               </div>
 
               {/* Conversations List */}
-              <div className={`flex-1 min-h-0 overflow-y-auto ${isFullBleedMobileLayout ? 'border-t border-gray-100 bg-white/95' : ''}`}>
+              <div className={`flex-1 min-h-0 ${isFullBleedMobileLayout ? 'border-t border-gray-100 bg-white/95' : ''}`}>
                 {filteredConversations.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full p-8 text-center">
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">

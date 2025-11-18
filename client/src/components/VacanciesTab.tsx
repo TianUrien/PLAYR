@@ -13,6 +13,8 @@ import PublishConfirmationModal from './PublishConfirmationModal'
 import DeleteVacancyModal from './DeleteVacancyModal'
 import Skeleton, { VacancyCardSkeleton } from './Skeleton'
 
+type VacancyWithCount = Vacancy & { applicant_count: number | null }
+
 interface VacanciesTabProps {
   profileId?: string
   readOnly?: boolean
@@ -56,40 +58,35 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
 
     setIsLoading(true)
     try {
-      // In readOnly mode, only fetch open vacancies. Otherwise fetch all.
-      const query = supabase
-        .from('vacancies')
-        .select('*')
-        .eq('club_id', targetUserId)
-        .order('created_at', { ascending: false })
-      
-      if (readOnly) {
-        query.eq('status', 'open')
-      }
-
-      const { data, error } = await query
+      const { data, error } = await supabase.rpc<VacancyWithCount>(
+        'fetch_club_vacancies_with_counts',
+        {
+          p_club_id: targetUserId,
+          p_include_closed: !readOnly,
+          p_limit: 200
+        }
+      )
 
       if (error) throw error
-      setVacancies(data || [])
 
-      // Only fetch applicant counts if not in readOnly mode and user is the owner
-      if (!readOnly && data && data.length > 0 && user?.id === targetUserId) {
+      const normalized = (data ?? []).map((row) => {
+        const { applicant_count, ...vacancyFields } = row
+        return {
+          vacancy: vacancyFields as Vacancy,
+          applicantCount: applicant_count ?? 0
+        }
+      })
+
+      setVacancies(normalized.map((entry) => entry.vacancy))
+
+      if (!readOnly && user?.id === targetUserId) {
         const counts: Record<string, number> = {}
-        await Promise.all(
-          data.map(async (vacancy: Vacancy) => {
-            const { count, error: countError } = await supabase
-              .from('vacancy_applications')
-              .select('*', { count: 'exact', head: true })
-              .eq('vacancy_id', vacancy.id)
-            
-            if (!countError && count !== null) {
-              counts[vacancy.id] = count
-            } else {
-              counts[vacancy.id] = 0
-            }
-          })
-        )
+        normalized.forEach((entry) => {
+          counts[entry.vacancy.id] = entry.applicantCount
+        })
         setApplicantCounts(counts)
+      } else {
+        setApplicantCounts({})
       }
     } catch (error) {
       console.error('Error fetching vacancies:', error)
@@ -179,12 +176,6 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       setClubName('Unknown Club')
     }
   }
-
-  useEffect(() => {
-    if (targetUserId) {
-      fetchVacancies()
-    }
-  }, [targetUserId, fetchVacancies])
 
   const handleCreateNew = () => {
     setEditingVacancy(null)

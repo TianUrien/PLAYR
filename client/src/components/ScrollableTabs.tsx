@@ -58,6 +58,8 @@ export default function ScrollableTabs<T extends string>({
     <div className={cn(wrapperClassName)}>
       <nav
         ref={containerRef}
+        role="tablist"
+        aria-orientation="horizontal"
         className={cn(
           'flex gap-6 px-4 sm:px-6 overflow-x-auto md:overflow-visible whitespace-nowrap scrollbar-hide',
           className
@@ -67,6 +69,9 @@ export default function ScrollableTabs<T extends string>({
           <button
             key={tab.id}
             data-tab-id={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab.id ? 'true' : 'false'}
             onClick={() => onTabChange(tab.id)}
             className={cn(
               'py-4 border-b-2 text-sm font-medium transition-colors',
