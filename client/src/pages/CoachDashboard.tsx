@@ -287,13 +287,6 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Email Address
-                      </label>
-                      <p className="text-gray-900">{profile.email}</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
                         Nationality
                       </label>
                       <p className="text-gray-900">{profile.nationality}</p>
@@ -376,6 +369,36 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
                     </div>
                   </div>
                 )}
+
+                <section className="space-y-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <h3 className="text-2xl font-bold text-gray-900">About</h3>
+                    {!readOnly && (
+                      <button
+                        onClick={() => setShowEditModal(true)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        Edit
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
+                    {profile.bio?.trim() ? (
+                      <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                        {profile.bio}
+                      </p>
+                    ) : (
+                      <div className="text-gray-500 italic space-y-2">
+                        <p>No bio yet.</p>
+                        {!readOnly && (
+                          <p>Use the edit option to share your coaching background, philosophy, and achievements.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </section>
 
                 <section className="space-y-3 pt-6 border-t border-gray-200">
                   <MediaTab
