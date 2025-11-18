@@ -18,14 +18,32 @@ type TabType = 'overview' | 'vacancies' | 'friends' | 'players' | 'comments'
 const READ_ONLY_TABS: TabType[] = ['overview', 'vacancies', 'friends', 'comments']
 const FULL_TABS: TabType[] = [...READ_ONLY_TABS, 'players']
 
+type ClubProfileShape =
+  Partial<Profile> &
+  Pick<
+    Profile,
+    | 'id'
+    | 'role'
+    | 'full_name'
+    | 'avatar_url'
+    | 'base_location'
+    | 'nationality'
+    | 'club_bio'
+    | 'club_history'
+    | 'website'
+    | 'year_founded'
+    | 'league_division'
+    | 'contact_email'
+  >
+
 interface ClubDashboardProps {
-  profileData?: Profile
+  profileData?: ClubProfileShape
   readOnly?: boolean
 }
 
 export default function ClubDashboard({ profileData, readOnly = false }: ClubDashboardProps) {
   const { profile: authProfile, user } = useAuthStore()
-  const profile = profileData || authProfile
+  const profile = (profileData ?? authProfile) as ClubProfileShape | null
   const navigate = useNavigate()
   const { addToast } = useToastStore()
   const [searchParams, setSearchParams] = useSearchParams()

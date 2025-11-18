@@ -16,14 +16,36 @@ import { useNotificationStore } from '@/lib/notifications'
 
 type TabType = 'profile' | 'friends' | 'journey' | 'comments'
 
+type PlayerProfileShape =
+  Partial<Profile> &
+  Pick<
+    Profile,
+    | 'id'
+    | 'role'
+    | 'full_name'
+    | 'avatar_url'
+    | 'base_location'
+    | 'bio'
+    | 'nationality'
+    | 'gender'
+    | 'date_of_birth'
+    | 'position'
+    | 'secondary_position'
+    | 'current_club'
+    | 'email'
+    | 'contact_email'
+    | 'passport_1'
+    | 'passport_2'
+  >
+
 interface PlayerDashboardProps {
-  profileData?: Profile
+  profileData?: PlayerProfileShape
   readOnly?: boolean
 }
 
 export default function PlayerDashboard({ profileData, readOnly = false }: PlayerDashboardProps) {
   const { profile: authProfile, user } = useAuthStore()
-  const profile = profileData || authProfile
+  const profile = (profileData ?? authProfile) as PlayerProfileShape | null
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { addToast } = useToastStore()
@@ -179,6 +201,7 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
     if (!value) return false
     return self.findIndex((item) => item === value) === index
   })
+  const contactEmail = profile.contact_email || profile.email
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -331,9 +354,11 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
                     {/* Right Column */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Email Address
+                        Contact Email
                       </label>
-                      <p className="text-gray-900">{profile.email}</p>
+                      <p className={contactEmail ? 'text-gray-900 break-words' : 'text-gray-500 italic'}>
+                        {contactEmail || 'Not provided'}
+                      </p>
                     </div>
 
                     {/* Left Column */}
@@ -395,19 +420,19 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Passport 1
                         </label>
-                        <p className={profile.passport_1 ? "text-gray-900" : "text-gray-500 italic"}>
+                        <p className={profile.passport_1 ? 'text-gray-900' : 'text-gray-500 italic'}>
                           {profile.passport_1 || 'Not specified'}
                         </p>
                       </div>
 
-                      {profile.passport_2 && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Passport 2
-                          </label>
-                          <p className="text-gray-900">{profile.passport_2}</p>
-                        </div>
-                      )}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Passport 2
+                        </label>
+                        <p className={profile.passport_2 ? 'text-gray-900' : 'text-gray-500 italic'}>
+                          {profile.passport_2 || 'Not specified'}
+                        </p>
+                      </div>
                     </div>
 
                     {/* Left Column */}

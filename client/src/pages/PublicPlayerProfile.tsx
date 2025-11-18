@@ -6,10 +6,52 @@ import type { Profile } from '../lib/supabase'
 import PlayerDashboard from './PlayerDashboard'
 import CoachDashboard from './CoachDashboard'
 
+type PublicProfile = Partial<Profile> &
+  Pick<
+    Profile,
+    | 'id'
+    | 'role'
+    | 'username'
+    | 'full_name'
+    | 'avatar_url'
+    | 'base_location'
+    | 'bio'
+    | 'highlight_video_url'
+    | 'nationality'
+    | 'current_club'
+    | 'gender'
+    | 'date_of_birth'
+    | 'position'
+    | 'secondary_position'
+    | 'contact_email'
+    | 'passport_1'
+    | 'passport_2'
+  >
+
+const PUBLIC_PROFILE_FIELDS = [
+  'id',
+  'role',
+  'username',
+  'full_name',
+  'avatar_url',
+  'base_location',
+  'bio',
+  'highlight_video_url',
+  'nationality',
+  'current_club',
+  'gender',
+  'date_of_birth',
+  'position',
+  'secondary_position',
+  'contact_email',
+  'passport_1',
+  'passport_2'
+].join(',')
+
 export default function PublicPlayerProfile() {
   const { username, id } = useParams<{ username?: string; id?: string }>()
   const navigate = useNavigate()
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profile, setProfile] = useState<PublicProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -23,7 +65,7 @@ export default function PublicPlayerProfile() {
         if (username) {
           const { data, error: fetchError } = await supabase
             .from('profiles')
-            .select('*')
+            .select(PUBLIC_PROFILE_FIELDS)
             .in('role', ['player', 'coach']) // Support both players and coaches
             .eq('username', username)
             .single()
@@ -41,7 +83,7 @@ export default function PublicPlayerProfile() {
         } else if (id) {
           const { data, error: fetchError } = await supabase
             .from('profiles')
-            .select('*')
+            .select(PUBLIC_PROFILE_FIELDS)
             .in('role', ['player', 'coach']) // Support both players and coaches
             .eq('id', id)
             .single()

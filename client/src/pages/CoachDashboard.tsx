@@ -14,14 +14,32 @@ import { useNotificationStore } from '@/lib/notifications'
 
 type TabType = 'profile' | 'journey' | 'friends' | 'comments'
 
+type CoachProfileShape =
+  Partial<Profile> &
+  Pick<
+    Profile,
+    | 'id'
+    | 'role'
+    | 'full_name'
+    | 'avatar_url'
+    | 'base_location'
+    | 'bio'
+    | 'nationality'
+    | 'gender'
+    | 'date_of_birth'
+    | 'contact_email'
+    | 'passport_1'
+    | 'passport_2'
+  >
+
 interface CoachDashboardProps {
-  profileData?: Profile
+  profileData?: CoachProfileShape
   readOnly?: boolean
 }
 
 export default function CoachDashboard({ profileData, readOnly = false }: CoachDashboardProps) {
   const { profile: authProfile, user } = useAuthStore()
-  const profile = profileData || authProfile
+  const profile = (profileData ?? authProfile) as CoachProfileShape | null
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabType>(() => {
@@ -320,48 +338,39 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
                 </div>
 
                 {/* Passports Section */}
-                {(profile.passport_1 || profile.passport_2) && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Passports & Eligibility</h3>
-                    <div className="space-y-6">
-                      {profile.passport_1 && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Passport 1
-                          </label>
-                          <p className="text-gray-900">{profile.passport_1}</p>
-                        </div>
-                      )}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Passports & Eligibility</h3>
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Passport 1</label>
+                      <p className={profile.passport_1 ? 'text-gray-900' : 'text-gray-500 italic'}>
+                        {profile.passport_1 || 'Not specified'}
+                      </p>
+                    </div>
 
-                      {profile.passport_2 && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Passport 2
-                          </label>
-                          <p className="text-gray-900">{profile.passport_2}</p>
-                        </div>
-                      )}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Passport 2</label>
+                      <p className={profile.passport_2 ? 'text-gray-900' : 'text-gray-500 italic'}>
+                        {profile.passport_2 || 'Not specified'}
+                      </p>
                     </div>
                   </div>
-                )}
+                </div>
 
                 {/* Contact Information */}
-                {profile.contact_email && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact</h3>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact</h3>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Contact Email
-                      </label>
-                      <a
-                        href={`mailto:${profile.contact_email}`}
-                        className="text-[#6366f1] hover:underline"
-                      >
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
+                    {profile.contact_email ? (
+                      <a href={`mailto:${profile.contact_email}`} className="text-[#6366f1] hover:underline">
                         {profile.contact_email}
                       </a>
-                    </div>
+                    ) : (
+                      <p className="text-gray-500 italic">Not specified</p>
+                    )}
                   </div>
-                )}
+                </div>
 
                 <section className="space-y-4">
                   <div className="flex items-start justify-between gap-4">

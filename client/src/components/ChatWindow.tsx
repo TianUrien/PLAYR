@@ -13,6 +13,7 @@ import { requestCache, generateCacheKey } from '@/lib/requestCache'
 import { useToastStore } from '@/lib/toast'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useUnreadStore } from '@/lib/unread'
+import { loadMessageDraft, saveMessageDraft, clearMessageDraft } from '@/lib/messageDrafts'
 
 type NullableDate = string | null
 
@@ -65,6 +66,36 @@ const buildPublicProfilePath = (participant?: ConversationParticipant) => {
   return participant.role === 'club' ? `/clubs/${slug}` : `/players/${slug}`
 }
 
+type ConversationSnapshot = {
+  id: string
+  isPending?: boolean
+  participantOneId?: string | null
+  participantTwoId?: string | null
+  otherParticipantId?: string | null
+}
+
+const deriveConversationDraftKey = (conversation: ConversationSnapshot, viewerId: string | null) => {
+  if (!viewerId) {
+    return null
+  }
+
+  if (conversation.id && !conversation.isPending) {
+    return conversation.id
+  }
+
+  const otherParticipantId = conversation.participantOneId === viewerId
+    ? conversation.participantTwoId ?? conversation.otherParticipantId ?? null
+    : conversation.participantTwoId === viewerId
+    ? conversation.participantOneId ?? conversation.otherParticipantId ?? null
+    : conversation.otherParticipantId ?? conversation.participantTwoId ?? conversation.participantOneId ?? null
+
+  if (!otherParticipantId) {
+    return null
+  }
+
+  return `pending-${otherParticipantId}`
+}
+
 export type ChatMessageEvent =
   | {
       type: 'sent'
@@ -95,6 +126,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const messagesRef = useRef<Message[]>([])
+  const fetchMessagesPromiseRef = useRef<Promise<Message[]> | null>(null)
   const { addToast } = useToastStore()
   const isMobile = useMediaQuery('(max-width: 767px)')
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -116,6 +148,28 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   const initializeUnreadStore = useUnreadStore(state => state.initialize)
   const adjustUnreadCount = useUnreadStore(state => state.adjust)
   const refreshUnreadCount = useUnreadStore(state => state.refresh)
+  const {
+    id: conversationId,
+    isPending: conversationIsPending,
+    participant_one_id: participantOneId,
+    participant_two_id: participantTwoId,
+    otherParticipant
+  } = conversation
+  const otherParticipantId = otherParticipant?.id ?? null
+  const conversationDraftKey = useMemo(
+    () =>
+      deriveConversationDraftKey(
+        {
+          id: conversationId,
+          isPending: conversationIsPending,
+          participantOneId,
+          participantTwoId,
+          otherParticipantId
+        },
+        currentUserId
+      ),
+    [conversationId, conversationIsPending, otherParticipantId, participantOneId, participantTwoId, currentUserId]
+  )
 
   useEffect(() => {
     void initializeUnreadStore(currentUserId || null)
@@ -126,6 +180,34 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     setIsLoadingMore(false)
     oldestLoadedTimestampRef.current = null
   }, [conversation.id])
+
+  useEffect(() => {
+    if (!conversationDraftKey || !currentUserId) {
+      setNewMessage('')
+      return
+    }
+
+    const draft = loadMessageDraft(currentUserId, conversationDraftKey)
+    setNewMessage(draft)
+  }, [conversationDraftKey, currentUserId])
+
+  useEffect(() => {
+    if (!conversationDraftKey || !currentUserId) {
+      return
+    }
+
+    const handle = window.setTimeout(() => {
+      if (!newMessage.trim()) {
+        clearMessageDraft(currentUserId, conversationDraftKey)
+        return
+      }
+      saveMessageDraft(currentUserId, conversationDraftKey, newMessage)
+    }, 400)
+
+    return () => {
+      window.clearTimeout(handle)
+    }
+  }, [conversationDraftKey, currentUserId, newMessage])
 
   const syncMessagesState = useCallback(
     (next: Message[] | ((prev: Message[]) => Message[])) => {
@@ -288,31 +370,41 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       return [] as Message[]
     }
 
-    setLoading(true)
-    try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversation.id)
-        .order('sent_at', { ascending: false })
-        .limit(MESSAGES_PAGE_SIZE)
-
-      if (error) throw error
-
-      const fetched = (data ?? []).reverse()
-      logger.debug('Fetched messages:', fetched)
-      syncMessagesState(fetched)
-      oldestLoadedTimestampRef.current = fetched[0]?.sent_at ?? null
-      setHasMoreMessages((data ?? []).length === MESSAGES_PAGE_SIZE)
-      return fetched
-    } catch (error) {
-      logger.error('Error fetching messages:', error)
-      syncMessagesState([])
-      setHasMoreMessages(false)
-      return [] as Message[]
-    } finally {
-      setLoading(false)
+    if (fetchMessagesPromiseRef.current) {
+      return fetchMessagesPromiseRef.current
     }
+
+    setLoading(true)
+    const pendingFetch = (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('conversation_id', conversation.id)
+          .order('sent_at', { ascending: false })
+          .limit(MESSAGES_PAGE_SIZE)
+
+        if (error) throw error
+
+        const fetched = (data ?? []).reverse()
+        logger.debug('Fetched messages:', fetched)
+        syncMessagesState(fetched)
+        oldestLoadedTimestampRef.current = fetched[0]?.sent_at ?? null
+        setHasMoreMessages((data ?? []).length === MESSAGES_PAGE_SIZE)
+        return fetched
+      } catch (error) {
+        logger.error('Error fetching messages:', error)
+        syncMessagesState([])
+        setHasMoreMessages(false)
+        return [] as Message[]
+      } finally {
+        setLoading(false)
+        fetchMessagesPromiseRef.current = null
+      }
+    })()
+
+    fetchMessagesPromiseRef.current = pendingFetch
+    return pendingFetch
   }, [conversation.id, conversation.isPending, syncMessagesState])
 
   const flushPendingReadReceipts = useCallback(async () => {
@@ -330,21 +422,29 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     const optimisticIds = new Set(pendingIds)
     const now = new Date().toISOString()
     const cacheKey = generateCacheKey('unread_count', { userId: currentUserId })
+    let latestPendingSentAt: string | null = null
+
+    messagesRef.current.forEach(msg => {
+      if (!optimisticIds.has(msg.id)) {
+        return
+      }
+      if (!latestPendingSentAt || msg.sent_at > latestPendingSentAt) {
+        latestPendingSentAt = msg.sent_at
+      }
+    })
 
     syncMessagesState(prev =>
       prev.map(msg => (optimisticIds.has(msg.id) ? { ...msg, read_at: now } : msg))
     )
 
     try {
-      const { error } = await supabase
-        .from('messages')
-        .update({ read_at: now })
-        .in('id', pendingIds)
-        .eq('conversation_id', conversation.id)
-        .neq('sender_id', currentUserId)
-        .is('read_at', null)
+      const { data: updatedRows, error } = await supabase.rpc('mark_conversation_messages_read', {
+        p_conversation_id: conversation.id,
+        p_before: latestPendingSentAt
+      })
 
       if (error) throw error
+      const affectedRows = typeof updatedRows === 'number' ? updatedRows : pendingIds.length
 
       if (onConversationRead && pendingIds.length > 0) {
         onConversationRead(conversation.id)
@@ -359,8 +459,8 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
         })
       }
 
-      if (pendingIds.length > 0) {
-        adjustUnreadCount(-pendingIds.length)
+      if (affectedRows > 0) {
+        adjustUnreadCount(-affectedRows)
         void refreshUnreadCount({ bypassCache: true })
       }
     } catch (error) {
@@ -561,6 +661,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     setPendingNewMessagesCount(0)
     messageRefs.current.clear()
     pendingReadIdsRef.current.clear()
+    fetchMessagesPromiseRef.current = null
     if (readFlushTimeoutRef.current !== null) {
       window.clearTimeout(readFlushTimeoutRef.current)
       readFlushTimeoutRef.current = null
@@ -1027,6 +1128,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
 
       syncMessagesState(prev => [...prev, optimisticMessage])
       setNewMessage('')
+      clearMessageDraft(currentUserId, conversationDraftKey)
       inputRef.current?.focus()
 
       const conversationIdForMetrics = activeConversationId

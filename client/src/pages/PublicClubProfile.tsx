@@ -5,10 +5,44 @@ import { supabase } from '../lib/supabase'
 import type { Profile } from '../lib/supabase'
 import ClubDashboard from './ClubDashboard'
 
+type PublicClubProfile = Partial<Profile> &
+  Pick<
+    Profile,
+    | 'id'
+    | 'role'
+    | 'username'
+    | 'full_name'
+    | 'avatar_url'
+    | 'base_location'
+    | 'nationality'
+    | 'club_bio'
+    | 'club_history'
+    | 'website'
+    | 'year_founded'
+    | 'league_division'
+    | 'contact_email'
+  >
+
+const PUBLIC_CLUB_FIELDS = [
+  'id',
+  'role',
+  'username',
+  'full_name',
+  'avatar_url',
+  'base_location',
+  'nationality',
+  'club_bio',
+  'club_history',
+  'website',
+  'year_founded',
+  'league_division',
+  'contact_email'
+].join(',')
+
 export default function PublicClubProfile() {
   const { username, id } = useParams<{ username?: string; id?: string }>()
   const navigate = useNavigate()
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profile, setProfile] = useState<PublicClubProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -22,7 +56,7 @@ export default function PublicClubProfile() {
         if (username) {
           const { data, error: fetchError } = await supabase
             .from('profiles')
-            .select('*')
+            .select(PUBLIC_CLUB_FIELDS)
             .eq('role', 'club')
             .eq('username', username)
             .single()
@@ -40,7 +74,7 @@ export default function PublicClubProfile() {
         } else if (id) {
           const { data, error: fetchError } = await supabase
             .from('profiles')
-            .select('*')
+            .select(PUBLIC_CLUB_FIELDS)
             .eq('role', 'club')
             .eq('id', id)
             .single()

@@ -898,6 +898,10 @@ export type Database = {
         Args: { p_seen_at?: string }
         Returns: undefined
       }
+      mark_conversation_messages_read: {
+        Args: { p_conversation_id: string; p_before?: string | null }
+        Returns: number
+      }
       mark_profile_notifications_read: {
         Args: { p_notification_ids?: string[] | null }
         Returns: number

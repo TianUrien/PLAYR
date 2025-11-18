@@ -16,6 +16,7 @@ interface DeleteAccountResponse {
     conversations: number
     applications: number
     playerMedia: number
+    opportunityInboxState?: number
     clubMedia: number
     playingHistory: number
     vacancies: number
@@ -184,6 +185,35 @@ const applyDeletionSummary = (
   if (unreadCounters > 0) {
     deletedData.unreadCounters = unreadCounters
   }
+
+  const opportunityInboxState = pick('opportunityInboxState')
+  if (opportunityInboxState > 0) {
+    deletedData.opportunityInboxState = opportunityInboxState
+  }
+}
+
+const enqueueStorageCleanupFallback = async (
+  client: SupabaseServerClient,
+  bucket: string,
+  prefix: string,
+  logger: ReturnType<typeof createLogger>
+) => {
+  try {
+    const { data, error } = await client.rpc('enqueue_storage_objects_for_prefix', {
+      p_bucket: bucket,
+      p_prefix: prefix,
+      p_reason: 'delete_account_fallback'
+    })
+
+    if (error) {
+      throw error
+    }
+
+    return Number(data ?? 0)
+  } catch (error) {
+    logger.warn('Failed to enqueue storage cleanup fallback', { bucket, prefix, error })
+    return 0
+  }
 }
 
 Deno.serve(async (req) => {
@@ -253,7 +283,13 @@ Deno.serve(async (req) => {
         }
       } catch (storageError) {
         logger.warn('Storage cleanup failed', { bucket: target.bucket, error: storageError })
-        warnings.push(`Failed to purge ${target.bucket}/${target.prefix}`)
+        const normalizedPrefix = normalizePrefix(target.prefix)
+        const queued = await enqueueStorageCleanupFallback(supabase, target.bucket, normalizedPrefix, logger)
+        if (queued > 0) {
+          warnings.push(`Queued ${queued} ${target.bucket}/${normalizedPrefix} objects for async cleanup`)
+        } else {
+          warnings.push(`Failed to purge ${target.bucket}/${target.prefix}`)
+        }
       }
     }
 
