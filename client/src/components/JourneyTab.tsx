@@ -1099,8 +1099,8 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
             )}
           </div>
         ) : (
-          <div className="relative pl-8">
-            <div className="absolute left-4 top-0 bottom-0 w-px bg-gradient-to-b from-indigo-100 via-gray-200 to-transparent" />
+          <div className="relative pl-4 md:pl-8">
+            <div className="pointer-events-none absolute left-3 top-0 bottom-0 w-px bg-gradient-to-b from-indigo-100 via-gray-200 to-transparent md:left-4" />
             <div className="space-y-10">
               {ordered.map((entry, index) => {
                 const meta = entry.entry_type ? entryTypeMeta[entry.entry_type] : entryTypeMeta.club
@@ -1114,37 +1114,37 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
                 const isEditingEntry = activeFormType === entry.id && Boolean(activeEntryDraft)
 
                 return (
-                  <div key={entry.id} className="flex gap-6">
-                    <div className="flex flex-col items-center">
+                  <div key={entry.id} className="flex gap-4 md:gap-6">
+                    <div className="-ml-2 flex w-10 flex-col items-center md:ml-0 md:w-14">
                       <div
-                        className={`relative flex h-12 w-12 items-center justify-center rounded-full border-4 border-white shadow-lg ring-2 ring-indigo-50 ${meta.dotClass}`}
+                        className={`relative flex h-10 w-10 items-center justify-center rounded-full border-4 border-white shadow-lg ring-2 ring-indigo-50 ${meta.dotClass} md:h-12 md:w-12`}
                       >
-                        <Icon className="h-5 w-5" />
+                        <Icon className="h-4 w-4 md:h-5 md:w-5" />
                       </div>
-                      {index !== ordered.length - 1 && <div className="mt-2 w-px flex-1 bg-gray-200" />}
+                      {index !== ordered.length - 1 && <div className="mt-2 hidden w-px flex-1 bg-gray-200 md:block" />}
                     </div>
-                    <div className="flex-1">
-                      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                    <div className="flex-1 min-w-0">
+                      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5 md:p-6">
                         {isEditingEntry && activeEntryDraft ? (
                           renderEntryForm(activeEntryDraft, 'edit')
                         ) : (
                           <>
                             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                              <div className="flex gap-4">
+                              <div className="flex gap-3 sm:gap-4">
                                 {entry.image_url ? (
                                   <img
                                     src={entry.image_url}
                                     alt="Journey logo"
-                                    className="h-16 w-16 rounded-2xl object-cover"
+                                    className="h-14 w-14 rounded-2xl object-cover sm:h-16 sm:w-16"
                                   />
                                 ) : (
-                                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 text-gray-500">
-                                    <ImageIcon className="h-6 w-6" />
+                                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-500 sm:h-16 sm:w-16">
+                                    <ImageIcon className="h-5 w-5" />
                                   </div>
                                 )}
                                 <div>
-                                  <p className="text-xs uppercase tracking-wide text-gray-400">My Hockey Journey</p>
-                                  <h3 className="text-xl font-semibold text-gray-900">{entry.club_name}</h3>
+                                  <p className="text-[11px] uppercase tracking-[0.2em] text-gray-400 md:text-xs">My Hockey Journey</p>
+                                  <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">{entry.club_name}</h3>
                                   <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-600">
                                     {location && (
                                       <span className="inline-flex items-center gap-1">
@@ -1158,7 +1158,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
                                 </div>
                               </div>
                               <div className="flex flex-wrap items-center gap-3">
-                                <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${meta.badgeClass}`}>
+                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold md:px-3 md:text-xs ${meta.badgeClass}`}>
                                   {meta.label}
                                 </span>
                                 {!readOnly && (
@@ -1186,7 +1186,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
                               </div>
                             </div>
 
-                            <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-600">
                               {(startLabel || endLabel) && (
                                 <div className="inline-flex items-center gap-2 text-gray-700">
                                   <Calendar className="h-4 w-4" />
