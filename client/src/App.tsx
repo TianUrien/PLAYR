@@ -80,6 +80,7 @@ function App() {
                 <Route path="/opportunities" element={<OpportunitiesPage />} />
                 <Route path="/opportunities/:id" element={<OpportunityDetailPage />} />
                 <Route path="/messages" element={<MessagesPage />} />
+                <Route path="/messages/:conversationId" element={<MessagesPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/dashboard/profile" element={<DashboardRouter />} />
                 <Route path="/dashboard/club/vacancies/:vacancyId/applicants" element={<ApplicantsList />} />

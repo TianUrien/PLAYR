@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useId, useLayoutEffect, useMe
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Link } from 'react-router-dom'
 import { Send, ArrowLeft } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { supabase, SUPABASE_URL } from '@/lib/supabase'
 import { isUniqueViolationError } from '@/lib/supabaseErrors'
 import { format } from 'date-fns'
@@ -116,9 +117,10 @@ interface ChatWindowProps {
   onMessageSent?: (event: ChatMessageEvent) => void
   onConversationCreated: (conversation: Conversation) => void
   onConversationRead?: (conversationId: string) => void
+  isImmersiveMobile?: boolean
 }
 
-export default function ChatWindow({ conversation, currentUserId, onBack, onMessageSent, onConversationCreated, onConversationRead }: ChatWindowProps) {
+export default function ChatWindow({ conversation, currentUserId, onBack, onMessageSent, onConversationCreated, onConversationRead, isImmersiveMobile = false }: ChatWindowProps) {
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
@@ -1231,6 +1233,35 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     conversation.otherParticipant?.username ||
     'PLAYR Member'
   const profilePath = buildPublicProfilePath(conversation.otherParticipant)
+  const immersiveMobile = Boolean(isImmersiveMobile && isMobile)
+  const headerClassName = cn(
+    'relative sticky z-40 flex items-center gap-3 border-b border-gray-200 bg-white pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] shadow-sm transition-colors md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))]',
+    immersiveMobile
+      ? 'top-0 py-3.5 pt-[calc(env(safe-area-inset-top)+0.75rem)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/70'
+      : isMobile
+      ? 'top-[calc(var(--app-header-offset,0px))] py-3.5 pt-[calc(env(safe-area-inset-top)+0.75rem)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/70'
+      : 'top-0 py-4',
+    'md:top-0'
+  )
+  const messageListClassName = cn(
+    'min-h-0 overflow-y-auto overscroll-contain pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))]',
+    immersiveMobile
+      ? 'pt-5 pb-[calc(var(--chat-composer-height,72px)+var(--chat-safe-area-bottom,0px)+1rem)]'
+      : isMobile
+      ? 'pt-6 pb-[calc(var(--chat-composer-height,72px)+var(--chat-safe-area-bottom,0px)+0.25rem)]'
+      : 'pt-6 pb-20 md:pb-16'
+  )
+  const composerClassName = cn(
+    'border-t border-gray-200 bg-white/95 pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] py-3.5 backdrop-blur transition md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] md:static',
+    isMobile
+      ? 'fixed bottom-0 left-0 right-0 z-40 shadow-lg pb-[calc(0.75rem+var(--chat-safe-area-bottom,0px))]'
+      : 'relative'
+  )
+  const chatGridClassName = cn(
+    'grid h-full w-full min-h-0 grid-rows-[auto,1fr,auto] overflow-hidden',
+    immersiveMobile ? 'bg-white' : 'bg-gray-50',
+    isMobile ? 'pb-[var(--chat-safe-area-bottom,0px)]' : ''
+  )
 
   if (loading) {
     return (
@@ -1254,16 +1285,14 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   const isSendDisabled = !canSend || sending
 
   return (
-    <div
-      className={`grid h-full w-full min-h-0 grid-rows-[auto,1fr,auto] overflow-hidden bg-gray-50 ${
-        isMobile ? 'pb-[var(--chat-safe-area-bottom,0px)]' : ''
-      }`}
-    >
-      <div
-        className={`sticky z-40 flex items-center gap-3 border-b border-gray-200 bg-white pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] py-4 shadow-sm transition-colors md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] ${
-          isMobile ? 'top-[calc(var(--app-header-offset,0px))] pt-[calc(env(safe-area-inset-top)+1rem)]' : 'top-0'
-        } md:top-0`}
-      >
+    <div className={chatGridClassName}>
+      <div className={headerClassName}>
+        {isMobile && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-gray-200/60 to-transparent"
+          />
+        )}
         <button
           onClick={onBack}
           className="md:hidden rounded-lg p-2 transition-colors hover:bg-gray-100"
@@ -1323,18 +1352,19 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
                 ? 'Coach'
                 : 'Player'}
             </span>
+            {isMobile && profilePath && (
+              <Link
+                to={profilePath}
+                className="text-xs font-semibold uppercase tracking-wide text-purple-600 hover:text-purple-700"
+              >
+                Tap to view profile
+              </Link>
+            )}
           </div>
         </div>
       </div>
 
-      <div
-        ref={scrollContainerRef}
-        className={`min-h-0 overflow-y-auto overscroll-contain pt-6 pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] ${
-          isMobile
-            ? 'pb-[calc(var(--chat-composer-height,72px)+var(--chat-safe-area-bottom,0px)+0.25rem)]'
-            : 'pb-20 md:pb-16'
-        }`}
-      >
+      <div ref={scrollContainerRef} className={messageListClassName}>
         {messages.length === 0 ? (
           <div className="flex min-h-[240px] items-center justify-center text-center text-gray-500">
             No messages yet. Start the conversation!
@@ -1443,11 +1473,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       <form
         onSubmit={handleSendMessage}
         data-chat-composer="true"
-        className={`border-t border-gray-200 bg-white/95 pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] py-3.5 backdrop-blur md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] ${
-          isMobile
-            ? 'fixed bottom-0 left-0 right-0 z-40 shadow-lg pb-[calc(0.75rem+var(--chat-safe-area-bottom,0px))]'
-            : ''
-        }`}
+        className={composerClassName}
       >
         <div className="flex items-end gap-3 md:gap-4">
           <div className="relative flex-1">

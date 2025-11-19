@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Search, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import ConversationList from '@/components/ConversationList'
 import ChatWindow, { type ChatMessageEvent } from '@/components/ChatWindow'
 import Header from '@/components/Header'
@@ -38,7 +38,10 @@ interface Conversation {
 
 export default function MessagesPage() {
   const { user } = useAuthStore()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { conversationId: conversationIdParam } = useParams<{ conversationId?: string }>()
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search])
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [pendingConversation, setPendingConversation] = useState<Conversation | null>(null)
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
@@ -47,20 +50,25 @@ export default function MessagesPage() {
   const isMobile = useMediaQuery('(max-width: 767px)')
   const messagingMobileV2Enabled = import.meta.env.VITE_MESSAGING_MOBILE_V2 === 'true'
   const { adjust: adjustUnreadCount, refresh: refreshUnreadCount } = useUnreadMessages()
+  const conversationIdFromQuery = searchParams.get('conversation')
+  const newConversationTargetId = searchParams.get('new')
 
   // Set selected conversation from URL parameter
   useEffect(() => {
-    const conversationId = searchParams.get('conversation')
-    if (conversationId) {
-      setSelectedConversationId(conversationId)
+    if (conversationIdParam) {
+      setSelectedConversationId(conversationIdParam)
       return
     }
 
-    const pendingUserId = searchParams.get('new')
-    if (!pendingUserId) {
+    if (conversationIdFromQuery) {
+      setSelectedConversationId(conversationIdFromQuery)
+      return
+    }
+
+    if (!newConversationTargetId) {
       setSelectedConversationId(null)
     }
-  }, [searchParams])
+  }, [conversationIdParam, conversationIdFromQuery, newConversationTargetId])
 
   const fetchConversations = useCallback(async (options?: { force?: boolean }) => {
     if (!user?.id) return
@@ -131,7 +139,7 @@ export default function MessagesPage() {
   useEffect(() => {
     if (!user?.id) return
 
-    const targetUserId = searchParams.get('new')
+    const targetUserId = newConversationTargetId
 
     if (!targetUserId) {
       setPendingConversation(null)
@@ -153,12 +161,17 @@ export default function MessagesPage() {
     if (existingConversation) {
       setPendingConversation(null)
       setSelectedConversationId(existingConversation.id)
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev)
-        next.set('conversation', existingConversation.id)
-        next.delete('new')
-        return next
-      })
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.set('conversation', existingConversation.id)
+      nextParams.delete('new')
+      const nextSearch = nextParams.toString()
+      navigate(
+        {
+          pathname: `/messages/${existingConversation.id}`,
+          search: nextSearch ? `?${nextSearch}` : ''
+        },
+        { replace: true }
+      )
       return
     }
 
@@ -208,6 +221,17 @@ export default function MessagesPage() {
           isPending: true
         })
         setSelectedConversationId(pendingId)
+        const nextParams = new URLSearchParams(searchParams)
+        nextParams.set('new', targetUserId)
+        nextParams.delete('conversation')
+        const nextSearch = nextParams.toString()
+        navigate(
+          {
+            pathname: `/messages/${pendingId}`,
+            search: nextSearch ? `?${nextSearch}` : ''
+          },
+          { replace: true }
+        )
       } catch (error) {
         if (isCancelled) return
         logger.error('Unexpected error loading pending conversation', { error, targetUserId })
@@ -220,7 +244,7 @@ export default function MessagesPage() {
     return () => {
       isCancelled = true
     }
-  }, [searchParams, user?.id, conversations, pendingConversation, setSearchParams])
+  }, [newConversationTargetId, user?.id, conversations, pendingConversation, navigate, searchParams])
 
   // Participant-scoped realtime: refresh whenever any conversation involving the user changes
   useEffect(() => {
@@ -289,8 +313,11 @@ export default function MessagesPage() {
     : combinedConversations
 
   const selectedConversation = combinedConversations.find((conv) => conv.id === selectedConversationId)
-  const hasActiveConversation = Boolean(selectedConversation)
-  const isFullBleedMobileLayout = Boolean(messagingMobileV2Enabled && isMobile)
+  const hasActiveConversation = Boolean(selectedConversationId)
+  const isConversationRoute = Boolean(conversationIdParam)
+  const isImmersiveMobileConversation = Boolean(isMobile && isConversationRoute)
+  const isFullBleedMobileLayout = isImmersiveMobileConversation || Boolean(messagingMobileV2Enabled && isMobile)
+  const shouldHideGlobalHeader = isImmersiveMobileConversation
 
   const handleSelectConversation = useCallback(
     (conversationId: string) => {
@@ -316,40 +343,44 @@ export default function MessagesPage() {
         }
       }
 
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev)
+      const nextParams = new URLSearchParams(searchParams)
 
-        if (selected?.isPending) {
-          const targetId =
-            selected.participant_one_id === user?.id
-              ? selected.participant_two_id
-              : selected.participant_one_id
+      if (selected?.isPending) {
+        const targetId =
+          selected.participant_one_id === user?.id
+            ? selected.participant_two_id
+            : selected.participant_one_id
 
-          if (targetId) {
-            next.set('new', targetId)
-          }
-          next.delete('conversation')
-        } else {
-          next.set('conversation', conversationId)
-          next.delete('new')
+        if (targetId) {
+          nextParams.set('new', targetId)
         }
+        nextParams.delete('conversation')
+      } else {
+        nextParams.set('conversation', conversationId)
+        nextParams.delete('new')
+      }
 
-        return next
+      const nextSearch = nextParams.toString()
+      navigate({
+        pathname: `/messages/${conversationId}`,
+        search: nextSearch ? `?${nextSearch}` : ''
       })
     },
-    [adjustUnreadCount, combinedConversations, refreshUnreadCount, setSearchParams, user?.id]
+    [adjustUnreadCount, combinedConversations, refreshUnreadCount, navigate, searchParams, user?.id]
   )
 
   const handleBackToList = useCallback(() => {
     setSelectedConversationId(null)
     setPendingConversation(null)
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      next.delete('conversation')
-      next.delete('new')
-      return next
+    const nextParams = new URLSearchParams(searchParams)
+    nextParams.delete('conversation')
+    nextParams.delete('new')
+    const nextSearch = nextParams.toString()
+    navigate({
+      pathname: '/messages',
+      search: nextSearch ? `?${nextSearch}` : ''
     })
-  }, [setSearchParams])
+  }, [navigate, searchParams])
 
   const handleConversationCreated = useCallback(
     (createdConversation: Conversation) => {
@@ -377,15 +408,17 @@ export default function MessagesPage() {
         return [normalizedConversation, ...prev]
       })
 
-      setSearchParams((prev) => {
-        const next = new URLSearchParams(prev)
-        next.set('conversation', createdConversation.id)
-        next.delete('new')
-        return next
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.set('conversation', createdConversation.id)
+      nextParams.delete('new')
+      const nextSearch = nextParams.toString()
+      navigate({
+        pathname: `/messages/${createdConversation.id}`,
+        search: nextSearch ? `?${nextSearch}` : ''
       })
       // Don't force refresh - real-time subscription will handle updates
     },
-    [setSearchParams]
+    [navigate, searchParams]
   )
 
   const handleConversationRead = useCallback(
@@ -469,22 +502,32 @@ export default function MessagesPage() {
         if (error || !conversationRow) {
           logger.warn('Conversation id from URL not found', { selectedConversationId, error })
           setSelectedConversationId(null)
-          setSearchParams(prev => {
-            const next = new URLSearchParams(prev)
-            next.delete('conversation')
-            return next
-          })
+          const nextParams = new URLSearchParams(searchParams)
+          nextParams.delete('conversation')
+          const nextSearch = nextParams.toString()
+          navigate(
+            {
+              pathname: '/messages',
+              search: nextSearch ? `?${nextSearch}` : ''
+            },
+            { replace: true }
+          )
           return
         }
 
         if (conversationRow.participant_one_id !== user.id && conversationRow.participant_two_id !== user.id) {
           logger.warn('Conversation does not belong to current user', { selectedConversationId })
           setSelectedConversationId(null)
-          setSearchParams(prev => {
-            const next = new URLSearchParams(prev)
-            next.delete('conversation')
-            return next
-          })
+          const nextParams = new URLSearchParams(searchParams)
+          nextParams.delete('conversation')
+          const nextSearch = nextParams.toString()
+          navigate(
+            {
+              pathname: '/messages',
+              search: nextSearch ? `?${nextSearch}` : ''
+            },
+            { replace: true }
+          )
           return
         }
 
@@ -560,7 +603,7 @@ export default function MessagesPage() {
     return () => {
       cancelled = true
     }
-  }, [combinedConversations, selectedConversationId, setSearchParams, user?.id])
+  }, [combinedConversations, navigate, searchParams, selectedConversationId, user?.id])
 
   const rootContainerClasses = isFullBleedMobileLayout
     ? 'bg-white min-h-screen-dvh md:min-h-screen'
@@ -604,18 +647,22 @@ export default function MessagesPage() {
   }
 
   const mainPaddingClasses = isFullBleedMobileLayout
-    ? 'mx-auto w-full max-w-7xl px-0 pb-0 pt-[calc(var(--app-header-offset,0px)+1rem)] md:px-6'
+    ? shouldHideGlobalHeader
+      ? 'mx-auto w-full max-w-7xl px-0 pb-0 pt-0 md:px-6'
+      : 'mx-auto w-full max-w-7xl px-0 pb-0 pt-[calc(var(--app-header-offset,0px)+1rem)] md:px-6'
     : 'mx-auto max-w-7xl px-4 pb-12 pt-[calc(var(--app-header-offset,0px)+1.5rem)] md:px-6'
 
   const containerClasses = isFullBleedMobileLayout
-    ? 'flex h-[calc(100dvh-var(--app-header-offset,0px))] flex-col overflow-hidden bg-white'
+    ? shouldHideGlobalHeader
+      ? 'flex h-screen-dvh flex-col overflow-hidden bg-white'
+      : 'flex h-[calc(100dvh-var(--app-header-offset,0px))] flex-col overflow-hidden bg-white'
     : `flex h-[calc(100dvh-var(--app-header-offset,0px)-4rem)] flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm ${
         messagingMobileV2Enabled ? 'min-h-chat-card' : ''
       }`
 
   return (
     <div className={rootContainerClasses}>
-      <Header />
+      {!shouldHideGlobalHeader && <Header />}
 
       <main className={mainPaddingClasses}>
         <div className={containerClasses}>
@@ -677,7 +724,20 @@ export default function MessagesPage() {
                   onMessageSent={handleConversationMessageEvent}
                   onConversationCreated={handleConversationCreated}
                   onConversationRead={handleConversationRead}
+                  isImmersiveMobile={shouldHideGlobalHeader}
                 />
+              ) : selectedConversationId ? (
+                <div className="flex h-full min-h-[320px] flex-col items-center justify-center bg-gray-50 p-8 text-center">
+                  <div className="w-16 h-16 animate-spin rounded-full border-2 border-purple-200 border-t-transparent mb-4"></div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading conversation…</h3>
+                  <p className="text-gray-600">Hang tight while we fetch the latest messages.</p>
+                  <button
+                    onClick={handleBackToList}
+                    className="mt-6 inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+                  >
+                    Back to conversations
+                  </button>
+                </div>
               ) : (
                 <div className="flex h-full min-h-[320px] flex-col items-center justify-center bg-gray-50 p-8 text-center">
                   <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -687,14 +747,6 @@ export default function MessagesPage() {
                   <p className="text-gray-600 mb-6">
                     Choose a conversation from the list to start messaging
                   </p>
-                  {selectedConversationId && (
-                    <button
-                      onClick={handleBackToList}
-                      className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
-                    >
-                      Back to conversations
-                    </button>
-                  )}
                 </div>
               )}
             </div>
