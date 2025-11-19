@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Plus, Edit2, Copy, Archive, MapPin, Calendar, Users, Eye, Rocket, Trash2, Loader2 } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import type { ReactNode } from 'react'
+import { Plus, Edit2, Copy, Archive, MapPin, Calendar, Users, Eye, Rocket, Trash2, Loader2, MoreHorizontal } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
@@ -20,6 +21,147 @@ interface VacanciesTabProps {
   readOnly?: boolean
   triggerCreate?: boolean
   onCreateTriggered?: () => void
+}
+
+interface VacancyActionMenuProps {
+  vacancy: Vacancy
+  disabled?: boolean
+  onEdit: (vacancy: Vacancy) => void
+  onDuplicate: (vacancy: Vacancy) => void
+  onPublish: (vacancy: Vacancy) => void
+  onClose: (id: string) => void
+  onDelete: (vacancy: Vacancy) => void
+}
+
+function VacancyActionMenu({ vacancy, disabled, onEdit, onDuplicate, onPublish, onClose, onDelete }: VacancyActionMenuProps) {
+  const [open, setOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+
+    const handleClick = (event: MouseEvent) => {
+      if (menuRef.current?.contains(event.target as Node)) {
+        return
+      }
+      setOpen(false)
+    }
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('touchstart', handleClick)
+    document.addEventListener('keydown', handleKey)
+
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('touchstart', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [open])
+
+  const closeMenu = () => setOpen(false)
+
+  const menuItems: Array<{ key: string; label: string; icon: ReactNode; onClick: () => void; tone?: 'danger' | 'primary' }> = []
+
+  if (vacancy.status === 'draft') {
+    menuItems.push({
+      key: 'publish',
+      label: 'Publish vacancy',
+      icon: <Rocket className="w-4 h-4 text-green-600" />,
+      onClick: () => {
+        closeMenu()
+        onPublish(vacancy)
+      },
+      tone: 'primary'
+    })
+  }
+
+  if (vacancy.status === 'open') {
+    menuItems.push({
+      key: 'close',
+      label: 'Close opportunity',
+      icon: <Archive className="w-4 h-4 text-amber-600" />,
+      onClick: () => {
+        closeMenu()
+        onClose(vacancy.id)
+      },
+      tone: 'danger'
+    })
+  }
+
+  menuItems.push(
+    {
+      key: 'edit',
+      label: 'Edit details',
+      icon: <Edit2 className="w-4 h-4" />,
+      onClick: () => {
+        closeMenu()
+        onEdit(vacancy)
+      }
+    },
+    {
+      key: 'duplicate',
+      label: 'Duplicate',
+      icon: <Copy className="w-4 h-4" />,
+      onClick: () => {
+        closeMenu()
+        onDuplicate(vacancy)
+      }
+    }
+  )
+
+  if (vacancy.status === 'closed') {
+    menuItems.push({
+      key: 'delete',
+      label: 'Delete permanently',
+      icon: <Trash2 className="w-4 h-4 text-red-600" />,
+      onClick: () => {
+        closeMenu()
+        onDelete(vacancy)
+      },
+      tone: 'danger'
+    })
+  }
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        aria-label="Open vacancy menu"
+        onClick={() => setOpen((prev) => !prev)}
+        disabled={disabled}
+        className="rounded-full border border-gray-200 p-2 text-gray-500 transition hover:text-gray-900 disabled:opacity-50"
+      >
+        <MoreHorizontal className="w-5 h-5" />
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-3 w-56 rounded-2xl border border-gray-100 bg-white p-2 shadow-lg ring-1 ring-black/5">
+          {menuItems.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={item.onClick}
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-left transition hover:bg-gray-50 ${
+                item.tone === 'danger'
+                  ? 'text-red-600'
+                  : item.tone === 'primary'
+                  ? 'text-green-600'
+                  : 'text-gray-700'
+              }`}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function VacanciesTab({ profileId, readOnly = false, triggerCreate, onCreateTriggered }: VacanciesTabProps) {
@@ -332,21 +474,15 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <Skeleton variant="rectangular" width={48} height={48} className="rounded-lg" />
-              <div className="space-y-2">
-                <Skeleton width={180} height={20} />
-                <Skeleton width={260} height={16} />
-              </div>
-            </div>
-            <Skeleton width={140} height={14} />
+      <div className="space-y-8">
+        <div className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white/80 px-4 py-4">
+          <div className="space-y-2">
+            <Skeleton width={120} height={16} />
+            <Skeleton width={200} height={28} />
+            <Skeleton width={160} height={14} />
           </div>
-          {!readOnly && <Skeleton width={150} height={44} className="rounded-lg" />}
+          {!readOnly && <Skeleton width={90} height={36} className="rounded-full" />}
         </div>
-
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {Array.from({ length: 2 }).map((_, index) => (
             <VacancyCardSkeleton key={index} />
@@ -357,37 +493,29 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">💼</span>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                {readOnly ? 'Open Vacancies' : 'Club Vacancies'}
-              </h2>
-              <p className="text-sm text-gray-600">
-                {readOnly 
-                  ? 'Current open positions at this club' 
-                  : 'Manage your player and coaching opportunities'
-                }
-              </p>
-            </div>
-          </div>
-          <p className="text-sm text-gray-500 ml-15">{vacancies.length} Total Vacancies</p>
+    <div className="space-y-8">
+      {/* Section Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-white/80 px-4 py-4 shadow-sm">
+        <div className="space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Vacancies</p>
+          <h2 className="text-2xl font-bold text-gray-900">
+            {readOnly ? 'Open opportunities' : 'Manage openings'}
+          </h2>
+          <p className="text-sm text-gray-500">
+            {readOnly
+              ? `${vacancies.length} live role${vacancies.length === 1 ? '' : 's'}`
+              : `${vacancies.length} total vacanc${vacancies.length === 1 ? 'y' : 'ies'}`}
+          </p>
         </div>
-        
-        {!readOnly && vacancies.length > 0 && (
-          <Button
+        {!readOnly && (
+          <button
+            type="button"
             onClick={handleCreateNew}
-            className="flex items-center gap-2 bg-[#10b981] hover:bg-[#059669]"
+            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-white"
           >
             <Plus className="w-4 h-4" />
-            Create Vacancy
-          </Button>
+            Add
+          </button>
         )}
       </div>
 
@@ -429,235 +557,135 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
 
       {/* Vacancies Grid */}
       {vacancies.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {vacancies.map((vacancy) => (
-            <div
-              key={vacancy.id}
-              className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-lg font-bold text-gray-900">{vacancy.title}</h3>
-                    {getStatusBadge(vacancy.status)}
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          {vacancies.map((vacancy) => {
+            const positionLabel = vacancy.position ? vacancy.position.charAt(0).toUpperCase() + vacancy.position.slice(1) : null
+            const genderLabel = vacancy.gender ? vacancy.gender.charAt(0).toUpperCase() + vacancy.gender.slice(1) : null
+            const locationLabel = [vacancy.location_city, vacancy.location_country].filter(Boolean).join(', ')
+            const details = [positionLabel, genderLabel, locationLabel].filter(Boolean).join(' • ')
+
+            return (
+              <div
+                key={vacancy.id}
+                className="rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] active:scale-[0.99]"
+              >
+                {/* Card Header */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-wide text-gray-500">{vacancy.opportunity_type === 'player' ? 'Player role' : 'Coach role'}</p>
+                    <h3 className="text-lg font-semibold text-gray-900">{vacancy.title}</h3>
                   </div>
-                  {vacancy.opportunity_type === 'player' && (
-                    <div className="flex items-center gap-3 text-sm text-gray-600">
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-                        Player Position
-                      </span>
-                      {vacancy.position && (
-                        <span className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          {vacancy.position.charAt(0).toUpperCase() + vacancy.position.slice(1)}
-                        </span>
-                      )}
-                      {vacancy.gender && vacancy.position && <span>•</span>}
-                      {vacancy.gender && <span>{vacancy.gender}</span>}
-                    </div>
-                  )}
-                  {vacancy.opportunity_type === 'coach' && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
-                        Coach Position
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Details */}
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <MapPin className="w-4 h-4 flex-shrink-0" />
-                  <span>{vacancy.location_city}, {vacancy.location_country}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Calendar className="w-4 h-4 flex-shrink-0" />
-                  <span>Start: {formatDate(vacancy.start_date)}</span>
-                </div>
-                {vacancy.benefits && vacancy.benefits.length > 0 && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-gray-600">Benefits:</span>
-                    <span className="font-medium text-green-600">{vacancy.benefits.length} included</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Applicants Counter */}
-              {!readOnly && (vacancy.status === 'open' || vacancy.status === 'closed') && (
-                <button
-                  onClick={() => navigate(`/dashboard/club/vacancies/${vacancy.id}/applicants`)}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 mb-4 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                >
-                  <Users className="w-4 h-4" />
-                  {applicantCounts[vacancy.id] || 0} Applicant{applicantCounts[vacancy.id] !== 1 ? 's' : ''}
-                </button>
-              )}
-
-              {/* Draft Warning Message */}
-              {!readOnly && vacancy.status === 'draft' && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-                  <p className="text-xs text-amber-800 font-medium">
-                    ⚠️ This opportunity is <strong>not visible to players</strong>. Click "Publish" to make it live.
-                  </p>
-                </div>
-              )}
-
-              {/* Apply Button - Public View */}
-              {readOnly && vacancy.status === 'open' && (
-                <div className="pt-4 border-t border-gray-200">
                   <div className="flex items-center gap-2">
+                    {getStatusBadge(vacancy.status)}
+                    {!readOnly && (
+                      <VacancyActionMenu
+                        vacancy={vacancy}
+                        disabled={Boolean(actionLoading)}
+                        onEdit={handleEdit}
+                        onDuplicate={handleDuplicate}
+                        onPublish={handlePublishClick}
+                        onClose={handleClose}
+                        onDelete={handleDeleteClick}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Details */}
+                <div className="mt-4 space-y-3">
+                  {details && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Users className="w-4 h-4 text-gray-400" />
+                      <span>{details}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <MapPin className="w-4 h-4 text-gray-400" />
+                    <span>{locationLabel || 'Location TBD'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <span>Start {formatDate(vacancy.start_date)}</span>
+                  </div>
+                </div>
+
+                {/* Applicants pill */}
+                {!readOnly && (vacancy.status === 'open' || vacancy.status === 'closed') && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/dashboard/club/vacancies/${vacancy.id}/applicants`)}
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700 hover:border-gray-300"
+                  >
+                    <Users className="w-4 h-4" />
+                    {applicantCounts[vacancy.id] || 0} applicant{applicantCounts[vacancy.id] === 1 ? '' : 's'}
+                  </button>
+                )}
+
+                {/* Draft hint */}
+                {!readOnly && vacancy.status === 'draft' && (
+                  <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                    Draft only — publish when you’re ready to go live.
+                  </p>
+                )}
+
+                {/* Public actions */}
+                {readOnly && (
+                  <div className="mt-5 flex items-center gap-3 border-t border-gray-100 pt-4">
                     {!user ? (
-                      // Not logged in - show sign in prompt
                       <button
+                        type="button"
                         onClick={() => handleApply(vacancy)}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] hover:shadow-lg rounded-lg transition-all"
+                        className="flex-1 rounded-2xl bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/30"
                       >
-                        Sign in to Apply
+                        Sign in to apply
                       </button>
                     ) : userApplications.has(vacancy.id) ? (
-                      // Already applied
                       <button
+                        type="button"
                         disabled
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-green-700 bg-green-50 rounded-lg cursor-not-allowed"
+                        className="flex-1 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800"
                       >
                         ✓ Applied
                       </button>
                     ) : canUserApply(vacancy) ? (
-                      // Can apply
                       <button
+                        type="button"
                         onClick={() => handleApply(vacancy)}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold text-white bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] hover:shadow-lg rounded-lg transition-all"
+                        className="flex-1 rounded-2xl bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/30"
                       >
-                        Apply Now
+                        Apply now
                       </button>
                     ) : (
-                      // Cannot apply (wrong role)
-                      <div className="flex-1 px-4 py-3 text-sm text-center text-gray-500 bg-gray-50 rounded-lg">
-                        {vacancy.opportunity_type === 'player' 
-                          ? 'Available for Player accounts only'
-                          : 'Available for Coach accounts only'}
+                      <div className="flex-1 rounded-2xl border border-dashed border-gray-200 px-4 py-3 text-center text-xs font-medium text-gray-500">
+                        {vacancy.opportunity_type === 'player'
+                          ? 'Players only'
+                          : 'Coaches only'}
                       </div>
                     )}
-                    
-                    {/* View Details Button (Eye Icon) */}
                     <button
+                      type="button"
                       onClick={() => handleViewDetails(vacancy)}
-                      className="p-3 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all"
-                      title="View details"
+                      className="rounded-2xl border border-gray-200 p-3 text-gray-500 transition hover:bg-gray-50"
                       aria-label="View vacancy details"
                     >
                       <Eye className="w-5 h-5" />
                     </button>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Actions */}
-              {!readOnly && (
-                <div className="space-y-3 pt-4 border-t border-gray-200">
-                  {/* Primary Action: Publish Button (for drafts) */}
-                  {vacancy.status === 'draft' && (
-                    <button
-                      onClick={() => handlePublishClick(vacancy)}
-                      disabled={Boolean(actionLoading)}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-bold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all disabled:cursor-not-allowed disabled:opacity-70 transform hover:scale-[1.02]"
-                      title="Publish this opportunity to make it visible to all players"
-                    >
-                      {actionLoading?.id === vacancy.id && actionLoading.action === 'publish' ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Publishing...
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          <Rocket className="h-5 w-5" />
-                          Publish Opportunity
-                        </span>
-                      )}
-                    </button>
-                  )}
-                  
-                  {/* Close Button (for published) */}
-                  {vacancy.status === 'open' && (
-                    <button
-                      onClick={() => handleClose(vacancy.id)}
-                      disabled={Boolean(actionLoading)}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-70"
-                      title="Close vacancy"
-                    >
-                      {actionLoading?.id === vacancy.id && actionLoading.action === 'close' ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Closing...
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          <Archive className="h-4 w-4" />
-                          Close Opportunity
-                        </span>
-                      )}
-                    </button>
-                  )}
-                  
-                  {/* Delete Button (for closed vacancies) */}
-                  {vacancy.status === 'closed' && (
-                    <button
-                      onClick={() => handleDeleteClick(vacancy)}
-                      disabled={Boolean(actionLoading)}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-70"
-                      title="Permanently delete vacancy"
-                    >
-                      {actionLoading?.id === vacancy.id && actionLoading.action === 'delete' ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Deleting...
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          <Trash2 className="h-4 w-4" />
-                          Delete Permanently
-                        </span>
-                      )}
-                    </button>
-                  )}
-                  
-                  {/* Secondary Actions */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleEdit(vacancy)}
-                      disabled={Boolean(actionLoading)}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-70"
-                      title="Edit vacancy"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDuplicate(vacancy)}
-                      disabled={Boolean(actionLoading)}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:border-gray-400 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-70"
-                      title="Duplicate vacancy"
-                    >
-                      {actionLoading?.id === vacancy.id && actionLoading.action === 'duplicate' ? (
-                        <span className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Duplicating...
-                        </span>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          <Copy className="h-4 w-4" />
-                          Duplicate
-                        </span>
-                      )}
-                    </button>
+                {/* Loading indicators for menu-triggered actions */}
+                {!readOnly && actionLoading?.id === vacancy.id && (
+                  <div className="mt-4 flex items-center gap-2 text-xs font-medium text-gray-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {actionLoading.action === 'publish' && 'Publishing opportunity...'}
+                    {actionLoading.action === 'close' && 'Closing opportunity...'}
+                    {actionLoading.action === 'delete' && 'Deleting opportunity...'}
+                    {actionLoading.action === 'duplicate' && 'Duplicating opportunity...'}
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 
