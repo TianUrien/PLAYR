@@ -11,15 +11,22 @@ const roleStyles: Record<string, string> = {
   club: 'bg-orange-100 text-orange-700',
 }
 
+const formatRoleLabel = (value: string) => {
+  if (!value) return ''
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
 export default function RoleBadge({ role, className }: RoleBadgeProps) {
   if (!role) return null
 
-  const normalizedRole = role.toLowerCase()
+  const normalizedRole = role.trim().toLowerCase()
   const baseClass = roleStyles[normalizedRole] ?? 'bg-gray-100 text-gray-600'
+  const label = formatRoleLabel(normalizedRole)
+  if (!label) return null
 
   return (
-    <span className={cn('inline-flex items-center rounded-full px-2 py-1 text-xs font-medium capitalize', baseClass, className)}>
-      {normalizedRole}
+    <span className={cn('inline-flex items-center rounded-full px-2 py-1 text-xs font-medium', baseClass, className)}>
+      {label}
     </span>
   )
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { MapPin, Globe, Calendar, Edit2, MessageCircle, Award } from 'lucide-react'
+import { MapPin, Globe, Calendar, Edit2, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, ScrollableTabs } from '@/components'
+import { Avatar, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, RoleBadge, ScrollableTabs } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import Button from '@/components/Button'
@@ -219,9 +219,8 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">
                     {profile.full_name}
                   </h1>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium mb-3">
-                    <Award className="w-4 h-4" />
-                    Coach
+                  <div className="mb-3">
+                    <RoleBadge role="coach" />
                   </div>
                 </div>
 

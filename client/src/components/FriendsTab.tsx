@@ -8,6 +8,7 @@ import type { Profile } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import Avatar from './Avatar'
+import RoleBadge from './RoleBadge'
 import { Link } from 'react-router-dom'
 
 interface FriendsTabProps {
@@ -160,7 +161,7 @@ export default function FriendsTab({ profileId, readOnly = false }: FriendsTabPr
           />
           <div>
             <p className="font-semibold text-gray-900">{connection.friend?.full_name || connection.friend?.username || 'PLAYR Member'}</p>
-            <p className="text-xs uppercase tracking-wide text-gray-500">{connection.friend?.role ?? 'member'}</p>
+            <RoleBadge role={connection.friend?.role ?? 'member'} className="mt-1" />
             {connection.friend?.base_location && (
               <p className="text-xs text-gray-500">{connection.friend.base_location}</p>
             )}
@@ -205,7 +206,7 @@ export default function FriendsTab({ profileId, readOnly = false }: FriendsTabPr
           />
           <div>
             <p className="font-semibold text-gray-900">{connection.friend?.full_name || connection.friend?.username || 'PLAYR Member'}</p>
-            <p className="text-xs uppercase tracking-wide text-gray-500">{connection.friend?.role ?? 'member'}</p>
+            <RoleBadge role={connection.friend?.role ?? 'member'} className="mt-1" />
             <p className="text-xs text-gray-500">Requested {humanizeDate(connection.created_at)}</p>
           </div>
         </Link>

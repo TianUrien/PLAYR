@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { MapPin, Globe, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, EditProfileModal, FriendsTab, FriendshipButton, ScrollableTabs } from '@/components'
+import { Avatar, EditProfileModal, FriendsTab, FriendshipButton, RoleBadge, ScrollableTabs } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import JourneyTab from '@/components/JourneyTab'
@@ -302,9 +302,8 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
                 )}
               </div>
 
-              <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm font-medium">
-                <span className="w-2 h-2 bg-blue-500 rounded-full" />
-                Player
+              <div className="mt-4">
+                <RoleBadge role="player" />
               </div>
             </div>
           </div>

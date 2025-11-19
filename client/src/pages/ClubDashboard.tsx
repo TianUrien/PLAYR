@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { MapPin, Globe, Calendar, Plus, Eye, MessageCircle, Edit, Loader2 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '@/components/Header'
-import { Avatar, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, ScrollableTabs } from '@/components'
+import { Avatar, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, RoleBadge, ScrollableTabs } from '@/components'
 import VacanciesTab from '@/components/VacanciesTab'
 import ClubMediaTab from '@/components/ClubMediaTab'
 import Skeleton from '@/components/Skeleton'
@@ -310,9 +310,8 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
                 )}
               </div>
 
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-50 text-orange-700 rounded-full text-sm font-medium">
-                <span className="w-2 h-2 bg-orange-500 rounded-full" />
-                Club
+              <div className="mt-2">
+                <RoleBadge role="club" />
               </div>
             </div>
           </div>

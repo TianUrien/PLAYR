@@ -7,6 +7,7 @@ import { SUPABASE_URL } from '@/lib/supabase'
 import { format } from 'date-fns'
 import { ChatWindowSkeleton } from './Skeleton'
 import Avatar from './Avatar'
+import RoleBadge from './RoleBadge'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useChat } from '@/hooks/useChat'
 import type { Conversation, ChatMessageEvent, ConversationParticipant } from '@/types/chat'
@@ -707,22 +708,8 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
           ) : (
             <h2 className="truncate text-lg font-semibold text-gray-900 md:text-xl">{participantName}</h2>
           )}
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium md:text-sm ${
-                conversation.otherParticipant?.role === 'club'
-                  ? 'bg-orange-50 text-orange-700'
-                  : conversation.otherParticipant?.role === 'coach'
-                  ? 'bg-purple-50 text-purple-700'
-                  : 'bg-blue-50 text-blue-700'
-              }`}
-            >
-              {conversation.otherParticipant?.role === 'club'
-                ? 'Club'
-                : conversation.otherParticipant?.role === 'coach'
-                ? 'Coach'
-                : 'Player'}
-            </span>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <RoleBadge role={conversation.otherParticipant?.role ?? 'member'} className="md:text-sm" />
           </div>
         </div>
       </div>

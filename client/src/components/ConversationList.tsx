@@ -3,6 +3,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { SUPABASE_URL } from '@/lib/supabase'
 import Avatar from './Avatar'
+import RoleBadge from './RoleBadge'
 
 interface Conversation {
   id: string
@@ -131,21 +132,7 @@ export default function ConversationList({
                       >
                         {participantName}
                       </h3>
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          conversation.otherParticipant?.role === 'club'
-                            ? 'bg-orange-50 text-orange-700'
-                            : conversation.otherParticipant?.role === 'coach'
-                            ? 'bg-purple-50 text-purple-700'
-                            : 'bg-blue-50 text-blue-700'
-                        }`}
-                      >
-                        {conversation.otherParticipant?.role === 'club'
-                          ? 'Club'
-                          : conversation.otherParticipant?.role === 'coach'
-                          ? 'Coach'
-                          : 'Player'}
-                      </span>
+                      <RoleBadge role={conversation.otherParticipant?.role ?? 'member'} />
                     </div>
                     {conversation.last_message_at && (
                       <span className="flex-shrink-0 text-xs text-gray-500">

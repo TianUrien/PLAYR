@@ -3,6 +3,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { Bell, UserPlus, MessageCircle, X } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Avatar from './Avatar'
+import RoleBadge from './RoleBadge'
 import { useNotificationStore } from '@/lib/notifications'
 import { useToastStore } from '@/lib/toast'
 import { cn } from '@/lib/utils'
@@ -138,7 +139,7 @@ export default function NotificationsDrawer() {
             >
               {fullName}
             </button>
-            <p className="text-sm text-gray-600 capitalize">{role}</p>
+            <RoleBadge role={role} className="mt-0.5" />
             {location && <p className="text-xs text-gray-500">{location}</p>}
             <div className="text-xs text-gray-500">{displayTime}</div>
           </div>
@@ -188,7 +189,7 @@ export default function NotificationsDrawer() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-base font-semibold text-gray-900">{fullName}</p>
-                <p className="text-xs uppercase tracking-wide text-gray-500">{role}</p>
+                <RoleBadge role={role} className="mt-0.5" />
               </div>
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
                 <MessageCircle className="h-3.5 w-3.5" />
