@@ -506,6 +506,7 @@ export default function MessagesPage() {
   const selectedConversation = combinedConversations.find((conv) => conv.id === selectedConversationId)
   const hasActiveConversation = Boolean(selectedConversationId)
   const shouldHideGlobalHeader = Boolean(isMobile && hasActiveConversation)
+  const conversationListKey = shouldHideGlobalHeader ? 'immersive-hidden' : 'list-visible'
 
   const handleSelectConversation = useCallback(
     (conversationId: string) => {
@@ -916,6 +917,7 @@ export default function MessagesPage() {
                 ) : (
                   <>
                     <ConversationList
+                      key={conversationListKey}
                       conversations={filteredConversations}
                       selectedConversationId={selectedConversationId}
                       onSelectConversation={handleSelectConversation}
