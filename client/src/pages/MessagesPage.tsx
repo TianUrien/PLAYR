@@ -3,6 +3,7 @@ import { Search, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import ConversationList from '@/components/ConversationList'
 import ChatWindow from '@/components/ChatWindow'
 import type { ChatMessageEvent } from '@/types/chat'
@@ -12,6 +13,13 @@ import { requestCache } from '@/lib/requestCache'
 import { monitor } from '@/lib/monitor'
 import { logger } from '@/lib/logger'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+
+interface ConversationDBRow {
+  id: string
+  last_message_at: string | null
+  updated_at: string
+  [key: string]: unknown
+}
 
 interface Conversation {
   id: string
@@ -54,6 +62,7 @@ export default function MessagesPage() {
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const isMobile = useMediaQuery('(max-width: 767px)')
 
   // Set selected conversation from URL parameter
@@ -84,15 +93,41 @@ export default function MessagesPage() {
       }
       
       try {
+        setError(null)
         const enrichedConversations = await requestCache.dedupe(
           cacheKey,
           async () => {
             // Use optimized stored procedure (single query, ~50-150ms)
-            const { data, error } = await supabase
-              .rpc('get_user_conversations', {
-                p_user_id: user.id,
-                p_limit: 50
-              })
+            // Add retry logic for robustness
+            let data = null
+            let error = null
+            let attempts = 0
+            const maxAttempts = 3
+
+            while (attempts < maxAttempts) {
+              try {
+                const result = await supabase
+                  .rpc('get_user_conversations', {
+                    p_user_id: user.id,
+                    p_limit: 50
+                  })
+                
+                if (result.error) {
+                  throw result.error
+                }
+                
+                data = result.data
+                error = null
+                break // Success
+              } catch (e) {
+                error = e
+                attempts++
+                if (attempts < maxAttempts) {
+                  // Exponential backoff: 300ms, 600ms, 1200ms
+                  await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(2, attempts - 1)))
+                }
+              }
+            }
 
             if (error) throw error
 
@@ -125,6 +160,7 @@ export default function MessagesPage() {
         setConversations(enrichedConversations)
       } catch (error) {
         logger.error('Error fetching conversations:', error)
+        setError('Failed to load conversations. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -133,7 +169,9 @@ export default function MessagesPage() {
 
   useEffect(() => {
     if (user?.id) {
-      fetchConversations()
+      // Force refresh on mount to ensure we have the latest conversations
+      // This prevents stale data if the user received messages while on another page
+      fetchConversations({ force: true })
     }
   }, [user?.id, fetchConversations]) // Fixed: Use user?.id instead of user object
 
@@ -255,8 +293,26 @@ export default function MessagesPage() {
       return
     }
 
-    const handleConversationChange = () => {
-      void fetchConversations({ force: true })
+    const handleConversationChange = (payload: RealtimePostgresChangesPayload<ConversationDBRow>) => {
+      // Optimistic update for conversation list order
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        const newRecord = payload.new
+        setConversations(prev => {
+          const exists = prev.find(c => c.id === newRecord.id)
+          if (exists) {
+            // Update timestamp and sort immediately
+            return prev.map(c => c.id === newRecord.id ? {
+              ...c,
+              last_message_at: newRecord.last_message_at,
+              updated_at: newRecord.updated_at
+            } : c).sort((a, b) => new Date(b.last_message_at || b.updated_at).getTime() - new Date(a.last_message_at || a.updated_at).getTime())
+          }
+          return prev
+        })
+        
+        // Trigger background refresh to get the actual message content/preview
+        void fetchConversations({ force: true })
+      }
     }
 
     const channel = supabase
@@ -603,19 +659,19 @@ export default function MessagesPage() {
   }, [combinedConversations, navigate, searchParams, selectedConversationId, user?.id, isPendingConversation, isValidConversationId])
 
   const rootContainerClasses = isMobile
-    ? 'bg-white min-h-screen-dvh md:min-h-screen'
-    : 'min-h-screen bg-gray-50'
+    ? 'bg-white h-full md:h-full'
+    : 'h-full bg-gray-50'
 
   const mainPaddingClasses = isMobile
     ? shouldHideGlobalHeader
-      ? 'mx-auto w-full max-w-7xl px-0 md:px-6'
-      : 'mx-auto w-full max-w-7xl px-4 pb-4 pt-[calc(var(--app-header-offset,0px)+1rem)] md:px-6'
-    : 'mx-auto max-w-7xl px-4 pb-12 pt-[calc(var(--app-header-offset,0px)+1.5rem)] md:px-6'
+      ? 'mx-auto w-full max-w-7xl px-0 md:px-6 h-full'
+      : 'mx-auto w-full max-w-7xl px-4 pb-4 pt-[calc(var(--app-header-offset,0px)+1rem)] md:px-6 h-full'
+    : 'mx-auto max-w-7xl px-4 pb-12 pt-[calc(var(--app-header-offset,0px)+1.5rem)] md:px-6 h-full'
 
   const containerClasses = shouldHideGlobalHeader
-    ? 'flex h-screen-dvh min-h-0 flex-1 flex-col overflow-hidden bg-white md:flex-row'
+    ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white md:flex-row'
     : isMobile
-      ? 'flex h-[calc(100dvh-var(--app-header-offset,0px))] min-h-0 flex-1 flex-col overflow-hidden bg-white md:flex-row'
+      ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white md:flex-row'
       : 'flex h-[calc(100dvh-var(--app-header-offset,0px)-4rem)] min-h-0 min-h-chat-card flex-1 flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm md:flex-row'
 
   if (loading) {
@@ -685,15 +741,37 @@ export default function MessagesPage() {
 
               {/* Conversations List */}
               <div className={`flex-1 min-h-0 ${isMobile ? 'border-t border-gray-100 bg-white/95' : ''}`}>
-                {filteredConversations.length === 0 ? (
+                {error ? (
+                  <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                    <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+                      <MessageCircle className="w-8 h-8 text-red-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Something went wrong</h3>
+                    <p className="text-sm text-gray-600 mb-6">
+                      {error}
+                    </p>
+                    <button
+                      onClick={() => fetchConversations({ force: true })}
+                      className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                ) : filteredConversations.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full p-8 text-center">
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                       <MessageCircle className="w-8 h-8 text-gray-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">No messages yet</h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 mb-6">
                       Start a conversation from a player or club profile
                     </p>
+                    <button
+                      onClick={() => fetchConversations({ force: true })}
+                      className="text-sm font-medium text-purple-600 hover:text-purple-700"
+                    >
+                      Refresh list
+                    </button>
                   </div>
                 ) : (
                   <ConversationList

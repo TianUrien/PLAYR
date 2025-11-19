@@ -14,17 +14,6 @@ import type { Conversation, ChatMessageEvent, ConversationParticipant } from '@/
 
 const COMPOSER_MIN_HEIGHT = 48
 const COMPOSER_MAX_HEIGHT = 160
-const SCROLL_RETRY_LIMIT = 8
-
-type ScrollJobReason = 'initial' | 'append-self' | 'append-inbound' | 'input' | 'manual'
-
-interface ScrollJob {
-  type: 'bottom' | 'message'
-  messageId?: string
-  behavior: ScrollBehavior
-  attempts: number
-  reason: ScrollJobReason
-}
 
 const buildPublicProfilePath = (participant?: ConversationParticipant) => {
   if (!participant) return null
@@ -73,118 +62,39 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     estimateSize: () => 120,
     overscan: 12
   })
-  const shouldStickToBottomRef = useRef(true)
-  const initialScrollPendingRef = useRef(true)
+  
   const lastMessageIdRef = useRef<string | null>(null)
-  const fallbackBaselineInnerHeightRef = useRef<number | null>(null)
   const messageRefs = useRef(new Map<string, HTMLDivElement>())
-  const pendingScrollJobRef = useRef<ScrollJob | null>(null)
-  const nextScrollFrameRef = useRef<number | null>(null)
   const intersectionObserverRef = useRef<IntersectionObserver | null>(null)
   const textareaId = useId()
   const textareaCharCountId = `${textareaId}-counter`
+  const isAutoScrolling = useRef(false)
 
   useEffect(() => {
     setPendingNewMessagesCount(0)
-    initialScrollPendingRef.current = true
     lastMessageIdRef.current = null
-    shouldStickToBottomRef.current = true
   }, [conversation.id])
 
-  const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     const scrollEl = scrollContainerRef.current
     if (scrollEl) {
+      // Prefer virtualizer scroll if possible, but direct scroll is more reliable for "stick to bottom"
+      // messageVirtualizer.scrollToIndex(messages.length - 1, { align: 'end', behavior })
+      // Using direct scroll for bottom sticking
+      isAutoScrolling.current = true
       scrollEl.scrollTo({ top: scrollEl.scrollHeight, behavior })
+      setTimeout(() => { isAutoScrolling.current = false }, 100)
+    }
+  }, [])
+
+  const isViewerAtBottom = useCallback(() => {
+    const scrollEl = scrollContainerRef.current
+    if (!scrollEl) {
       return true
     }
-    if (messages.length > 0) {
-      messageVirtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
-    }
-    return false
-  }, [messageVirtualizer, messages.length])
-
-  const scrollToMessage = useCallback(
-    (messageId: string, behavior: ScrollBehavior = 'auto') => {
-      const container = scrollContainerRef.current
-      const target = messageRefs.current.get(messageId)
-      if (container && target) {
-        const containerRect = container.getBoundingClientRect()
-        const targetRect = target.getBoundingClientRect()
-        const top = Math.max(targetRect.top - containerRect.top + container.scrollTop - 16, 0)
-        container.scrollTo({ top, behavior })
-        return true
-      }
-
-      const fallbackIndex = messages.findIndex(msg => msg.id === messageId)
-      if (fallbackIndex >= 0) {
-        messageVirtualizer.scrollToIndex(fallbackIndex, { align: 'start' })
-      }
-      return false
-    },
-    [messages, messageVirtualizer]
-  )
-
-  const runScrollJob = useCallback((): void => {
-    const job = pendingScrollJobRef.current
-    if (!job) {
-      nextScrollFrameRef.current = null
-      return
-    }
-
-    const didScroll =
-      job.type === 'bottom'
-        ? scrollToLatest(job.behavior)
-        : job.messageId
-        ? scrollToMessage(job.messageId, job.behavior)
-        : false
-
-    if (didScroll) {
-      if (job.reason === 'initial') {
-        initialScrollPendingRef.current = false
-      }
-
-      if (job.type === 'bottom') {
-        shouldStickToBottomRef.current = true
-      }
-
-      if (job.reason === 'append-inbound' || job.reason === 'append-self' || job.reason === 'input' || job.reason === 'manual') {
-        setPendingNewMessagesCount(0)
-      }
-
-      pendingScrollJobRef.current = null
-      nextScrollFrameRef.current = null
-      return
-    }
-
-    if (job.attempts >= SCROLL_RETRY_LIMIT) {
-      if (job.reason === 'initial') {
-        initialScrollPendingRef.current = false
-      }
-      pendingScrollJobRef.current = null
-      nextScrollFrameRef.current = null
-      return
-    }
-
-    pendingScrollJobRef.current = { ...job, attempts: job.attempts + 1 }
-    nextScrollFrameRef.current = requestAnimationFrame(() => runScrollJob())
-  }, [scrollToLatest, scrollToMessage, setPendingNewMessagesCount])
-
-  const scheduleScrollJob = useCallback(
-    (job: Omit<ScrollJob, 'attempts'>) => {
-      if (job.type === 'message' && !job.messageId) {
-        return
-      }
-
-      pendingScrollJobRef.current = { ...job, attempts: 0 }
-
-      if (nextScrollFrameRef.current !== null) {
-        cancelAnimationFrame(nextScrollFrameRef.current)
-      }
-
-      nextScrollFrameRef.current = requestAnimationFrame(() => runScrollJob())
-    },
-    [runScrollJob]
-  )
+    const distanceFromBottom = scrollEl.scrollHeight - (scrollEl.scrollTop + scrollEl.clientHeight)
+    return distanceFromBottom <= 150
+  }, [])
 
   const setMessageRef = useCallback(
     (messageId: string) => (node: HTMLDivElement | null) => {
@@ -208,15 +118,6 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     },
     [messageVirtualizer]
   )
-
-  const isViewerAtBottom = useCallback(() => {
-    const scrollEl = scrollContainerRef.current
-    if (!scrollEl) {
-      return true
-    }
-    const distanceFromBottom = scrollEl.scrollHeight - (scrollEl.scrollTop + scrollEl.clientHeight)
-    return distanceFromBottom <= 120
-  }, [])
 
   const syncTextareaHeight = useCallback(() => {
     const textarea = inputRef.current
@@ -276,85 +177,11 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   }, [conversation.id, queueReadReceipt, messages])
 
   const handleJumpToLatest = useCallback(() => {
-    shouldStickToBottomRef.current = true
     setPendingNewMessagesCount(0)
-    scheduleScrollJob({ type: 'bottom', behavior: 'smooth', reason: 'manual' })
-  }, [scheduleScrollJob])
+    scrollToBottom('smooth')
+  }, [scrollToBottom])
 
-  useEffect(() => {
-    return () => {
-      if (nextScrollFrameRef.current !== null) {
-        cancelAnimationFrame(nextScrollFrameRef.current)
-        nextScrollFrameRef.current = null
-      }
-      pendingScrollJobRef.current = null
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!isMobile || typeof window === 'undefined') {
-      return
-    }
-
-    const updateViewportInsets = () => {
-      if (window.visualViewport) {
-        const viewport = window.visualViewport
-        if (!viewport) {
-          return
-        }
-
-        const bottomInset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
-        const rightInset = Math.max(0, window.innerWidth - (viewport.width + viewport.offsetLeft))
-        fallbackBaselineInnerHeightRef.current = window.innerHeight
-        document.documentElement.style.setProperty(
-          '--chat-safe-area-bottom',
-          `calc(${bottomInset}px + env(safe-area-inset-bottom, 0px))`
-        )
-        document.documentElement.style.setProperty('--chat-safe-area-right', `${rightInset}px`)
-        return
-      }
-
-      if (fallbackBaselineInnerHeightRef.current === null || window.innerHeight >= fallbackBaselineInnerHeightRef.current) {
-        fallbackBaselineInnerHeightRef.current = window.innerHeight
-  document.documentElement.style.setProperty('--chat-safe-area-bottom', 'env(safe-area-inset-bottom, 0px)')
-      } else {
-        const bottomInset = Math.max(0, fallbackBaselineInnerHeightRef.current - window.innerHeight)
-        document.documentElement.style.setProperty(
-          '--chat-safe-area-bottom',
-          `calc(${bottomInset}px + env(safe-area-inset-bottom, 0px))`
-        )
-      }
-
-      document.documentElement.style.setProperty('--chat-safe-area-right', '0px')
-    }
-
-    updateViewportInsets()
-
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', updateViewportInsets)
-      window.visualViewport.addEventListener('scroll', updateViewportInsets)
-
-      return () => {
-        window.visualViewport?.removeEventListener('resize', updateViewportInsets)
-        window.visualViewport?.removeEventListener('scroll', updateViewportInsets)
-        document.documentElement.style.removeProperty('--chat-safe-area-bottom')
-        document.documentElement.style.removeProperty('--chat-safe-area-right')
-        fallbackBaselineInnerHeightRef.current = null
-      }
-    }
-
-    window.addEventListener('resize', updateViewportInsets)
-    window.addEventListener('orientationchange', updateViewportInsets)
-
-    return () => {
-      window.removeEventListener('resize', updateViewportInsets)
-      window.removeEventListener('orientationchange', updateViewportInsets)
-      document.documentElement.style.removeProperty('--chat-safe-area-bottom')
-      document.documentElement.style.removeProperty('--chat-safe-area-right')
-      fallbackBaselineInnerHeightRef.current = null
-    }
-  }, [isMobile])
-
+  // Remove manual viewport hacks - rely on CSS
   useEffect(() => {
     const updateComposerHeight = () => {
       const composerElement = inputRef.current?.closest('[data-chat-composer="true"]') as HTMLElement | null
@@ -362,9 +189,6 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
         return
       }
       document.documentElement.style.setProperty('--chat-composer-height', `${composerElement.getBoundingClientRect().height}px`)
-      if (shouldStickToBottomRef.current && scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTo({ top: scrollContainerRef.current.scrollHeight })
-      }
     }
 
     updateComposerHeight()
@@ -405,46 +229,23 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
 
     const handleScroll = () => {
       const container = scrollContainerRef.current
+      if (!container) return
 
-      if (container && container.scrollTop < 120 && hasMoreMessages && !isLoadingMore) {
-        void loadOlderMessages().then((loaded) => {
-           if (loaded) {
-             // Maintain scroll position logic is handled in useChat? No, useChat just updates messages.
-             // We need to handle scroll position maintenance here if useChat doesn't.
-             // useChat returns true if loaded.
-             // But useChat doesn't have ref to scrollContainer.
-             // Wait, useChat's loadOlderMessages does NOT handle scroll position maintenance because it doesn't have the ref.
-             // I need to handle it here.
-           }
-        })
+      // Don't trigger loadOlderMessages if we are auto-scrolling
+      if (isAutoScrolling.current) return
+
+      if (container.scrollTop < 120 && hasMoreMessages && !isLoadingMore) {
+        void loadOlderMessages()
       }
 
       const atBottom = isViewerAtBottom()
-      shouldStickToBottomRef.current = atBottom
-
       if (atBottom) {
         setPendingNewMessagesCount(0)
         markConversationAsRead()
       }
     }
 
-    handleScroll()
     scrollEl.addEventListener('scroll', handleScroll, { passive: true })
-
-    if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver(() => {
-        if (shouldStickToBottomRef.current) {
-          scrollToLatest('auto')
-        }
-      })
-      observer.observe(scrollEl)
-
-      return () => {
-        scrollEl.removeEventListener('scroll', handleScroll)
-        observer.disconnect()
-      }
-    }
-
     return () => {
       scrollEl.removeEventListener('scroll', handleScroll)
     }
@@ -454,20 +255,50 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     isLoadingMore,
     isViewerAtBottom,
     markConversationAsRead,
-    loadOlderMessages,
-    scrollToLatest
+    loadOlderMessages
   ])
 
-  // Handle scroll position maintenance when loading older messages
-  // Since useChat updates messages state, we can use useLayoutEffect to adjust scroll
-  // But we need to know if it was a "load older" update.
-  // We can check if the first message changed and we are not at the top?
-  // Or we can wrap loadOlderMessages to capture scroll height before and after.
-  // But loadOlderMessages is async and updates state.
-  // The state update triggers re-render.
-  // In useChat, loadOlderMessages updates state.
-  // We can use useLayoutEffect to detect if messages were prepended.
-  
+  // Scroll management effect
+  useLayoutEffect(() => {
+    if (!messages.length) {
+      lastMessageIdRef.current = null
+      return
+    }
+
+    const latestMessage = messages[messages.length - 1]
+    const latestId = latestMessage.id
+    const previousLastId = lastMessageIdRef.current
+    
+    // Initial load
+    if (previousLastId === null) {
+      scrollToBottom('auto')
+      lastMessageIdRef.current = latestId
+      return
+    }
+
+    // New message arrived
+    if (latestId !== previousLastId) {
+      const isMyMessage = latestMessage.sender_id === currentUserId
+      
+      if (isMyMessage) {
+        // Always scroll to bottom for my own messages
+        scrollToBottom('smooth')
+        setPendingNewMessagesCount(0)
+      } else {
+        // For others' messages, only scroll if we were already at bottom
+        if (isViewerAtBottom()) {
+          scrollToBottom('smooth')
+          setPendingNewMessagesCount(0)
+          markConversationAsRead()
+        } else {
+          setPendingNewMessagesCount(c => c + 1)
+        }
+      }
+      lastMessageIdRef.current = latestId
+    }
+  }, [messages, currentUserId, scrollToBottom, isViewerAtBottom, markConversationAsRead])
+
+  // Maintain scroll position when loading older messages
   const previousFirstMessageIdRef = useRef<string | null>(null)
   const previousScrollHeightRef = useRef<number>(0)
   
@@ -475,10 +306,6 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
      if (messages.length > 0) {
         const firstMsg = messages[0]
         if (previousFirstMessageIdRef.current && firstMsg.id !== previousFirstMessageIdRef.current) {
-           // Messages prepended?
-           // Check if we were loading more
-           // Actually, we can just check if the first message changed.
-           // But we need to adjust scroll position.
            const scrollEl = scrollContainerRef.current
            if (scrollEl && previousScrollHeightRef.current > 0) {
               const newScrollHeight = scrollEl.scrollHeight
@@ -494,86 +321,6 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
         }
      }
   }, [messages])
-
-
-  const unreadMetadata = useMemo(() => {
-    let firstUnreadId: string | null = null
-    let firstUnreadIndex = -1
-    let unreadCount = 0
-
-    messages.forEach((msg, index) => {
-      if (msg.sender_id !== currentUserId && !msg.read_at) {
-        unreadCount += 1
-        if (firstUnreadId === null) {
-          firstUnreadId = msg.id
-          firstUnreadIndex = index
-        }
-      }
-    })
-
-    return { firstUnreadId, firstUnreadIndex, unreadCount }
-  }, [messages, currentUserId])
-
-  const hasReadReceipts = useMemo(
-    () => messages.some(msg => msg.sender_id !== currentUserId && Boolean(msg.read_at)),
-    [messages, currentUserId]
-  )
-
-  const shouldRenderUnreadSeparator = hasReadReceipts && unreadMetadata.unreadCount > 0 && unreadMetadata.firstUnreadId !== null
-
-  useLayoutEffect(() => {
-    if (!messages.length) {
-      lastMessageIdRef.current = null
-      return
-    }
-
-    const latestMessage = messages[messages.length - 1]
-    const latestId = latestMessage.id
-    const previousLastId = lastMessageIdRef.current
-    const isInitialSync = initialScrollPendingRef.current
-    const appendedMessage = previousLastId !== null && previousLastId !== latestId
-
-    if (isInitialSync) {
-      if (shouldRenderUnreadSeparator && unreadMetadata.firstUnreadId) {
-        shouldStickToBottomRef.current = false
-        scheduleScrollJob({
-          type: 'message',
-          messageId: unreadMetadata.firstUnreadId,
-          behavior: 'auto',
-          reason: 'initial'
-        })
-      } else {
-        shouldStickToBottomRef.current = true
-        scheduleScrollJob({ type: 'bottom', behavior: 'auto', reason: 'initial' })
-      }
-    } else if (appendedMessage) {
-      if (latestMessage.sender_id === currentUserId) {
-        shouldStickToBottomRef.current = true
-        setPendingNewMessagesCount(0)
-        scheduleScrollJob({ type: 'bottom', behavior: 'smooth', reason: 'append-self' })
-      } else if (isViewerAtBottom() || shouldStickToBottomRef.current) {
-        shouldStickToBottomRef.current = true
-        scheduleScrollJob({ type: 'bottom', behavior: 'smooth', reason: 'append-inbound' })
-      } else {
-        setPendingNewMessagesCount(c => c + 1)
-      }
-    }
-
-    lastMessageIdRef.current = latestId
-
-    if (shouldStickToBottomRef.current) {
-      markConversationAsRead()
-    }
-  }, [
-    currentUserId,
-    isViewerAtBottom,
-    markConversationAsRead,
-    messages,
-    scheduleScrollJob,
-    setPendingNewMessagesCount,
-    shouldRenderUnreadSeparator,
-    unreadMetadata.firstUnreadId
-  ])
 
   useEffect(() => {
     syncTextareaHeight()
@@ -635,6 +382,31 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     isMobile ? 'pb-[var(--chat-safe-area-bottom,0px)]' : ''
   )
 
+  const unreadMetadata = useMemo(() => {
+    let firstUnreadId: string | null = null
+    let firstUnreadIndex = -1
+    let unreadCount = 0
+
+    messages.forEach((msg, index) => {
+      if (msg.sender_id !== currentUserId && !msg.read_at) {
+        unreadCount += 1
+        if (firstUnreadId === null) {
+          firstUnreadId = msg.id
+          firstUnreadIndex = index
+        }
+      }
+    })
+
+    return { firstUnreadId, firstUnreadIndex, unreadCount }
+  }, [messages, currentUserId])
+
+  const hasReadReceipts = useMemo(
+    () => messages.some(msg => msg.sender_id !== currentUserId && Boolean(msg.read_at)),
+    [messages, currentUserId]
+  )
+
+  const shouldRenderUnreadSeparator = hasReadReceipts && unreadMetadata.unreadCount > 0 && unreadMetadata.firstUnreadId !== null
+
   if (loading) {
     return (
       <div className="flex flex-col h-full">
@@ -655,6 +427,8 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
 
   const canSend = newMessage.trim().length > 0
   const isSendDisabled = !canSend || sending
+
+
 
   return (
     <div className={chatGridClassName}>
@@ -839,9 +613,8 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
               }}
               onKeyDown={handleKeyDown}
               onFocus={() => {
-                shouldStickToBottomRef.current = true
+                scrollToBottom('smooth')
                 setPendingNewMessagesCount(0)
-                scheduleScrollJob({ type: 'bottom', behavior: 'smooth', reason: 'input' })
               }}
               placeholder="Type a message..."
               rows={1}
