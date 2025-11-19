@@ -116,9 +116,12 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
           filter: `user_id=eq.${userId}`
         },
         payload => {
-          const nextCount = typeof payload.new?.unread_count === 'number'
-            ? payload.new.unread_count
-            : Math.max(0, Number(payload.old?.unread_count) || 0)
+          const newRecord = payload.new as { unread_count?: number } | null
+          const oldRecord = payload.old as { unread_count?: number } | null
+          
+          const nextCount = typeof newRecord?.unread_count === 'number'
+            ? newRecord.unread_count
+            : Math.max(0, Number(oldRecord?.unread_count) || 0)
 
           set({ count: nextCount })
         }

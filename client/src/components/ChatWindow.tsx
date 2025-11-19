@@ -3,53 +3,16 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { Link } from 'react-router-dom'
 import { Send, ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { supabase, SUPABASE_URL } from '@/lib/supabase'
-import { isUniqueViolationError } from '@/lib/supabaseErrors'
+import { SUPABASE_URL } from '@/lib/supabase'
 import { format } from 'date-fns'
 import { ChatWindowSkeleton } from './Skeleton'
 import Avatar from './Avatar'
-import { monitor } from '@/lib/monitor'
-import { logger } from '@/lib/logger'
-import { withRetry } from '@/lib/retry'
-import { requestCache, generateCacheKey } from '@/lib/requestCache'
-import { useToastStore } from '@/lib/toast'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
-import { useUnreadStore } from '@/lib/unread'
-import { loadMessageDraft, saveMessageDraft, clearMessageDraft } from '@/lib/messageDrafts'
-
-type NullableDate = string | null
-
-export interface Message {
-  id: string
-  conversation_id: string
-  sender_id: string
-  content: string
-  sent_at: string
-  read_at: NullableDate
-}
-
-interface ConversationParticipant {
-  id: string
-  full_name: string
-  username: string | null
-  avatar_url: string | null
-  role: 'player' | 'coach' | 'club'
-}
-
-interface Conversation {
-  id: string
-  participant_one_id: string
-  participant_two_id: string
-  created_at: string
-  updated_at: string
-  last_message_at: NullableDate
-  otherParticipant?: ConversationParticipant
-  isPending?: boolean
-}
+import { useChat } from '@/hooks/useChat'
+import type { Conversation, ChatMessageEvent, ConversationParticipant } from '@/types/chat'
 
 const COMPOSER_MIN_HEIGHT = 48
 const COMPOSER_MAX_HEIGHT = 160
-const MESSAGES_PAGE_SIZE = 50
 const SCROLL_RETRY_LIMIT = 8
 
 type ScrollJobReason = 'initial' | 'append-self' | 'append-inbound' | 'input' | 'manual'
@@ -68,48 +31,6 @@ const buildPublicProfilePath = (participant?: ConversationParticipant) => {
   return participant.role === 'club' ? `/clubs/${slug}` : `/players/${slug}`
 }
 
-type ConversationSnapshot = {
-  id: string
-  isPending?: boolean
-  participantOneId?: string | null
-  participantTwoId?: string | null
-  otherParticipantId?: string | null
-}
-
-const deriveConversationDraftKey = (conversation: ConversationSnapshot, viewerId: string | null) => {
-  if (!viewerId) {
-    return null
-  }
-
-  if (conversation.id && !conversation.isPending) {
-    return conversation.id
-  }
-
-  const otherParticipantId = conversation.participantOneId === viewerId
-    ? conversation.participantTwoId ?? conversation.otherParticipantId ?? null
-    : conversation.participantTwoId === viewerId
-    ? conversation.participantOneId ?? conversation.otherParticipantId ?? null
-    : conversation.otherParticipantId ?? conversation.participantTwoId ?? conversation.participantOneId ?? null
-
-  if (!otherParticipantId) {
-    return null
-  }
-
-  return `pending-${otherParticipantId}`
-}
-
-export type ChatMessageEvent =
-  | {
-      type: 'sent'
-      conversationId: string
-      message: Message
-    }
-  | {
-      type: 'read'
-      conversationId: string
-      messageIds: string[]
-    }
-
 interface ChatWindowProps {
   conversation: Conversation
   currentUserId: string
@@ -121,15 +42,28 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ conversation, currentUserId, onBack, onMessageSent, onConversationCreated, onConversationRead, isImmersiveMobile = false }: ChatWindowProps) {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [newMessage, setNewMessage] = useState('')
-  const [sending, setSending] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const {
+    messages,
+    loading,
+    sending,
+    newMessage,
+    setNewMessage,
+    hasMoreMessages,
+    isLoadingMore,
+    sendMessage,
+    loadOlderMessages,
+    queueReadReceipt,
+    markConversationAsRead
+  } = useChat({
+    conversation,
+    currentUserId,
+    onMessageSent,
+    onConversationCreated,
+    onConversationRead
+  })
+
   const [pendingNewMessagesCount, setPendingNewMessagesCount] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
-  const messagesRef = useRef<Message[]>([])
-  const fetchMessagesPromiseRef = useRef<Promise<Message[]> | null>(null)
-  const { addToast } = useToastStore()
   const isMobile = useMediaQuery('(max-width: 767px)')
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const messageVirtualizer = useVirtualizer({
@@ -146,92 +80,15 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   const pendingScrollJobRef = useRef<ScrollJob | null>(null)
   const nextScrollFrameRef = useRef<number | null>(null)
   const intersectionObserverRef = useRef<IntersectionObserver | null>(null)
-  const pendingReadIdsRef = useRef(new Set<string>())
-  const readFlushTimeoutRef = useRef<number | null>(null)
   const textareaId = useId()
   const textareaCharCountId = `${textareaId}-counter`
-  const [hasMoreMessages, setHasMoreMessages] = useState(true)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const oldestLoadedTimestampRef = useRef<string | null>(null)
-  const initializeUnreadStore = useUnreadStore(state => state.initialize)
-  const adjustUnreadCount = useUnreadStore(state => state.adjust)
-  const refreshUnreadCount = useUnreadStore(state => state.refresh)
-  const {
-    id: conversationId,
-    isPending: conversationIsPending,
-    participant_one_id: participantOneId,
-    participant_two_id: participantTwoId,
-    otherParticipant
-  } = conversation
-  const otherParticipantId = otherParticipant?.id ?? null
-  const conversationDraftKey = useMemo(
-    () =>
-      deriveConversationDraftKey(
-        {
-          id: conversationId,
-          isPending: conversationIsPending,
-          participantOneId,
-          participantTwoId,
-          otherParticipantId
-        },
-        currentUserId
-      ),
-    [conversationId, conversationIsPending, otherParticipantId, participantOneId, participantTwoId, currentUserId]
-  )
 
   useEffect(() => {
-    void initializeUnreadStore(currentUserId || null)
-  }, [currentUserId, initializeUnreadStore])
-
-  useEffect(() => {
-    setHasMoreMessages(true)
-    setIsLoadingMore(false)
-    oldestLoadedTimestampRef.current = null
+    setPendingNewMessagesCount(0)
+    initialScrollPendingRef.current = true
+    lastMessageIdRef.current = null
+    shouldStickToBottomRef.current = true
   }, [conversation.id])
-
-  useEffect(() => {
-    if (!conversationDraftKey || !currentUserId) {
-      setNewMessage('')
-      return
-    }
-
-    const draft = loadMessageDraft(currentUserId, conversationDraftKey)
-    setNewMessage(draft)
-  }, [conversationDraftKey, currentUserId])
-
-  useEffect(() => {
-    if (!conversationDraftKey || !currentUserId) {
-      return
-    }
-
-    const handle = window.setTimeout(() => {
-      if (!newMessage.trim()) {
-        clearMessageDraft(currentUserId, conversationDraftKey)
-        return
-      }
-      saveMessageDraft(currentUserId, conversationDraftKey, newMessage)
-    }, 400)
-
-    return () => {
-      window.clearTimeout(handle)
-    }
-  }, [conversationDraftKey, currentUserId, newMessage])
-
-  const syncMessagesState = useCallback(
-    (next: Message[] | ((prev: Message[]) => Message[])) => {
-      if (typeof next === 'function') {
-        setMessages(prev => {
-          const resolved = next(prev)
-          messagesRef.current = resolved
-          return resolved
-        })
-      } else {
-        messagesRef.current = next
-        setMessages(next)
-      }
-    },
-    []
-  )
 
   const scrollToLatest = useCallback((behavior: ScrollBehavior = 'auto') => {
     const scrollEl = scrollContainerRef.current
@@ -373,176 +230,6 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     textarea.style.overflowY = contentHeight > COMPOSER_MAX_HEIGHT ? 'auto' : 'hidden'
   }, [])
 
-
-  const fetchMessages = useCallback(async () => {
-    if (!conversation.id || conversation.isPending) {
-      syncMessagesState([])
-      setHasMoreMessages(false)
-      setLoading(false)
-      return [] as Message[]
-    }
-
-    if (fetchMessagesPromiseRef.current) {
-      return fetchMessagesPromiseRef.current
-    }
-
-    setLoading(true)
-    const pendingFetch = (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('conversation_id', conversation.id)
-          .order('sent_at', { ascending: false })
-          .limit(MESSAGES_PAGE_SIZE)
-
-        if (error) throw error
-
-        const fetched = (data ?? []).reverse()
-        logger.debug('Fetched messages:', fetched)
-        syncMessagesState(fetched)
-        oldestLoadedTimestampRef.current = fetched[0]?.sent_at ?? null
-        setHasMoreMessages((data ?? []).length === MESSAGES_PAGE_SIZE)
-        return fetched
-      } catch (error) {
-        logger.error('Error fetching messages:', error)
-        syncMessagesState([])
-        setHasMoreMessages(false)
-        return [] as Message[]
-      } finally {
-        setLoading(false)
-        fetchMessagesPromiseRef.current = null
-      }
-    })()
-
-    fetchMessagesPromiseRef.current = pendingFetch
-    return pendingFetch
-  }, [conversation.id, conversation.isPending, syncMessagesState])
-
-  const flushPendingReadReceipts = useCallback(async () => {
-    if (!conversation.id || conversation.isPending) {
-      pendingReadIdsRef.current.clear()
-      return
-    }
-
-    const pendingIds = Array.from(pendingReadIdsRef.current)
-    if (!pendingIds.length) {
-      return
-    }
-
-    pendingReadIdsRef.current.clear()
-    const optimisticIds = new Set(pendingIds)
-    const now = new Date().toISOString()
-    const cacheKey = generateCacheKey('unread_count', { userId: currentUserId })
-    let latestPendingSentAt: string | null = null
-
-    messagesRef.current.forEach(msg => {
-      if (!optimisticIds.has(msg.id)) {
-        return
-      }
-      if (!latestPendingSentAt || msg.sent_at > latestPendingSentAt) {
-        latestPendingSentAt = msg.sent_at
-      }
-    })
-
-    syncMessagesState(prev =>
-      prev.map(msg => (optimisticIds.has(msg.id) ? { ...msg, read_at: now } : msg))
-    )
-
-    try {
-      const { data: updatedRows, error } = await supabase.rpc('mark_conversation_messages_read', {
-        p_conversation_id: conversation.id,
-        p_before: latestPendingSentAt
-      })
-
-      if (error) throw error
-      const affectedRows = typeof updatedRows === 'number' ? updatedRows : pendingIds.length
-
-      if (onConversationRead && pendingIds.length > 0) {
-        onConversationRead(conversation.id)
-      }
-
-      requestCache.invalidate(cacheKey)
-      if (onMessageSent && pendingIds.length > 0 && conversation.id) {
-        onMessageSent({
-          type: 'read',
-          conversationId: conversation.id,
-          messageIds: pendingIds
-        })
-      }
-
-      if (affectedRows > 0) {
-        adjustUnreadCount(-affectedRows)
-        void refreshUnreadCount({ bypassCache: true })
-      }
-    } catch (error) {
-      logger.error('Error marking messages as read in database:', error)
-
-      syncMessagesState(prev =>
-        prev.map(msg => (optimisticIds.has(msg.id) ? { ...msg, read_at: null } : msg))
-      )
-
-      pendingIds.forEach(id => pendingReadIdsRef.current.add(id))
-    }
-  }, [
-    adjustUnreadCount,
-    conversation.id,
-    conversation.isPending,
-    currentUserId,
-    onConversationRead,
-    onMessageSent,
-    refreshUnreadCount,
-    syncMessagesState
-  ])
-
-  const queueReadReceipt = useCallback(
-    (message: Message) => {
-      if (message.sender_id === currentUserId || message.read_at) {
-        return
-      }
-
-      if (pendingReadIdsRef.current.has(message.id)) {
-        return
-      }
-
-      pendingReadIdsRef.current.add(message.id)
-
-      if (readFlushTimeoutRef.current !== null) {
-        return
-      }
-
-      readFlushTimeoutRef.current = window.setTimeout(() => {
-        readFlushTimeoutRef.current = null
-        void flushPendingReadReceipts()
-      }, 200)
-    },
-    [currentUserId, flushPendingReadReceipts]
-  )
-
-  const markConversationAsRead = useCallback((options?: { immediate?: boolean }) => {
-    if (!conversation.id || conversation.isPending) {
-      return
-    }
-
-    const unreadMessages = messagesRef.current.filter(
-      msg => msg.sender_id !== currentUserId && !msg.read_at
-    )
-
-    if (!unreadMessages.length) {
-      return
-    }
-
-    unreadMessages.forEach(queueReadReceipt)
-
-    if (options?.immediate) {
-      if (readFlushTimeoutRef.current !== null) {
-        window.clearTimeout(readFlushTimeoutRef.current)
-        readFlushTimeoutRef.current = null
-      }
-      void flushPendingReadReceipts()
-    }
-  }, [conversation.id, conversation.isPending, currentUserId, flushPendingReadReceipts, queueReadReceipt])
-
   // Marks incoming messages as read once ~60% of the bubble is visible in the scroll container.
   useEffect(() => {
     const container = scrollContainerRef.current
@@ -563,7 +250,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
             return
           }
 
-          const message = messagesRef.current.find(msg => msg.id === messageId)
+          const message = messages.find(msg => msg.id === messageId)
           if (!message) {
             return
           }
@@ -585,207 +272,13 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       observer.disconnect()
       intersectionObserverRef.current = null
     }
-  }, [conversation.id, queueReadReceipt])
-
-  const loadOlderMessages = useCallback(async () => {
-    if (!conversation.id || isLoadingMore || !hasMoreMessages) {
-      return
-    }
-
-    const oldestTimestamp = oldestLoadedTimestampRef.current
-    if (!oldestTimestamp) {
-      setHasMoreMessages(false)
-      return
-    }
-
-    const scrollEl = scrollContainerRef.current
-    const previousScrollHeight = scrollEl?.scrollHeight ?? 0
-    const previousScrollTop = scrollEl?.scrollTop ?? 0
-
-    setIsLoadingMore(true)
-
-    try {
-      const { data, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversation.id)
-        .lt('sent_at', oldestTimestamp)
-        .order('sent_at', { ascending: false })
-        .limit(MESSAGES_PAGE_SIZE)
-
-      if (error) {
-        throw error
-      }
-
-      const fetched = data ?? []
-
-      if (!fetched.length) {
-        setHasMoreMessages(false)
-        return
-      }
-
-      const olderMessages = fetched.reverse()
-      oldestLoadedTimestampRef.current = olderMessages[0]?.sent_at ?? oldestTimestamp
-      setHasMoreMessages(fetched.length === MESSAGES_PAGE_SIZE)
-
-      syncMessagesState(prev => {
-        if (!olderMessages.length) {
-          return prev
-        }
-
-        const existingIds = new Set(prev.map(msg => msg.id))
-        const deduped = olderMessages.filter(msg => !existingIds.has(msg.id))
-
-        if (deduped.length === 0) {
-          return prev
-        }
-
-        return [...deduped, ...prev]
-      })
-
-      requestAnimationFrame(() => {
-        if (!scrollEl) {
-          return
-        }
-        const newScrollHeight = scrollEl.scrollHeight
-        const heightDelta = newScrollHeight - previousScrollHeight
-        if (heightDelta > 0) {
-          scrollEl.scrollTop = previousScrollTop + heightDelta
-        }
-      })
-    } catch (error) {
-      logger.error('Error loading older messages:', error)
-    } finally {
-      setIsLoadingMore(false)
-    }
-  }, [conversation.id, hasMoreMessages, isLoadingMore, syncMessagesState])
+  }, [conversation.id, queueReadReceipt, messages])
 
   const handleJumpToLatest = useCallback(() => {
     shouldStickToBottomRef.current = true
     setPendingNewMessagesCount(0)
     scheduleScrollJob({ type: 'bottom', behavior: 'smooth', reason: 'manual' })
   }, [scheduleScrollJob])
-
-  useEffect(() => {
-    shouldStickToBottomRef.current = true
-    initialScrollPendingRef.current = true
-    lastMessageIdRef.current = null
-    setPendingNewMessagesCount(0)
-    messageRefs.current.clear()
-    pendingReadIdsRef.current.clear()
-    fetchMessagesPromiseRef.current = null
-    if (readFlushTimeoutRef.current !== null) {
-      window.clearTimeout(readFlushTimeoutRef.current)
-      readFlushTimeoutRef.current = null
-    }
-    if (intersectionObserverRef.current) {
-      intersectionObserverRef.current.disconnect()
-      intersectionObserverRef.current = null
-    }
-    if (nextScrollFrameRef.current !== null) {
-      cancelAnimationFrame(nextScrollFrameRef.current)
-      nextScrollFrameRef.current = null
-    }
-    pendingScrollJobRef.current = null
-
-    if (!conversation.id || conversation.isPending) {
-      setLoading(false)
-      syncMessagesState([])
-      return
-    }
-
-    let cancelled = false
-
-    const loadConversation = async () => {
-      await fetchMessages()
-      if (cancelled) return
-      markConversationAsRead({ immediate: true })
-    }
-
-    loadConversation()
-
-    return () => {
-      cancelled = true
-      if (readFlushTimeoutRef.current !== null) {
-        window.clearTimeout(readFlushTimeoutRef.current)
-        readFlushTimeoutRef.current = null
-      }
-      void flushPendingReadReceipts()
-    }
-  }, [conversation.id, conversation.isPending, fetchMessages, flushPendingReadReceipts, markConversationAsRead, syncMessagesState])
-
-  useEffect(() => {
-    if (!conversation.id || conversation.isPending) return
-
-    const channel = supabase
-      .channel(`conversation-${conversation.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversation.id}`
-        },
-        payload => {
-          const newMessage = payload.new as Message
-          let messageAppended = false
-
-          syncMessagesState(prev => {
-            if (prev.some(msg => msg.id === newMessage.id)) {
-              return prev
-            }
-            messageAppended = true
-            return [...prev, newMessage]
-          })
-
-          if (!messageAppended) {
-            return
-          }
-
-          if (newMessage.sender_id !== currentUserId) {
-            if (isViewerAtBottom()) {
-              shouldStickToBottomRef.current = true
-            } else {
-              shouldStickToBottomRef.current = false
-              setPendingNewMessagesCount(count => count + 1)
-            }
-          } else {
-            shouldStickToBottomRef.current = true
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversation.id}`
-        },
-        payload => {
-          const updated = payload.new as Message
-          syncMessagesState(prev =>
-            prev.map(msg => (msg.id === updated.id ? updated : msg))
-          )
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [conversation.id, conversation.isPending, currentUserId, isViewerAtBottom, syncMessagesState])
-
-  useEffect(() => {
-    return () => {
-      if (readFlushTimeoutRef.current !== null) {
-        window.clearTimeout(readFlushTimeoutRef.current)
-        readFlushTimeoutRef.current = null
-      }
-      void flushPendingReadReceipts()
-    }
-  }, [flushPendingReadReceipts])
 
   useEffect(() => {
     return () => {
@@ -913,7 +406,16 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       const container = scrollContainerRef.current
 
       if (container && container.scrollTop < 120 && hasMoreMessages && !isLoadingMore) {
-        void loadOlderMessages()
+        void loadOlderMessages().then((loaded) => {
+           if (loaded) {
+             // Maintain scroll position logic is handled in useChat? No, useChat just updates messages.
+             // We need to handle scroll position maintenance here if useChat doesn't.
+             // useChat returns true if loaded.
+             // But useChat doesn't have ref to scrollContainer.
+             // Wait, useChat's loadOlderMessages does NOT handle scroll position maintenance because it doesn't have the ref.
+             // I need to handle it here.
+           }
+        })
       }
 
       const atBottom = isViewerAtBottom()
@@ -955,6 +457,44 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     scrollToLatest
   ])
 
+  // Handle scroll position maintenance when loading older messages
+  // Since useChat updates messages state, we can use useLayoutEffect to adjust scroll
+  // But we need to know if it was a "load older" update.
+  // We can check if the first message changed and we are not at the top?
+  // Or we can wrap loadOlderMessages to capture scroll height before and after.
+  // But loadOlderMessages is async and updates state.
+  // The state update triggers re-render.
+  // In useChat, loadOlderMessages updates state.
+  // We can use useLayoutEffect to detect if messages were prepended.
+  
+  const previousFirstMessageIdRef = useRef<string | null>(null)
+  const previousScrollHeightRef = useRef<number>(0)
+  
+  useLayoutEffect(() => {
+     if (messages.length > 0) {
+        const firstMsg = messages[0]
+        if (previousFirstMessageIdRef.current && firstMsg.id !== previousFirstMessageIdRef.current) {
+           // Messages prepended?
+           // Check if we were loading more
+           // Actually, we can just check if the first message changed.
+           // But we need to adjust scroll position.
+           const scrollEl = scrollContainerRef.current
+           if (scrollEl && previousScrollHeightRef.current > 0) {
+              const newScrollHeight = scrollEl.scrollHeight
+              const heightDelta = newScrollHeight - previousScrollHeightRef.current
+              if (heightDelta > 0) {
+                 scrollEl.scrollTop = scrollEl.scrollTop + heightDelta
+              }
+           }
+        }
+        previousFirstMessageIdRef.current = firstMsg.id
+        if (scrollContainerRef.current) {
+           previousScrollHeightRef.current = scrollContainerRef.current.scrollHeight
+        }
+     }
+  }, [messages])
+
+
   const unreadMetadata = useMemo(() => {
     let firstUnreadId: string | null = null
     let firstUnreadIndex = -1
@@ -980,9 +520,6 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
 
   const shouldRenderUnreadSeparator = hasReadReceipts && unreadMetadata.unreadCount > 0 && unreadMetadata.firstUnreadId !== null
 
-  // Keeps the viewport anchored: initial mount scrolls to the first unread (if any),
-  // new messages while the viewer is near the bottom animate into view, and manual
-  // upward scrolling is respected until the user returns to the bottom threshold.
   useLayoutEffect(() => {
     if (!messages.length) {
       lastMessageIdRef.current = null
@@ -1016,6 +553,8 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       } else if (isViewerAtBottom() || shouldStickToBottomRef.current) {
         shouldStickToBottomRef.current = true
         scheduleScrollJob({ type: 'bottom', behavior: 'smooth', reason: 'append-inbound' })
+      } else {
+        setPendingNewMessagesCount(c => c + 1)
       }
     }
 
@@ -1041,176 +580,8 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newMessage.trim() || sending) return
-
-    const messageContent = newMessage.trim()
-    if (messageContent.length > 1000) {
-      addToast('Message is too long. Maximum 1000 characters.', 'error')
-      return
-    }
-
-    setSending(true)
-    shouldStickToBottomRef.current = true
-    const otherParticipantId =
-      conversation.participant_one_id === currentUserId
-        ? conversation.participant_two_id
-        : conversation.participant_one_id
-
-    if (!otherParticipantId) {
-      logger.error('Cannot determine recipient for conversation', { conversation })
-      setSending(false)
-      return
-    }
-
-    let activeConversationId: string | null = conversation.isPending ? null : conversation.id
-    let newlyCreatedConversation: Conversation | null = null
-    let optimisticId: string | null = null
-    let conversationCreatedForSend = false
-
-    try {
-      if (!activeConversationId) {
-        try {
-          const result = await withRetry(async () => {
-            const response = await supabase
-              .from('conversations')
-              .insert({
-                participant_one_id: currentUserId,
-                participant_two_id: otherParticipantId
-              })
-              .select()
-
-            if (response.error) throw response.error
-            return response
-          })
-
-          const createdConversation = result.data?.[0]
-          if (!createdConversation) {
-            throw new Error('Failed to create conversation')
-          }
-
-          activeConversationId = createdConversation.id
-          newlyCreatedConversation = {
-            ...createdConversation,
-            otherParticipant: conversation.otherParticipant,
-            isPending: false
-          }
-          conversationCreatedForSend = true
-        } catch (creationError: unknown) {
-          const parsedError = creationError as { code?: string; message?: string; details?: string }
-          if (!isUniqueViolationError(parsedError)) {
-            throw creationError
-          }
-
-          const { data: existingConversation, error: existingConversationError } = await supabase
-            .from('conversations')
-            .select('*')
-            .or(
-              `and(participant_one_id.eq.${currentUserId},participant_two_id.eq.${otherParticipantId}),and(participant_one_id.eq.${otherParticipantId},participant_two_id.eq.${currentUserId})`
-            )
-            .maybeSingle()
-
-          if (existingConversationError) {
-            throw existingConversationError
-          }
-
-          if (!existingConversation) {
-            throw creationError
-          }
-
-          activeConversationId = existingConversation.id
-          newlyCreatedConversation = {
-            ...existingConversation,
-            otherParticipant: conversation.otherParticipant,
-            isPending: false
-          }
-        }
-      }
-
-      const idempotencyKey = `${currentUserId}-${Date.now()}-${Math.random()}`
-      optimisticId = `optimistic-${idempotencyKey}`
-
-      const optimisticMessage: Message = {
-        id: optimisticId,
-        conversation_id: activeConversationId,
-        sender_id: currentUserId,
-        content: messageContent,
-        sent_at: new Date().toISOString(),
-        read_at: null
-      }
-
-      syncMessagesState(prev => [...prev, optimisticMessage])
-      setNewMessage('')
-      clearMessageDraft(currentUserId, conversationDraftKey)
-      inputRef.current?.focus()
-
-      const conversationIdForMetrics = activeConversationId
-      let deliveredMessage: Message | null = null
-
-      await monitor.measure(
-        'send_message',
-        async () => {
-          const result = await withRetry(async () => {
-            const res = await supabase
-              .from('messages')
-              .insert({
-                conversation_id: conversationIdForMetrics,
-                sender_id: currentUserId,
-                content: messageContent,
-                idempotency_key: idempotencyKey
-              })
-              .select()
-
-            if (res.error) throw res.error
-            return res
-          })
-
-          const { data, error } = result
-          if (error) throw error
-
-          if (data && data[0]) {
-            logger.debug('Message sent successfully, replacing optimistic message')
-            const persisted = data[0] as Message
-            deliveredMessage = persisted
-            syncMessagesState(prev => prev.map(msg => (msg.id === optimisticId ? persisted : msg)))
-          }
-        },
-        { conversationId: conversationIdForMetrics }
-      )
-
-      if (onMessageSent) {
-        onMessageSent({
-          type: 'sent',
-          conversationId: conversationIdForMetrics,
-          message: deliveredMessage ?? optimisticMessage
-        })
-      }
-
-      if (newlyCreatedConversation) {
-        onConversationCreated(newlyCreatedConversation)
-      }
-    } catch (error) {
-      logger.error('Error sending message:', error)
-      if (optimisticId) {
-        const finalOptimisticId = optimisticId
-        syncMessagesState(prev => prev.filter(msg => msg.id !== finalOptimisticId))
-      }
-      setNewMessage(messageContent)
-
-      if (conversationCreatedForSend && newlyCreatedConversation) {
-        try {
-          await supabase
-            .from('conversations')
-            .delete()
-            .eq('id', newlyCreatedConversation.id)
-        } catch (cleanupError) {
-          logger.error('Failed to rollback empty conversation after send failure', cleanupError)
-        }
-      }
-
-      addToast('Failed to send message. Please try again.', 'error')
-    } finally {
-      setSending(false)
-    }
+    await sendMessage(newMessage)
+    inputRef.current?.focus()
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -1352,14 +723,6 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
                 ? 'Coach'
                 : 'Player'}
             </span>
-            {isMobile && profilePath && (
-              <Link
-                to={profilePath}
-                className="text-xs font-semibold uppercase tracking-wide text-purple-600 hover:text-purple-700"
-              >
-                Tap to view profile
-              </Link>
-            )}
           </div>
         </div>
       </div>

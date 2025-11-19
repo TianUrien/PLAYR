@@ -14,7 +14,7 @@ import { useNotificationStore } from '@/lib/notifications'
 
 type TabType = 'profile' | 'journey' | 'friends' | 'comments'
 
-type CoachProfileShape =
+export type CoachProfileShape =
   Partial<Profile> &
   Pick<
     Profile,

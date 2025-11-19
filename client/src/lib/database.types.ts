@@ -893,6 +893,16 @@ export type Database = {
           } | null
         }[]
       }
+      fetch_club_vacancies_with_counts: {
+        Args: {
+          p_club_id: string
+          p_include_closed?: boolean | null
+          p_limit?: number | null
+        }
+        Returns: (Database["public"]["Tables"]["vacancies"]["Row"] & {
+          applicant_count: number | null
+        })[]
+      }
       is_platform_admin: { Args: never; Returns: boolean }
       mark_opportunities_seen: {
         Args: { p_seen_at?: string }

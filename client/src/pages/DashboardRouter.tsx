@@ -57,17 +57,17 @@ export default function DashboardRouter() {
       return
     }
 
-    // Profile exists but incomplete (no full_name) → route to complete-profile
+    // Profile exists but incomplete (onboarding not completed) → route to complete-profile
     // Only attempt redirect once to prevent loops
-    if (!profile.full_name && !hasCompletedOnboardingRedirect) {
+    if (!profile.onboarding_completed && !hasCompletedOnboardingRedirect) {
       setHasCompletedOnboardingRedirect(true)
-      console.log('[DASHBOARD_ROUTER] Profile incomplete (no full_name), routing to /complete-profile')
+      console.log('[DASHBOARD_ROUTER] Profile incomplete (onboarding_completed=false), routing to /complete-profile')
       navigate('/complete-profile', { replace: true })
       return
     }
 
     // Profile complete → continue to render dashboard below
-    if (profile.full_name) {
+    if (profile.onboarding_completed) {
       console.log('[DASHBOARD_ROUTER] Profile complete, rendering dashboard')
       if (hasCompletedOnboardingRedirect) {
         setHasCompletedOnboardingRedirect(false)
@@ -104,7 +104,7 @@ export default function DashboardRouter() {
   }
 
   // If profile incomplete, show loading (useEffect will redirect)
-  if (!profile.full_name) {
+  if (!profile.onboarding_completed) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

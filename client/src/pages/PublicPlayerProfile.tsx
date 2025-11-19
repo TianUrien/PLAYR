@@ -3,30 +3,34 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { Profile } from '../lib/supabase'
-import PlayerDashboard from './PlayerDashboard'
+import PlayerDashboard, { type PlayerProfileShape } from './PlayerDashboard'
 import CoachDashboard from './CoachDashboard'
 
-type PublicProfile = Partial<Profile> &
-  Pick<
-    Profile,
-    | 'id'
-    | 'role'
-    | 'username'
-    | 'full_name'
-    | 'avatar_url'
-    | 'base_location'
-    | 'bio'
-    | 'highlight_video_url'
-    | 'nationality'
-    | 'current_club'
-    | 'gender'
-    | 'date_of_birth'
-    | 'position'
-    | 'secondary_position'
-    | 'contact_email'
-    | 'passport_1'
-    | 'passport_2'
-  >
+type PublicProfileBase = Pick<
+  Profile,
+  | 'id'
+  | 'role'
+  | 'username'
+  | 'full_name'
+  | 'avatar_url'
+  | 'base_location'
+  | 'bio'
+  | 'highlight_video_url'
+  | 'nationality'
+  | 'current_club'
+  | 'gender'
+  | 'date_of_birth'
+  | 'position'
+  | 'secondary_position'
+  | 'contact_email'
+  | 'passport_1'
+  | 'passport_2'
+>
+
+type PublicPlayerProfileShape = PublicProfileBase & { role: 'player' }
+type PublicCoachProfileShape = PublicProfileBase & { role: 'coach' }
+
+type PublicProfile = PublicPlayerProfileShape | PublicCoachProfileShape
 
 const PUBLIC_PROFILE_FIELDS = [
   'id',
@@ -68,6 +72,7 @@ export default function PublicPlayerProfile() {
             .select(PUBLIC_PROFILE_FIELDS)
             .in('role', ['player', 'coach']) // Support both players and coaches
             .eq('username', username)
+            .returns<PublicProfile>()
             .single()
 
           if (fetchError) {
@@ -86,6 +91,7 @@ export default function PublicPlayerProfile() {
             .select(PUBLIC_PROFILE_FIELDS)
             .in('role', ['player', 'coach']) // Support both players and coaches
             .eq('id', id)
+            .returns<PublicProfile>()
             .single()
 
           if (fetchError) {
@@ -150,5 +156,10 @@ export default function PublicPlayerProfile() {
     return <CoachDashboard profileData={profile} readOnly={true} />
   }
 
-  return <PlayerDashboard profileData={profile} readOnly={true} />
+  const playerProfileData: PlayerProfileShape = {
+    ...profile,
+    email: profile.contact_email ?? ''
+  }
+
+  return <PlayerDashboard profileData={playerProfileData} readOnly={true} />
 }

@@ -16,7 +16,7 @@ import { useNotificationStore } from '@/lib/notifications'
 
 type TabType = 'profile' | 'friends' | 'journey' | 'comments'
 
-type PlayerProfileShape =
+export type PlayerProfileShape =
   Partial<Profile> &
   Pick<
     Profile,
@@ -217,9 +217,9 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
               initials={getInitials(profile.full_name)}
               size="xl"
               className="flex-shrink-0"
-              alt={profile.full_name}
+              alt={profile.full_name ?? undefined}
               enablePreview
-              previewTitle={profile.full_name}
+              previewTitle={profile.full_name ?? undefined}
             />
             <div className="flex-1">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">

@@ -59,6 +59,7 @@ export default function PublicClubProfile() {
             .select(PUBLIC_CLUB_FIELDS)
             .eq('role', 'club')
             .eq('username', username)
+            .returns<PublicClubProfile>()
             .single()
 
           if (fetchError) {
@@ -77,6 +78,7 @@ export default function PublicClubProfile() {
             .select(PUBLIC_CLUB_FIELDS)
             .eq('role', 'club')
             .eq('id', id)
+            .returns<PublicClubProfile>()
             .single()
 
           if (fetchError) {

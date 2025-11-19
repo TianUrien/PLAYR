@@ -58,14 +58,13 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
 
     setIsLoading(true)
     try {
-      const { data, error } = await supabase.rpc<VacancyWithCount>(
-        'fetch_club_vacancies_with_counts',
-        {
+      const { data, error } = await supabase
+        .rpc('fetch_club_vacancies_with_counts', {
           p_club_id: targetUserId,
           p_include_closed: !readOnly,
           p_limit: 200
-        }
-      )
+        })
+        .returns<VacancyWithCount[]>()
 
       if (error) throw error
 
