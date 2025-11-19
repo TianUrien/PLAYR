@@ -56,6 +56,8 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
 
   useSafeArea()
 
+  const headerRef = useRef<HTMLDivElement>(null)
+  const composerRef = useRef<HTMLFormElement>(null)
   const [pendingNewMessagesCount, setPendingNewMessagesCount] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const isMobile = useMediaQuery('(max-width: 767px)')
@@ -69,6 +71,16 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     loadOlderMessages,
     onReachBottom: handleReachBottom
   })
+  const scrollToBottomWithRaf = useCallback((behavior: ScrollBehavior = 'auto') => {
+    if (typeof window === 'undefined') {
+      scrollToBottom(behavior)
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      scrollToBottom(behavior)
+    })
+  }, [scrollToBottom])
   const messageVirtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => scrollContainerRef.current,
@@ -169,20 +181,18 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     }
   }, [conversation.id, messages, queueReadReceipt, scrollContainerRef])
 
-  const handleJumpToLatest = useCallback(() => {
-    setPendingNewMessagesCount(0)
-    scrollToBottom('smooth')
-    markConversationAsRead({ immediate: true })
-  }, [markConversationAsRead, scrollToBottom])
-
-  // Remove manual viewport hacks - rely on CSS
   useEffect(() => {
+    if (typeof document === 'undefined') {
+      return
+    }
+
+    const root = document.documentElement
+
     const updateComposerHeight = () => {
-      const composerElement = inputRef.current?.closest('[data-chat-composer="true"]') as HTMLElement | null
-      if (!composerElement) {
+      if (!composerRef.current) {
         return
       }
-      document.documentElement.style.setProperty('--chat-composer-height', `${composerElement.getBoundingClientRect().height}px`)
+      root.style.setProperty('--chat-composer-height', `${composerRef.current.getBoundingClientRect().height}px`)
     }
 
     updateComposerHeight()
@@ -194,28 +204,64 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       return () => {
         window.removeEventListener('resize', updateComposerHeight)
         window.removeEventListener('orientationchange', updateComposerHeight)
-        document.documentElement.style.removeProperty('--chat-composer-height')
+        root.style.removeProperty('--chat-composer-height')
       }
     }
 
-    const observer = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        if (entry.target === inputRef.current?.closest('[data-chat-composer="true"]')) {
-          document.documentElement.style.setProperty('--chat-composer-height', `${entry.contentRect.height}px`)
-        }
-      }
-    })
-
-    const composerElement = inputRef.current?.closest('[data-chat-composer="true"]') as HTMLElement | null
-    if (composerElement) {
-      observer.observe(composerElement)
+    const observer = new ResizeObserver(updateComposerHeight)
+    if (composerRef.current) {
+      observer.observe(composerRef.current)
     }
 
     return () => {
       observer.disconnect()
-      document.documentElement.style.removeProperty('--chat-composer-height')
+      root.style.removeProperty('--chat-composer-height')
     }
   }, [])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return
+    }
+
+    const root = document.documentElement
+
+    const updateHeaderHeight = () => {
+      if (!headerRef.current) {
+        return
+      }
+      root.style.setProperty('--chat-header-height', `${headerRef.current.getBoundingClientRect().height}px`)
+    }
+
+    updateHeaderHeight()
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateHeaderHeight)
+      window.addEventListener('orientationchange', updateHeaderHeight)
+
+      return () => {
+        window.removeEventListener('resize', updateHeaderHeight)
+        window.removeEventListener('orientationchange', updateHeaderHeight)
+        root.style.removeProperty('--chat-header-height')
+      }
+    }
+
+    const observer = new ResizeObserver(updateHeaderHeight)
+    if (headerRef.current) {
+      observer.observe(headerRef.current)
+    }
+
+    return () => {
+      observer.disconnect()
+      root.style.removeProperty('--chat-header-height')
+    }
+  }, [])
+
+  const handleJumpToLatest = useCallback(() => {
+    setPendingNewMessagesCount(0)
+    scrollToBottomWithRaf('smooth')
+    markConversationAsRead({ immediate: true })
+  }, [markConversationAsRead, scrollToBottomWithRaf])
 
   useEffect(() => {
     hasScrolledToFirstUnreadRef.current = false
@@ -234,7 +280,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     
     // Initial load
     if (previousLastId === null) {
-      scrollToBottom('auto')
+      scrollToBottomWithRaf('auto')
       lastMessageIdRef.current = latestId
       return
     }
@@ -245,12 +291,12 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       
       if (isMyMessage) {
         // Always scroll to bottom for my own messages
-        scrollToBottom('smooth')
+        scrollToBottomWithRaf('smooth')
         setPendingNewMessagesCount(0)
       } else {
         // For others' messages, only scroll if we were already at bottom
         if (isViewerAtBottom()) {
-          scrollToBottom('smooth')
+          scrollToBottomWithRaf('smooth')
           setPendingNewMessagesCount(0)
           markConversationAsRead()
         } else {
@@ -259,7 +305,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       }
       lastMessageIdRef.current = latestId
     }
-  }, [messages, currentUserId, scrollToBottom, isViewerAtBottom, markConversationAsRead])
+  }, [messages, currentUserId, isViewerAtBottom, markConversationAsRead, scrollToBottomWithRaf])
 
   // Maintain scroll position when loading older messages
   const previousFirstMessageIdRef = useRef<string | null>(null)
@@ -316,32 +362,28 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     'PLAYR Member'
   const profilePath = buildPublicProfilePath(conversation.otherParticipant)
   const immersiveMobile = Boolean(isImmersiveMobile && isMobile)
+  const mobileHeaderOffsetClass = immersiveMobile ? 'top-0' : 'top-[calc(var(--app-header-offset,0px))]'
   const headerClassName = cn(
-    'relative sticky z-40 flex items-center gap-3 border-b border-gray-200 bg-white pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] shadow-sm transition-colors md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))]',
-    immersiveMobile
-      ? 'top-0 py-3.5 pt-[calc(env(safe-area-inset-top)+0.75rem)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/70'
-      : isMobile
-      ? 'top-[calc(var(--app-header-offset,0px))] py-3.5 pt-[calc(env(safe-area-inset-top)+0.75rem)] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/70'
-      : 'top-0 py-4',
-    'md:top-0'
+    'z-40 flex items-center gap-3 border-b border-gray-200 bg-white pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] shadow-sm transition-colors md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))]',
+    isMobile
+      ? `fixed left-0 right-0 pb-3.5 ${mobileHeaderOffsetClass} bg-white/95 pt-[calc(var(--chat-safe-area-top,0px)+0.75rem)] backdrop-blur supports-[backdrop-filter]:bg-white/70`
+      : 'relative sticky top-0 py-4'
   )
   const messageListClassName = cn(
-    'min-h-0 overflow-y-auto overscroll-contain pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))]',
-    immersiveMobile
-      ? 'pt-5 pb-[calc(var(--chat-composer-height,72px)+var(--chat-safe-area-bottom,0px)+1rem)]'
-      : isMobile
-      ? 'pt-6 pb-[calc(var(--chat-composer-height,72px)+var(--chat-safe-area-bottom,0px)+0.25rem)]'
+    'min-h-0 h-full overflow-y-auto overscroll-contain pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))]',
+    isMobile
+      ? 'bg-white h-[calc(100dvh-var(--chat-header-height,72px)-var(--chat-composer-height,72px))] pt-[calc(var(--chat-header-height,72px)+0.75rem)] pb-[calc(var(--chat-composer-height,72px)+var(--chat-safe-area-bottom,0px)+0.75rem)]'
       : 'pt-6 pb-20 md:pb-16'
   )
   const composerClassName = cn(
     'border-t border-gray-200 bg-white/95 pl-4 pr-[calc(1rem+var(--chat-safe-area-right,0px))] py-3.5 backdrop-blur transition md:pl-6 md:pr-[calc(1.5rem+var(--chat-safe-area-right,0px))] md:static',
     isMobile
-      ? 'fixed bottom-0 left-0 right-0 z-40 shadow-lg pb-[calc(0.75rem+var(--chat-safe-area-bottom,0px))]'
+      ? 'fixed bottom-0 left-0 right-0 z-40 w-full shadow-lg pb-[calc(0.75rem+var(--chat-safe-area-bottom,0px))]'
       : 'relative'
   )
   const chatGridClassName = cn(
     'grid h-full w-full min-h-0 grid-rows-[auto,1fr,auto] overflow-hidden',
-    immersiveMobile ? 'bg-white' : 'bg-gray-50',
+    isMobile ? 'min-h-[100dvh] bg-white' : immersiveMobile ? 'bg-white' : 'bg-gray-50',
     isMobile ? 'pb-[var(--chat-safe-area-bottom,0px)]' : ''
   )
 
@@ -433,7 +475,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
 
   return (
     <div className={chatGridClassName}>
-      <div className={headerClassName}>
+      <div ref={headerRef} className={headerClassName}>
         {isMobile && (
           <div
             aria-hidden="true"
@@ -489,7 +531,10 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
         </div>
       </div>
 
-      <div ref={scrollContainerRef} className={messageListClassName}>
+      <div
+        ref={scrollContainerRef}
+        className={messageListClassName}
+      >
         {messages.length === 0 ? (
           <div className="flex min-h-[240px] items-center justify-center text-center text-gray-500">
             No messages yet. Start the conversation!
@@ -596,6 +641,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       </div>
 
       <form
+        ref={composerRef}
         onSubmit={handleSendMessage}
         data-chat-composer="true"
         className={composerClassName}
@@ -614,7 +660,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
               }}
               onKeyDown={handleKeyDown}
               onFocus={() => {
-                scrollToBottom('smooth')
+                scrollToBottomWithRaf('smooth')
                 setPendingNewMessagesCount(0)
                 markConversationAsRead()
               }}
