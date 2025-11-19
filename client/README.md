@@ -30,6 +30,10 @@ A production-ready React application built with Vite, TypeScript, Tailwind CSS v
 2. Configure environment: `cp .env.example .env`
 3. Start dev server: `npm run dev`
 
+### Realtime Tuning
+
+- `VITE_CONVERSATION_REALTIME_DEBOUNCE_MS` (default `200`): controls how quickly the Messages page refetches after Supabase realtime events. Increase for heavier traffic to reduce RPC calls, decrease for snappier UI updates.
+
 ## 📦 Available Scripts
 
 - `npm run dev` - Start development server

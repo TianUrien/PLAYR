@@ -12,6 +12,11 @@ import type { Message, Conversation, ChatMessageEvent } from '@/types/chat'
 
 const MESSAGES_PAGE_SIZE = 50
 
+type MessageCursor = {
+  sentAt: string
+  messageId: string
+}
+
 type ConversationSnapshot = {
   id: string
   isPending?: boolean
@@ -66,7 +71,7 @@ export function useChat({
   
   const messagesRef = useRef<Message[]>([])
   const fetchMessagesPromiseRef = useRef<Promise<Message[]> | null>(null)
-  const oldestLoadedTimestampRef = useRef<string | null>(null)
+  const oldestLoadedCursorRef = useRef<MessageCursor | null>(null)
   const pendingReadIdsRef = useRef(new Set<string>())
   const readFlushTimeoutRef = useRef<number | null>(null)
   
@@ -107,7 +112,7 @@ export function useChat({
   useEffect(() => {
     setHasMoreMessages(true)
     setIsLoadingMore(false)
-    oldestLoadedTimestampRef.current = null
+    oldestLoadedCursorRef.current = null
   }, [conversation.id])
 
   // Draft management
@@ -175,6 +180,7 @@ export function useChat({
           .select('*')
           .eq('conversation_id', conversation.id)
           .order('sent_at', { ascending: false })
+          .order('id', { ascending: false })
           .limit(MESSAGES_PAGE_SIZE)
 
         if (error) throw error
@@ -182,7 +188,12 @@ export function useChat({
         const fetched = (data ?? []).reverse()
         logger.debug('Fetched messages:', fetched)
         syncMessagesState(fetched)
-        oldestLoadedTimestampRef.current = fetched[0]?.sent_at ?? null
+        oldestLoadedCursorRef.current = fetched[0]
+          ? {
+              sentAt: fetched[0].sent_at,
+              messageId: fetched[0].id
+            }
+          : null
         setHasMoreMessages((data ?? []).length === MESSAGES_PAGE_SIZE)
         return fetched
       } catch (error) {
@@ -205,8 +216,8 @@ export function useChat({
       return false
     }
 
-    const oldestTimestamp = oldestLoadedTimestampRef.current
-    if (!oldestTimestamp) {
+    const cursor = oldestLoadedCursorRef.current
+    if (!cursor) {
       setHasMoreMessages(false)
       return false
     }
@@ -214,12 +225,19 @@ export function useChat({
     setIsLoadingMore(true)
 
     try {
+      const encodeValue = (value: string) => encodeURIComponent(value)
+      const cursorFilter = [
+        `sent_at.lt.${encodeValue(cursor.sentAt)}`,
+        `and(sent_at.eq.${encodeValue(cursor.sentAt)},id.lt.${encodeValue(cursor.messageId)})`
+      ].join(',')
+
       const { data, error } = await supabase
         .from('messages')
         .select('*')
         .eq('conversation_id', conversation.id)
-        .lt('sent_at', oldestTimestamp)
+        .or(cursorFilter)
         .order('sent_at', { ascending: false })
+        .order('id', { ascending: false })
         .limit(MESSAGES_PAGE_SIZE)
 
       if (error) {
@@ -234,7 +252,12 @@ export function useChat({
       }
 
       const olderMessages = fetched.reverse()
-      oldestLoadedTimestampRef.current = olderMessages[0]?.sent_at ?? oldestTimestamp
+      if (olderMessages[0]) {
+        oldestLoadedCursorRef.current = {
+          sentAt: olderMessages[0].sent_at,
+          messageId: olderMessages[0].id
+        }
+      }
       setHasMoreMessages(fetched.length === MESSAGES_PAGE_SIZE)
 
       syncMessagesState(prev => {
@@ -627,7 +650,6 @@ export function useChat({
     const loadConversation = async () => {
       await fetchMessages()
       if (cancelled) return
-      markConversationAsRead({ immediate: true })
     }
 
     loadConversation()

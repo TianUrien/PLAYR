@@ -10,6 +10,8 @@ import Avatar from './Avatar'
 import RoleBadge from './RoleBadge'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useChat } from '@/hooks/useChat'
+import { useSafeArea } from '@/hooks/useSafeArea'
+import { useChatScrollController } from '@/hooks/useChatScrollController'
 import type { Conversation, ChatMessageEvent, ConversationParticipant } from '@/types/chat'
 
 const COMPOSER_MIN_HEIGHT = 48
@@ -52,10 +54,21 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
     onConversationRead
   })
 
+  useSafeArea()
+
   const [pendingNewMessagesCount, setPendingNewMessagesCount] = useState(0)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const isMobile = useMediaQuery('(max-width: 767px)')
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const handleReachBottom = useCallback(() => {
+    setPendingNewMessagesCount(0)
+    markConversationAsRead()
+  }, [markConversationAsRead])
+  const { scrollContainerRef, isAutoScrollingRef, isViewerAtBottom, scrollToBottom } = useChatScrollController({
+    hasMore: hasMoreMessages,
+    isLoadingMore,
+    loadOlderMessages,
+    onReachBottom: handleReachBottom
+  })
   const messageVirtualizer = useVirtualizer({
     count: messages.length,
     getScrollElement: () => scrollContainerRef.current,
@@ -68,33 +81,13 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   const intersectionObserverRef = useRef<IntersectionObserver | null>(null)
   const textareaId = useId()
   const textareaCharCountId = `${textareaId}-counter`
-  const isAutoScrolling = useRef(false)
+  const hasScrolledToFirstUnreadRef = useRef(false)
 
   useEffect(() => {
     setPendingNewMessagesCount(0)
     lastMessageIdRef.current = null
   }, [conversation.id])
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
-    const scrollEl = scrollContainerRef.current
-    if (scrollEl) {
-      // Prefer virtualizer scroll if possible, but direct scroll is more reliable for "stick to bottom"
-      // messageVirtualizer.scrollToIndex(messages.length - 1, { align: 'end', behavior })
-      // Using direct scroll for bottom sticking
-      isAutoScrolling.current = true
-      scrollEl.scrollTo({ top: scrollEl.scrollHeight, behavior })
-      setTimeout(() => { isAutoScrolling.current = false }, 100)
-    }
-  }, [])
-
-  const isViewerAtBottom = useCallback(() => {
-    const scrollEl = scrollContainerRef.current
-    if (!scrollEl) {
-      return true
-    }
-    const distanceFromBottom = scrollEl.scrollHeight - (scrollEl.scrollTop + scrollEl.clientHeight)
-    return distanceFromBottom <= 150
-  }, [])
 
   const setMessageRef = useCallback(
     (messageId: string) => (node: HTMLDivElement | null) => {
@@ -174,12 +167,13 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
       observer.disconnect()
       intersectionObserverRef.current = null
     }
-  }, [conversation.id, queueReadReceipt, messages])
+  }, [conversation.id, messages, queueReadReceipt, scrollContainerRef])
 
   const handleJumpToLatest = useCallback(() => {
     setPendingNewMessagesCount(0)
     scrollToBottom('smooth')
-  }, [scrollToBottom])
+    markConversationAsRead({ immediate: true })
+  }, [markConversationAsRead, scrollToBottom])
 
   // Remove manual viewport hacks - rely on CSS
   useEffect(() => {
@@ -224,39 +218,8 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   }, [])
 
   useEffect(() => {
-    const scrollEl = scrollContainerRef.current
-    if (!scrollEl) return
-
-    const handleScroll = () => {
-      const container = scrollContainerRef.current
-      if (!container) return
-
-      // Don't trigger loadOlderMessages if we are auto-scrolling
-      if (isAutoScrolling.current) return
-
-      if (container.scrollTop < 120 && hasMoreMessages && !isLoadingMore) {
-        void loadOlderMessages()
-      }
-
-      const atBottom = isViewerAtBottom()
-      if (atBottom) {
-        setPendingNewMessagesCount(0)
-        markConversationAsRead()
-      }
-    }
-
-    scrollEl.addEventListener('scroll', handleScroll, { passive: true })
-    return () => {
-      scrollEl.removeEventListener('scroll', handleScroll)
-    }
-  }, [
-    conversation.id,
-    hasMoreMessages,
-    isLoadingMore,
-    isViewerAtBottom,
-    markConversationAsRead,
-    loadOlderMessages
-  ])
+    hasScrolledToFirstUnreadRef.current = false
+  }, [conversation.id])
 
   // Scroll management effect
   useLayoutEffect(() => {
@@ -320,7 +283,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
            previousScrollHeightRef.current = scrollContainerRef.current.scrollHeight
         }
      }
-  }, [messages])
+  }, [messages, scrollContainerRef])
 
   useEffect(() => {
     syncTextareaHeight()
@@ -406,6 +369,44 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   )
 
   const shouldRenderUnreadSeparator = hasReadReceipts && unreadMetadata.unreadCount > 0 && unreadMetadata.firstUnreadId !== null
+
+  useEffect(() => {
+    if (hasScrolledToFirstUnreadRef.current) {
+      return
+    }
+
+    if (unreadMetadata.unreadCount === 0) {
+      return
+    }
+
+    if (unreadMetadata.firstUnreadIndex < 0) {
+      return
+    }
+
+    if (isViewerAtBottom()) {
+      hasScrolledToFirstUnreadRef.current = true
+      return
+    }
+
+    hasScrolledToFirstUnreadRef.current = true
+
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    isAutoScrollingRef.current = true
+    messageVirtualizer.scrollToIndex(unreadMetadata.firstUnreadIndex, { align: 'center' })
+
+    window.setTimeout(() => {
+      isAutoScrollingRef.current = false
+    }, 150)
+  }, [
+    isAutoScrollingRef,
+    isViewerAtBottom,
+    messageVirtualizer,
+    unreadMetadata.firstUnreadIndex,
+    unreadMetadata.unreadCount
+  ])
 
   if (loading) {
     return (
@@ -497,7 +498,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
           <>
             {isLoadingMore && (
               <div className="flex justify-center pb-4 text-xs font-medium uppercase tracking-wide text-gray-400">
-                Loading earlier messages…
+                Loading earlier messages...
               </div>
             )}
             <div className="relative">
@@ -615,6 +616,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
               onFocus={() => {
                 scrollToBottom('smooth')
                 setPendingNewMessagesCount(0)
+                markConversationAsRead()
               }}
               placeholder="Type a message..."
               rows={1}

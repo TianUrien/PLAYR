@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Search, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
@@ -21,6 +21,35 @@ interface ConversationDBRow {
   [key: string]: unknown
 }
 
+interface ConversationRpcRow {
+  conversation_id: string
+  other_participant_id: string
+  other_participant_name: string | null
+  other_participant_username: string | null
+  other_participant_avatar: string | null
+  other_participant_role: string | null
+  last_message_content: string | null
+  last_message_sent_at: string | null
+  last_message_sender_id: string | null
+  unread_count: number | null
+  conversation_created_at: string
+  conversation_updated_at: string
+  conversation_last_message_at: string | null
+  has_more?: boolean
+}
+
+const CONVERSATIONS_PAGE_SIZE = 25
+
+const CONVERSATION_REALTIME_DEBOUNCE_MS = (() => {
+  const env = import.meta.env ? (import.meta.env as Record<string, string | undefined>) : {}
+  const raw = env.VITE_CONVERSATION_REALTIME_DEBOUNCE_MS
+  const parsed = raw ? Number(raw) : NaN
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed
+  }
+  return 200
+})()
+
 interface Conversation {
   id: string
   participant_one_id: string
@@ -42,6 +71,7 @@ interface Conversation {
   }
   unreadCount?: number
   isPending?: boolean
+  sortTimestamp?: string | null
 }
 
 export default function MessagesPage() {
@@ -63,7 +93,11 @@ export default function MessagesPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [hasMoreConversations, setHasMoreConversations] = useState(true)
+  const [isFetchingMoreConversations, setIsFetchingMoreConversations] = useState(false)
+  const [conversationCursor, setConversationCursor] = useState<{ lastMessageAt: string | null; conversationId: string | null } | null>(null)
   const isMobile = useMediaQuery('(max-width: 767px)')
+  const realtimeRefreshTimeoutRef = useRef<number | null>(null)
 
   // Set selected conversation from URL parameter
   useEffect(() => {
@@ -82,90 +116,183 @@ export default function MessagesPage() {
     }
   }, [conversationIdParam, conversationIdFromQuery, newConversationTargetId])
 
-  const fetchConversations = useCallback(async (options?: { force?: boolean }) => {
+  const getConversationSortValue = useCallback((conversation: Conversation) => {
+    return (
+      conversation.sortTimestamp ||
+      conversation.last_message_at ||
+      conversation.created_at ||
+      conversation.updated_at ||
+      null
+    )
+  }, [])
+
+  const mergeConversationLists = useCallback((existing: Conversation[], incoming: Conversation[]) => {
+    const map = new Map<string, Conversation>()
+    existing.forEach(conv => map.set(conv.id, conv))
+    incoming.forEach(conv => map.set(conv.id, conv))
+
+    return Array.from(map.values()).sort((a, b) => {
+      const aValue = getConversationSortValue(a)
+      const bValue = getConversationSortValue(b)
+
+      if (!aValue && !bValue) return 0
+      if (!aValue) return 1
+      if (!bValue) return -1
+      if (aValue === bValue) {
+        return a.id < b.id ? 1 : -1
+      }
+      return aValue > bValue ? -1 : 1
+    })
+  }, [getConversationSortValue])
+
+  const fetchConversations = useCallback(async (options?: {
+    force?: boolean
+    append?: boolean
+    cursor?: { lastMessageAt: string | null; conversationId: string | null } | null
+  }) => {
     if (!user?.id) return
 
+    const safeLimit = CONVERSATIONS_PAGE_SIZE
+    const cursor = options?.cursor ?? null
+    const cacheKey = `conversations-${user.id}-${cursor?.lastMessageAt ?? 'root'}-${cursor?.conversationId ?? 'root'}`
+
+    if (options?.append) {
+      setIsFetchingMoreConversations(true)
+    } else if (options?.force) {
+      setHasMoreConversations(true)
+      setConversationCursor(null)
+    }
+
     await monitor.measure('fetch_conversations', async () => {
-      const cacheKey = `conversations-${user.id}`
       if (options?.force) {
         requestCache.invalidate(cacheKey)
-        logger.debug('Forcing conversations refresh due to direct navigation', { cacheKey })
+        logger.debug('Forcing conversations refresh', { cacheKey })
       }
-      
+
       try {
         setError(null)
-        const enrichedConversations = await requestCache.dedupe(
+        const rows = await requestCache.dedupe(
           cacheKey,
           async () => {
-            // Use optimized stored procedure (single query, ~50-150ms)
-            // Add retry logic for robustness
-            let data = null
-            let error = null
-            let attempts = 0
+            let data: ConversationRpcRow[] = []
+            let lastError: unknown = null
             const maxAttempts = 3
 
-            while (attempts < maxAttempts) {
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
               try {
-                const result = await supabase
-                  .rpc('get_user_conversations', {
-                    p_user_id: user.id,
-                    p_limit: 50
-                  })
-                
-                if (result.error) {
-                  throw result.error
-                }
-                
-                data = result.data
-                error = null
-                break // Success
-              } catch (e) {
-                error = e
-                attempts++
-                if (attempts < maxAttempts) {
-                  // Exponential backoff: 300ms, 600ms, 1200ms
-                  await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(2, attempts - 1)))
+                const result = await supabase.rpc('get_user_conversations', {
+                  p_user_id: user.id,
+                  p_limit: safeLimit,
+                  p_cursor_last_message_at: cursor?.lastMessageAt ?? null,
+                  p_cursor_conversation_id: cursor?.conversationId ?? null
+                })
+
+                if (result.error) throw result.error
+
+                data = result.data ?? []
+                lastError = null
+                break
+              } catch (err) {
+                lastError = err
+                if (attempt < maxAttempts - 1) {
+                  await new Promise(resolve => setTimeout(resolve, 300 * Math.pow(2, attempt)))
                 }
               }
             }
 
-            if (error) throw error
+            if (lastError) throw lastError
 
-            // Transform RPC result to expected Conversation format
-            return (data || []).map(row => ({
-              id: row.conversation_id,
-              participant_one_id: user.id,
-              participant_two_id: row.other_participant_id,
-              created_at: row.conversation_created_at,
-              updated_at: row.conversation_updated_at,
-              last_message_at: row.conversation_last_message_at,
-              otherParticipant: row.other_participant_name ? {
-                id: row.other_participant_id,
-                full_name: row.other_participant_name,
-                username: row.other_participant_username,
-                avatar_url: row.other_participant_avatar,
-                role: row.other_participant_role as 'player' | 'coach' | 'club'
-              } : undefined,
-              lastMessage: row.last_message_content ? {
-                content: row.last_message_content,
-                sent_at: row.last_message_sent_at,
-                sender_id: row.last_message_sender_id
-              } : undefined,
-              unreadCount: Number(row.unread_count) || 0
-            }))
+            return data as ConversationRpcRow[] | null
           },
-          60000 // Cache for 60 seconds (increased from 15s)
+          60000
         )
 
-        setConversations(enrichedConversations)
+        const safeRows = rows ?? []
+
+        const normalized = safeRows.map((row: ConversationRpcRow) => {
+          const sortTimestamp = row.conversation_last_message_at || row.conversation_created_at || row.conversation_updated_at || null
+          return {
+            id: row.conversation_id,
+            participant_one_id: user.id,
+            participant_two_id: row.other_participant_id,
+            created_at: row.conversation_created_at,
+            updated_at: row.conversation_updated_at,
+            last_message_at: row.conversation_last_message_at,
+            otherParticipant: row.other_participant_name
+              ? {
+                  id: row.other_participant_id,
+                  full_name: row.other_participant_name,
+                  username: row.other_participant_username,
+                  avatar_url: row.other_participant_avatar,
+                  role: row.other_participant_role as 'player' | 'coach' | 'club'
+                }
+              : undefined,
+            lastMessage: row.last_message_content
+              ? {
+                  content: row.last_message_content,
+                  sent_at: row.last_message_sent_at,
+                  sender_id: row.last_message_sender_id
+                }
+              : undefined,
+            unreadCount: Number(row.unread_count ?? 0),
+            sortTimestamp,
+            _has_more: Boolean(row.has_more)
+          } as Conversation & { _has_more: boolean }
+        })
+
+        const hasMore = normalized.some(row => row._has_more)
+        const sanitized = normalized.map(item => {
+          const { _has_more, ...rest } = item
+          void _has_more
+          return rest
+        })
+        if (options?.append) {
+          setConversations(prev => {
+            const merged = mergeConversationLists(prev, sanitized)
+            return merged
+          })
+        } else {
+          setConversations(sanitized)
+        }
+
+        setHasMoreConversations(hasMore)
+
+        const cursorSource = sanitized[sanitized.length - 1]
+        setConversationCursor(
+          cursorSource
+            ? {
+                lastMessageAt: getConversationSortValue(cursorSource),
+                conversationId: cursorSource.id
+              }
+            : null
+        )
       } catch (error) {
         logger.error('Error fetching conversations:', error)
         setError('Failed to load conversations. Please try again.')
       } finally {
+        if (options?.append) {
+          setIsFetchingMoreConversations(false)
+        }
         setLoading(false)
       }
     }, { userId: user.id })
-  }, [user?.id]) // Fixed: Only depend on user.id to prevent unnecessary recreations
+  }, [getConversationSortValue, mergeConversationLists, user?.id])
+
+  const scheduleRealtimeRefresh = useCallback(() => {
+    if (typeof window === 'undefined') {
+      void fetchConversations({ force: true })
+      return
+    }
+
+    if (realtimeRefreshTimeoutRef.current !== null) {
+      return
+    }
+
+    realtimeRefreshTimeoutRef.current = window.setTimeout(() => {
+      realtimeRefreshTimeoutRef.current = null
+      void fetchConversations({ force: true })
+    }, CONVERSATION_REALTIME_DEBOUNCE_MS)
+  }, [fetchConversations])
 
   useEffect(() => {
     if (user?.id) {
@@ -294,24 +421,25 @@ export default function MessagesPage() {
     }
 
     const handleConversationChange = (payload: RealtimePostgresChangesPayload<ConversationDBRow>) => {
-      // Optimistic update for conversation list order
       if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
         const newRecord = payload.new
         setConversations(prev => {
           const exists = prev.find(c => c.id === newRecord.id)
           if (exists) {
-            // Update timestamp and sort immediately
-            return prev.map(c => c.id === newRecord.id ? {
-              ...c,
-              last_message_at: newRecord.last_message_at,
-              updated_at: newRecord.updated_at
-            } : c).sort((a, b) => new Date(b.last_message_at || b.updated_at).getTime() - new Date(a.last_message_at || a.updated_at).getTime())
+            return prev
+              .map(c => (c.id === newRecord.id
+                ? {
+                    ...c,
+                    last_message_at: newRecord.last_message_at,
+                    updated_at: newRecord.updated_at
+                  }
+                : c))
+              .sort((a, b) => new Date(b.last_message_at || b.updated_at).getTime() - new Date(a.last_message_at || a.updated_at).getTime())
           }
           return prev
         })
-        
-        // Trigger background refresh to get the actual message content/preview
-        void fetchConversations({ force: true })
+
+        scheduleRealtimeRefresh()
       }
     }
 
@@ -340,9 +468,13 @@ export default function MessagesPage() {
       .subscribe()
 
     return () => {
+      if (typeof window !== 'undefined' && realtimeRefreshTimeoutRef.current !== null) {
+        window.clearTimeout(realtimeRefreshTimeoutRef.current)
+        realtimeRefreshTimeoutRef.current = null
+      }
       supabase.removeChannel(channel)
     }
-  }, [user?.id, fetchConversations])
+  }, [fetchConversations, scheduleRealtimeRefresh, user?.id])
 
   const combinedConversations = useMemo(() => {
     if (!pendingConversation) return conversations
@@ -524,6 +656,14 @@ export default function MessagesPage() {
     },
     []
   )
+
+  const handleLoadMoreConversations = useCallback(() => {
+    if (!hasMoreConversations || isFetchingMoreConversations) {
+      return
+    }
+
+    fetchConversations({ append: true, cursor: conversationCursor })
+  }, [hasMoreConversations, isFetchingMoreConversations, fetchConversations, conversationCursor])
 
   const isPendingConversation = selectedConversationId?.startsWith('pending-') ?? false
   const isValidConversationId = selectedConversationId
@@ -774,13 +914,27 @@ export default function MessagesPage() {
                     </button>
                   </div>
                 ) : (
-                  <ConversationList
-                    conversations={filteredConversations}
-                    selectedConversationId={selectedConversationId}
-                    onSelectConversation={handleSelectConversation}
-                    currentUserId={user?.id || ''}
-                    variant={isMobile ? 'compact' : 'default'}
-                  />
+                  <>
+                    <ConversationList
+                      conversations={filteredConversations}
+                      selectedConversationId={selectedConversationId}
+                      onSelectConversation={handleSelectConversation}
+                      currentUserId={user?.id || ''}
+                      variant={isMobile ? 'compact' : 'default'}
+                    />
+                    {hasMoreConversations && !searchQuery && (
+                      <div className="border-t border-gray-100 bg-white/90 backdrop-blur-sm p-4">
+                        <button
+                          type="button"
+                          onClick={handleLoadMoreConversations}
+                          disabled={isFetchingMoreConversations}
+                          className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
+                        >
+                          {isFetchingMoreConversations ? 'Loading more conversations...' : 'Load older conversations'}
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -800,7 +954,7 @@ export default function MessagesPage() {
               ) : selectedConversationId ? (
                 <div className="flex h-full min-h-[320px] flex-col items-center justify-center bg-gray-50 p-8 text-center">
                   <div className="w-16 h-16 animate-spin rounded-full border-2 border-purple-200 border-t-transparent mb-4"></div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading conversation…</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading conversation...</h3>
                   <p className="text-gray-600">Hang tight while we fetch the latest messages.</p>
                   <button
                     onClick={handleBackToList}

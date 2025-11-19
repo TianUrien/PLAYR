@@ -18,6 +18,8 @@
   --app-safe-area-bottom: 0px;
   --app-header-height: 0px;
   --app-header-offset: 0px;
+  --chat-safe-area-right: 0px;
+  --chat-safe-area-bottom: 0px;
 
   /* Dark Mode Palette */
   --color-dark-bg: #0a0a0a;
