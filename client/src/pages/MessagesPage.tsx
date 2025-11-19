@@ -12,7 +12,6 @@ import { requestCache } from '@/lib/requestCache'
 import { monitor } from '@/lib/monitor'
 import { logger } from '@/lib/logger'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
-import { useUnreadMessages } from '@/hooks/useUnreadMessages'
 
 interface Conversation {
   id: string
@@ -43,16 +42,19 @@ export default function MessagesPage() {
   const navigate = useNavigate()
   const { conversationId: conversationIdParam } = useParams<{ conversationId?: string }>()
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search])
+  const conversationIdFromQuery = searchParams.get('conversation')
+  const newConversationTargetId = searchParams.get('new')
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [pendingConversation, setPendingConversation] = useState<Conversation | null>(null)
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(() => {
+    if (conversationIdParam) return conversationIdParam
+    if (conversationIdFromQuery) return conversationIdFromQuery
+    if (newConversationTargetId) return `pending-${newConversationTargetId}`
+    return null
+  })
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const isMobile = useMediaQuery('(max-width: 767px)')
-  const messagingMobileV2Enabled = import.meta.env.VITE_MESSAGING_MOBILE_V2 === 'true'
-  const { adjust: adjustUnreadCount, refresh: refreshUnreadCount } = useUnreadMessages()
-  const conversationIdFromQuery = searchParams.get('conversation')
-  const newConversationTargetId = searchParams.get('new')
 
   // Set selected conversation from URL parameter
   useEffect(() => {
@@ -315,10 +317,7 @@ export default function MessagesPage() {
 
   const selectedConversation = combinedConversations.find((conv) => conv.id === selectedConversationId)
   const hasActiveConversation = Boolean(selectedConversationId)
-  const isConversationRoute = Boolean(conversationIdParam)
-  const isImmersiveMobileConversation = Boolean(isMobile && isConversationRoute)
-  const isFullBleedMobileLayout = isImmersiveMobileConversation || Boolean(messagingMobileV2Enabled && isMobile)
-  const shouldHideGlobalHeader = isImmersiveMobileConversation
+  const shouldHideGlobalHeader = Boolean(isMobile && hasActiveConversation)
 
   const handleSelectConversation = useCallback(
     (conversationId: string) => {
@@ -335,14 +334,6 @@ export default function MessagesPage() {
             : conv
         )
       )
-
-      if (selected && !selected.isPending) {
-        const unreadDelta = selected.unreadCount ?? 0
-        if (unreadDelta > 0) {
-          adjustUnreadCount(-unreadDelta)
-          void refreshUnreadCount({ bypassCache: true })
-        }
-      }
 
       const nextParams = new URLSearchParams(searchParams)
 
@@ -367,7 +358,7 @@ export default function MessagesPage() {
         search: nextSearch ? `?${nextSearch}` : ''
       })
     },
-    [adjustUnreadCount, combinedConversations, refreshUnreadCount, navigate, searchParams, user?.id]
+    [combinedConversations, navigate, searchParams, user?.id]
   )
 
   const handleBackToList = useCallback(() => {
@@ -478,8 +469,13 @@ export default function MessagesPage() {
     []
   )
 
+  const isPendingConversation = selectedConversationId?.startsWith('pending-') ?? false
+  const isValidConversationId = selectedConversationId
+    ? /^[0-9a-fA-F-]{36}$/.test(selectedConversationId)
+    : false
+
   useEffect(() => {
-    if (!user?.id || !selectedConversationId) {
+    if (!user?.id || !selectedConversationId || isPendingConversation || !isValidConversationId) {
       return
     }
 
@@ -604,62 +600,58 @@ export default function MessagesPage() {
     return () => {
       cancelled = true
     }
-  }, [combinedConversations, navigate, searchParams, selectedConversationId, user?.id])
+  }, [combinedConversations, navigate, searchParams, selectedConversationId, user?.id, isPendingConversation, isValidConversationId])
 
-  const rootContainerClasses = isFullBleedMobileLayout
+  const rootContainerClasses = isMobile
     ? 'bg-white min-h-screen-dvh md:min-h-screen'
-    : messagingMobileV2Enabled
-      ? 'bg-gray-50 min-h-screen-dvh md:min-h-screen'
-      : 'min-h-screen bg-gray-50'
+    : 'min-h-screen bg-gray-50'
+
+  const mainPaddingClasses = isMobile
+    ? shouldHideGlobalHeader
+      ? 'mx-auto w-full max-w-7xl px-0 md:px-6'
+      : 'mx-auto w-full max-w-7xl px-4 pb-4 pt-[calc(var(--app-header-offset,0px)+1rem)] md:px-6'
+    : 'mx-auto max-w-7xl px-4 pb-12 pt-[calc(var(--app-header-offset,0px)+1.5rem)] md:px-6'
+
+  const containerClasses = shouldHideGlobalHeader
+    ? 'flex h-screen-dvh min-h-0 flex-1 flex-col overflow-hidden bg-white md:flex-row'
+    : isMobile
+      ? 'flex h-[calc(100dvh-var(--app-header-offset,0px))] min-h-0 flex-1 flex-col overflow-hidden bg-white md:flex-row'
+      : 'flex h-[calc(100dvh-var(--app-header-offset,0px)-4rem)] min-h-0 min-h-chat-card flex-1 flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm md:flex-row'
 
   if (loading) {
     return (
       <div className={rootContainerClasses}>
-        <Header />
-        <div className="flex items-center justify-center pt-20 h-[calc(100dvh-80px)]">
-          <main className="max-w-7xl mx-auto px-4 md:px-6 w-full">
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden h-[calc(100dvh-140px)]">
-              <div className="flex h-full">
-                {/* Conversation List Skeleton */}
-                <div className="w-full md:w-96 border-r border-gray-200 flex flex-col">
-                  <div className="p-4 border-b border-gray-200">
-                    <div className="h-8 w-32 bg-gray-200 rounded animate-pulse mb-4"></div>
-                    <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
-                  </div>
-                  <div className="flex-1 overflow-y-auto">
-                    {[...Array(8)].map((_, i) => (
-                      <ConversationSkeleton key={i} />
-                    ))}
-                  </div>
+        {!shouldHideGlobalHeader && <Header />}
+        <main className={mainPaddingClasses}>
+          <div className={containerClasses}>
+            <div className="flex min-h-0 flex-1">
+              <div
+                className={`flex w-full flex-shrink-0 flex-col border-b border-gray-100 md:w-96 md:border-b-0 md:border-r ${
+                  hasActiveConversation ? 'hidden md:flex' : 'flex'
+                }`}
+              >
+                <div className="p-4 border-b border-gray-200">
+                  <div className="h-8 w-32 bg-gray-200 rounded animate-pulse mb-4"></div>
+                  <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
                 </div>
-                {/* Empty State Skeleton */}
-                <div className="hidden md:flex flex-1 items-center justify-center bg-gray-50">
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-gray-200 rounded-full animate-pulse mx-auto mb-4"></div>
-                    <div className="h-6 w-48 bg-gray-200 rounded animate-pulse mx-auto"></div>
-                  </div>
+                <div className="flex-1 overflow-y-auto">
+                  {[...Array(8)].map((_, i) => (
+                    <ConversationSkeleton key={i} />
+                  ))}
+                </div>
+              </div>
+              <div className="hidden md:flex flex-1 items-center justify-center bg-gray-50">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gray-200 rounded-full animate-pulse mx-auto mb-4"></div>
+                  <div className="h-6 w-48 bg-gray-200 rounded animate-pulse mx-auto"></div>
                 </div>
               </div>
             </div>
-          </main>
-        </div>
+          </div>
+        </main>
       </div>
     )
   }
-
-  const mainPaddingClasses = isFullBleedMobileLayout
-    ? shouldHideGlobalHeader
-      ? 'mx-auto w-full max-w-7xl px-0 pb-0 pt-0 md:px-6'
-      : 'mx-auto w-full max-w-7xl px-0 pb-0 pt-[calc(var(--app-header-offset,0px)+1rem)] md:px-6'
-    : 'mx-auto max-w-7xl px-4 pb-12 pt-[calc(var(--app-header-offset,0px)+1.5rem)] md:px-6'
-
-  const containerClasses = isFullBleedMobileLayout
-    ? shouldHideGlobalHeader
-      ? 'flex h-screen-dvh flex-col overflow-hidden bg-white'
-      : 'flex h-[calc(100dvh-var(--app-header-offset,0px))] flex-col overflow-hidden bg-white'
-    : `flex h-[calc(100dvh-var(--app-header-offset,0px)-4rem)] flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm ${
-        messagingMobileV2Enabled ? 'min-h-chat-card' : ''
-      }`
 
   return (
     <div className={rootContainerClasses}>
@@ -692,7 +684,7 @@ export default function MessagesPage() {
               </div>
 
               {/* Conversations List */}
-              <div className={`flex-1 min-h-0 ${isFullBleedMobileLayout ? 'border-t border-gray-100 bg-white/95' : ''}`}>
+              <div className={`flex-1 min-h-0 ${isMobile ? 'border-t border-gray-100 bg-white/95' : ''}`}>
                 {filteredConversations.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full p-8 text-center">
                     <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -709,7 +701,7 @@ export default function MessagesPage() {
                     selectedConversationId={selectedConversationId}
                     onSelectConversation={handleSelectConversation}
                     currentUserId={user?.id || ''}
-                    variant={isFullBleedMobileLayout ? 'compact' : 'default'}
+                    variant={isMobile ? 'compact' : 'default'}
                   />
                 )}
               </div>
