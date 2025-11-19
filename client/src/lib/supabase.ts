@@ -36,6 +36,7 @@ export const SUPABASE_ANON_KEY = supabaseAnonKey
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
+export type ProfileReference = Database['public']['Tables']['profile_references']['Row']
 
 export type Vacancy = Database['public']['Tables']['vacancies']['Row']
 export type VacancyInsert = Database['public']['Tables']['vacancies']['Insert']

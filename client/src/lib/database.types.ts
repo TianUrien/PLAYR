@@ -399,6 +399,76 @@ export type Database = {
           },
         ]
       }
+        profile_references: {
+          Row: {
+            accepted_at: string | null
+            created_at: string
+            endorsement_text: string | null
+            id: string
+            reference_id: string
+            relationship_type: string
+            request_note: string | null
+            requester_id: string
+            responded_at: string | null
+            revoked_at: string | null
+            revoked_by: string | null
+            status: Database["public"]["Enums"]["profile_reference_status"]
+            updated_at: string
+          }
+          Insert: {
+            accepted_at?: string | null
+            created_at?: string
+            endorsement_text?: string | null
+            id?: string
+            reference_id: string
+            relationship_type: string
+            request_note?: string | null
+            requester_id: string
+            responded_at?: string | null
+            revoked_at?: string | null
+            revoked_by?: string | null
+            status?: Database["public"]["Enums"]["profile_reference_status"]
+            updated_at?: string
+          }
+          Update: {
+            accepted_at?: string | null
+            created_at?: string
+            endorsement_text?: string | null
+            id?: string
+            reference_id?: string
+            relationship_type?: string
+            request_note?: string | null
+            requester_id?: string
+            responded_at?: string | null
+            revoked_at?: string | null
+            revoked_by?: string | null
+            status?: Database["public"]["Enums"]["profile_reference_status"]
+            updated_at?: string
+          }
+          Relationships: [
+            {
+              foreignKeyName: "profile_references_reference_id_fkey"
+              columns: ["reference_id"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "profile_references_requester_id_fkey"
+              columns: ["requester_id"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+            {
+              foreignKeyName: "profile_references_revoked_by_fkey"
+              columns: ["revoked_by"]
+              isOneToOne: false
+              referencedRelation: "profiles"
+              referencedColumns: ["id"]
+            },
+          ]
+        }
       profile_notifications: {
         Row: {
           actor_profile_id: string | null
@@ -873,6 +943,60 @@ export type Database = {
           unread_count: number
         }[]
       }
+      get_my_references: {
+        Args: never
+        Returns: {
+          id: string
+          requester_id: string
+          reference_id: string
+          status: Database["public"]["Enums"]["profile_reference_status"]
+          relationship_type: string
+          request_note: string | null
+          endorsement_text: string | null
+          created_at: string
+          responded_at: string | null
+          accepted_at: string | null
+          reference_profile: Json
+        }[]
+      }
+      get_my_reference_requests: {
+        Args: never
+        Returns: {
+          id: string
+          requester_id: string
+          reference_id: string
+          status: Database["public"]["Enums"]["profile_reference_status"]
+          relationship_type: string
+          request_note: string | null
+          created_at: string
+          requester_profile: Json
+        }[]
+      }
+      get_references_i_gave: {
+        Args: never
+        Returns: {
+          id: string
+          requester_id: string
+          reference_id: string
+          status: Database["public"]["Enums"]["profile_reference_status"]
+          relationship_type: string
+          endorsement_text: string | null
+          accepted_at: string | null
+          requester_profile: Json
+        }[]
+      }
+      get_profile_references: {
+        Args: { p_profile_id: string }
+        Returns: {
+          id: string
+          requester_id: string
+          reference_id: string
+          relationship_type: string
+          endorsement_text: string | null
+          accepted_at: string | null
+          reference_profile: Json
+        }[]
+      }
       fetch_profile_notifications: {
         Args: { p_limit?: number | null; p_offset?: number | null }
         Returns: {
@@ -916,6 +1040,10 @@ export type Database = {
         Args: { p_notification_ids?: string[] | null }
         Returns: number
       }
+      remove_reference: {
+        Args: { p_reference_id: string }
+        Returns: Database["public"]["Tables"]["profile_references"]["Row"]
+      }
       recover_zombie_accounts: {
         Args: never
         Returns: {
@@ -924,12 +1052,24 @@ export type Database = {
         }[]
       }
       release_profile_lock: { Args: { profile_id: string }; Returns: boolean }
+      request_reference: {
+        Args: {
+          p_reference_id: string
+          p_relationship_type: string
+          p_request_note?: string | null
+        }
+        Returns: Database["public"]["Tables"]["profile_references"]["Row"]
+      }
       clear_profile_notifications: {
         Args: {
           p_notification_ids?: string[] | null
           p_kind?: Database["public"]["Enums"]["profile_notification_kind"] | null
         }
         Returns: number
+      }
+      respond_reference: {
+        Args: { p_reference_id: string; p_accept: boolean; p_endorsement?: string | null }
+        Returns: Database["public"]["Tables"]["profile_references"]["Row"]
       }
       set_profile_comment_status: {
         Args: {
@@ -957,6 +1097,10 @@ export type Database = {
         Args: { component: string; years: string }
         Returns: string
       }
+      withdraw_reference: {
+        Args: { p_reference_id: string }
+        Returns: Database["public"]["Tables"]["profile_references"]["Row"]
+      }
       user_in_conversation: {
         Args: { p_conversation_id: string; p_user_id: string }
         Returns: boolean
@@ -979,7 +1123,12 @@ export type Database = {
         | "rejected"
         | "cancelled"
         | "blocked"
-      profile_notification_kind: "friend_request" | "profile_comment"
+      profile_notification_kind:
+        | "friend_request"
+        | "profile_comment"
+        | "reference_request"
+        | "reference_accepted"
+      profile_reference_status: "pending" | "accepted" | "declined" | "revoked"
       journey_entry_type:
         | "club"
         | "national_team"
@@ -1138,7 +1287,13 @@ export const Constants = {
         "cancelled",
         "blocked",
       ],
-      profile_notification_kind: ["friend_request", "profile_comment"],
+      profile_notification_kind: [
+        "friend_request",
+        "profile_comment",
+        "reference_request",
+        "reference_accepted",
+      ],
+      profile_reference_status: ["pending", "accepted", "declined", "revoked"],
       journey_entry_type: [
         "club",
         "national_team",

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { MapPin, Globe, Calendar, Edit2, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, RoleBadge, ScrollableTabs } from '@/components'
+import { Avatar, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, PublicReferencesSection, RoleBadge, ScrollableTabs } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import Button from '@/components/Button'
@@ -401,6 +401,10 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
                   </div>
                 </section>
 
+                {readOnly && (
+                  <PublicReferencesSection profileId={profile.id} profileName={profile.full_name} />
+                )}
+
                 <section className="space-y-3 pt-6 border-t border-gray-200">
                   <MediaTab
                     profileId={profile.id}
@@ -429,7 +433,7 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
 
             {activeTab === 'friends' && (
               <div className="animate-fade-in">
-                <FriendsTab profileId={profile.id} readOnly={readOnly} />
+                <FriendsTab profileId={profile.id} readOnly={readOnly} profileRole={profile.role} />
               </div>
             )}
 

@@ -9,22 +9,25 @@ import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import Avatar from './Avatar'
 import RoleBadge from './RoleBadge'
+import TrustedReferencesSection from './TrustedReferencesSection'
+import type { ReferenceFriendOption } from './AddReferenceModal'
 import { Link } from 'react-router-dom'
 
 interface FriendsTabProps {
   profileId: string
   readOnly?: boolean
+  profileRole?: Profile['role'] | null
 }
 
 type FriendStatus = Database['public']['Enums']['friendship_status']
 type FriendEdge = Database['public']['Views']['profile_friend_edges']['Row']
-type FriendProfile = Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'role' | 'username' | 'base_location'>
+type FriendProfile = Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'role' | 'username' | 'base_location' | 'current_club'>
 
 type FriendConnection = FriendEdge & {
   friend: FriendProfile | null
 }
 
-export default function FriendsTab({ profileId, readOnly = false }: FriendsTabProps) {
+export default function FriendsTab({ profileId, readOnly = false, profileRole }: FriendsTabProps) {
   const { profile: authProfile } = useAuthStore()
   const { addToast } = useToastStore()
   const isOwner = authProfile?.id === profileId
@@ -57,7 +60,7 @@ export default function FriendsTab({ profileId, readOnly = false }: FriendsTabPr
       if (friendIds.length > 0) {
         const { data: friendProfiles, error: profileError } = await supabase
           .from('profiles')
-          .select('id, full_name, avatar_url, role, username, base_location')
+          .select('id, full_name, avatar_url, role, username, base_location, current_club')
           .in('id', friendIds)
 
         if (profileError) throw profileError
@@ -86,6 +89,26 @@ export default function FriendsTab({ profileId, readOnly = false }: FriendsTabPr
     () => connections.filter((connection) => connection.status === 'accepted'),
     [connections]
   )
+
+  const referenceFriendOptions = useMemo<ReferenceFriendOption[]>(() => {
+    const options: ReferenceFriendOption[] = []
+    const seen = new Set<string>()
+    acceptedConnections.forEach((connection) => {
+      const friend = connection.friend
+      if (!friend?.id || seen.has(friend.id)) return
+      seen.add(friend.id)
+      options.push({
+        id: friend.id,
+        fullName: friend.full_name || friend.username || 'PLAYR Member',
+        username: friend.username,
+        avatarUrl: friend.avatar_url,
+        role: friend.role,
+        baseLocation: friend.base_location,
+        currentClub: friend.current_club ?? null,
+      })
+    })
+    return options
+  }, [acceptedConnections])
 
   const incomingRequests = useMemo(
     () => (isOwner ? connections.filter((connection) => connection.status === 'pending' && connection.requester_id !== profileId) : []),
@@ -145,6 +168,8 @@ export default function FriendsTab({ profileId, readOnly = false }: FriendsTabPr
     if (friend.role === 'club') return `/clubs/${slug}`
     return `/players/${slug}`
   }
+
+  const canShowTrustedReferences = profileRole === 'player' || profileRole === 'coach'
 
   const renderFriendCard = (connection: FriendConnection, showActions = false) => (
     <div key={`${connection.id}-${connection.friend_id}`} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
@@ -280,6 +305,9 @@ export default function FriendsTab({ profileId, readOnly = false }: FriendsTabPr
 
   return (
     <div className="space-y-8">
+      {canShowTrustedReferences && (
+        <TrustedReferencesSection profileId={profileId} friendOptions={referenceFriendOptions} />
+      )}
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

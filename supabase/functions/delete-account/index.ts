@@ -24,6 +24,7 @@ interface DeleteAccountResponse {
     notifications?: number
     friendships?: number
     unreadCounters?: number
+    references?: number
   }
 }
 
@@ -179,6 +180,11 @@ const applyDeletionSummary = (
   const friendships = pick('friendships')
   if (friendships > 0) {
     deletedData.friendships = friendships
+  }
+
+  const references = pick('profileReferences')
+  if (references > 0) {
+    deletedData.references = references
   }
 
   const unreadCounters = pick('unreadCounters')

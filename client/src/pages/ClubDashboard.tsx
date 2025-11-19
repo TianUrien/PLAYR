@@ -460,7 +460,7 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
 
             {activeTab === 'friends' && (
               <div className="animate-fade-in">
-                <FriendsTab profileId={profile.id} readOnly={readOnly} />
+                <FriendsTab profileId={profile.id} readOnly={readOnly} profileRole={profile.role} />
               </div>
             )}
 
