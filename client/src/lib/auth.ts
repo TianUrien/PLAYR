@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import * as Sentry from '@sentry/react'
 import type { User, PostgrestError, Session, AuthError } from '@supabase/supabase-js'
 import { AuthApiError } from '@supabase/supabase-js'
 import type { Profile, ProfileInsert } from './supabase'
@@ -8,6 +9,7 @@ import { requestCache, generateCacheKey } from './requestCache'
 import { monitor } from './monitor'
 import { logger } from './logger'
 import { useUnreadStore } from './unread'
+import { reportSupabaseError } from './sentryHelpers'
 
 interface AuthState {
   user: User | null
@@ -42,10 +44,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setHasCompletedOnboardingRedirect: (value) => set({ hasCompletedOnboardingRedirect: value }),
   
   signOut: async () => {
+    Sentry.addBreadcrumb({
+      category: 'supabase',
+      message: 'auth.signOut.global',
+      level: 'info'
+    })
     const { error } = await supabase.auth.signOut({ scope: 'global' })
 
     if (error) {
       logger.error('[AUTH_STORE] Failed to sign out via Supabase', { error })
+      reportSupabaseError('auth_flow.global_sign_out', error, undefined, {
+        feature: 'auth_flow',
+        operation: 'sign_out'
+      })
       await clearLocalSession('manual-sign-out-fallback', { skipSupabaseSignOut: true })
       throw error
     }
@@ -64,6 +75,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         requestCache.invalidate(cacheKey)
       }
       const fetchOnce = async () => {
+        Sentry.addBreadcrumb({
+          category: 'supabase',
+          message: 'profiles.fetch',
+          data: { userId },
+          level: 'info'
+        })
         const { data, error } = await supabase
           .from('profiles')
           .select('*')
@@ -75,6 +92,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           if (pgError.code === 'PGRST116' || pgError.details?.includes('0 rows')) {
             return null
           }
+          reportSupabaseError('auth_flow.fetch_profile', error, { userId }, {
+            feature: 'auth_flow',
+            operation: 'fetch_profile'
+          })
           throw error
         }
         return data
@@ -101,6 +122,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             nationality: ''
           }
 
+          Sentry.addBreadcrumb({
+            category: 'supabase',
+            message: 'profiles.placeholder_insert',
+            data: { userId },
+            level: 'info'
+          })
           const { data: inserted, error: insertError } = await supabase
             .from('profiles')
             .insert(insertPayload)
@@ -115,6 +142,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               data = await requestCache.dedupe(cacheKey, fetchOnce)
             } else {
               logger.error('[AUTH_STORE] Error creating placeholder profile', { userId, insertError })
+              reportSupabaseError('auth_flow.placeholder_profile_insert', insertError, { userId }, {
+                feature: 'auth_flow',
+                operation: 'create_profile'
+              })
             }
           } else {
             data = inserted
@@ -150,9 +181,19 @@ const clearLocalSession = async (reason: string, options?: ClearSessionOptions) 
 
   if (!options?.skipSupabaseSignOut) {
     try {
+      Sentry.addBreadcrumb({
+        category: 'supabase',
+        message: 'auth.signOut.local',
+        data: { reason },
+        level: 'info'
+      })
       await supabase.auth.signOut({ scope: 'local' })
     } catch (signOutError) {
       logger.error('[AUTH_STORE] Failed to clear local session', { reason, signOutError })
+      reportSupabaseError('auth_flow.local_sign_out', signOutError, { reason }, {
+        feature: 'auth_flow',
+        operation: 'sign_out'
+      })
     }
   }
 
@@ -180,6 +221,8 @@ const clearLocalSession = async (reason: string, options?: ClearSessionOptions) 
     profileStatus: 'idle',
     profileFetchedAt: null
   })
+
+  Sentry.setUser(null)
 }
 
 const isInvalidRefreshTokenError = (error: AuthError | null): error is AuthApiError => {
@@ -231,9 +274,19 @@ const ensureUserRoleMetadata = async (user: User | null): Promise<string | null>
   const pendingRole = resolvePendingRole(user)
   if (pendingRole) {
     logger.warn('[AUTH_STORE] Hydrating missing role metadata from localStorage fallback', { userId: user.id, pendingRole })
+    Sentry.addBreadcrumb({
+      category: 'supabase',
+      message: 'auth.updateUser.pendingRole',
+      data: { userId: user.id },
+      level: 'info'
+    })
     const { data, error } = await supabase.auth.updateUser({ data: { role: pendingRole } })
     if (error) {
       logger.error('[AUTH_STORE] Failed to backfill role metadata from localStorage', { userId: user.id, error })
+      reportSupabaseError('auth_flow.update_role_from_local_storage', error, { userId: user.id, pendingRole }, {
+        feature: 'auth_flow',
+        operation: 'update_role_metadata'
+      })
     } else if (data.user) {
       useAuthStore.getState().setUser(data.user)
       clearPendingRole()
@@ -244,9 +297,19 @@ const ensureUserRoleMetadata = async (user: User | null): Promise<string | null>
   const profileRole = useAuthStore.getState().profile?.role
   if (profileRole) {
     logger.warn('[AUTH_STORE] Backfilling missing role metadata from profile record', { userId: user.id, profileRole })
+    Sentry.addBreadcrumb({
+      category: 'supabase',
+      message: 'auth.updateUser.profileRole',
+      data: { userId: user.id },
+      level: 'info'
+    })
     const { data, error } = await supabase.auth.updateUser({ data: { role: profileRole } })
     if (error) {
       logger.error('[AUTH_STORE] Failed to sync role metadata from profile', { userId: user.id, error })
+      reportSupabaseError('auth_flow.update_role_from_profile', error, { userId: user.id, profileRole }, {
+        feature: 'auth_flow',
+        operation: 'update_role_metadata'
+      })
     } else if (data.user) {
       useAuthStore.getState().setUser(data.user)
       clearPendingRole()
@@ -264,10 +327,13 @@ const runSessionEffects = async (session: Session | null) => {
   setUser(user)
 
   if (user) {
-    await ensureUserRoleMetadata(user)
+    const resolvedRole = await ensureUserRoleMetadata(user)
+    const role = resolvedRole ?? (typeof user.user_metadata?.role === 'string' ? (user.user_metadata.role as string) : null)
+    Sentry.setUser({ id: user.id, role: role ?? undefined })
     await fetchProfile(user.id)
   } else {
     useAuthStore.setState({ profile: null, profileStatus: 'idle', profileFetchedAt: null })
+    Sentry.setUser(null)
   }
 }
 
@@ -311,6 +377,12 @@ export const initializeAuth = () => {
  */
 export const resendVerificationEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
   try {
+    Sentry.addBreadcrumb({
+      category: 'supabase',
+      message: 'auth.resendVerificationEmail',
+      data: { email },
+      level: 'info'
+    })
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: email,
@@ -321,6 +393,10 @@ export const resendVerificationEmail = async (email: string): Promise<{ success:
 
     if (error) {
       console.error('Error resending verification email:', error)
+      reportSupabaseError('auth_flow.resend_verification', error, { email }, {
+        feature: 'auth_flow',
+        operation: 'resend_verification'
+      })
       
       // Handle specific error cases
       if (error.message.includes('rate limit')) {
@@ -337,6 +413,10 @@ export const resendVerificationEmail = async (email: string): Promise<{ success:
     return { success: true }
   } catch (err) {
     console.error('Unexpected error resending verification:', err)
+    reportSupabaseError('auth_flow.resend_verification_unexpected', err, { email }, {
+      feature: 'auth_flow',
+      operation: 'resend_verification'
+    })
     return { success: false, error: 'An unexpected error occurred. Please try again.' }
   }
 }

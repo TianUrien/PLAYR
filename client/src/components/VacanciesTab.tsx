@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { Plus, Edit2, Copy, Archive, MapPin, Calendar, Users, Eye, Rocket, Trash2, Loader2, MoreHorizontal } from 'lucide-react'
+import * as Sentry from '@sentry/react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
@@ -13,6 +14,7 @@ import VacancyDetailView from './VacancyDetailView'
 import PublishConfirmationModal from './PublishConfirmationModal'
 import DeleteVacancyModal from './DeleteVacancyModal'
 import Skeleton, { VacancyCardSkeleton } from './Skeleton'
+import { reportSupabaseError } from '@/lib/sentryHelpers'
 
 type VacancyWithCount = Vacancy & { applicant_count: number | null }
 
@@ -302,11 +304,21 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
 
     // Fetch club details
     try {
-      const { data: clubData } = await supabase
+      Sentry.addBreadcrumb({
+        category: 'supabase',
+        message: 'vacancies.fetch_club_profile',
+        data: { clubId: vacancy.club_id },
+        level: 'info'
+      })
+      const { data: clubData, error } = await supabase
         .from('profiles')
         .select('full_name, avatar_url')
         .eq('id', vacancy.club_id)
         .single()
+
+      if (error) {
+        throw error
+      }
 
       if (clubData) {
         setClubName(clubData.full_name || 'Unknown Club')
@@ -314,6 +326,12 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       }
     } catch (error) {
       console.error('Error fetching club details:', error)
+      reportSupabaseError('vacancies.fetch_club_profile', error, {
+        clubId: vacancy.club_id
+      }, {
+        feature: 'vacancies',
+        operation: 'load_club_profile'
+      })
       setClubName('Unknown Club')
     }
   }
@@ -342,6 +360,12 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
         status: 'draft' as const,
       }
 
+      Sentry.addBreadcrumb({
+        category: 'supabase',
+        message: 'vacancies.duplicate',
+        data: { vacancyId: vacancy.id },
+        level: 'info'
+      })
       const { error } = await supabase
         .from('vacancies')
         .insert(newVacancy as never)
@@ -352,6 +376,12 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       addToast('Vacancy duplicated as draft.', 'success')
     } catch (error) {
       console.error('Error duplicating vacancy:', error)
+      reportSupabaseError('vacancies.duplicate', error, {
+        vacancyId: vacancy.id
+      }, {
+        feature: 'vacancies',
+        operation: 'duplicate_vacancy'
+      })
       addToast('Failed to duplicate vacancy. Please try again.', 'error')
     } finally {
       setActionLoading(null)
@@ -363,6 +393,12 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
     
     setActionLoading({ id: vacancyId, action: 'close' })
     try {
+      Sentry.addBreadcrumb({
+        category: 'supabase',
+        message: 'vacancies.close',
+        data: { vacancyId },
+        level: 'info'
+      })
       const { error } = await supabase
         .from('vacancies')
         .update({ status: 'closed' } as never)
@@ -374,6 +410,12 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       addToast('Vacancy closed.', 'success')
     } catch (error) {
       console.error('Error closing vacancy:', error)
+      reportSupabaseError('vacancies.close', error, {
+        vacancyId
+      }, {
+        feature: 'vacancies',
+        operation: 'close_vacancy'
+      })
       addToast('Failed to close vacancy. Please try again.', 'error')
     } finally {
       setActionLoading(null)
@@ -390,6 +432,12 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
     
   setActionLoading({ id: vacancyToPublish.id, action: 'publish' })
     try {
+      Sentry.addBreadcrumb({
+        category: 'supabase',
+        message: 'vacancies.publish',
+        data: { vacancyId: vacancyToPublish.id },
+        level: 'info'
+      })
       const { error } = await supabase
         .from('vacancies')
         .update({ status: 'open', published_at: new Date().toISOString() } as never)
@@ -405,6 +453,12 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       addToast('Vacancy published successfully!', 'success')
     } catch (error) {
       console.error('Error publishing vacancy:', error)
+      reportSupabaseError('vacancies.publish', error, {
+        vacancyId: vacancyToPublish.id
+      }, {
+        feature: 'vacancies',
+        operation: 'publish_vacancy'
+      })
       addToast('Failed to publish vacancy. Please try again.', 'error')
     } finally {
       setActionLoading(null)
@@ -422,6 +476,12 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
   setActionLoading({ id: vacancyToDelete.id, action: 'delete' })
     try {
       // Delete the vacancy (cascade will handle applications)
+      Sentry.addBreadcrumb({
+        category: 'supabase',
+        message: 'vacancies.delete',
+        data: { vacancyId: vacancyToDelete.id },
+        level: 'warning'
+      })
       const { error } = await supabase
         .from('vacancies')
         .delete()
@@ -438,6 +498,12 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       addToast('Vacancy deleted.', 'success')
     } catch (error) {
       console.error('Error deleting vacancy:', error)
+      reportSupabaseError('vacancies.delete', error, {
+        vacancyId: vacancyToDelete?.id
+      }, {
+        feature: 'vacancies',
+        operation: 'delete_vacancy'
+      })
       addToast('Failed to delete vacancy. Please try again.', 'error')
     } finally {
       setActionLoading(null)

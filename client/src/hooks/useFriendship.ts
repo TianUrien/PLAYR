@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import { useNotificationStore } from '@/lib/notifications'
+import { reportSupabaseError } from '@/lib/sentryHelpers'
 
 type FriendStatus = Database['public']['Enums']['friendship_status']
 type FriendEdge = Database['public']['Views']['profile_friend_edges']['Row']
@@ -52,6 +54,12 @@ export function useFriendship(profileId: string): FriendshipState {
     }
 
     setLoading(true)
+    Sentry.addBreadcrumb({
+      category: 'supabase',
+      message: 'friendships.fetch_edge',
+      data: { viewerId, profileId },
+      level: 'info'
+    })
     const { data, error } = await supabase
       .from('profile_friend_edges')
       .select('*')
@@ -61,6 +69,10 @@ export function useFriendship(profileId: string): FriendshipState {
 
     if (error) {
       console.error('Failed to fetch friendship state', error)
+      reportSupabaseError('friends.fetch_state', error, { viewerId, profileId }, {
+        feature: 'friends',
+        operation: 'fetch_friendship'
+      })
       addToast('Unable to load friendship status.', 'error')
       setRelationship(null)
     } else {
@@ -104,6 +116,12 @@ export function useFriendship(profileId: string): FriendshipState {
 
     setMutating(true)
     try {
+      Sentry.addBreadcrumb({
+        category: 'supabase',
+        message: 'friendships.send_request',
+        data: { viewerId, profileId },
+        level: 'info'
+      })
       const { error } = await supabase
         .from('profile_friendships')
         .upsert(
@@ -122,6 +140,10 @@ export function useFriendship(profileId: string): FriendshipState {
       await fetchRelationship()
     } catch (error) {
       console.error('Failed to send friend request', error)
+      reportSupabaseError('friends.send_request', error, { viewerId, profileId }, {
+        feature: 'friends',
+        operation: 'send_request'
+      })
       addToast('Unable to send friend request. Please try again.', 'error')
     } finally {
       setMutating(false)
@@ -143,6 +165,12 @@ export function useFriendship(profileId: string): FriendshipState {
       setMutating(true)
       try {
         const friendshipId = relationship.id
+        Sentry.addBreadcrumb({
+          category: 'supabase',
+          message: 'friendships.update_status',
+          data: { friendshipId, nextStatus },
+          level: 'info'
+        })
         const { error } = await supabase
           .from('profile_friendships')
           .update({ status: nextStatus })
@@ -154,6 +182,10 @@ export function useFriendship(profileId: string): FriendshipState {
         await fetchRelationship()
       } catch (error) {
         console.error('Failed to update friendship state', error)
+        reportSupabaseError('friends.update_status', error, { friendshipId: relationship?.id, nextStatus }, {
+          feature: 'friends',
+          operation: 'update_friendship'
+        })
         addToast('Unable to update friendship. Please try again.', 'error')
       } finally {
         setMutating(false)

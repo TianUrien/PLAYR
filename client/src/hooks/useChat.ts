@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import { isUniqueViolationError } from '@/lib/supabaseErrors'
 import { monitor } from '@/lib/monitor'
@@ -8,6 +9,7 @@ import { requestCache, generateCacheKey } from '@/lib/requestCache'
 import { useToastStore } from '@/lib/toast'
 import { useUnreadStore } from '@/lib/unread'
 import { loadMessageDraft, saveMessageDraft, clearMessageDraft } from '@/lib/messageDrafts'
+import { reportSupabaseError } from '@/lib/sentryHelpers'
 import type { Message, Conversation, ChatMessageEvent } from '@/types/chat'
 
 const MESSAGES_PAGE_SIZE = 50
@@ -175,6 +177,12 @@ export function useChat({
     setLoading(true)
     const pendingFetch = (async () => {
       try {
+        Sentry.addBreadcrumb({
+          category: 'supabase',
+          message: 'Fetch recent messages',
+          data: { conversationId: conversation.id },
+          level: 'info'
+        })
         const { data, error } = await supabase
           .from('messages')
           .select('*')
@@ -198,6 +206,12 @@ export function useChat({
         return fetched
       } catch (error) {
         logger.error('Error fetching messages:', error)
+        reportSupabaseError('messaging_chat.fetch_messages', error, {
+          conversationId: conversation.id
+        }, {
+          feature: 'messaging_chat',
+          operation: 'fetch_messages'
+        })
         syncMessagesState([])
         setHasMoreMessages(false)
         return [] as Message[]
@@ -231,6 +245,12 @@ export function useChat({
         `and(sent_at.eq.${encodeValue(cursor.sentAt)},id.lt.${encodeValue(cursor.messageId)})`
       ].join(',')
 
+      Sentry.addBreadcrumb({
+        category: 'supabase',
+        message: 'Load older messages',
+        data: { conversationId: conversation.id, cursor },
+        level: 'info'
+      })
       const { data, error } = await supabase
         .from('messages')
         .select('*')
@@ -278,6 +298,13 @@ export function useChat({
       return true
     } catch (error) {
       logger.error('Error loading older messages:', error)
+      reportSupabaseError('messaging_chat.load_older_messages', error, {
+        conversationId: conversation.id,
+        cursor
+      }, {
+        feature: 'messaging_chat',
+        operation: 'load_older_messages'
+      })
       return false
     } finally {
       setIsLoadingMore(false)
@@ -315,6 +342,12 @@ export function useChat({
     )
 
     try {
+      Sentry.addBreadcrumb({
+        category: 'supabase',
+        message: 'Flush pending read receipts',
+        data: { conversationId: conversation.id, pendingCount: pendingIds.length },
+        level: 'info'
+      })
       const { data: updatedRows, error } = await supabase.rpc('mark_conversation_messages_read', {
         p_conversation_id: conversation.id,
         p_before: latestPendingSentAt
@@ -342,6 +375,13 @@ export function useChat({
       }
     } catch (error) {
       logger.error('Error marking messages as read in database:', error)
+      reportSupabaseError('messaging_chat.mark_read', error, {
+        conversationId: conversation.id,
+        pendingMessageIds: pendingIds
+      }, {
+        feature: 'messaging_chat',
+      operation: 'mark_read'
+      })
 
       syncMessagesState(prev =>
         prev.map(msg => (optimisticIds.has(msg.id) ? { ...msg, read_at: null } : msg))
@@ -438,6 +478,12 @@ export function useChat({
     try {
       if (!activeConversationId) {
         try {
+          Sentry.addBreadcrumb({
+            category: 'supabase',
+            message: 'Create conversation for send',
+            data: { currentUserId, otherParticipantId },
+            level: 'info'
+          })
           const result = await withRetry(async () => {
             const response = await supabase
               .from('conversations')
@@ -466,9 +512,22 @@ export function useChat({
         } catch (creationError: unknown) {
           const parsedError = creationError as { code?: string; message?: string; details?: string }
           if (!isUniqueViolationError(parsedError)) {
+            reportSupabaseError('messaging_chat.create_conversation', creationError, {
+              currentUserId,
+              otherParticipantId
+            }, {
+              feature: 'messaging_chat',
+              operation: 'create_conversation'
+            })
             throw creationError
           }
 
+          Sentry.addBreadcrumb({
+            category: 'supabase',
+            message: 'Find existing conversation after unique violation',
+            data: { currentUserId, otherParticipantId },
+            level: 'info'
+          })
           const { data: existingConversation, error: existingConversationError } = await supabase
             .from('conversations')
             .select('*')
@@ -478,6 +537,13 @@ export function useChat({
             .maybeSingle()
 
           if (existingConversationError) {
+            reportSupabaseError('messaging_chat.find_existing_conversation', existingConversationError, {
+              currentUserId,
+              otherParticipantId
+            }, {
+              feature: 'messaging_chat',
+              operation: 'create_conversation'
+            })
             throw existingConversationError
           }
 
@@ -516,6 +582,12 @@ export function useChat({
       await monitor.measure(
         'send_message',
         async () => {
+          Sentry.addBreadcrumb({
+            category: 'supabase',
+            message: 'Insert chat message',
+            data: { conversationId: conversationIdForMetrics, idempotencyKey },
+            level: 'info'
+          })
           const result = await withRetry(async () => {
             const res = await supabase
               .from('messages')
@@ -559,6 +631,15 @@ export function useChat({
       return true
     } catch (error) {
       logger.error('Error sending message:', error)
+      reportSupabaseError('messaging_chat.send_message', error, {
+        conversationId: conversation.id,
+        optimisticId,
+        currentUserId,
+        otherParticipantId: conversation.participant_one_id === currentUserId ? conversation.participant_two_id : conversation.participant_one_id
+      }, {
+        feature: 'messaging_chat',
+        operation: 'send_message'
+      })
       if (optimisticId) {
         const finalOptimisticId = optimisticId
         syncMessagesState(prev => prev.filter(msg => msg.id !== finalOptimisticId))
@@ -567,12 +648,24 @@ export function useChat({
 
       if (conversationCreatedForSend && newlyCreatedConversation) {
         try {
+          Sentry.addBreadcrumb({
+            category: 'supabase',
+            message: 'Rollback conversation after failed send',
+            data: { conversationId: newlyCreatedConversation.id },
+            level: 'warning'
+          })
           await supabase
             .from('conversations')
             .delete()
             .eq('id', newlyCreatedConversation.id)
         } catch (cleanupError) {
           logger.error('Failed to rollback empty conversation after send failure', cleanupError)
+          reportSupabaseError('messaging_chat.cleanup_conversation', cleanupError, {
+            conversationId: newlyCreatedConversation.id
+          }, {
+            feature: 'messaging_chat',
+            operation: 'cleanup_conversation'
+          })
         }
       }
 

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { X } from 'lucide-react'
+import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import type { Vacancy } from '@/lib/supabase'
 import Button from './Button'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
+import { reportSupabaseError } from '@/lib/sentryHelpers'
 
 interface ApplyToVacancyModalProps {
   isOpen: boolean
@@ -78,6 +80,12 @@ export default function ApplyToVacancyModal({
     setError(null)
 
     try {
+      Sentry.addBreadcrumb({
+        category: 'supabase',
+        message: 'vacancies.apply',
+        data: { vacancyId: vacancy.id },
+        level: 'info'
+      })
       const { error: insertError } = await supabase
         .from('vacancy_applications')
         .insert({
@@ -96,6 +104,13 @@ export default function ApplyToVacancyModal({
         } else if (insertError.code === '42501' || insertError.message?.includes('row-level security')) {
           // RLS policy blocked the insert - role mismatch
           console.error('❌ Role mismatch - RLS policy blocked application:', insertError)
+          reportSupabaseError('vacancies.apply_rls_block', insertError, {
+            vacancyId: vacancy.id,
+            viewerRole: user.user_metadata?.role ?? null
+          }, {
+            feature: 'vacancies',
+            operation: 'apply_vacancy'
+          })
           onError?.(vacancy.id)
           
           // Show user-friendly role mismatch message
@@ -109,6 +124,13 @@ export default function ApplyToVacancyModal({
         } else {
           // Real error - revert optimistic update
           console.error('❌ Error applying to vacancy:', insertError)
+          reportSupabaseError('vacancies.apply_error', insertError, {
+            vacancyId: vacancy.id,
+            viewerRole: user.user_metadata?.role ?? null
+          }, {
+            feature: 'vacancies',
+            operation: 'apply_vacancy'
+          })
           onError?.(vacancy.id)
           setError('Failed to submit application. Please try again.')
           addToast('Failed to submit application. Please try again.', 'error')
@@ -122,6 +144,12 @@ export default function ApplyToVacancyModal({
     } catch (err) {
       // Network error - UI already updated
       console.error('❌ Unexpected error:', err)
+      reportSupabaseError('vacancies.apply_exception', err, {
+        vacancyId: vacancy.id
+      }, {
+        feature: 'vacancies',
+        operation: 'apply_vacancy'
+      })
       onError?.(vacancy.id)
       setError('Network error. Please check your connection and try again.')
       addToast('Network error. Please check your connection and try again.', 'error')

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { MessageSquare, MessageSquarePlus, ShieldAlert, UserCheck } from 'lucide-react'
+import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 import type { Profile } from '@/lib/supabase'
@@ -10,6 +11,7 @@ import Avatar from './Avatar'
 import RoleBadge from './RoleBadge'
 import { cn } from '@/lib/utils'
 import ConfirmActionModal from './ConfirmActionModal'
+import { reportSupabaseError } from '@/lib/sentryHelpers'
 
 interface CommentsTabProps {
   profileId: string
@@ -54,6 +56,12 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
   const fetchComments = useCallback(async () => {
     setLoading(true)
 
+    Sentry.addBreadcrumb({
+      category: 'supabase',
+      message: 'comments.fetch_visible',
+      data: { profileId },
+      level: 'info'
+    })
     const { data, error } = await supabase
       .from('profile_comments')
       .select(`
@@ -79,6 +87,10 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
 
     if (error) {
       console.error('Error loading comments', error)
+      reportSupabaseError('comments.fetch_visible', error, { profileId }, {
+        feature: 'comments',
+        operation: 'fetch_comments'
+      })
       addToast('Failed to load comments. Please try again.', 'error')
     } else {
       setComments((data as CommentWithAuthor[]) ?? [])
@@ -88,6 +100,12 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
   }, [addToast, profileId])
 
   const fetchFriendIds = useCallback(async () => {
+    Sentry.addBreadcrumb({
+      category: 'supabase',
+      message: 'comments.fetch_friend_edges',
+      data: { profileId },
+      level: 'info'
+    })
     const { data, error } = await supabase
       .from('profile_friend_edges')
       .select('friend_id')
@@ -96,6 +114,10 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
 
     if (error) {
       console.error('Error loading friend relationships', error)
+      reportSupabaseError('comments.fetch_friend_edges', error, { profileId }, {
+        feature: 'friends',
+        operation: 'fetch_friend_edges'
+      })
       return
     }
 
@@ -155,6 +177,12 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
 
     setCreating(true)
     try {
+      Sentry.addBreadcrumb({
+        category: 'supabase',
+        message: 'comments.insert',
+        data: { profileId, authorId: authProfile.id },
+        level: 'info'
+      })
       const { data, error } = await supabase
         .from('profile_comments')
         .insert({
@@ -183,6 +211,10 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
       addToast('Thanks for sharing feedback!', 'success')
     } catch (error) {
       console.error('Failed to post comment', error)
+      reportSupabaseError('comments.insert', error, { profileId, authorId: authProfile?.id }, {
+        feature: 'comments',
+        operation: 'create_comment'
+      })
       addToast('Unable to post your comment. Please try again.', 'error')
     } finally {
       setCreating(false)
@@ -206,6 +238,12 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
 
     setEditing(true)
     try {
+      Sentry.addBreadcrumb({
+        category: 'supabase',
+        message: 'comments.update',
+        data: { commentId: existingComment.id },
+        level: 'info'
+      })
       const { data, error } = await supabase
         .from('profile_comments')
         .update({ content: trimmed, rating: editRating, status: 'visible' as CommentRow['status'] })
@@ -228,6 +266,10 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
       addToast('Your comment was updated.', 'success')
     } catch (error) {
       console.error('Failed to update comment', error)
+      reportSupabaseError('comments.update', error, { commentId: existingComment?.id }, {
+        feature: 'comments',
+        operation: 'update_comment'
+      })
       addToast('Unable to save your changes. Please try again.', 'error')
     } finally {
       setEditing(false)
@@ -239,6 +281,12 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
     setDeleteLoading(true)
 
     try {
+      Sentry.addBreadcrumb({
+        category: 'supabase',
+        message: 'comments.delete',
+        data: { commentId: existingComment.id },
+        level: 'warning'
+      })
       const { error, data } = await supabase
         .from('profile_comments')
         .delete()
@@ -255,6 +303,10 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
       addToast('Comment deleted.', 'success')
     } catch (error) {
       console.error('Failed to delete comment', error)
+      reportSupabaseError('comments.delete', error, { commentId: existingComment?.id }, {
+        feature: 'comments',
+        operation: 'delete_comment'
+      })
       addToast('Unable to delete your comment. Please try again.', 'error')
     } finally {
       setDeleteLoading(false)

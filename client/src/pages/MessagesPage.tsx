@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Search, MessageCircle } from 'lucide-react'
+import * as Sentry from '@sentry/react'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -13,6 +14,7 @@ import { requestCache } from '@/lib/requestCache'
 import { monitor } from '@/lib/monitor'
 import { logger } from '@/lib/logger'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { reportSupabaseError } from '@/lib/sentryHelpers'
 
 interface ConversationDBRow {
   id: string
@@ -180,6 +182,12 @@ export default function MessagesPage() {
 
             for (let attempt = 0; attempt < maxAttempts; attempt++) {
               try {
+                Sentry.addBreadcrumb({
+                  category: 'supabase',
+                  message: 'fetch_conversations.rpc',
+                  data: { userId: user.id, cursor },
+                  level: 'info'
+                })
                 const result = await supabase.rpc('get_user_conversations', {
                   p_user_id: user.id,
                   p_limit: safeLimit,
@@ -268,6 +276,13 @@ export default function MessagesPage() {
         )
       } catch (error) {
         logger.error('Error fetching conversations:', error)
+        reportSupabaseError('messaging_list.fetch_conversations', error, {
+          userId: user?.id ?? null,
+          cursor
+        }, {
+          feature: 'messaging_list',
+          operation: 'fetch_conversations'
+        })
         setError('Failed to load conversations. Please try again.')
       } finally {
         if (options?.append) {
@@ -356,6 +371,12 @@ export default function MessagesPage() {
 
     const loadPendingParticipant = async () => {
       try {
+        Sentry.addBreadcrumb({
+          category: 'supabase',
+          message: 'load_pending_participant.profile',
+          data: { targetUserId },
+          level: 'info'
+        })
         const { data, error } = await supabase
           .from('profiles')
           .select('id, full_name, username, avatar_url, role')
@@ -403,6 +424,12 @@ export default function MessagesPage() {
       } catch (error) {
         if (isCancelled) return
         logger.error('Unexpected error loading pending conversation', { error, targetUserId })
+        reportSupabaseError('messaging_list.load_pending_participant', error, {
+          targetUserId
+        }, {
+          feature: 'messaging_list',
+          operation: 'load_pending_participant'
+        })
         setPendingConversation(null)
       }
     }
@@ -685,6 +712,12 @@ export default function MessagesPage() {
 
     const hydrateConversation = async () => {
       try {
+        Sentry.addBreadcrumb({
+          category: 'supabase',
+          message: 'hydrate_conversation.lookup',
+          data: { selectedConversationId },
+          level: 'info'
+        })
         const { data: conversationRow, error } = await supabase
           .from('conversations')
           .select('*')
@@ -731,23 +764,47 @@ export default function MessagesPage() {
             : conversationRow.participant_one_id
 
         const [profileResult, lastMessageResult, unreadCountResult] = await Promise.all([
-          supabase
-            .from('profiles')
-            .select('id, full_name, username, avatar_url, role')
-            .eq('id', otherParticipantId)
-            .maybeSingle(),
-          supabase
-            .from('messages')
-            .select('content, sent_at, sender_id')
-            .eq('conversation_id', conversationRow.id)
-            .order('sent_at', { ascending: false })
-            .limit(1),
-          supabase
-            .from('messages')
-            .select('id', { count: 'exact', head: true })
-            .eq('conversation_id', conversationRow.id)
-            .neq('sender_id', user.id)
-            .is('read_at', null)
+          (async () => {
+            Sentry.addBreadcrumb({
+              category: 'supabase',
+              message: 'hydrate_conversation.profile',
+              data: { otherParticipantId },
+              level: 'info'
+            })
+            return supabase
+              .from('profiles')
+              .select('id, full_name, username, avatar_url, role')
+              .eq('id', otherParticipantId)
+              .maybeSingle()
+          })(),
+          (async () => {
+            Sentry.addBreadcrumb({
+              category: 'supabase',
+              message: 'hydrate_conversation.last_message',
+              data: { selectedConversationId },
+              level: 'info'
+            })
+            return supabase
+              .from('messages')
+              .select('content, sent_at, sender_id')
+              .eq('conversation_id', conversationRow.id)
+              .order('sent_at', { ascending: false })
+              .limit(1)
+          })(),
+          (async () => {
+            Sentry.addBreadcrumb({
+              category: 'supabase',
+              message: 'hydrate_conversation.unread_count',
+              data: { selectedConversationId },
+              level: 'info'
+            })
+            return supabase
+              .from('messages')
+              .select('id', { count: 'exact', head: true })
+              .eq('conversation_id', conversationRow.id)
+              .neq('sender_id', user.id)
+              .is('read_at', null)
+          })()
         ])
 
         if (cancelled) return
@@ -789,6 +846,14 @@ export default function MessagesPage() {
       } catch (error) {
         if (cancelled) return
         logger.error('Failed to hydrate conversation from URL', { error, selectedConversationId })
+        reportSupabaseError('messaging_list.hydrate_conversation', error, {
+          selectedConversationId,
+          isPendingConversation,
+          isValidConversationId
+        }, {
+          feature: 'messaging_list',
+          operation: 'hydrate_conversation'
+        })
       }
     }
 

@@ -1,8 +1,10 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { useAuthStore } from '@/lib/auth'
+import { reportSupabaseError } from '@/lib/sentryHelpers'
 
 /**
  * AuthCallback - Handles email verification redirect from Supabase
@@ -134,6 +136,12 @@ export default function AuthCallback() {
       }
 
       try {
+        Sentry.addBreadcrumb({
+          category: 'supabase',
+          message: 'auth.pkce_exchange',
+          data: { hasCode: Boolean(code) },
+          level: 'info'
+        })
         const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
         if (!isMountedRef.current) {
@@ -147,6 +155,10 @@ export default function AuthCallback() {
             logger.debug('[AUTH_CALLBACK] Exchange failed; code verifier present:', !!window.localStorage.getItem(codeVerifierKey))
           }
           logger.error('[AUTH_CALLBACK] Direct code exchange failed', error)
+          reportSupabaseError('auth_flow.pkce_exchange', error, { hasCode: Boolean(code) }, {
+            feature: 'auth_flow',
+            operation: 'pkce_exchange'
+          })
           return false
         }
 
@@ -160,6 +172,10 @@ export default function AuthCallback() {
         return false
       } catch (err) {
         logger.error('[AUTH_CALLBACK] Exception during code exchange', err)
+        reportSupabaseError('auth_flow.pkce_exchange_exception', err, undefined, {
+          feature: 'auth_flow',
+          operation: 'pkce_exchange'
+        })
         return false
       }
     }
@@ -239,7 +255,19 @@ export default function AuthCallback() {
     const checkForSession = async () => {
       try {
         // Check immediately first
-        const { data: { session: immediateSession } } = await supabase.auth.getSession()
+        Sentry.addBreadcrumb({
+          category: 'supabase',
+          message: 'auth.getSession.initial',
+          level: 'info'
+        })
+        const { data: { session: immediateSession }, error: immediateSessionError } = await supabase.auth.getSession()
+        if (immediateSessionError) {
+          logger.error('[AUTH_CALLBACK] Immediate session check failed', immediateSessionError)
+          reportSupabaseError('auth_flow.initial_get_session', immediateSessionError, undefined, {
+            feature: 'auth_flow',
+            operation: 'session_check'
+          })
+        }
         
         if (!isMountedRef.current) return
         
@@ -264,7 +292,20 @@ export default function AuthCallback() {
 
           if (!isMountedRef.current) return
 
-          const { data: { session } } = await supabase.auth.getSession()
+          Sentry.addBreadcrumb({
+            category: 'supabase',
+            message: 'auth.getSession.poll',
+            data: { attempt },
+            level: 'debug'
+          })
+          const { data: { session }, error: pollError } = await supabase.auth.getSession()
+          if (pollError) {
+            logger.warn('[AUTH_CALLBACK] Polling session check failed', { attempt, pollError })
+            reportSupabaseError('auth_flow.poll_get_session', pollError, { attempt }, {
+              feature: 'auth_flow',
+              operation: 'session_check'
+            })
+          }
           
           if (!isMountedRef.current) return
 
@@ -298,6 +339,11 @@ export default function AuthCallback() {
             setStatus('Establishing session...')
           }
 
+          Sentry.addBreadcrumb({
+            category: 'supabase',
+            message: 'auth.setSession.implicit',
+            level: 'info'
+          })
           const { data: { session }, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
@@ -307,6 +353,10 @@ export default function AuthCallback() {
 
           if (sessionError) {
             logger.error('[AUTH_CALLBACK] Error setting session:', sessionError)
+            reportSupabaseError('auth_flow.implicit_set_session', sessionError, undefined, {
+              feature: 'auth_flow',
+              operation: 'session_resume'
+            })
             setError('Failed to establish session. Please try again.')
             return
           }
@@ -327,6 +377,10 @@ export default function AuthCallback() {
       } catch (err) {
         if (isMountedRef.current) {
           logger.error('[AUTH_CALLBACK] Error during session check:', err)
+          reportSupabaseError('auth_flow.session_check_exception', err, undefined, {
+            feature: 'auth_flow',
+            operation: 'session_check'
+          })
           setError('Verification failed. Please try again.')
         }
       }
