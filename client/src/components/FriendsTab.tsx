@@ -169,7 +169,7 @@ export default function FriendsTab({ profileId, readOnly = false, profileRole }:
     return `/players/${slug}`
   }
 
-  const canShowTrustedReferences = profileRole === 'player' || profileRole === 'coach'
+  const canShowTrustedReferences = isOwner || profileRole === 'player' || profileRole === 'coach'
 
   const renderFriendCard = (connection: FriendConnection, showActions = false) => (
     <div key={`${connection.id}-${connection.friend_id}`} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
@@ -306,7 +306,11 @@ export default function FriendsTab({ profileId, readOnly = false, profileRole }:
   return (
     <div className="space-y-8">
       {canShowTrustedReferences && (
-        <TrustedReferencesSection profileId={profileId} friendOptions={referenceFriendOptions} />
+        <TrustedReferencesSection
+          profileId={profileId}
+          friendOptions={referenceFriendOptions}
+          profileRole={profileRole}
+        />
       )}
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">

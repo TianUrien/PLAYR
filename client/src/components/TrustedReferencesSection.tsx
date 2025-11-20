@@ -12,10 +12,12 @@ import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import { useNavigate } from 'react-router-dom'
 import { useNotificationStore } from '@/lib/notifications'
+import type { Profile } from '@/lib/supabase'
 
 interface TrustedReferencesSectionProps {
   profileId: string
   friendOptions: ReferenceFriendOption[]
+  profileRole?: Profile['role'] | null
 }
 
 type ConfirmState = {
@@ -25,7 +27,7 @@ type ConfirmState = {
   description: string
 }
 
-export default function TrustedReferencesSection({ profileId, friendOptions }: TrustedReferencesSectionProps) {
+export default function TrustedReferencesSection({ profileId, friendOptions, profileRole }: TrustedReferencesSectionProps) {
   const {
     loading,
     isOwner,
@@ -52,9 +54,11 @@ export default function TrustedReferencesSection({ profileId, friendOptions }: T
   const { addToast } = useToastStore()
   const navigate = useNavigate()
   const dismissNotification = useNotificationStore((state) => state.dismissBySource)
+  const allowedRequesterRoles: Profile['role'][] = ['player', 'coach']
+  const canCollectReferences = isOwner && !!profileRole && allowedRequesterRoles.includes(profileRole)
 
   const availableFriends = useMemo(() => {
-    if (!isOwner) return []
+    if (!canCollectReferences) return []
     const excludedIds = new Set<string>()
     acceptedReferences.forEach((ref) => {
       if (ref.profile?.id) excludedIds.add(ref.profile.id)
@@ -63,7 +67,7 @@ export default function TrustedReferencesSection({ profileId, friendOptions }: T
       if (ref.profile?.id) excludedIds.add(ref.profile.id)
     })
     return friendOptions.filter((friend) => !excludedIds.has(friend.id))
-  }, [acceptedReferences, pendingReferences, friendOptions, isOwner])
+  }, [acceptedReferences, pendingReferences, friendOptions, canCollectReferences])
 
   const handleMessage = async (targetId: string | null) => {
     if (!targetId) return
@@ -236,9 +240,13 @@ export default function TrustedReferencesSection({ profileId, friendOptions }: T
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Trusted References</p>
           <h2 className="text-2xl font-bold text-gray-900">Key people who vouch for you</h2>
-          <p className="text-sm text-gray-600">{acceptedCount}/{maxReferences} references selected</p>
+          {canCollectReferences ? (
+            <p className="text-sm text-gray-600">{acceptedCount}/{maxReferences} references selected</p>
+          ) : (
+            <p className="text-sm text-gray-600">This role can respond to requests but cannot send new ones.</p>
+          )}
         </div>
-        {isOwner && canAddMore && (
+        {canCollectReferences && canAddMore && (
           <button
             type="button"
             onClick={() => setAddModalOpen(true)}
@@ -250,7 +258,7 @@ export default function TrustedReferencesSection({ profileId, friendOptions }: T
         )}
       </header>
 
-      {pendingReferences.length > 0 && (
+      {canCollectReferences && pendingReferences.length > 0 && (
         <div className="rounded-3xl border border-amber-200 bg-amber-50/80 p-4">
           <div className="flex items-center gap-2 text-amber-800">
             <AlertTriangle className="h-4 w-4" />
@@ -303,6 +311,12 @@ export default function TrustedReferencesSection({ profileId, friendOptions }: T
                 <div className="h-24 rounded-xl bg-gray-200" />
               </div>
             ))
+          ) : acceptedReferences.length === 0 ? (
+            <div className="min-w-full rounded-3xl border border-dashed border-gray-200 bg-white/80 p-5 text-center text-sm text-gray-500">
+              {canCollectReferences
+                ? 'No trusted references yet. Send a request to get started.'
+                : 'You do not have any trusted references selected.'}
+            </div>
           ) : (
             <>
               {acceptedReferences.map((reference) => (
@@ -350,7 +364,7 @@ export default function TrustedReferencesSection({ profileId, friendOptions }: T
                   </div>
                 </article>
               ))}
-              {isOwner && canAddMore && (
+              {canCollectReferences && canAddMore && (
                 <button
                   type="button"
                   onClick={() => setAddModalOpen(true)}
@@ -366,15 +380,17 @@ export default function TrustedReferencesSection({ profileId, friendOptions }: T
         </div>
       </div>
 
-      <div className="hidden rounded-3xl border border-gray-100 bg-gray-50/70 p-5 lg:block">
-        <h4 className="text-sm font-semibold text-gray-800">How references work</h4>
-        <ul className="mt-3 space-y-2 text-sm text-gray-600">
-          <li>• Choose up to five trusted people from your connections.</li>
-          <li>• They must accept your request before appearing here.</li>
-          <li>• References can add endorsements to support your profile.</li>
-          <li>• Clubs and coaches can contact them in one click.</li>
-        </ul>
-      </div>
+      {canCollectReferences && (
+        <div className="hidden rounded-3xl border border-gray-100 bg-gray-50/70 p-5 lg:block">
+          <h4 className="text-sm font-semibold text-gray-800">How references work</h4>
+          <ul className="mt-3 space-y-2 text-sm text-gray-600">
+            <li>• Choose up to five trusted people from your connections.</li>
+            <li>• They must accept your request before appearing here.</li>
+            <li>• References can add endorsements to support your profile.</li>
+            <li>• Clubs and coaches can contact them in one click.</li>
+          </ul>
+        </div>
+      )}
 
       {isOwner && (
         <div className="grid gap-6 lg:grid-cols-2">
@@ -475,14 +491,16 @@ export default function TrustedReferencesSection({ profileId, friendOptions }: T
         </div>
       )}
 
-      <AddReferenceModal
-        isOpen={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        friends={availableFriends}
-        onSubmit={requestReference}
-        isSubmitting={isMutating('request')}
-        remainingSlots={maxReferences - acceptedCount}
-      />
+      {canCollectReferences && (
+        <AddReferenceModal
+          isOpen={addModalOpen}
+          onClose={() => setAddModalOpen(false)}
+          friends={availableFriends}
+          onSubmit={requestReference}
+          isSubmitting={isMutating('request')}
+          remainingSlots={maxReferences - acceptedCount}
+        />
+      )}
 
       <ReferenceEndorsementModal
         isOpen={Boolean(endorsementRequest)}

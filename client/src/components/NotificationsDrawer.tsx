@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { Bell, UserPlus, MessageCircle, X } from 'lucide-react'
+import { Bell, UserPlus, MessageCircle, X, ShieldCheck, Handshake } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Avatar from './Avatar'
 import RoleBadge from './RoleBadge'
@@ -23,6 +23,8 @@ export default function NotificationsDrawer() {
 
   const friendRequests = notifications.filter((notification) => notification.kind === 'friend_request')
   const commentAlerts = notifications.filter((notification) => notification.kind === 'profile_comment')
+  const referenceRequests = notifications.filter((notification) => notification.kind === 'reference_request')
+  const referenceUpdates = notifications.filter((notification) => notification.kind === 'reference_accepted')
 
   useEffect(() => {
     if (isOpen) {
@@ -82,6 +84,12 @@ export default function NotificationsDrawer() {
   const handleCommentNavigate = () => {
     toggleDrawer(false)
     navigate('/dashboard/profile?tab=comments')
+  }
+
+  const handleReferencesNavigate = (section: 'requests' | 'accepted' | null) => {
+    toggleDrawer(false)
+    const target = section ? `/dashboard/profile?tab=friends&section=${section}` : '/dashboard/profile?tab=friends'
+    navigate(target)
   }
 
   const resolvePublicProfilePath = (actor?: (typeof notifications)[number]['actor']) => {
@@ -170,6 +178,88 @@ export default function NotificationsDrawer() {
     )
   }
 
+  const renderReferenceRequest = (notification: (typeof notifications)[number]) => {
+    const actor = notification.actor
+    const fullName = actor.fullName || actor.username || 'PLAYR member'
+    const role = actor.role ?? 'member'
+    const relationship = typeof notification.payload.relationship_type === 'string' ? notification.payload.relationship_type : null
+    const requestNote = typeof notification.payload.request_note === 'string' ? notification.payload.request_note : null
+    const displayTime = formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
+
+    return (
+      <div key={notification.id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex items-start gap-3">
+          <Avatar src={actor.avatarUrl ?? undefined} initials={(fullName || '?').slice(0, 2)} size="md" />
+          <div className="flex-1 space-y-1">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-base font-semibold text-gray-900">{fullName}</p>
+                <RoleBadge role={role} className="mt-0.5" />
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                <Handshake className="h-3.5 w-3.5" />
+                Reference request
+              </span>
+            </div>
+            {relationship && <p className="text-xs text-gray-500">Relationship: {relationship}</p>}
+            {requestNote && (
+              <p className="mt-2 rounded-2xl bg-gray-50 p-3 text-sm text-gray-600">“{requestNote}”</p>
+            )}
+            <p className="text-xs text-gray-500">{displayTime}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => handleReferencesNavigate('requests')}
+          className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-emerald-500/30"
+        >
+          Review request
+        </button>
+      </div>
+    )
+  }
+
+  const renderReferenceAccepted = (notification: (typeof notifications)[number]) => {
+    const actor = notification.actor
+    const fullName = actor.fullName || actor.username || 'PLAYR member'
+    const role = actor.role ?? 'member'
+    const relationship = typeof notification.payload.relationship_type === 'string' ? notification.payload.relationship_type : null
+    const endorsement = typeof notification.payload.endorsement_text === 'string' ? notification.payload.endorsement_text : null
+    const displayTime = formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
+
+    return (
+      <div key={notification.id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex items-start gap-3">
+          <Avatar src={actor.avatarUrl ?? undefined} initials={(fullName || '?').slice(0, 2)} size="md" />
+          <div className="flex-1 space-y-1">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-base font-semibold text-gray-900">{fullName}</p>
+                <RoleBadge role={role} className="mt-0.5" />
+              </div>
+              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Reference accepted
+              </span>
+            </div>
+            {relationship && <p className="text-xs text-gray-500">Relationship: {relationship}</p>}
+            {endorsement && (
+              <p className="mt-2 rounded-2xl bg-gray-50 p-3 text-sm text-gray-600">“{endorsement}”</p>
+            )}
+            <p className="text-xs text-gray-500">{displayTime}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => handleReferencesNavigate('accepted')}
+          className="mt-4 inline-flex w-full items-center justify-center rounded-2xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+        >
+          View references
+        </button>
+      </div>
+    )
+  }
+
   const renderCommentAlert = (notification: (typeof notifications)[number]) => {
     const actor = notification.actor
     const fullName = actor.fullName || actor.username || 'PLAYR member'
@@ -224,6 +314,26 @@ export default function NotificationsDrawer() {
     </div>
   )
 
+  const referenceRequestSection = referenceRequests.length > 0 ? (
+    <div className="space-y-3">
+      {referenceRequests.map((notification) => renderReferenceRequest(notification))}
+    </div>
+  ) : (
+    <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
+      No pending reference requests.
+    </div>
+  )
+
+  const referenceUpdateSection = referenceUpdates.length > 0 ? (
+    <div className="space-y-3">
+      {referenceUpdates.map((notification) => renderReferenceAccepted(notification))}
+    </div>
+  ) : (
+    <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
+      No recent reference updates.
+    </div>
+  )
+
   return (
     <>
       <div
@@ -247,7 +357,7 @@ export default function NotificationsDrawer() {
               </div>
               <div>
                 <p className="text-base font-semibold text-gray-900">Notifications</p>
-                <p className="text-sm text-gray-500">Friend requests and profile comments.</p>
+                <p className="text-sm text-gray-500">Friend requests, references, and profile comments.</p>
               </div>
             </div>
             <button
@@ -263,6 +373,14 @@ export default function NotificationsDrawer() {
               <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-5 md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
                 <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Friend Requests</h3>
                 {friendRequestSection}
+              </section>
+              <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-5 md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Reference Requests</h3>
+                {referenceRequestSection}
+              </section>
+              <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-5 md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Reference Updates</h3>
+                {referenceUpdateSection}
               </section>
               <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-5 md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
                 <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">New Comments</h3>
