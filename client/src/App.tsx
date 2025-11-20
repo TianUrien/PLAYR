@@ -1,7 +1,7 @@
 import { useEffect, useRef, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { initializeAuth } from '@/lib/auth'
-import { ProtectedRoute, ErrorBoundary, Layout } from '@/components'
+import { ProtectedRoute, ErrorBoundary, Layout, SentryTestButton } from '@/components'
 import ToastContainer from '@/components/ToastContainer'
 import { ProfileImagePreviewProvider } from '@/components/ProfileImagePreviewProvider'
 import Landing from '@/pages/Landing'
@@ -62,6 +62,7 @@ function App() {
       <BrowserRouter>
         <ProfileImagePreviewProvider>
           <ToastContainer />
+          <SentryTestButton />
           <ProtectedRoute>
             <Layout>
               <Suspense fallback={<PageLoader />}>

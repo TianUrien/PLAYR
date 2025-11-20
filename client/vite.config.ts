@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 import path from 'path'
 
 // https://vite.dev/config/
@@ -9,6 +10,11 @@ export default defineConfig(({ mode }) => {
   const mergedEnv = { ...rootEnv, ...localEnv }
   const devHost = mergedEnv.VITE_DEV_HOST ?? '0.0.0.0'
   const devPort = Number(mergedEnv.VITE_DEV_PORT ?? '5173')
+  const enableSentryUploads = Boolean(
+    mergedEnv.SENTRY_AUTH_TOKEN &&
+    mergedEnv.SENTRY_ORG &&
+    mergedEnv.SENTRY_PROJECT
+  )
   const manualChunkGroups: Array<{ name: string; pattern: RegExp }> = [
     { name: 'react', pattern: /node_modules\/(react|react-dom|scheduler|shared)\// },
     { name: 'supabase', pattern: /node_modules\/(@supabase|@supabase-cache-helpers)\// },
@@ -19,7 +25,19 @@ export default defineConfig(({ mode }) => {
   ]
 
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      enableSentryUploads &&
+        sentryVitePlugin({
+          authToken: mergedEnv.SENTRY_AUTH_TOKEN,
+          org: mergedEnv.SENTRY_ORG,
+          project: mergedEnv.SENTRY_PROJECT,
+          telemetry: false,
+          sourcemaps: {
+            assets: './dist/assets',
+          },
+        }),
+    ].filter(Boolean),
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
@@ -61,5 +79,16 @@ export default defineConfig(({ mode }) => {
       'process.env.SUPABASE_ANON_KEY': JSON.stringify(mergedEnv.SUPABASE_ANON_KEY ?? ''),
     },
     envPrefix: ['VITE_', 'SUPABASE_'],
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      css: true,
+      setupFiles: ['./src/test/setup.ts'],
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'html'],
+        reportsDirectory: 'coverage'
+      }
+    }
   }
 })

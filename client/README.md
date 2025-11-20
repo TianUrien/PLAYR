@@ -41,3 +41,10 @@ A production-ready React application built with Vite, TypeScript, Tailwind CSS v
 - `npm run preview` - Preview production build
 
 See full documentation in the project wiki.
+
+## 🛡️ Sentry Monitoring
+
+- Sentry is initialized inside `src/main.tsx` and wraps the React root with `Sentry.ErrorBoundary`.
+- Provide `VITE_SENTRY_DSN` in your `.env` file. The environment automatically maps Vite's `MODE` to `development` or `production` for Sentry.
+- Optional source map uploads require `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` in `.env`. The Vite plugin only runs when all three are present.
+- A dev-only "Throw Sentry Test Error" button is injected via `SentryTestButton` (rendered from `App.tsx`). Click it after running `npm run dev` to send a manual event and verify integration.
