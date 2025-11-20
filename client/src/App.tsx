@@ -57,12 +57,14 @@ function App() {
     }
   }, [])
 
+  const isProduction = import.meta.env.MODE === 'production' || import.meta.env.VITE_ENVIRONMENT === 'production'
+
   return (
     <ErrorBoundary>
       <BrowserRouter>
         <ProfileImagePreviewProvider>
           <ToastContainer />
-          <SentryTestButton />
+          {!isProduction && <SentryTestButton />}
           <ProtectedRoute>
             <Layout>
               <Suspense fallback={<PageLoader />}>
