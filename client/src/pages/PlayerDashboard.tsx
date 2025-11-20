@@ -82,7 +82,8 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
     }
 
     const ids = claimCommentHighlights()
-    if (ids.length > 0) {
+    const hasNewHighlights = ids.some((id) => !highlightedComments.has(id))
+    if (hasNewHighlights) {
       setHighlightedComments((prev) => {
         const next = new Set(prev)
         ids.forEach((id) => next.add(id))
