@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Building2, Briefcase } from 'lucide-react'
+import * as Sentry from '@sentry/react'
 import { Input, Button } from '@/components'
 import { supabase } from '@/lib/supabase'
 import { getAuthRedirectUrl } from '@/lib/siteUrl'
@@ -61,6 +62,17 @@ export default function SignUp() {
       })
 
       if (signUpError) {
+        Sentry.captureException(signUpError, {
+          tags: { feature: 'auth_flow' },
+          extra: {
+            userId: authData?.user?.id ?? null,
+            payload: {
+              role: selectedRole,
+              emailDomain: formData.email.split('@')[1] ?? null,
+            },
+            sourceComponent: 'SignUp.handleSubmit.supabaseSignUp',
+          },
+        })
         // Handle "user already exists" error with helpful message
         if (signUpError.message.includes('already registered') || 
             signUpError.message.includes('already exists') ||
@@ -89,6 +101,17 @@ export default function SignUp() {
       navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`)
 
     } catch (err) {
+      Sentry.captureException(err, {
+        tags: { feature: 'auth_flow' },
+        extra: {
+          userId: null,
+          payload: {
+            role: selectedRole,
+            emailDomain: formData.email.split('@')[1] ?? null,
+          },
+          sourceComponent: 'SignUp.handleSubmit.catch',
+        },
+      })
       logger.error('Sign up error:', err)
       setError(err instanceof Error ? err.message : 'Failed to create account')
     } finally {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
+import * as Sentry from '@sentry/react'
 import { Input, Button } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
@@ -13,6 +14,22 @@ export default function Landing() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const captureAuthFlowError = (
+    err: unknown,
+    payload: Record<string, unknown>,
+    sourceComponent: string,
+    explicitUserId?: string | null
+  ) => {
+    Sentry.captureException(err, {
+      tags: { feature: 'auth_flow' },
+      extra: {
+        userId: explicitUserId ?? user?.id ?? null,
+        payload,
+        sourceComponent,
+      },
+    })
+  }
 
   // Redirect if already logged in
   useEffect(() => {
@@ -33,6 +50,10 @@ export default function Landing() {
       })
 
       if (signInError) {
+        captureAuthFlowError(signInError, {
+          stage: 'signInWithPassword',
+          emailDomain: email.split('@')[1] ?? null,
+        }, 'Landing.handleSignIn.supabaseSignIn', null)
         // Check if error is due to unverified email
         if (signInError.message.includes('Email not confirmed')) {
           // Redirect to verification page
@@ -65,6 +86,10 @@ export default function Landing() {
 
       // Other profile errors - don't sign out, let user retry
       if (profileError) {
+        captureAuthFlowError(profileError, {
+          stage: 'profileFetch',
+          emailDomain: email.split('@')[1] ?? null,
+        }, 'Landing.handleSignIn.profileFetch', data.user.id)
         console.error('[SIGN IN] Error fetching profile:', profileError)
         setError('Could not load your profile. Please try again or contact support if this persists.')
         setLoading(false)
@@ -90,6 +115,10 @@ export default function Landing() {
       navigate('/dashboard/profile')
 
     } catch (err) {
+      captureAuthFlowError(err, {
+        stage: 'Landing.handleSignIn.catch',
+        emailDomain: email.split('@')[1] ?? null,
+      }, 'Landing.handleSignIn.catch', null)
       console.error('[SIGN IN] Sign in error:', err)
       setError(err instanceof Error ? err.message : 'Sign in failed')
     } finally {

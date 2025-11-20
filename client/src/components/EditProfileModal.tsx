@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { X, Upload, Loader2 } from 'lucide-react'
+import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
@@ -73,6 +74,17 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
   const activeProfileId = profile?.id ?? null
 
   const [formData, setFormData] = useState<ProfileFormData>(() => buildInitialFormData(profile))
+
+  const captureOnboardingError = (error: unknown, payload: Record<string, unknown>, sourceComponent: string) => {
+    Sentry.captureException(error, {
+      tags: { feature: 'onboarding_profile' },
+      extra: {
+        userId: profile?.id ?? null,
+        payload,
+        sourceComponent,
+      },
+    })
+  }
 
   const handleDismiss = useCallback(() => {
     if (loading) {
@@ -165,7 +177,13 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
         .from('avatars')
         .upload(filePath, optimizedFile, { upsert: true });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        captureOnboardingError(uploadError, {
+          profileId: profile.id,
+          fileSizeBytes: optimizedFile.size,
+        }, 'EditProfileModal.handleAvatarUpload.upload')
+        throw uploadError;
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
@@ -178,6 +196,10 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       }
       logger.info('Avatar uploaded successfully')
     } catch (error) {
+      captureOnboardingError(error, {
+        profileId: profile.id,
+        stage: 'avatarUploadCatch',
+      }, 'EditProfileModal.handleAvatarUpload.catch')
       logger.error('Error uploading avatar:', error);
       setError('We couldn’t upload this image. Please use PNG or JPG up to 5MB.');
     }
@@ -242,6 +264,8 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
     // Optimistically close modal so updated values are visible on dashboard right away
     onClose()
     
+    const updatedFields = Object.keys(optimisticUpdate)
+
     try {
       logger.debug('Attempting to update profile with data:', optimisticUpdate)
       logger.debug('Profile ID:', profile.id)
@@ -259,6 +283,10 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       logger.debug('Update error:', updateError)
 
       if (updateError) {
+        captureOnboardingError(updateError, {
+          profileId,
+          updatedFields,
+        }, 'EditProfileModal.handleSubmit.updateProfile')
         logger.error('Supabase update error details:', {
           message: updateError.message,
           details: updateError.details,
@@ -276,6 +304,11 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       await invalidateProfile({ userId: profileId, reason: 'profile-updated' })
       clearProfileDraft(profileId, role)
     } catch (err) {
+      captureOnboardingError(err, {
+        profileId,
+        updatedFields,
+        stage: 'handleSubmitCatch',
+      }, 'EditProfileModal.handleSubmit.catch')
       logger.error('Profile update error:', err)
       logger.error('Error type:', typeof err)
       logger.error('Error object:', JSON.stringify(err, null, 2))

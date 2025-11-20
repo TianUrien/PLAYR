@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { User, MapPin, Globe, Calendar, Building2, Camera } from 'lucide-react'
+import * as Sentry from '@sentry/react'
 import { Input, Button } from '@/components'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
@@ -73,6 +74,17 @@ export default function CompleteProfile() {
   // Use profile data from auth store - no need to fetch again
   const userRole = (profile?.role as UserRole | null) ?? fallbackRole ?? (user?.user_metadata?.role as UserRole | undefined) ?? null
   const contactEmailFallback = profile?.contact_email ?? profile?.email ?? user?.email ?? fallbackEmail ?? ''
+
+  const captureOnboardingError = (error: unknown, payload: Record<string, unknown>, sourceComponent: string) => {
+    Sentry.captureException(error, {
+      tags: { feature: 'onboarding_profile' },
+      extra: {
+        userId: user?.id ?? null,
+        payload,
+        sourceComponent,
+      },
+    })
+  }
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -196,7 +208,14 @@ export default function CompleteProfile() {
         .from('avatars')
         .upload(filePath, optimizedFile, { upsert: true })
 
-      if (uploadError) throw uploadError
+      if (uploadError) {
+        captureOnboardingError(uploadError, {
+          role: userRole,
+          hasUser: Boolean(user?.id),
+          fileSizeBytes: optimizedFile.size,
+        }, 'CompleteProfile.handleAvatarUpload.upload')
+        throw uploadError
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
@@ -209,6 +228,11 @@ export default function CompleteProfile() {
       }
       logger.info('Avatar uploaded successfully')
     } catch (err) {
+      captureOnboardingError(err, {
+        stage: 'avatarUploadCatch',
+        role: userRole,
+        hasUser: Boolean(user?.id),
+      }, 'CompleteProfile.handleAvatarUpload.catch')
       logger.error('Error uploading avatar:', err)
       setError('We couldn’t upload this image. Please use PNG or JPG up to 5MB.')
     } finally {
@@ -224,6 +248,7 @@ export default function CompleteProfile() {
       return
     }
     setLoading(true)
+    let lastUpdatedFields: string[] = []
 
     try {
       if (!user) {
@@ -278,6 +303,7 @@ export default function CompleteProfile() {
       }
 
       logger.debug('Updating profile with data:', updateData)
+      lastUpdatedFields = Object.keys(updateData)
 
       // Update profile
       const { data: updatedProfile, error: updateError } = await supabase
@@ -288,6 +314,10 @@ export default function CompleteProfile() {
         .single()
 
       if (updateError) {
+        captureOnboardingError(updateError, {
+          role: userRole,
+          updatedFields: lastUpdatedFields,
+        }, 'CompleteProfile.handleSubmit.updateProfile')
         logger.error('Error updating profile:', updateError)
         throw new Error(`Failed to update profile: ${updateError.message}`)
       }
@@ -306,6 +336,12 @@ export default function CompleteProfile() {
         .single()
 
       if (fetchError || !verifiedProfile) {
+        if (fetchError) {
+          captureOnboardingError(fetchError, {
+            role: userRole,
+            stage: 'verifyProfileAfterUpdate',
+          }, 'CompleteProfile.handleSubmit.verifyProfileFetch')
+        }
         logger.error('Error fetching updated profile:', fetchError)
         throw new Error('Profile updated but could not verify. Please refresh the page.')
       }
@@ -319,6 +355,11 @@ export default function CompleteProfile() {
       navigate('/dashboard/profile', { replace: true })
 
     } catch (err) {
+      captureOnboardingError(err, {
+        stage: 'handleSubmitCatch',
+        role: userRole,
+        updatedFields: lastUpdatedFields,
+      }, 'CompleteProfile.handleSubmit.catch')
       logger.error('Complete profile error:', err)
       setError(err instanceof Error ? err.message : 'Failed to complete profile. Please try again.')
     } finally {
