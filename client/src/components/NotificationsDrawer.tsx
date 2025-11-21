@@ -1,30 +1,80 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { Bell, UserPlus, MessageCircle, X, ShieldCheck, Handshake } from 'lucide-react'
+import { Bell, MoreHorizontal, Search } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Avatar from './Avatar'
-import RoleBadge from './RoleBadge'
 import { useNotificationStore } from '@/lib/notifications'
 import { useToastStore } from '@/lib/toast'
 import { cn } from '@/lib/utils'
+import type { NotificationKind, NotificationRecord } from '@/lib/api/notifications'
+import { getNotificationConfig, resolveNotificationRoute } from './notifications/config'
+
+const FRIEND_REQUEST_KINDS = new Set<NotificationKind>(['friend_request_received'])
+const QUICK_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'unread', label: 'Unread' },
+] as const
+
+type QuickFilter = (typeof QUICK_FILTERS)[number]['id']
+
+const formatRelativeTime = (timestamp: string) =>
+  formatDistanceToNow(new Date(timestamp), { addSuffix: true })
 
 export default function NotificationsDrawer() {
   const navigate = useNavigate()
   const location = useLocation()
   const locationKey = `${location.pathname}${location.search}`
   const lastLocationKey = useRef(locationKey)
+  const [activeFilter, setActiveFilter] = useState<QuickFilter>('all')
   const { addToast } = useToastStore()
   const isOpen = useNotificationStore((state) => state.isDrawerOpen)
   const toggleDrawer = useNotificationStore((state) => state.toggleDrawer)
   const notifications = useNotificationStore((state) => state.notifications)
   const markAllRead = useNotificationStore((state) => state.markAllRead)
+  const refreshNotifications = useNotificationStore((state) => state.refresh)
   const respondToFriendRequest = useNotificationStore((state) => state.respondToFriendRequest)
   const pendingFriendshipId = useNotificationStore((state) => state.pendingFriendshipId)
 
-  const friendRequests = notifications.filter((notification) => notification.kind === 'friend_request')
-  const commentAlerts = notifications.filter((notification) => notification.kind === 'profile_comment')
-  const referenceRequests = notifications.filter((notification) => notification.kind === 'reference_request')
-  const referenceUpdates = notifications.filter((notification) => notification.kind === 'reference_accepted')
+  const sortedNotifications = useMemo(() => {
+    return notifications
+      .filter((notification) => !notification.clearedAt)
+      .slice()
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+  }, [notifications])
+
+  const unreadNotifications = useMemo(
+    () => sortedNotifications.filter((notification) => !notification.readAt),
+    [sortedNotifications]
+  )
+
+  const earlierNotifications = useMemo(
+    () => sortedNotifications.filter((notification) => Boolean(notification.readAt)),
+    [sortedNotifications]
+  )
+
+  const sectionedNotifications = useMemo(() => {
+    if (activeFilter === 'unread') {
+      return [
+        {
+          title: 'New',
+          data: unreadNotifications,
+        },
+      ]
+    }
+
+    return [
+      { title: 'New', data: unreadNotifications },
+      { title: 'Earlier', data: earlierNotifications },
+    ]
+  }, [activeFilter, unreadNotifications, earlierNotifications])
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+    void refreshNotifications({ bypassCache: true })
+  }, [isOpen, refreshNotifications])
 
   useEffect(() => {
     if (isOpen) {
@@ -81,18 +131,7 @@ export default function NotificationsDrawer() {
     )
   }
 
-  const handleCommentNavigate = () => {
-    toggleDrawer(false)
-    navigate('/dashboard/profile?tab=comments')
-  }
-
-  const handleReferencesNavigate = (section: 'requests' | 'accepted' | null) => {
-    toggleDrawer(false)
-    const target = section ? `/dashboard/profile?tab=friends&section=${section}` : '/dashboard/profile?tab=friends'
-    navigate(target)
-  }
-
-  const resolvePublicProfilePath = (actor?: (typeof notifications)[number]['actor']) => {
+  const resolvePublicProfilePath = (actor?: NotificationRecord['actor']) => {
     if (!actor?.id) {
       return null
     }
@@ -101,238 +140,146 @@ export default function NotificationsDrawer() {
     return role === 'club' ? `/clubs/id/${actor.id}` : `/players/id/${actor.id}`
   }
 
-  const renderFriendRequest = (notification: (typeof notifications)[number]) => {
-    const actor = notification.actor
-    const fullName = actor.fullName || actor.username || 'PLAYR member'
-    const role = actor.role ?? 'member'
-    const location = actor.baseLocation
-    const displayTime = formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
+  const navigateToRoute = (route: string | null) => {
+    if (!route) {
+      return
+    }
+    toggleDrawer(false)
+    navigate(route)
+  }
+
+  const handleNotificationNavigate = (notification: NotificationRecord) => {
+    const route = resolveNotificationRoute(notification)
+    navigateToRoute(route)
+  }
+
+  const renderFriendRequestActions = (notification: NotificationRecord) => {
+    if (!FRIEND_REQUEST_KINDS.has(notification.kind)) {
+      return null
+    }
 
     const friendshipId = notification.sourceEntityId
-    const profilePath = resolvePublicProfilePath(actor)
-    const navigateToProfile = () => {
-      if (!profilePath) {
+    const disabled = !friendshipId || pendingFriendshipId === friendshipId
+
+    const onActionClick = (action: 'accept' | 'decline') => (event: ReactMouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation()
+      if (!friendshipId) {
         return
       }
-      toggleDrawer(false)
-      navigate(profilePath)
+      void handleFriendRequest(friendshipId, action)
     }
+
+    return (
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onActionClick('accept')}
+          disabled={disabled}
+          className="inline-flex flex-1 items-center justify-center rounded-full bg-[#0866FF] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0a58d0] disabled:opacity-60 sm:flex-none"
+        >
+          Confirm
+        </button>
+        <button
+          type="button"
+          onClick={onActionClick('decline')}
+          disabled={disabled}
+          className="inline-flex flex-1 items-center justify-center rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-60 sm:flex-none"
+        >
+          Remove
+        </button>
+      </div>
+    )
+  }
+
+  const renderNotificationItem = (notification: NotificationRecord) => {
+    const config = getNotificationConfig(notification)
+    const Icon = config.icon
+    const actor = notification.actor
+    const fullName = actor.fullName || actor.username || 'Miembro de PLAYR'
+    const initials = fullName.slice(0, 2).toUpperCase()
+    const displayTime = formatRelativeTime(notification.createdAt)
+    const description = config.getDescription?.(notification)
+    const isUnread = !notification.readAt
+    const profileRoute = resolvePublicProfilePath(actor)
+
+    const onAvatarClick = (event: ReactMouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation()
+      navigateToRoute(profileRoute)
+    }
+
+    const onCardClick = () => {
+      handleNotificationNavigate(notification)
+    }
+
+    const onCardKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        handleNotificationNavigate(notification)
+      }
+    }
+
+    const targetRoute = resolveNotificationRoute(notification)
+    const isInteractive = Boolean(targetRoute)
+    const interactiveProps = isInteractive
+      ? {
+          role: 'button' as const,
+          tabIndex: 0,
+          onClick: onCardClick,
+          onKeyDown: onCardKeyDown,
+        }
+      : {}
 
     return (
       <div
         key={notification.id}
-        className="flex flex-col gap-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:p-5"
+        {...interactiveProps}
+        className={cn(
+          'group relative flex gap-3 rounded-3xl border border-transparent bg-white p-4 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0866FF]/40 hover:shadow-md',
+          isUnread && 'border-[#c9dafc] bg-[#eaf3ff]'
+        )}
       >
-        <div className="flex items-start gap-3 sm:items-center">
-          <button
-            type="button"
-            onClick={navigateToProfile}
-            disabled={!profilePath}
-            aria-label={`View ${fullName} profile`}
-            className="group flex-shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed"
-          >
-            <Avatar
-              src={actor.avatarUrl ?? undefined}
-              initials={(fullName || '?').slice(0, 2)}
-              size="md"
-              className="transition group-hover:scale-[1.02]"
-            />
-          </button>
-          <div className="space-y-1">
-            <button
-              type="button"
-              onClick={navigateToProfile}
-              disabled={!profilePath}
-              className="text-left text-base font-semibold text-gray-900 transition hover:text-indigo-600 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:text-gray-400"
-            >
-              {fullName}
-            </button>
-            <RoleBadge role={role} className="mt-0.5" />
-            {location && <p className="text-xs text-gray-500">{location}</p>}
-            <div className="text-xs text-gray-500">{displayTime}</div>
-          </div>
-        </div>
-        <div className="flex flex-col gap-3 sm:items-end">
-          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
-            <UserPlus className="h-3.5 w-3.5" />
-            Friend request
+        <button
+          type="button"
+          onClick={profileRoute ? onAvatarClick : undefined}
+          disabled={!profileRoute}
+          className="relative h-fit focus-visible:outline-none"
+          aria-label={profileRoute ? `Ver perfil de ${fullName}` : undefined}
+        >
+          <Avatar src={actor.avatarUrl ?? undefined} initials={initials} size="lg" className="shadow-sm" />
+          <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-white text-[#0866FF] shadow-md">
+            <Icon className="h-3.5 w-3.5" />
           </span>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <button
-              onClick={() => friendshipId && handleFriendRequest(friendshipId, 'accept')}
-              disabled={!friendshipId || pendingFriendshipId === friendshipId}
-              className="inline-flex flex-1 items-center justify-center rounded-xl bg-[#6366f1] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4f46e5] disabled:opacity-60 sm:min-w-[120px]"
-            >
-              Accept
-            </button>
-            <button
-              onClick={() => friendshipId && handleFriendRequest(friendshipId, 'decline')}
-              disabled={!friendshipId || pendingFriendshipId === friendshipId}
-              className="inline-flex flex-1 items-center justify-center rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-60 sm:min-w-[120px]"
-            >
-              Decline
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const renderReferenceRequest = (notification: (typeof notifications)[number]) => {
-    const actor = notification.actor
-    const fullName = actor.fullName || actor.username || 'PLAYR member'
-    const role = actor.role ?? 'member'
-    const relationship = typeof notification.payload.relationship_type === 'string' ? notification.payload.relationship_type : null
-    const requestNote = typeof notification.payload.request_note === 'string' ? notification.payload.request_note : null
-    const displayTime = formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
-
-    return (
-      <div key={notification.id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex items-start gap-3">
-          <Avatar src={actor.avatarUrl ?? undefined} initials={(fullName || '?').slice(0, 2)} size="md" />
-          <div className="flex-1 space-y-1">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-base font-semibold text-gray-900">{fullName}</p>
-                <RoleBadge role={role} className="mt-0.5" />
-              </div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                <Handshake className="h-3.5 w-3.5" />
-                Reference request
-              </span>
-            </div>
-            {relationship && <p className="text-xs text-gray-500">Relationship: {relationship}</p>}
-            {requestNote && (
-              <p className="mt-2 rounded-2xl bg-gray-50 p-3 text-sm text-gray-600">“{requestNote}”</p>
-            )}
-            <p className="text-xs text-gray-500">{displayTime}</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => handleReferencesNavigate('requests')}
-          className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-emerald-500/30"
-        >
-          Review request
         </button>
+        <div className="flex-1">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-[15px] font-semibold leading-snug text-gray-900">{config.getTitle(notification)}</p>
+              {description && <p className="text-sm text-gray-600">{description}</p>}
+              <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                <span className="font-medium">{displayTime}</span>
+                <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#0866FF]" />
+                  {config.badgeText}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              {isUnread && <span className="mt-1 inline-block h-2.5 w-2.5 rounded-full bg-[#0866FF]" />}
+              <button
+                type="button"
+                onClick={(event) => event.stopPropagation()}
+                className="rounded-full p-2 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                aria-label="More options"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+          {renderFriendRequestActions(notification)}
+        </div>
       </div>
     )
   }
-
-  const renderReferenceAccepted = (notification: (typeof notifications)[number]) => {
-    const actor = notification.actor
-    const fullName = actor.fullName || actor.username || 'PLAYR member'
-    const role = actor.role ?? 'member'
-    const relationship = typeof notification.payload.relationship_type === 'string' ? notification.payload.relationship_type : null
-    const endorsement = typeof notification.payload.endorsement_text === 'string' ? notification.payload.endorsement_text : null
-    const displayTime = formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
-
-    return (
-      <div key={notification.id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex items-start gap-3">
-          <Avatar src={actor.avatarUrl ?? undefined} initials={(fullName || '?').slice(0, 2)} size="md" />
-          <div className="flex-1 space-y-1">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-base font-semibold text-gray-900">{fullName}</p>
-                <RoleBadge role={role} className="mt-0.5" />
-              </div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Reference accepted
-              </span>
-            </div>
-            {relationship && <p className="text-xs text-gray-500">Relationship: {relationship}</p>}
-            {endorsement && (
-              <p className="mt-2 rounded-2xl bg-gray-50 p-3 text-sm text-gray-600">“{endorsement}”</p>
-            )}
-            <p className="text-xs text-gray-500">{displayTime}</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => handleReferencesNavigate('accepted')}
-          className="mt-4 inline-flex w-full items-center justify-center rounded-2xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-        >
-          View references
-        </button>
-      </div>
-    )
-  }
-
-  const renderCommentAlert = (notification: (typeof notifications)[number]) => {
-    const actor = notification.actor
-    const fullName = actor.fullName || actor.username || 'PLAYR member'
-    const role = actor.role ?? 'member'
-    const snippet = typeof notification.payload.snippet === 'string' ? notification.payload.snippet : ''
-    const displayTime = formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
-
-    return (
-      <button
-        key={notification.id}
-        onClick={handleCommentNavigate}
-        className="w-full rounded-2xl border border-gray-100 bg-white p-4 text-left shadow-sm transition hover:border-indigo-200 hover:shadow-md sm:p-5"
-      >
-        <div className="flex items-start gap-3">
-          <Avatar src={actor.avatarUrl ?? undefined} initials={(fullName || '?').slice(0, 2)} size="md" />
-          <div className="flex-1">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-base font-semibold text-gray-900">{fullName}</p>
-                <RoleBadge role={role} className="mt-0.5" />
-              </div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                <MessageCircle className="h-3.5 w-3.5" />
-                Commented
-              </span>
-            </div>
-            <p className="mt-2 text-sm text-gray-700 line-clamp-3 sm:line-clamp-2">{snippet}</p>
-            <p className="mt-2 text-xs text-gray-500">{displayTime}</p>
-          </div>
-        </div>
-      </button>
-    )
-  }
-
-  const friendRequestSection = friendRequests.length > 0 ? (
-    <div className="space-y-3">
-      {friendRequests.map((notification) => renderFriendRequest(notification))}
-    </div>
-  ) : (
-    <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
-      No pending friend requests.
-    </div>
-  )
-
-  const commentSection = commentAlerts.length > 0 ? (
-    <div className="space-y-3">
-      {commentAlerts.map((notification) => renderCommentAlert(notification))}
-    </div>
-  ) : (
-    <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
-      No new profile comments.
-    </div>
-  )
-
-  const referenceRequestSection = referenceRequests.length > 0 ? (
-    <div className="space-y-3">
-      {referenceRequests.map((notification) => renderReferenceRequest(notification))}
-    </div>
-  ) : (
-    <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
-      No pending reference requests.
-    </div>
-  )
-
-  const referenceUpdateSection = referenceUpdates.length > 0 ? (
-    <div className="space-y-3">
-      {referenceUpdates.map((notification) => renderReferenceAccepted(notification))}
-    </div>
-  ) : (
-    <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500">
-      No recent reference updates.
-    </div>
-  )
 
   return (
     <>
@@ -349,44 +296,82 @@ export default function NotificationsDrawer() {
           isOpen ? 'translate-x-0' : 'translate-x-full'
         )}
       >
-        <div className="flex h-full w-full flex-col">
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 sm:px-6">
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-indigo-50 p-2 text-indigo-600">
-                <Bell className="h-5 w-5" />
-              </div>
+        <div className="flex h-full w-full flex-col bg-[#f0f2f5]">
+          <header className="border-b border-gray-100 bg-white px-4 py-4 sm:px-6">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-base font-semibold text-gray-900">Notifications</p>
-                <p className="text-sm text-gray-500">Friend requests, references, and profile comments.</p>
+                <p className="text-2xl font-semibold text-gray-900">Notifications</p>
+                <p className="text-sm text-gray-500">Stay on top of your network.</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded-full bg-gray-100 p-2 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700"
+                  aria-label="Search notifications"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <Search className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  className="rounded-full bg-gray-100 p-2 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700"
+                  aria-label="Notification settings"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <Bell className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleDrawer(false)}
+                  className="rounded-full bg-gray-100 p-2 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700"
+                  aria-label="Close notifications"
+                >
+                  ✕
+                </button>
               </div>
             </div>
-            <button
-              onClick={() => toggleDrawer(false)}
-              className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-700"
-              aria-label="Close notifications"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <div className="flex-1 overflow-y-auto bg-gray-50 px-4 py-5 sm:px-6 sm:py-6 md:bg-white">
-            <div className="space-y-6">
-              <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-5 md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Friend Requests</h3>
-                {friendRequestSection}
-              </section>
-              <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-5 md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Reference Requests</h3>
-                {referenceRequestSection}
-              </section>
-              <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-5 md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Reference Updates</h3>
-                {referenceUpdateSection}
-              </section>
-              <section className="rounded-3xl bg-white p-4 shadow-sm sm:p-5 md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">New Comments</h3>
-                {commentSection}
-              </section>
+            <div className="mt-4 flex gap-2">
+              {QUICK_FILTERS.map((filter) => (
+                <button
+                  key={filter.id}
+                  type="button"
+                  onClick={() => setActiveFilter(filter.id)}
+                  className={cn(
+                    'rounded-full px-4 py-1.5 text-sm font-semibold transition',
+                    activeFilter === filter.id
+                      ? 'bg-[#0866FF] text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  )}
+                >
+                  {filter.label}
+                </button>
+              ))}
             </div>
+          </header>
+          <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+            {sectionedNotifications.map((section) => (
+              <div key={section.title} className="mb-6 last:mb-0">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  {section.title}
+                </p>
+                {section.data.length > 0 ? (
+                  <div className="space-y-3">
+                    {section.data.map((notification) => renderNotificationItem(notification))}
+                  </div>
+                ) : (
+                  <div className="rounded-3xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+                    {activeFilter === 'unread'
+                      ? 'You have no new notifications right now.'
+                      : "You're all caught up. We'll let you know when something new arrives."}
+                  </div>
+                )}
+              </div>
+            ))}
+            {sortedNotifications.length === 0 && (
+              <div className="rounded-3xl bg-white p-6 text-center text-sm text-gray-500 shadow-sm">
+                You're all caught up. We'll let you know when something happens.
+              </div>
+            )}
           </div>
         </div>
       </aside>
