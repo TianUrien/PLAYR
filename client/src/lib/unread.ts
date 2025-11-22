@@ -15,7 +15,6 @@ interface UnreadState {
   channel: RealtimeChannel | null
   initialize: (userId: string | null) => Promise<void>
   refresh: (options?: RefreshOptions) => Promise<number>
-  adjust: (delta: number) => void
   reset: () => void
 }
 
@@ -65,10 +64,6 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
       supabase.removeChannel(channel)
     }
     set({ count: 0, loading: false, userId: null, channel: null })
-  },
-
-  adjust: (delta: number) => {
-    set(state => ({ count: Math.max(0, state.count + delta) }))
   },
 
   refresh: async (options?: RefreshOptions) => {

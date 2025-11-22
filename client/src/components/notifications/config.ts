@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   UserCheck,
   UserPlus,
+  UserX,
 } from 'lucide-react'
 import type { NotificationKind, NotificationRecord } from '@/lib/api/notifications'
 
@@ -118,6 +119,14 @@ const notificationConfigs: Partial<Record<NotificationKind, NotificationRenderCo
     getTitle: (notification) => `${getActorName(notification)} accepted your reference request`,
     getDescription: (notification) => getMetadataString(notification, 'endorsement_text'),
     getRoute: () => referenceAcceptedRoute,
+  },
+  reference_request_rejected: {
+    icon: UserX,
+    badgeText: 'Reference update',
+    accentClassName: 'bg-rose-50 text-rose-600',
+    getTitle: (notification) => `${getActorName(notification)} declined your reference request`,
+    getDescription: (notification) => getMetadataString(notification, 'relationship_type'),
+    getRoute: () => referencesRoute,
   },
   reference_updated: {
     icon: RefreshCcw,

@@ -25,6 +25,12 @@ A production-ready React application built with Vite, TypeScript, Tailwind CSS v
 - 🎯 **Type Safe** - Full TypeScript support
 - 🛠️ **Developer Experience** - Path aliases, utilities, and more
 
+## 🔔 Notifications
+
+- Cards keep their existing avatar, sentence-style copy, badges, and routes—only the event sources changed.
+- We now surface notifications for: incoming friend requests, friend request acceptances, reference requests, reference accept/decline decisions, new club vacancy applicants, and profile comments.
+- Chat messages and vacancy status updates no longer create notifications; unread indicators live entirely inside the Messages page’s conversation list.
+
 ## 🛠️ Setup
 
 1. Install dependencies: `npm install`
@@ -46,6 +52,7 @@ A production-ready React application built with Vite, TypeScript, Tailwind CSS v
 
 - **Viewport stability:** chat surfaces lock the body scroll, honor iOS `visualViewport`, and keep the composer visible even while the keyboard animates.
 - **Context cues:** inline day dividers break up long histories, and the unread badge shows a capped (`9+`) count with a single "jump to latest" action—no more floating overlays.
+- **Distinct sender badge:** the Messages icon now reflects how many unique users currently have unread messages (not the raw unread row count), so 5 pings from the same teammate still show as "1" until someone else reaches out.
 - **Infinite scroll:** when older pages load we capture the first visible message and restore the scroll offset, so the thread never jumps.
 - **Delivery states:** outgoing bubbles show `Sending`, `Sent`, or `Read` with appropriate icons, and failed sends expose compact tap-to-retry/delete affordances right inside the status row.
 - **Tests:** `npx vitest run` (or `npm run test`) exercises the conversation list, auto-scroll controller, and mobile-only scroll locking—run it after UX changes to catch regressions quickly.

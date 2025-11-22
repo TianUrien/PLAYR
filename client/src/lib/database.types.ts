@@ -1150,6 +1150,7 @@ export type Database = {
         | "profile_comment_created"
         | "reference_request_received"
         | "reference_request_accepted"
+        | "reference_request_rejected"
         | "friend_request_accepted"
         | "reference_updated"
         | "profile_comment_reply"

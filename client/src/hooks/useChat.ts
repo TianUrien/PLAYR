@@ -79,7 +79,6 @@ export function useChat({
   
   const { addToast } = useToastStore()
   const initializeUnreadStore = useUnreadStore(state => state.initialize)
-  const adjustUnreadCount = useUnreadStore(state => state.adjust)
   const refreshUnreadCount = useUnreadStore(state => state.refresh)
 
   const {
@@ -373,7 +372,6 @@ export function useChat({
       }
 
       if (affectedRows > 0) {
-        adjustUnreadCount(-affectedRows)
         void refreshUnreadCount({ bypassCache: true })
       }
     } catch (error) {
@@ -393,7 +391,6 @@ export function useChat({
       pendingIds.forEach(id => pendingReadIdsRef.current.add(id))
     }
   }, [
-    adjustUnreadCount,
     conversation.id,
     conversation.isPending,
     currentUserId,
