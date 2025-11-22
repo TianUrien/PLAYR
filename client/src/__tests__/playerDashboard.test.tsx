@@ -138,18 +138,26 @@ const baseProfile = {
   current_club: 'London HC',
   email: 'jordan@example.com',
   contact_email: 'jordan@example.com',
+  contact_email_public: true,
   passport_1: null,
   passport_2: null,
 } as const
 
-const renderDashboard = (options?: { initialPath?: string; readOnly?: boolean }) => {
+type RenderOptions = {
+  initialPath?: string
+  readOnly?: boolean
+  profileOverrides?: Partial<typeof baseProfile>
+}
+
+const renderDashboard = (options?: RenderOptions) => {
   const locationHistory: string[] = []
   const initialEntries = [options?.initialPath ?? '/dashboard/profile']
+  const profile = { ...baseProfile, ...(options?.profileOverrides ?? {}) }
 
   const utils = render(
     <MemoryRouter initialEntries={initialEntries}>
       <LocationObserver onChange={(value) => locationHistory.push(value)} />
-      <PlayerDashboard profileData={baseProfile} readOnly={options?.readOnly ?? false} />
+      <PlayerDashboard profileData={profile} readOnly={options?.readOnly ?? false} />
     </MemoryRouter>
   )
 
@@ -202,5 +210,33 @@ describe('PlayerDashboard', () => {
       const lastLocation = locationHistory.at(-1)
       expect(lastLocation).toBe('/messages?conversation=mock-conversation')
     })
+  })
+
+  it('shows the contact email publicly when visibility is enabled', () => {
+    const publicEmail = 'reach@player.com'
+    renderDashboard({ readOnly: true, profileOverrides: { contact_email: publicEmail, contact_email_public: true } })
+
+    expect(screen.getByRole('link', { name: publicEmail })).toBeInTheDocument()
+  })
+
+  it('falls back to account email when contact email is blank but visibility is on', () => {
+    renderDashboard({ readOnly: true, profileOverrides: { contact_email: '', contact_email_public: true } })
+
+    expect(screen.getByRole('link', { name: baseProfile.email })).toBeInTheDocument()
+  })
+
+  it('hides the email when visibility is disabled', () => {
+    renderDashboard({ readOnly: true, profileOverrides: { contact_email_public: false } })
+
+    expect(screen.getByText(/Not shown publicly/i)).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: baseProfile.email })).not.toBeInTheDocument()
+  })
+
+  it('shows a private contact email note to the owner when hidden', () => {
+    const privateEmail = 'private@example.com'
+    renderDashboard({ readOnly: false, profileOverrides: { contact_email_public: false, contact_email: privateEmail } })
+
+    expect(screen.getByText(/Private contact email:/i)).toBeInTheDocument()
+    expect(screen.getByText(privateEmail)).toBeInTheDocument()
   })
 })

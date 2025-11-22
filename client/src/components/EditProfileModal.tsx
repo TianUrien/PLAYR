@@ -34,11 +34,14 @@ type ProfileFormData = {
   league_division: string
   website: string
   contact_email: string
+  contact_email_public: boolean
   club_bio: string
   club_history: string
   bio: string
   avatar_url: string
 }
+
+const getInitialContactEmail = (profile?: Profile | null): string => profile?.contact_email || ''
 
 const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   full_name: profile?.full_name || '',
@@ -54,7 +57,8 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   year_founded: profile?.year_founded?.toString() || '',
   league_division: profile?.league_division || '',
   website: profile?.website || '',
-  contact_email: profile?.contact_email || '',
+  contact_email: getInitialContactEmail(profile),
+  contact_email_public: Boolean(profile?.contact_email_public),
   club_bio: profile?.club_bio || '',
   club_history: profile?.club_history || '',
   bio: profile?.bio || '',
@@ -216,11 +220,16 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
 
     setLoading(true)
 
+    const trimmedContactEmail = formData.contact_email.trim()
+    const normalizedContactEmail = trimmedContactEmail ? trimmedContactEmail : null
+
     // Create optimistic update object
     const optimisticUpdate: Record<string, unknown> = {
       full_name: formData.full_name,
       base_location: formData.base_location,
       avatar_url: formData.avatar_url || null,
+      contact_email: normalizedContactEmail,
+      contact_email_public: formData.contact_email_public,
     }
 
     if (role === 'player') {
@@ -240,13 +249,11 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.passport_1 = formData.passport_1 || null
       optimisticUpdate.passport_2 = formData.passport_2 || null
       optimisticUpdate.bio = formData.bio || null
-      optimisticUpdate.contact_email = formData.contact_email || null
     } else if (role === 'club') {
       optimisticUpdate.nationality = formData.nationality
       optimisticUpdate.year_founded = formData.year_founded ? parseInt(formData.year_founded) : null
       optimisticUpdate.league_division = formData.league_division || null
       optimisticUpdate.website = formData.website || null
-      optimisticUpdate.contact_email = formData.contact_email || null
       optimisticUpdate.club_bio = formData.club_bio || null
       optimisticUpdate.club_history = formData.club_history || null
     }
@@ -419,6 +426,37 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
               required
             />
 
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Account Email</label>
+              <div className="px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-700">
+                {profile.email}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Only visible to you and used for login.</p>
+            </div>
+
+            <Input
+              label="Contact Email (for networking)"
+              type="email"
+              placeholder="contact@example.com"
+              value={formData.contact_email}
+              onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+            />
+
+            <label className="flex items-start gap-3 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-[#6366f1] focus:ring-[#6366f1]"
+                checked={formData.contact_email_public}
+                onChange={(e) => setFormData({ ...formData, contact_email_public: e.target.checked })}
+              />
+              <span>
+                Show my email on my public profile
+                <span className="block text-xs text-gray-500 mt-1">
+                  We'll display this contact email, or your account email if left blank.
+                </span>
+              </span>
+            </label>
+
             {/* Player-specific fields */}
             {role === 'player' && (
               <>
@@ -570,14 +608,6 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   onChange={(e) => setFormData({ ...formData, passport_2: e.target.value })}
                 />
 
-                <Input
-                  label="Contact Email (Optional)"
-                  type="email"
-                  placeholder="contact@example.com"
-                  value={formData.contact_email}
-                  onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                />
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Bio (Optional)
@@ -614,13 +644,6 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   type="url"
                   value={formData.website}
                   onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-                />
-
-                <Input
-                  label="Contact Email (Optional)"
-                  type="email"
-                  value={formData.contact_email}
-                  onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
                 />
 
               <div>

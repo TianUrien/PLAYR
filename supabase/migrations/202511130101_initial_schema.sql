@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   club_bio TEXT,
   league_division TEXT,
   contact_email TEXT,
+  contact_email_public BOOLEAN NOT NULL DEFAULT false,
   website TEXT,
   year_founded INTEGER,
   passport_1 TEXT,

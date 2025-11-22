@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase'
 import { isUniqueViolationError } from '@/lib/supabaseErrors'
 import { useToastStore } from '@/lib/toast'
 import { useNotificationStore } from '@/lib/notifications'
+import { derivePublicContactEmail } from '@/lib/profile'
 
 type TabType = 'overview' | 'vacancies' | 'friends' | 'players' | 'comments'
 
@@ -33,7 +34,9 @@ type ClubProfileShape =
     | 'website'
     | 'year_founded'
     | 'league_division'
+    | 'email'
     | 'contact_email'
+    | 'contact_email_public'
   >
 
 interface ClubDashboardProps {
@@ -242,6 +245,9 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
     )
   }
 
+  const publicContact = derivePublicContactEmail(profile)
+  const savedContactEmail = profile.contact_email?.trim() || ''
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -397,15 +403,31 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
-                      {profile.contact_email ? (
+                      {publicContact.shouldShow && publicContact.displayEmail ? (
                         <a
-                          href={`mailto:${profile.contact_email}`}
+                          href={`mailto:${publicContact.displayEmail}`}
                           className="text-[#6366f1] hover:text-[#4f46e5] underline"
                         >
-                          {profile.contact_email}
+                          {publicContact.displayEmail}
                         </a>
                       ) : (
-                        <p className="text-gray-500 italic">Not specified</p>
+                        <p className="text-gray-500 italic">Not shown publicly</p>
+                      )}
+                      {!readOnly && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {profile.contact_email_public
+                            ? publicContact.source === 'contact'
+                              ? 'Public viewers see this contact email.'
+                              : 'Public viewers see your account email.'
+                            : savedContactEmail
+                              ? 'Saved contact email is private.'
+                              : 'No contact email saved; only private channels apply.'}
+                        </p>
+                      )}
+                      {!readOnly && !profile.contact_email_public && savedContactEmail && (
+                        <p className="text-xs text-gray-500 break-words">
+                          Private contact email: <span className="text-gray-700 font-medium">{savedContactEmail}</span>
+                        </p>
                       )}
                     </div>
                   </div>

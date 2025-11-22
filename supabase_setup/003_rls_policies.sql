@@ -297,6 +297,7 @@ CREATE OR REPLACE FUNCTION public.complete_user_profile(
   p_league_division TEXT DEFAULT NULL,
   p_website TEXT DEFAULT NULL,
   p_contact_email TEXT DEFAULT NULL,
+  p_contact_email_public BOOLEAN DEFAULT NULL,
   p_year_founded INTEGER DEFAULT NULL,
   p_passport_1 TEXT DEFAULT NULL,
   p_passport_2 TEXT DEFAULT NULL
@@ -339,6 +340,7 @@ BEGIN
     league_division = COALESCE(p_league_division, league_division),
     website = COALESCE(p_website, website),
     contact_email = COALESCE(p_contact_email, contact_email),
+    contact_email_public = COALESCE(p_contact_email_public, contact_email_public),
     year_founded = COALESCE(p_year_founded, year_founded),
     passport_1 = COALESCE(p_passport_1, passport_1),
     passport_2 = COALESCE(p_passport_2, passport_2),

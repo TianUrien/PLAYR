@@ -13,6 +13,7 @@ import { isUniqueViolationError } from '@/lib/supabaseErrors'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useToastStore } from '@/lib/toast'
 import { useNotificationStore } from '@/lib/notifications'
+import { derivePublicContactEmail } from '@/lib/profile'
 
 type TabType = 'profile' | 'friends' | 'journey' | 'comments'
 
@@ -34,6 +35,7 @@ export type PlayerProfileShape =
     | 'current_club'
     | 'email'
     | 'contact_email'
+    | 'contact_email_public'
     | 'passport_1'
     | 'passport_2'
   >
@@ -202,7 +204,8 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
     if (!value) return false
     return self.findIndex((item) => item === value) === index
   })
-  const contactEmail = profile.contact_email || profile.email
+  const publicContact = derivePublicContactEmail(profile)
+  const savedContactEmail = profile.contact_email?.trim() || ''
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -356,9 +359,32 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Contact Email
                       </label>
-                      <p className={contactEmail ? 'text-gray-900 break-words' : 'text-gray-500 italic'}>
-                        {contactEmail || 'Not provided'}
-                      </p>
+                      {publicContact.shouldShow && publicContact.displayEmail ? (
+                        <a
+                          href={`mailto:${publicContact.displayEmail}`}
+                          className="text-[#6366f1] hover:text-[#4f46e5] underline break-words"
+                        >
+                          {publicContact.displayEmail}
+                        </a>
+                      ) : (
+                        <p className="text-gray-500 italic">Not shown publicly</p>
+                      )}
+                      {!readOnly && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {profile.contact_email_public
+                            ? publicContact.source === 'contact'
+                              ? 'Public viewers see this contact email.'
+                              : 'Public viewers see your account email.'
+                            : savedContactEmail
+                              ? 'Saved contact email is private.'
+                              : 'No contact email saved; only private channels apply.'}
+                        </p>
+                      )}
+                      {!readOnly && !profile.contact_email_public && savedContactEmail && (
+                        <p className="text-xs text-gray-500 break-words">
+                          Private contact email: <span className="text-gray-700 font-medium">{savedContactEmail}</span>
+                        </p>
+                      )}
                     </div>
 
                     {/* Left Column */}

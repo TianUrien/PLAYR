@@ -20,7 +20,9 @@ type PublicClubProfile = Partial<Profile> &
     | 'website'
     | 'year_founded'
     | 'league_division'
+    | 'email'
     | 'contact_email'
+    | 'contact_email_public'
   >
 
 const PUBLIC_CLUB_FIELDS = [
@@ -36,7 +38,9 @@ const PUBLIC_CLUB_FIELDS = [
   'website',
   'year_founded',
   'league_division',
-  'contact_email'
+  'email',
+  'contact_email',
+  'contact_email_public'
 ].join(',')
 
 export default function PublicClubProfile() {
@@ -138,5 +142,14 @@ export default function PublicClubProfile() {
     )
   }
 
-  return <ClubDashboard profileData={profile} readOnly={true} />
+  return (
+    <ClubDashboard
+      profileData={{
+        ...profile,
+        email: profile.email ?? '',
+        contact_email_public: profile.contact_email_public ?? false,
+      }}
+      readOnly={true}
+    />
+  )
 }

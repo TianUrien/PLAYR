@@ -22,7 +22,9 @@ type PublicProfileBase = Pick<
   | 'date_of_birth'
   | 'position'
   | 'secondary_position'
+  | 'email'
   | 'contact_email'
+  | 'contact_email_public'
   | 'passport_1'
   | 'passport_2'
 >
@@ -47,7 +49,9 @@ const PUBLIC_PROFILE_FIELDS = [
   'date_of_birth',
   'position',
   'secondary_position',
+  'email',
   'contact_email',
+  'contact_email_public',
   'passport_1',
   'passport_2'
 ].join(',')
@@ -153,12 +157,13 @@ export default function PublicPlayerProfile() {
 
   // Render CoachDashboard for coaches, PlayerDashboard for players
   if (profile.role === 'coach') {
-    return <CoachDashboard profileData={profile} readOnly={true} />
+    return <CoachDashboard profileData={{ ...profile, email: profile.email ?? '', contact_email_public: profile.contact_email_public ?? false }} readOnly={true} />
   }
 
   const playerProfileData: PlayerProfileShape = {
     ...profile,
-    email: profile.contact_email ?? ''
+    email: profile.email ?? '',
+    contact_email_public: profile.contact_email_public ?? false,
   }
 
   return <PlayerDashboard profileData={playerProfileData} readOnly={true} />

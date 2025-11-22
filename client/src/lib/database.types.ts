@@ -537,6 +537,7 @@ export type Database = {
           club_bio: string | null
           club_history: string | null
           contact_email: string | null
+          contact_email_public: boolean
           created_at: string
           current_club: string | null
           date_of_birth: string | null
@@ -566,6 +567,7 @@ export type Database = {
           club_bio?: string | null
           club_history?: string | null
           contact_email?: string | null
+          contact_email_public?: boolean
           created_at?: string
           current_club?: string | null
           date_of_birth?: string | null
@@ -595,6 +597,7 @@ export type Database = {
           club_bio?: string | null
           club_history?: string | null
           contact_email?: string | null
+          contact_email_public?: boolean
           created_at?: string
           current_club?: string | null
           date_of_birth?: string | null
