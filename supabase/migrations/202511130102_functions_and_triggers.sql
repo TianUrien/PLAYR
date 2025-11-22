@@ -130,6 +130,24 @@ AS $$
 $$;
 
 -- ============================================================================
+-- CURRENT PROFILE ROLE LOOKUP
+-- ============================================================================
+CREATE OR REPLACE FUNCTION public.current_profile_role()
+RETURNS TEXT
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role
+  FROM public.profiles
+  WHERE id = auth.uid();
+$$;
+
+COMMENT ON FUNCTION public.current_profile_role IS 'Returns the canonical role from profiles for the current auth.uid().';
+GRANT EXECUTE ON FUNCTION public.current_profile_role() TO authenticated, service_role;
+
+-- ============================================================================
 -- PROFILE CREATION & COMPLETION (RPC)
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.create_profile_for_new_user(

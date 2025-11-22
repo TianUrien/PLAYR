@@ -71,8 +71,15 @@ CREATE POLICY "Public can view all gallery photos"
 DROP POLICY IF EXISTS "Users can manage their gallery photos" ON public.gallery_photos;
 CREATE POLICY "Users can manage their gallery photos"
   ON public.gallery_photos
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  FOR ALL
+  USING (
+    auth.uid() = user_id
+    AND coalesce(public.current_profile_role(), '') IN ('player', 'coach')
+  )
+  WITH CHECK (
+    auth.uid() = user_id
+    AND coalesce(public.current_profile_role(), '') IN ('player', 'coach')
+  );
 
 -- ============================================================================
 -- CLUB_MEDIA POLICIES
@@ -86,8 +93,15 @@ CREATE POLICY "Public can view club media"
 DROP POLICY IF EXISTS "Clubs can manage their media" ON public.club_media;
 CREATE POLICY "Clubs can manage their media"
   ON public.club_media
-  USING (auth.uid() = club_id)
-  WITH CHECK (auth.uid() = club_id);
+  FOR ALL
+  USING (
+    auth.uid() = club_id
+    AND coalesce(public.current_profile_role(), '') = 'club'
+  )
+  WITH CHECK (
+    auth.uid() = club_id
+    AND coalesce(public.current_profile_role(), '') = 'club'
+  );
 
 -- ============================================================================
 -- PLAYING_HISTORY POLICIES
@@ -101,8 +115,15 @@ CREATE POLICY "Public can view all playing history"
 DROP POLICY IF EXISTS "Users can manage their playing history" ON public.playing_history;
 CREATE POLICY "Users can manage their playing history"
   ON public.playing_history
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  FOR ALL
+  USING (
+    auth.uid() = user_id
+    AND coalesce(public.current_profile_role(), '') IN ('player', 'coach')
+  )
+  WITH CHECK (
+    auth.uid() = user_id
+    AND coalesce(public.current_profile_role(), '') IN ('player', 'coach')
+  );
 
 -- ============================================================================
 -- VACANCIES POLICIES
@@ -119,11 +140,11 @@ CREATE POLICY "Clubs can manage their vacancies"
   FOR ALL
   USING (
     auth.uid() = club_id
-    AND coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') = 'club'
+    AND coalesce(public.current_profile_role(), '') = 'club'
   )
   WITH CHECK (
     auth.uid() = club_id
-    AND coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') = 'club'
+    AND coalesce(public.current_profile_role(), '') = 'club'
   );
 
 -- ============================================================================
@@ -154,7 +175,7 @@ CREATE POLICY "Applicants can create applications"
   FOR INSERT
   WITH CHECK (
     auth.uid() = player_id
-    AND coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') IN ('player', 'coach')
+    AND coalesce(public.current_profile_role(), '') IN ('player', 'coach')
   );
 
 DROP POLICY IF EXISTS "Clubs can update application status" ON public.vacancy_applications;

@@ -19,11 +19,11 @@ CREATE POLICY "Users can manage their gallery photos"
   FOR ALL
   USING (
     auth.uid() = user_id
-    AND coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') IN ('player', 'coach')
+    AND coalesce(public.current_profile_role(), '') IN ('player', 'coach')
   )
   WITH CHECK (
     auth.uid() = user_id
-    AND coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') IN ('player', 'coach')
+    AND coalesce(public.current_profile_role(), '') IN ('player', 'coach')
   );
 
 DROP POLICY IF EXISTS "Users can manage their playing history" ON public.playing_history;
@@ -32,11 +32,11 @@ CREATE POLICY "Users can manage their playing history"
   FOR ALL
   USING (
     auth.uid() = user_id
-    AND coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') IN ('player', 'coach')
+    AND coalesce(public.current_profile_role(), '') IN ('player', 'coach')
   )
   WITH CHECK (
     auth.uid() = user_id
-    AND coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') IN ('player', 'coach')
+    AND coalesce(public.current_profile_role(), '') IN ('player', 'coach')
   );
 
 DROP POLICY IF EXISTS "Clubs can manage their media" ON public.club_media;
@@ -45,11 +45,11 @@ CREATE POLICY "Clubs can manage their media"
   FOR ALL
   USING (
     auth.uid() = club_id
-    AND coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') = 'club'
+    AND coalesce(public.current_profile_role(), '') = 'club'
   )
   WITH CHECK (
     auth.uid() = club_id
-    AND coalesce(auth.jwt() -> 'user_metadata' ->> 'role', '') = 'club'
+    AND coalesce(public.current_profile_role(), '') = 'club'
   );
 
 -- ---------------------------------------------------------------------------

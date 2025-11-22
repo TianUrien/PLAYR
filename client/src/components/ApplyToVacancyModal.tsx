@@ -24,7 +24,7 @@ export default function ApplyToVacancyModal({
   onSuccess,
   onError,
 }: ApplyToVacancyModalProps) {
-  const { user } = useAuthStore()
+  const { user, profile } = useAuthStore()
   const { addToast } = useToastStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -106,7 +106,7 @@ export default function ApplyToVacancyModal({
           console.error('❌ Role mismatch - RLS policy blocked application:', insertError)
           reportSupabaseError('vacancies.apply_rls_block', insertError, {
             vacancyId: vacancy.id,
-            viewerRole: user.user_metadata?.role ?? null
+            viewerRole: profile?.role ?? null
           }, {
             feature: 'vacancies',
             operation: 'apply_vacancy'
@@ -126,7 +126,7 @@ export default function ApplyToVacancyModal({
           console.error('❌ Error applying to vacancy:', insertError)
           reportSupabaseError('vacancies.apply_error', insertError, {
             vacancyId: vacancy.id,
-            viewerRole: user.user_metadata?.role ?? null
+            viewerRole: profile?.role ?? null
           }, {
             feature: 'vacancies',
             operation: 'apply_vacancy'
