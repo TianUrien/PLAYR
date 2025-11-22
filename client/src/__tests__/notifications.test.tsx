@@ -16,6 +16,7 @@ type NotificationStoreSlice = {
   claimCommentHighlights: () => string[]
   clearCommentNotifications: () => Promise<void> | void
   commentHighlightVersion: number
+  refresh: (options?: { bypassCache?: boolean }) => Promise<void> | void
 }
 
 const mockNavigate = vi.fn()
@@ -65,6 +66,7 @@ const defaultNotificationStore = (): NotificationStoreSlice => ({
   claimCommentHighlights: vi.fn(() => []),
   clearCommentNotifications: vi.fn(),
   commentHighlightVersion: 0,
+  refresh: vi.fn(),
 })
 
 let notificationStoreState = defaultNotificationStore()
@@ -137,7 +139,7 @@ describe('NotificationsDrawer', () => {
       </MemoryRouter>
     )
 
-    await user.click(screen.getByText('Accept'))
+    await user.click(screen.getByText('Confirm'))
 
     await waitFor(() => {
       expect(respondToFriendRequest).toHaveBeenCalledWith({ friendshipId: 'friendship-19', action: 'accept' })
@@ -163,7 +165,7 @@ describe('NotificationsDrawer', () => {
       </MemoryRouter>
     )
 
-    await user.click(screen.getByRole('button', { name: /review request/i }))
+    await user.click(screen.getByRole('button', { name: /requested a reference/i }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/dashboard/profile?tab=friends&section=requests')
   })
