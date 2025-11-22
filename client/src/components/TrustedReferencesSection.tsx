@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
-import { ShieldCheck, Plus, Clock3, MessageCircle, Loader2, AlertTriangle } from 'lucide-react'
+import { ShieldCheck, Plus, Clock3, AlertTriangle } from 'lucide-react'
 import Avatar from './Avatar'
 import RoleBadge from './RoleBadge'
+import TrustedReferenceCard from './TrustedReferenceCard'
 import ConfirmActionModal from './ConfirmActionModal'
 import AddReferenceModal, { type ReferenceFriendOption } from './AddReferenceModal'
 import ReferenceEndorsementModal from './ReferenceEndorsementModal'
@@ -102,6 +103,15 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
     }
   }
 
+  const handleOpenReferenceProfile = (targetId: string | null, role?: string | null) => {
+    if (!targetId) return
+    if (role === 'club') {
+      navigate(`/clubs/id/${targetId}`)
+    } else {
+      navigate(`/players/id/${targetId}`)
+    }
+  }
+
   const handleAcceptRequest = async (endorsement: string | null) => {
     if (!endorsementRequest) return false
     const success = await respondToRequest({
@@ -189,44 +199,15 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
         ) : (
           <div className="-mx-2 flex gap-4 overflow-x-auto px-2 pb-2 [scrollbar-width:none]">
             {acceptedReferences.map((reference) => (
-              <article key={reference.id} className="min-w-[240px] flex-shrink-0 rounded-3xl border border-gray-100 bg-gradient-to-b from-white to-gray-50 p-5 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <Avatar
-                    src={reference.profile?.avatarUrl}
-                    initials={reference.profile?.fullName?.slice(0, 2) ?? '?'}
-                    alt={reference.profile?.fullName ?? 'Reference'}
-                    size="sm"
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">{reference.profile?.fullName ?? 'PLAYR Member'}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                      <RoleBadge role={reference.profile?.role ?? undefined} />
-                      <span>{reference.relationshipType}</span>
-                    </div>
-                  </div>
-                </div>
-                <p className="mt-3 line-clamp-3 text-sm italic text-gray-600">
-                  {reference.endorsementText ? `“${reference.endorsementText}”` : 'No endorsement yet.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => handleMessage(reference.profile?.id ?? null)}
-                  disabled={!reference.profile?.id || messageTarget === reference.profile.id}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-3 py-2 text-sm font-semibold text-white shadow-emerald-500/30 disabled:opacity-60"
-                >
-                  {messageTarget === reference.profile?.id ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Messaging…
-                    </>
-                  ) : (
-                    <>
-                      <MessageCircle className="h-4 w-4" />
-                      Message
-                    </>
-                  )}
-                </button>
-              </article>
+              <TrustedReferenceCard
+                key={reference.id}
+                reference={reference}
+                onMessage={handleMessage}
+                messageLoading={messageTarget === reference.profile?.id}
+                layout="carousel"
+                endorsementFallback="No written endorsement yet."
+                onOpenProfile={handleOpenReferenceProfile}
+              />
             ))}
           </div>
         )}
@@ -320,49 +301,24 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
           ) : (
             <>
               {acceptedReferences.map((reference) => (
-                <article key={reference.id} className="min-w-[280px] flex-shrink-0 rounded-3xl border border-amber-100 bg-gradient-to-b from-white to-amber-50/50 p-5 shadow-lg shadow-amber-100">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="flex items-center gap-2 text-base font-semibold text-gray-900">
-                        {reference.profile?.fullName ?? 'PLAYR Member'}
-                      </p>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                        <RoleBadge role={reference.profile?.role ?? undefined} />
-                        <span>{reference.relationshipType}</span>
-                      </div>
-                    </div>
-                    <ShieldCheck className="h-6 w-6 text-amber-500" />
-                  </div>
-                  <p className="mt-2 text-sm font-medium text-gray-700">
-                    {reference.profile?.position ? reference.profile.position : reference.profile?.currentClub ?? reference.profile?.baseLocation ?? ''}
-                  </p>
-                  <p className="mt-3 line-clamp-3 text-sm italic text-gray-600">
-                    {reference.endorsementText ? `“${reference.endorsementText}”` : 'No endorsement added yet.'}
-                  </p>
-                  <div className="mt-5 flex gap-2">
+                <TrustedReferenceCard
+                  key={reference.id}
+                  reference={reference}
+                  onMessage={handleMessage}
+                  messageLoading={messageTarget === reference.profile?.id}
+                  layout="carousel"
+                  endorsementFallback="No endorsement added yet."
+                  onOpenProfile={handleOpenReferenceProfile}
+                  secondaryAction={(
                     <button
                       type="button"
-                      onClick={() => handleMessage(reference.profile?.id ?? null)}
-                      disabled={!reference.profile?.id || messageTarget === reference.profile.id}
-                      className="flex-1 rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-emerald-500/40 transition-opacity disabled:opacity-60"
+                      onClick={() => openRemoveConfirm(reference.id, reference.profile?.fullName ?? 'this reference')}
+                      className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
                     >
-                      {messageTarget === reference.profile?.id ? (
-                        <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Messaging…</span>
-                      ) : (
-                        <span className="inline-flex items-center justify-center gap-2"><MessageCircle className="h-4 w-4" /> Message</span>
-                      )}
+                      Remove
                     </button>
-                    {isOwner && (
-                      <button
-                        type="button"
-                        onClick={() => openRemoveConfirm(reference.id, reference.profile?.fullName ?? 'this reference')}
-                        className="rounded-2xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
-                </article>
+                  )}
+                />
               ))}
               {canCollectReferences && canAddMore && (
                 <button

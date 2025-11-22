@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { ShieldCheck, MessageCircle, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import Avatar from './Avatar'
-import RoleBadge from './RoleBadge'
+import TrustedReferenceCard from './TrustedReferenceCard'
 import { useTrustedReferences } from '@/hooks/useTrustedReferences'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
@@ -86,57 +84,27 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
   const renderReferences = () => (
     <div className="grid gap-4 md:grid-cols-2">
       {acceptedReferences.map((reference) => (
-        <article key={reference.id} className="rounded-2xl border border-gray-100 bg-gradient-to-br from-white to-gray-50 p-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <Avatar
-              src={reference.profile?.avatarUrl}
-              initials={reference.profile?.fullName?.slice(0, 2) || '?'}
-              alt={reference.profile?.fullName ?? 'PLAYR Member'}
-              size="sm"
-            />
-            <div className="flex-1">
-              <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="font-semibold text-gray-900">{reference.profile?.fullName ?? 'PLAYR Member'}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                    <RoleBadge role={reference.profile?.role ?? undefined} />
-                    <span>{reference.relationshipType}</span>
-                  </div>
-                </div>
-                <ShieldCheck className="h-5 w-5 text-emerald-500" />
-              </div>
-              <p className="mt-3 text-sm text-gray-600">
-                {reference.endorsementText ? `“${reference.endorsementText}”` : 'No written endorsement yet.'}
-              </p>
-            </div>
-          </div>
-          <div className="mt-4 flex justify-end">
-            <button
-              type="button"
-              onClick={() => handleMessage(reference.profile?.id ?? null)}
-              disabled={!reference.profile?.id || messageTarget === reference.profile.id}
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-            >
-              {messageTarget === reference.profile?.id ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Messaging…
-                </>
-              ) : (
-                <>
-                  <MessageCircle className="h-4 w-4" />
-                  Message
-                </>
-              )}
-            </button>
-          </div>
-        </article>
+        <TrustedReferenceCard
+          key={reference.id}
+          reference={reference}
+          onMessage={handleMessage}
+          messageLoading={messageTarget === reference.profile?.id}
+          endorsementFallback="No written endorsement yet."
+          onOpenProfile={(id, role) => {
+            if (!id) return
+            if (role === 'club') {
+              navigate(`/clubs/id/${id}`)
+            } else {
+              navigate(`/players/id/${id}`)
+            }
+          }}
+        />
       ))}
     </div>
   )
 
   return (
-    <section className="space-y-4 rounded-3xl border border-gray-100 bg-white/90 p-6 shadow-sm shadow-gray-100">
+    <section className="space-y-4 rounded-[30px] border border-slate-200 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
       <header className="space-y-1">
         <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Trusted References</p>
         <h3 className="text-xl font-bold text-gray-900">{primaryName ? `${primaryName}'s trusted circle` : 'Trusted circle'}</h3>
