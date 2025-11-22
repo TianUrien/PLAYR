@@ -151,7 +151,7 @@ describe('Vacancies tab', () => {
 
     await waitFor(() => expect(screen.getByText('Midfield Maestro')).toBeInTheDocument())
     expect(screen.getByText('✓ Published')).toBeInTheDocument()
-    expect(screen.getByText(/player role/i)).toBeInTheDocument()
+    expect(screen.getByText(/^player$/i)).toBeInTheDocument()
     expect(screen.getByText('4 applicants')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /4 applicants/i }))

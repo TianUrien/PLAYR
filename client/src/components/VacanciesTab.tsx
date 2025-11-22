@@ -8,6 +8,7 @@ import { useAuthStore } from '../lib/auth'
 import { useToastStore } from '@/lib/toast'
 import type { Vacancy } from '../lib/supabase'
 import Button from './Button'
+import RoleBadge from './RoleBadge'
 import CreateVacancyModal from './CreateVacancyModal'
 import ApplyToVacancyModal from './ApplyToVacancyModal'
 import VacancyDetailView from './VacancyDetailView'
@@ -638,7 +639,10 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
                 {/* Card Header */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-wide text-gray-500">{vacancy.opportunity_type === 'player' ? 'Player role' : 'Coach role'}</p>
+                    <RoleBadge
+                      role={vacancy.opportunity_type ?? undefined}
+                      className="px-3 py-1 text-xs"
+                    />
                     <h3 className="text-lg font-semibold text-gray-900">{vacancy.title}</h3>
                   </div>
                   <div className="flex items-center gap-2">
@@ -680,9 +684,9 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
                   <button
                     type="button"
                     onClick={() => navigate(`/dashboard/club/vacancies/${vacancy.id}/applicants`)}
-                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-700 hover:border-gray-300"
+                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-[0_6px_15px_rgba(16,185,129,0.2)] hover:border-emerald-300 hover:bg-emerald-100"
                   >
-                    <Users className="w-4 h-4" />
+                    <Users className="w-4 h-4 text-emerald-600" />
                     {applicantCounts[vacancy.id] || 0} applicant{applicantCounts[vacancy.id] === 1 ? '' : 's'}
                   </button>
                 )}
