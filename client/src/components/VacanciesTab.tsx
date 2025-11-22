@@ -713,7 +713,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
                       <button
                         type="button"
                         disabled
-                        className="flex-1 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-800"
+                        className="flex-1 rounded-2xl border border-[#e3d6ff] bg-gradient-to-r from-[#ede8ff] via-[#f6edff] to-[#fbf2ff] px-4 py-3 text-sm font-semibold text-[#7c3aed] shadow-[0_12px_30px_rgba(124,58,237,0.18)]"
                       >
                         ✓ Applied
                       </button>

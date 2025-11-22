@@ -165,7 +165,7 @@ export default function VacancyDetailView({
                     </span>
                   )}
                   {hasApplied && (
-                    <span className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-medium bg-green-100 text-green-700">
+                    <span className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-semibold border border-[#e3d6ff] bg-gradient-to-r from-[#ede8ff] via-[#f6edff] to-[#fbf2ff] text-[#7c3aed] shadow-[0_12px_30px_rgba(124,58,237,0.18)]">
                       <CheckCircle className="w-4 h-4" />
                       <span className="leading-none">Applied</span>
                     </span>
@@ -308,7 +308,7 @@ export default function VacancyDetailView({
               {hasApplied ? (
                 <Button
                   disabled
-                  className="flex-1 bg-gray-100 text-gray-500 cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 cursor-not-allowed bg-gradient-to-r from-[#ede8ff] via-[#f6edff] to-[#fbf2ff] text-[#7c3aed] border border-[#e3d6ff] shadow-[0_20px_40px_rgba(124,58,237,0.18)] flex items-center justify-center gap-2"
                 >
                   <CheckCircle className="w-5 h-5" />
                   Application Submitted

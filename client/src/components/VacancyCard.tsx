@@ -218,7 +218,7 @@ export default function VacancyCard({
         {hasApplied ? (
           <button
             disabled
-            className="flex-1 px-4 py-2 bg-purple-100 text-purple-600 border border-purple-200 rounded-lg cursor-not-allowed font-semibold min-h-[44px]"
+            className="flex-1 px-4 py-2 rounded-lg font-semibold min-h-[44px] border border-[#e3d6ff] bg-gradient-to-r from-[#ede8ff] via-[#f6edff] to-[#fbf2ff] text-[#7c3aed] shadow-[0_12px_30px_rgba(124,58,237,0.18)]"
           >
             ✓ Applied
           </button>
