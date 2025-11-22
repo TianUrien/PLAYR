@@ -22,6 +22,7 @@ export { default as PublicReferencesSection } from './PublicReferencesSection'
 export { default as FriendshipButton } from './FriendshipButton'
 export { default as ScrollableTabs } from './ScrollableTabs'
 export { default as RoleBadge } from './RoleBadge'
+export { default as InfoTooltip } from './InfoTooltip'
 export { default as SentryTestButton } from './SentryTestButton'
 export { ErrorBoundary } from './ErrorBoundary'
 

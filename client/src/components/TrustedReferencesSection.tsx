@@ -7,6 +7,7 @@ import TrustedReferenceCard from './TrustedReferenceCard'
 import ConfirmActionModal from './ConfirmActionModal'
 import AddReferenceModal, { type ReferenceFriendOption } from './AddReferenceModal'
 import ReferenceEndorsementModal from './ReferenceEndorsementModal'
+import InfoTooltip from './InfoTooltip'
 import { useTrustedReferences } from '@/hooks/useTrustedReferences'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
@@ -27,6 +28,18 @@ type ConfirmState = {
   headline: string
   description: string
 }
+
+const TRUSTED_REFERENCES_GUIDE = (
+  <div className="space-y-2 text-sm text-gray-100">
+    <p className="font-semibold text-white">How trusted references work</p>
+    <ul className="list-disc space-y-1 pl-4 text-gray-200">
+      <li>Choose up to five trusted people from your connections.</li>
+      <li>References must accept your request before they appear.</li>
+      <li>Each reference can add an endorsement to your profile.</li>
+      <li>Clubs and coaches can contact them in one click.</li>
+    </ul>
+  </div>
+)
 
 export default function TrustedReferencesSection({ profileId, friendOptions, profileRole }: TrustedReferencesSectionProps) {
   const {
@@ -171,9 +184,14 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
     return (
       <section className="space-y-5 rounded-3xl border border-gray-100 bg-white/80 p-6 shadow-sm shadow-gray-100">
         <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Trusted References</p>
-            <h2 className="text-2xl font-bold text-gray-900">Key people who vouch for this profile</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-gray-900">Key people who vouch for this profile</h2>
+              <InfoTooltip label="How trusted references work" alignment="start">
+                {TRUSTED_REFERENCES_GUIDE}
+              </InfoTooltip>
+            </div>
             <p className="text-sm text-gray-600">Message anyone to learn more.</p>
           </div>
           <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">
@@ -218,9 +236,14 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
   return (
     <section className="space-y-6 rounded-3xl border border-gray-100 bg-white/80 p-6 shadow-sm shadow-gray-100">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Trusted References</p>
-          <h2 className="text-2xl font-bold text-gray-900">Key people who vouch for you</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold text-gray-900">Key people who vouch for you</h2>
+            <InfoTooltip label="How trusted references work" alignment="start">
+              {TRUSTED_REFERENCES_GUIDE}
+            </InfoTooltip>
+          </div>
           {canCollectReferences ? (
             <p className="text-sm text-gray-600">{acceptedCount}/{maxReferences} references selected</p>
           ) : (
@@ -335,18 +358,6 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
           )}
         </div>
       </div>
-
-      {canCollectReferences && (
-        <div className="hidden rounded-3xl border border-gray-100 bg-gray-50/70 p-5 lg:block">
-          <h4 className="text-sm font-semibold text-gray-800">How references work</h4>
-          <ul className="mt-3 space-y-2 text-sm text-gray-600">
-            <li>• Choose up to five trusted people from your connections.</li>
-            <li>• They must accept your request before appearing here.</li>
-            <li>• References can add endorsements to support your profile.</li>
-            <li>• Clubs and coaches can contact them in one click.</li>
-          </ul>
-        </div>
-      )}
 
       {isOwner && (
         <div className="grid gap-6 lg:grid-cols-2">

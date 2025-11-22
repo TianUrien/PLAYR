@@ -6,14 +6,14 @@ const SentryTestButton = () => {
     import.meta.env.MODE === 'production' ||
     import.meta.env.VITE_ENVIRONMENT === 'production'
 
-  if (isProduction) {
-    return null
-  }
-
   const triggerTestError = useCallback(() => {
     Sentry.captureMessage('Developer-triggered Sentry test event')
     throw new Error('Sentry test button error')
   }, [])
+
+  if (isProduction) {
+    return null
+  }
 
   return (
     <button

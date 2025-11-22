@@ -32,12 +32,18 @@ const RootErrorFallback = () => (
 // Initialize Web Vitals tracking
 initWebVitals()
 
-createRoot(document.getElementById('root')!).render(
-  <Sentry.ErrorBoundary fallback={<RootErrorFallback />}>
-    <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>
-    </StrictMode>
-  </Sentry.ErrorBoundary>,
-)
+export function RootApp() {
+  return (
+    <Sentry.ErrorBoundary fallback={<RootErrorFallback />}>
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <App />
+        </QueryClientProvider>
+      </StrictMode>
+    </Sentry.ErrorBoundary>
+  )
+}
+
+createRoot(document.getElementById('root')!).render(<RootApp />)
+
+export default RootApp

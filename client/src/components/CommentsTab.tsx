@@ -12,6 +12,7 @@ import RoleBadge from './RoleBadge'
 import { cn } from '@/lib/utils'
 import ConfirmActionModal from './ConfirmActionModal'
 import { reportSupabaseError } from '@/lib/sentryHelpers'
+import InfoTooltip from './InfoTooltip'
 
 interface CommentsTabProps {
   profileId: string
@@ -33,6 +34,28 @@ const ratingOptions: { value: CommentRating; label: string; description: string;
   { value: 'neutral', label: 'Neutral', description: 'Share balanced, factual feedback.', badgeClass: 'bg-gray-100 text-gray-700 border-gray-200' },
   { value: 'negative', label: 'Needs Work', description: 'Flag concerns respectfully for moderators.', badgeClass: 'bg-red-100 text-red-700 border-red-200' },
 ]
+
+const COMMENTS_HEADER_INFO = (
+  <div className="space-y-2 text-sm text-gray-100">
+    <p className="font-semibold text-white">About comments</p>
+    <ul className="list-disc space-y-1 pl-4 text-gray-200">
+      <li>Visible to everyone who views this profile.</li>
+      <li>Use clear, professional language and concrete observations.</li>
+      <li>Your rating helps clubs and coaches scan at a glance.</li>
+    </ul>
+  </div>
+)
+
+const COMMENT_COMPOSER_INFO = (
+  <div className="space-y-2 text-sm text-gray-100">
+    <p className="font-semibold text-white">Posting tips</p>
+    <ul className="list-disc space-y-1 pl-4 text-gray-200">
+      <li>Stay constructive—your profile name is shown with every comment.</li>
+      <li>Reference specific games, training moments, or character traits.</li>
+      <li>Respect the minimum length and select a sentiment before submitting.</li>
+    </ul>
+  </div>
+)
 
 export default function CommentsTab({ profileId, highlightedCommentIds }: CommentsTabProps) {
   const { profile: authProfile, user } = useAuthStore()
@@ -343,12 +366,15 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Comments</h2>
-            <p className="text-gray-600 text-sm">
-              Professional testimonials from verified PLAYR members.
-            </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-gray-900">Comments</h2>
+              <InfoTooltip label="How comments work" alignment="start">
+                {COMMENTS_HEADER_INFO}
+              </InfoTooltip>
+            </div>
+            <p className="text-sm text-gray-600">Verified testimonials from PLAYR members.</p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
             <MessageSquare className="h-4 w-4 text-[#6366f1]" />
@@ -365,12 +391,13 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
                 <MessageSquarePlus className="h-4 w-4" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900">
-                  Share your experience
-                </p>
-                <p className="text-xs text-gray-500">
-                  Be constructive and professional—your name appears publicly.
-                </p>
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                  <span>Share your experience</span>
+                  <InfoTooltip label="Commenting tips" alignment="start">
+                    {COMMENT_COMPOSER_INFO}
+                  </InfoTooltip>
+                </div>
+                <p className="text-xs text-gray-500">Give thoughtful, professional feedback.</p>
               </div>
             </div>
 
