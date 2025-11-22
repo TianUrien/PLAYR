@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import ConversationList from '@/components/ConversationList'
-import ChatWindow from '@/components/ChatWindow'
+import ChatWindowV2 from '@/features/chat-v2/ChatWindowV2'
 import { vi } from 'vitest'
 
 vi.mock('@/lib/supabase', () => ({
@@ -21,11 +21,13 @@ const mockUseChat = vi.fn()
 const mockUseMediaQuery = vi.fn(() => false)
 const mockUseSafeArea = vi.fn()
 const scrollToBottom = vi.fn()
+const getDistanceFromBottom = vi.fn(() => 0)
 const mockScrollController = {
   scrollContainerRef: { current: document.createElement('div') as HTMLDivElement },
   isAutoScrollingRef: { current: false },
   isViewerAtBottom: () => true,
-  scrollToBottom
+  scrollToBottom,
+  getDistanceFromBottom
 }
 
 vi.mock('@/hooks/useChat', () => ({
@@ -45,7 +47,7 @@ vi.mock('@/hooks/useChatScrollController', () => ({
 }))
 
 type ConversationListConversation = Parameters<typeof ConversationList>[0]['conversations'][number]
-type ChatConversation = Parameters<typeof ChatWindow>[0]['conversation']
+type ChatConversation = Parameters<typeof ChatWindowV2>[0]['conversation']
 
 const listConversationBase: ConversationListConversation = {
   id: 'conv-1',
@@ -103,7 +105,9 @@ const resolvedChatState = {
   sendMessage: vi.fn(),
   loadOlderMessages: vi.fn(),
   queueReadReceipt: vi.fn(),
-  markConversationAsRead: vi.fn()
+  markConversationAsRead: vi.fn(),
+  retryMessage: vi.fn(),
+  deleteFailedMessage: vi.fn()
 }
 
 beforeEach(() => {
@@ -140,7 +144,7 @@ function renderChatWindow(overrides?: Partial<ChatConversation>) {
   const conversation = { ...chatConversationBase, ...overrides }
   return render(
     <MemoryRouter>
-      <ChatWindow
+      <ChatWindowV2
         conversation={conversation}
         currentUserId="viewer-1"
         onBack={vi.fn()}
@@ -215,13 +219,100 @@ describe('Messages flows', () => {
     })
   })
 
-  it('applies a sticky header on mobile', async () => {
+  it('keeps only the message list scrollable on mobile', async () => {
     mockUseMediaQuery.mockReturnValue(true)
     const { getByLabelText } = renderChatWindow()
 
     const backButton = getByLabelText('Back to conversations')
-    const header = backButton.closest('div')
+    const header = backButton.closest('header')
     expect(header).not.toBeNull()
+    // Header should be relative on mobile without immersive mode
+    expect(header).toHaveClass('relative')
+
+    const messageList = screen.getByTestId('chat-message-list')
+    expect(messageList).toHaveClass('chat-scroll-container')
+  })
+
+  it('has context-aware positioning (relative on desktop, fixed on mobile immersive)', () => {
+    // Desktop: should use relative positioning
+    mockUseMediaQuery.mockReturnValue(false)
+    const { container: desktopContainer, rerender } = renderChatWindow()
+
+    let header = screen.getByRole('banner')
+    expect(header).toHaveClass('relative')
+    expect(header).not.toHaveClass('fixed')
+
+    let composer = desktopContainer.querySelector('form')
+    expect(composer).not.toBeNull()
+    expect(composer).toHaveClass('relative')
+    expect(composer).not.toHaveClass('fixed')
+
+    // Mobile immersive: should use fixed positioning
+    mockUseMediaQuery.mockReturnValue(true)
+    rerender(
+      <MemoryRouter>
+        <ChatWindowV2
+          conversation={{ ...chatConversationBase }}
+          currentUserId="viewer-1"
+          onBack={vi.fn()}
+          onConversationCreated={vi.fn()}
+          isImmersiveMobile={true}
+        />
+      </MemoryRouter>
+    )
+
+    header = screen.getByRole('banner')
     expect(header).toHaveClass('fixed')
+    expect(header).toHaveClass('chat-fixed-header')
+
+    composer = desktopContainer.querySelector('form')
+    expect(composer).not.toBeNull()
+    expect(composer).toHaveClass('fixed')
+    expect(composer).toHaveClass('chat-fixed-composer')
+  })
+
+  it('only auto-scrolls when near bottom for new incoming messages', async () => {
+    getDistanceFromBottom.mockReturnValue(50) // Near bottom
+    renderChatWindow()
+
+    await waitFor(() => {
+      expect(scrollToBottom).toHaveBeenCalled()
+    })
+
+    scrollToBottom.mockClear()
+
+    // Simulate user scrolled up to read old messages
+    getDistanceFromBottom.mockReturnValue(500)
+
+    // Simulate new message arriving
+    const newMessages = [
+      ...resolvedChatState.messages,
+      {
+        id: 'msg-3',
+        conversation_id: 'conv-1',
+        sender_id: 'user-2',
+        content: 'New message while scrolled up',
+        sent_at: new Date('2024-01-03').toISOString(),
+        read_at: null,
+        created_at: new Date('2024-01-03').toISOString(),
+        updated_at: new Date('2024-01-03').toISOString()
+      }
+    ]
+
+    mockUseChat.mockReturnValue({
+      ...resolvedChatState,
+      messages: newMessages
+    })
+
+    // Should NOT auto-scroll since user is reading old messages
+    expect(scrollToBottom).not.toHaveBeenCalled()
+  })
+
+  it('prevents zoom on mobile textarea', () => {
+    mockUseMediaQuery.mockReturnValue(true)
+    renderChatWindow()
+
+    const textarea = screen.getByPlaceholderText('Type a message...')
+    expect(textarea).toHaveClass('chat-textarea')
   })
 })

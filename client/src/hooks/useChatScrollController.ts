@@ -1,20 +1,44 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 
 interface UseChatScrollControllerOptions {
   hasMore: boolean
   isLoadingMore: boolean
   loadOlderMessages: () => Promise<boolean>
   onReachBottom?: () => void
+  onBeforeLoadOlder?: () => void
+  scrollContainerRef?: MutableRefObject<HTMLDivElement | null>
+  onScrollMetricsChange?: (metrics: { distanceFromBottom: number }) => void
 }
 
 export function useChatScrollController({
   hasMore,
   isLoadingMore,
   loadOlderMessages,
-  onReachBottom
+  onReachBottom,
+  onBeforeLoadOlder,
+  scrollContainerRef: externalScrollRef,
+  onScrollMetricsChange
 }: UseChatScrollControllerOptions) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const internalScrollRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = externalScrollRef ?? internalScrollRef
   const isAutoScrollingRef = useRef(false)
+  const distanceFromBottomRef = useRef(0)
+
+  const readDistanceFromBottom = useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) {
+      return 0
+    }
+
+    return container.scrollHeight - (container.scrollTop + container.clientHeight)
+  }, [scrollContainerRef])
+
+  const notifyScrollMetrics = useCallback(() => {
+    const distance = readDistanceFromBottom()
+    distanceFromBottomRef.current = distance
+    onScrollMetricsChange?.({ distanceFromBottom: distance })
+    return distance
+  }, [onScrollMetricsChange, readDistanceFromBottom])
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     const container = scrollContainerRef.current
@@ -23,22 +47,30 @@ export function useChatScrollController({
     }
 
     isAutoScrollingRef.current = true
-    container.scrollTo({ top: container.scrollHeight, behavior })
+    
+    // Use requestAnimationFrame for smoother scroll
+    requestAnimationFrame(() => {
+      container.scrollTo({ top: container.scrollHeight, behavior })
+    })
 
-    window.setTimeout(() => {
+    const finalize = () => {
       isAutoScrollingRef.current = false
-    }, behavior === 'auto' ? 0 : 150)
-  }, [])
-
-  const isViewerAtBottom = useCallback(() => {
-    const container = scrollContainerRef.current
-    if (!container) {
-      return true
+      notifyScrollMetrics()
     }
 
-    const distanceFromBottom = container.scrollHeight - (container.scrollTop + container.clientHeight)
+    if (behavior === 'auto') {
+      requestAnimationFrame(finalize)
+    } else {
+      window.setTimeout(finalize, 200)
+    }
+  }, [notifyScrollMetrics, scrollContainerRef])
+
+  const isViewerAtBottom = useCallback(() => {
+    const distanceFromBottom = readDistanceFromBottom()
     return distanceFromBottom <= 150
-  }, [])
+  }, [readDistanceFromBottom])
+
+  const getDistanceFromBottom = useCallback(() => distanceFromBottomRef.current, [])
 
   useEffect(() => {
     const container = scrollContainerRef.current
@@ -46,31 +78,43 @@ export function useChatScrollController({
       return
     }
 
+    let ticking = false
+
     const handleScroll = () => {
-      if (isAutoScrollingRef.current) {
+      if (isAutoScrollingRef.current || ticking) {
         return
       }
 
-      if (container.scrollTop < 120 && hasMore && !isLoadingMore) {
-        void loadOlderMessages()
-      }
+      ticking = true
+      requestAnimationFrame(() => {
+        if (container.scrollTop < 120 && hasMore && !isLoadingMore) {
+          onBeforeLoadOlder?.()
+          void loadOlderMessages()
+        }
 
-      if (isViewerAtBottom()) {
-        onReachBottom?.()
-      }
+        notifyScrollMetrics()
+
+        if (isViewerAtBottom()) {
+          onReachBottom?.()
+        }
+
+        ticking = false
+      })
     }
 
     container.addEventListener('scroll', handleScroll, { passive: true })
+    notifyScrollMetrics()
 
     return () => {
       container.removeEventListener('scroll', handleScroll)
     }
-  }, [hasMore, isLoadingMore, isViewerAtBottom, loadOlderMessages, onReachBottom])
+  }, [hasMore, isLoadingMore, isViewerAtBottom, loadOlderMessages, notifyScrollMetrics, onBeforeLoadOlder, onReachBottom, scrollContainerRef])
 
   return {
     scrollContainerRef,
     isAutoScrollingRef,
     isViewerAtBottom,
-    scrollToBottom
+    scrollToBottom,
+    getDistanceFromBottom
   }
 }

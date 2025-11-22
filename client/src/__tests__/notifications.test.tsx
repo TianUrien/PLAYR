@@ -4,24 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
 import NotificationBadge from '@/components/NotificationBadge'
 import NotificationsDrawer from '@/components/NotificationsDrawer'
-
-type NotificationRecord = {
-  id: string
-  kind: 'friend_request' | 'profile_comment' | 'reference_request' | 'reference_accepted'
-  sourceEntityId: string | null
-  payload: Record<string, unknown>
-  createdAt: string
-  readAt: string | null
-  clearedAt: string | null
-  actor: {
-    id: string | null
-    fullName: string | null
-    role: string | null
-    username: string | null
-    avatarUrl: string | null
-    baseLocation: string | null
-  }
-}
+import type { NotificationRecord } from '@/lib/api/notifications'
 
 type NotificationStoreSlice = {
   isDrawerOpen: boolean
@@ -53,11 +36,13 @@ vi.mock('@/lib/toast', () => ({
 
 const createNotification = (overrides: Partial<NotificationRecord> = {}): NotificationRecord => ({
   id: 'notif-1',
-  kind: 'friend_request',
+  kind: 'friend_request_received',
   sourceEntityId: 'source-1',
-  payload: {},
+  metadata: {},
+  targetUrl: null,
   createdAt: new Date('2024-01-01T00:00:00Z').toISOString(),
   readAt: null,
+  seenAt: null,
   clearedAt: null,
   actor: {
     id: 'actor-1',
@@ -135,7 +120,7 @@ describe('NotificationsDrawer', () => {
     const respondToFriendRequest = vi.fn().mockResolvedValue(true)
     const notifications = [
       createNotification({
-        kind: 'friend_request',
+        kind: 'friend_request_received',
         sourceEntityId: 'friendship-19',
       }),
     ]
@@ -166,8 +151,8 @@ describe('NotificationsDrawer', () => {
       notifications: [
         createNotification({
           id: 'reference-1',
-          kind: 'reference_request',
-          payload: { relationship_type: 'Coach', request_note: 'Coached U16s' },
+          kind: 'reference_request_received',
+          metadata: { relationship_type: 'Coach', request_note: 'Coached U16s' },
         }),
       ],
     })
@@ -191,8 +176,8 @@ describe('NotificationsDrawer', () => {
       notifications: [
         createNotification({
           id: 'comment-1',
-          kind: 'profile_comment',
-          payload: { snippet: 'Loved your latest highlight reel!' },
+          kind: 'profile_comment_created',
+          metadata: { snippet: 'Loved your latest highlight reel!' },
         }),
       ],
     })

@@ -7,6 +7,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import ConversationList from '@/components/ConversationList'
 import ChatWindow from '@/components/ChatWindow'
+import ChatWindowV2 from '@/features/chat-v2/ChatWindowV2'
 import type { ChatMessageEvent } from '@/types/chat'
 import Header from '@/components/Header'
 import { ConversationSkeleton } from '@/components/Skeleton'
@@ -14,6 +15,7 @@ import { requestCache } from '@/lib/requestCache'
 import { monitor } from '@/lib/monitor'
 import { logger } from '@/lib/logger'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { useBodyScrollLock } from '@/hooks/useBodyScrollLock'
 import { reportSupabaseError } from '@/lib/sentryHelpers'
 
 interface ConversationDBRow {
@@ -534,6 +536,8 @@ export default function MessagesPage() {
   const hasActiveConversation = Boolean(selectedConversationId)
   const shouldHideGlobalHeader = Boolean(isMobile && hasActiveConversation)
   const conversationListKey = shouldHideGlobalHeader ? 'immersive-hidden' : 'list-visible'
+  const shouldLockBodyScroll = shouldHideGlobalHeader
+  useBodyScrollLock(shouldLockBodyScroll)
 
   const handleSelectConversation = useCallback(
     (conversationId: string) => {
@@ -651,13 +655,14 @@ export default function MessagesPage() {
 
   const handleConversationMessageEvent = useCallback(
     (event: ChatMessageEvent) => {
-      if (event.type === 'sent') {
+      if (event.type === 'sent' || event.type === 'received') {
         setConversations(prev => {
           const existing = prev.find(conv => conv.id === event.conversationId)
           if (!existing) {
             return prev
           }
 
+          const isActiveConversation = selectedConversationId === event.conversationId
           const updatedConversation: Conversation = {
             ...existing,
             lastMessage: {
@@ -666,7 +671,12 @@ export default function MessagesPage() {
               sender_id: event.message.sender_id
             },
             last_message_at: event.message.sent_at,
-            unreadCount: existing.unreadCount ?? 0
+            unreadCount:
+              event.type === 'received'
+                ? isActiveConversation
+                  ? 0
+                  : (existing.unreadCount ?? 0) + 1
+                : existing.unreadCount ?? 0
           }
 
           const others = prev.filter(conv => conv.id !== event.conversationId)
@@ -682,7 +692,7 @@ export default function MessagesPage() {
         )
       }
     },
-    []
+    [selectedConversationId]
   )
 
   const handleLoadMoreConversations = useCallback(() => {
@@ -865,26 +875,26 @@ export default function MessagesPage() {
   }, [combinedConversations, navigate, searchParams, selectedConversationId, user?.id, isPendingConversation, isValidConversationId])
 
   const rootContainerClasses = isMobile
-    ? 'bg-white h-full md:h-full'
-    : 'h-full bg-gray-50'
+    ? 'flex flex-1 min-h-0 flex-col bg-white'
+    : 'flex flex-1 min-h-0 flex-col overflow-hidden bg-gray-50'
 
   const mainPaddingClasses = isMobile
     ? shouldHideGlobalHeader
-      ? 'mx-auto w-full max-w-7xl px-0 md:px-6 h-full'
-      : 'mx-auto w-full max-w-7xl px-4 pb-4 pt-[calc(var(--app-header-offset,0px)+1rem)] md:px-6 h-full'
-    : 'mx-auto max-w-7xl px-4 pb-12 pt-[calc(var(--app-header-offset,0px)+1.5rem)] md:px-6 h-full'
+      ? 'mx-auto w-full max-w-7xl px-0 md:px-6'
+      : 'mx-auto w-full max-w-7xl px-4 pb-4 pt-[calc(var(--app-header-offset,0px)+1rem)] md:px-6'
+    : 'mx-auto w-full max-w-7xl px-4 pb-12 pt-[calc(var(--app-header-offset,0px)+1.5rem)] md:px-6'
 
   const containerClasses = shouldHideGlobalHeader
-    ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white md:flex-row'
+    ? 'flex min-h-0 flex-1 flex-col bg-white md:flex-row md:overflow-hidden'
     : isMobile
-      ? 'flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white md:flex-row'
-      : 'flex h-[calc(100dvh-var(--app-header-offset,0px)-4rem)] min-h-0 min-h-chat-card flex-1 flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm md:flex-row'
+      ? 'flex min-h-0 flex-1 flex-col bg-white md:flex-row md:overflow-hidden'
+      : 'flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm md:flex-row'
 
   if (loading) {
     return (
       <div className={rootContainerClasses}>
         {!shouldHideGlobalHeader && <Header />}
-        <main className={mainPaddingClasses}>
+        <main className={`${mainPaddingClasses} flex min-h-0 flex-1 flex-col overflow-hidden`}>
           <div className={containerClasses}>
             <div className="flex min-h-0 flex-1">
               <div
@@ -919,7 +929,7 @@ export default function MessagesPage() {
     <div className={rootContainerClasses}>
       {!shouldHideGlobalHeader && <Header />}
 
-      <main className={mainPaddingClasses}>
+      <main className={`${mainPaddingClasses} flex min-h-0 flex-1 flex-col overflow-hidden`}>
         <div className={containerClasses}>
           <div className="flex min-h-0 flex-1">
             {/* Left Column - Conversations List */}
@@ -1009,7 +1019,7 @@ export default function MessagesPage() {
             {/* Right Column - Chat Window */}
             <div className={`flex min-h-0 flex-1 flex-col ${hasActiveConversation ? 'flex' : 'hidden md:flex'}`}>
               {selectedConversation ? (
-                <ChatWindow
+                <ChatWindowV2
                   conversation={selectedConversation}
                   currentUserId={user?.id || ''}
                   onBack={handleBackToList}

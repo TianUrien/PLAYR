@@ -476,10 +476,12 @@ export type Database = {
           created_at: string
           id: string
           kind: Database["public"]["Enums"]["profile_notification_kind"]
-          payload: Json
+          metadata: Json
           read_at: string | null
           recipient_profile_id: string
+          seen_at: string | null
           source_entity_id: string | null
+          target_url: string | null
           updated_at: string
         }
         Insert: {
@@ -488,10 +490,12 @@ export type Database = {
           created_at?: string
           id?: string
           kind: Database["public"]["Enums"]["profile_notification_kind"]
-          payload?: Json
+          metadata?: Json
           read_at?: string | null
           recipient_profile_id: string
+          seen_at?: string | null
           source_entity_id?: string | null
+          target_url?: string | null
           updated_at?: string
         }
         Update: {
@@ -500,10 +504,12 @@ export type Database = {
           created_at?: string
           id?: string
           kind?: Database["public"]["Enums"]["profile_notification_kind"]
-          payload?: Json
+          metadata?: Json
           read_at?: string | null
           recipient_profile_id?: string
+          seen_at?: string | null
           source_entity_id?: string | null
+          target_url?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -997,24 +1003,31 @@ export type Database = {
           reference_profile: Json
         }[]
       }
-      fetch_profile_notifications: {
-        Args: { p_limit?: number | null; p_offset?: number | null }
+      get_notification_counts: {
+        Args: never
+        Returns: {
+          unread_count: number
+          total_count: number
+        }[]
+      }
+      get_notifications: {
+        Args: {
+          p_filter?: string | null
+          p_kind?: Database["public"]["Enums"]["profile_notification_kind"] | null
+          p_limit?: number | null
+          p_offset?: number | null
+        }
         Returns: {
           id: string
           kind: Database["public"]["Enums"]["profile_notification_kind"]
           source_entity_id: string | null
-          payload: Json
+          metadata: Json
+          target_url: string | null
           created_at: string
           read_at: string | null
+          seen_at: string | null
           cleared_at: string | null
-          actor: {
-            id: string | null
-            full_name: string | null
-            role: string | null
-            username: string | null
-            avatar_url: string | null
-            base_location: string | null
-          } | null
+          actor: Json
         }[]
       }
       fetch_club_vacancies_with_counts: {
@@ -1036,8 +1049,14 @@ export type Database = {
         Args: { p_conversation_id: string; p_before?: string | null }
         Returns: number
       }
-      mark_profile_notifications_read: {
-        Args: { p_notification_ids?: string[] | null }
+      mark_notification_read: {
+        Args: { p_notification_id: string }
+        Returns: boolean
+      }
+      mark_all_notifications_read: {
+        Args: {
+          p_kind?: Database["public"]["Enums"]["profile_notification_kind"] | null
+        }
         Returns: number
       }
       remove_reference: {
@@ -1124,10 +1143,21 @@ export type Database = {
         | "cancelled"
         | "blocked"
       profile_notification_kind:
-        | "friend_request"
-        | "profile_comment"
-        | "reference_request"
-        | "reference_accepted"
+        | "friend_request_received"
+        | "profile_comment_created"
+        | "reference_request_received"
+        | "reference_request_accepted"
+        | "friend_request_accepted"
+        | "reference_updated"
+        | "profile_comment_reply"
+        | "profile_comment_like"
+        | "message_received"
+        | "conversation_started"
+        | "vacancy_application_received"
+        | "vacancy_application_status"
+        | "profile_completed"
+        | "account_verified"
+        | "system_announcement"
       profile_reference_status: "pending" | "accepted" | "declined" | "revoked"
       journey_entry_type:
         | "club"

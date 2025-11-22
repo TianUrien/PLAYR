@@ -74,10 +74,16 @@ export default function ConversationList({
   }
 
   const virtualItems = rowVirtualizer.getVirtualItems()
+  const totalHeight = rowVirtualizer.getTotalSize()
+
+  const setSpacerRef = (element: HTMLDivElement | null) => {
+    if (!element) return
+    element.style.height = `${totalHeight}px`
+  }
 
   return (
     <div ref={parentRef} className="h-full overflow-y-auto">
-      <div className="relative w-full" style={{ height: rowVirtualizer.getTotalSize() }}>
+      <div className="relative w-full" ref={setSpacerRef}>
         {virtualItems.map(virtualRow => {
           const conversation = conversations[virtualRow.index]
           if (!conversation) {
@@ -88,6 +94,7 @@ export default function ConversationList({
           const avatarUrl = getAvatarUrl(conversation.otherParticipant?.avatar_url || null)
           const isUnread = (conversation.unreadCount || 0) > 0
           const isSentByMe = conversation.lastMessage?.sender_id === currentUserId
+          const otherParticipantLabel = conversation.otherParticipant?.full_name?.split(' ')[0] || conversation.otherParticipant?.username || 'Contact'
           const buttonClasses = `w-full flex items-start gap-3 ${isCompact ? 'px-3 py-3' : 'p-4'} transition-colors ${
             isSelected
               ? isCompact
@@ -104,10 +111,13 @@ export default function ConversationList({
           return (
             <div
               key={conversation.id}
-              ref={rowVirtualizer.measureElement}
+              ref={element => {
+                if (!element) return
+                rowVirtualizer.measureElement(element)
+                element.style.transform = `translateY(${virtualRow.start}px)`
+              }}
               data-index={virtualRow.index}
               className="absolute left-0 w-full border-b border-gray-100"
-              style={{ transform: `translateY(${virtualRow.start}px)` }}
             >
               <button onClick={() => onSelectConversation(conversation.id)} className={buttonClasses}>
                 <div className="relative flex-shrink-0">
@@ -144,7 +154,9 @@ export default function ConversationList({
                   {conversation.lastMessage && (
                     <div className="flex items-center justify-between">
                       <p className={`text-sm truncate ${isUnread ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>
-                        {isSentByMe && <span className="text-gray-500">You: </span>}
+                        <span className="text-gray-500">
+                          {isSentByMe ? 'You' : otherParticipantLabel}:
+                        </span>{' '}
                         {truncateMessage(conversation.lastMessage.content)}
                       </p>
                       {isUnread && <span className="ml-2 h-2 w-2 flex-shrink-0 rounded-full bg-purple-600"></span>}

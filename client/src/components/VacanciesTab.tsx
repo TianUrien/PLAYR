@@ -42,7 +42,7 @@ function VacancyActionMenu({ vacancy, disabled, onEdit, onDuplicate, onPublish, 
   useEffect(() => {
     if (!open) return
 
-    const handleClick = (event: MouseEvent) => {
+    const handleClick = (event: MouseEvent | TouchEvent) => {
       if (menuRef.current?.contains(event.target as Node)) {
         return
       }

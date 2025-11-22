@@ -19,11 +19,11 @@ export default function Layout({ children, className = '' }: LayoutProps) {
   )
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex min-h-screen-dvh flex-col">
       <NotificationBridge />
       <NotificationsDrawer />
       {/* Main content area - grows to push footer down */}
-      <main className={`flex-1 ${className}`}>
+      <main className={`flex flex-1 min-h-0 flex-col ${className}`}>
         {children}
       </main>
 

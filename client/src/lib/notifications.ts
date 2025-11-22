@@ -1,9 +1,16 @@
 import { create } from 'zustand'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-import { monitor } from './monitor'
 import { requestCache, generateCacheKey } from './requestCache'
-import type { Database, Json } from './database.types'
+import {
+  fetchNotificationsPage,
+  markAllNotificationsRead as markAllNotificationsReadRpc,
+  clearNotifications as clearNotificationsRpc,
+  type NotificationKind,
+  type NotificationRecord,
+  type NotificationMetadata,
+} from './api/notifications'
+import type { Tables } from './database.types'
 
 const NOTIFICATION_LIMIT = 40
 const HEARTBEAT_INTERVAL_MS = 60_000
@@ -11,29 +18,27 @@ const CHANNEL_RECONNECT_BASE_DELAY_MS = 2000
 const CHANNEL_RECONNECT_MAX_DELAY_MS = 30_000
 let lifecycleListenersBound = false
 
-type NotificationKind = Database['public']['Enums']['profile_notification_kind']
+type ProfileNotificationRow = Tables<'profile_notifications'>
 
-type NotificationActor = {
-  id: string | null
-  fullName: string | null
-  role: string | null
-  username: string | null
-  avatarUrl: string | null
-  baseLocation: string | null
-}
-
-type NotificationPayload = Record<string, Json>
-
-type NotificationRecord = {
-  id: string
-  kind: NotificationKind
-  sourceEntityId: string | null
-  payload: NotificationPayload
-  createdAt: string
-  readAt: string | null
-  clearedAt: string | null
-  actor: NotificationActor
-}
+const mapRealtimeNotification = (row: ProfileNotificationRow): NotificationRecord => ({
+  id: row.id,
+  kind: row.kind,
+  sourceEntityId: row.source_entity_id,
+  metadata: (row.metadata ?? {}) as NotificationMetadata,
+  targetUrl: row.target_url,
+  createdAt: row.created_at,
+  readAt: row.read_at,
+  seenAt: row.seen_at,
+  clearedAt: row.cleared_at,
+  actor: {
+    id: row.actor_profile_id,
+    fullName: null,
+    role: null,
+    username: null,
+    avatarUrl: null,
+    baseLocation: null,
+  },
+})
 
 interface RefreshOptions {
   bypassCache?: boolean
@@ -62,41 +67,6 @@ interface NotificationState {
   dismissBySource: (kind: NotificationKind, sourceId: string | null) => void
 }
 
-type RpcRow = {
-  id: string
-  kind: NotificationKind
-  source_entity_id: string | null
-  payload: NotificationPayload | null
-  created_at: string
-  read_at: string | null
-  cleared_at: string | null
-  actor: {
-    id?: string | null
-    full_name?: string | null
-    role?: string | null
-    username?: string | null
-    avatar_url?: string | null
-    base_location?: string | null
-  } | null
-}
-
-const normalizeNotification = (row: RpcRow): NotificationRecord => ({
-  id: row.id,
-  kind: row.kind,
-  sourceEntityId: row.source_entity_id,
-  payload: (row.payload ?? {}) as NotificationPayload,
-  createdAt: row.created_at,
-  readAt: row.read_at,
-  clearedAt: row.cleared_at,
-  actor: {
-    id: row.actor?.id ?? null,
-    fullName: row.actor?.full_name ?? null,
-    role: row.actor?.role ?? null,
-    username: row.actor?.username ?? null,
-    avatarUrl: row.actor?.avatar_url ?? null,
-    baseLocation: row.actor?.base_location ?? null,
-  },
-})
 
 const fetchNotifications = async (userId: string, options?: RefreshOptions): Promise<NotificationRecord[]> => {
   const cacheKey = generateCacheKey('profile_notifications', { userId })
@@ -104,30 +74,26 @@ const fetchNotifications = async (userId: string, options?: RefreshOptions): Pro
     requestCache.invalidate(cacheKey)
   }
 
-  return await monitor.measure('fetch_profile_notifications', async () => {
-    return await requestCache.dedupe(cacheKey, async () => {
-      const { data, error } = await supabase.rpc('fetch_profile_notifications', {
-        p_limit: NOTIFICATION_LIMIT,
-        p_offset: 0,
+  return await requestCache.dedupe(cacheKey, async () => {
+    try {
+      return await fetchNotificationsPage({
+        filter: 'all',
+        limit: NOTIFICATION_LIMIT,
+        offset: 0,
       })
-
-      if (error) {
-        console.error('[NOTIFICATIONS] Failed to fetch notifications', error)
-        return []
-      }
-
-      const rows = (data ?? []) as RpcRow[]
-      return rows.map(normalizeNotification)
-    }, 3000)
-  }, { userId })
+    } catch (error) {
+      console.error('[NOTIFICATIONS] Failed to fetch notifications', error)
+      return []
+    }
+  }, 3000)
 }
 
 const extractCommentId = (notification: NotificationRecord): string | null => {
-  if (notification.kind !== 'profile_comment') {
+  if (notification.kind !== 'profile_comment_created') {
     return null
   }
 
-  const value = notification.payload?.comment_id
+  const value = notification.metadata?.['comment_id']
   if (typeof value === 'string' && value) {
     return value
   }
@@ -323,13 +289,13 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
           table: 'profile_notifications',
           filter: `recipient_profile_id=eq.${userId}`,
         },
-        (payload) => {
-          const record = payload.new ?? payload.old
+        (change) => {
+          const record = change.new ?? change.old
           if (!record) {
             return
           }
 
-          const normalized = normalizeNotification(record as RpcRow)
+          const normalized = mapRealtimeNotification(record as ProfileNotificationRow)
           set((state) => ({
             ...upsertNotification(normalized, state),
           }))
@@ -444,16 +410,19 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
         return
       }
 
-      const { error } = await supabase.rpc('mark_profile_notifications_read')
-      if (error) {
+      try {
+        await markAllNotificationsReadRpc()
+      } catch (error) {
         console.error('[NOTIFICATIONS] Failed to mark notifications read', error)
         return
       }
 
+      const nowIso = new Date().toISOString()
       set((state) => ({
         notifications: state.notifications.map((item) => ({
           ...item,
-          readAt: item.readAt ?? new Date().toISOString(),
+          readAt: item.readAt ?? nowIso,
+          seenAt: item.seenAt ?? nowIso,
         })),
         unreadCount: 0,
       }))
@@ -465,18 +434,16 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
         return
       }
 
-      const { error } = await supabase.rpc('clear_profile_notifications', {
-        p_kind: 'profile_comment',
-      })
-
-      if (error) {
+      try {
+        await clearNotificationsRpc({ kind: 'profile_comment_created' })
+      } catch (error) {
         console.error('[NOTIFICATIONS] Failed to clear comment notifications', error)
         return
       }
 
       set((state) => {
-        const next = state.notifications.filter((item) => item.kind !== 'profile_comment')
-        const unreadCount = next.filter((item) => !item.readAt).length
+        const next = state.notifications.filter((item) => item.kind !== 'profile_comment_created')
+        const unreadCount = next.filter((item) => !item.readAt && !item.clearedAt).length
         return {
           notifications: next,
           unreadCount,
@@ -519,7 +486,9 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
         set((state) => ({
           pendingFriendshipId: null,
           notifications: state.notifications.filter((item) => item.sourceEntityId !== friendshipId),
-          unreadCount: state.notifications.filter((item) => item.sourceEntityId !== friendshipId && !item.readAt).length,
+          unreadCount: state.notifications.filter(
+            (item) => item.sourceEntityId !== friendshipId && !item.readAt && !item.clearedAt
+          ).length,
         }))
 
         return true
@@ -535,7 +504,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
 
       set((state) => {
         const next = state.notifications.filter((item) => !(item.kind === kind && item.sourceEntityId === sourceId))
-        const unreadCount = next.filter((item) => !item.readAt).length
+        const unreadCount = next.filter((item) => !item.readAt && !item.clearedAt).length
         return { notifications: next, unreadCount }
       })
     },

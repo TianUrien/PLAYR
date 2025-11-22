@@ -10,7 +10,7 @@ import { useToastStore } from '@/lib/toast'
 import { useUnreadStore } from '@/lib/unread'
 import { loadMessageDraft, saveMessageDraft, clearMessageDraft } from '@/lib/messageDrafts'
 import { reportSupabaseError } from '@/lib/sentryHelpers'
-import type { Message, Conversation, ChatMessageEvent } from '@/types/chat'
+import type { ChatMessage, Message, Conversation, ChatMessageEvent, MessageDeliveryStatus } from '@/types/chat'
 
 const MESSAGES_PAGE_SIZE = 50
 
@@ -64,14 +64,14 @@ export function useChat({
   onConversationCreated,
   onConversationRead
 }: UseChatProps) {
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [hasMoreMessages, setHasMoreMessages] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   
-  const messagesRef = useRef<Message[]>([])
+  const messagesRef = useRef<ChatMessage[]>([])
   const fetchMessagesPromiseRef = useRef<Promise<Message[]> | null>(null)
   const oldestLoadedCursorRef = useRef<MessageCursor | null>(null)
   const pendingReadIdsRef = useRef(new Set<string>())
@@ -147,7 +147,7 @@ export function useChat({
   }, [conversationDraftKey, currentUserId, newMessage])
 
   const syncMessagesState = useCallback(
-    (next: Message[] | ((prev: Message[]) => Message[])) => {
+    (next: ChatMessage[] | ((prev: ChatMessage[]) => ChatMessage[])) => {
       if (typeof next === 'function') {
         setMessages(prev => {
           const resolved = next(prev)
@@ -193,7 +193,10 @@ export function useChat({
 
         if (error) throw error
 
-        const fetched = (data ?? []).reverse()
+        const fetched: ChatMessage[] = (data ?? []).reverse().map(message => ({
+          ...message,
+          status: 'delivered'
+        }))
         logger.debug('Fetched messages:', fetched)
         syncMessagesState(fetched)
         oldestLoadedCursorRef.current = fetched[0]
@@ -292,7 +295,7 @@ export function useChat({
           return prev
         }
 
-        return [...deduped, ...prev]
+        return [...deduped.map(msg => ({ ...msg, status: 'delivered' as MessageDeliveryStatus })), ...prev]
       })
       
       return true
@@ -448,8 +451,16 @@ export function useChat({
     }
   }, [conversation.id, conversation.isPending, currentUserId, flushPendingReadReceipts, queueReadReceipt])
 
-  const sendMessage = async (content: string) => {
-    if (!content.trim() || sending) return
+  const updateMessageStatus = useCallback((messageId: string, status: MessageDeliveryStatus, error: string | null = null) => {
+    syncMessagesState(prev => prev.map(msg => (msg.id === messageId ? { ...msg, status, error } : msg)))
+  }, [syncMessagesState])
+
+  const deleteFailedMessage = useCallback((messageId: string) => {
+    syncMessagesState(prev => prev.filter(msg => msg.id !== messageId))
+  }, [syncMessagesState])
+
+  const sendMessage = useCallback(async (content: string, options?: { reuseOptimisticId?: string }) => {
+    if (!content.trim() || sending) return false
 
     const messageContent = content.trim()
     if (messageContent.length > 1000) {
@@ -472,7 +483,8 @@ export function useChat({
 
     let activeConversationId: string | null = conversation.isPending ? null : conversation.id
     let newlyCreatedConversation: Conversation | null = null
-    let optimisticId: string | null = null
+    let optimisticId: string | null = options?.reuseOptimisticId ?? null
+    let optimisticMessage: ChatMessage | null = null
     let conversationCreatedForSend = false
 
     try {
@@ -561,23 +573,27 @@ export function useChat({
       }
 
       const idempotencyKey = `${currentUserId}-${Date.now()}-${Math.random()}`
-      optimisticId = `optimistic-${idempotencyKey}`
+      if (!optimisticId) {
+        optimisticId = `optimistic-${idempotencyKey}`
+        optimisticMessage = {
+          id: optimisticId,
+          conversation_id: activeConversationId,
+          sender_id: currentUserId,
+          content: messageContent,
+          sent_at: new Date().toISOString(),
+          read_at: null,
+          status: 'sending'
+        }
 
-      const optimisticMessage: Message = {
-        id: optimisticId,
-        conversation_id: activeConversationId,
-        sender_id: currentUserId,
-        content: messageContent,
-        sent_at: new Date().toISOString(),
-        read_at: null
+        syncMessagesState(prev => [...prev, optimisticMessage!])
+        setNewMessage('')
+        clearMessageDraft(currentUserId, conversationDraftKey)
+      } else {
+        updateMessageStatus(optimisticId, 'sending')
       }
-
-      syncMessagesState(prev => [...prev, optimisticMessage])
-      setNewMessage('')
-      clearMessageDraft(currentUserId, conversationDraftKey)
       
       const conversationIdForMetrics = activeConversationId
-      let deliveredMessage: Message | null = null
+      let deliveredMessage: ChatMessage | null = null
 
       await monitor.measure(
         'send_message',
@@ -608,7 +624,7 @@ export function useChat({
 
           if (data && data[0]) {
             logger.debug('Message sent successfully, replacing optimistic message')
-            const persisted = data[0] as Message
+            const persisted: ChatMessage = { ...(data[0] as Message), status: 'delivered' }
             deliveredMessage = persisted
             syncMessagesState(prev => prev.map(msg => (msg.id === optimisticId ? persisted : msg)))
           }
@@ -616,11 +632,11 @@ export function useChat({
         { conversationId: conversationIdForMetrics }
       )
 
-      if (onMessageSent) {
+      if (onMessageSent && (deliveredMessage || optimisticMessage)) {
         onMessageSent({
           type: 'sent',
           conversationId: conversationIdForMetrics,
-          message: deliveredMessage ?? optimisticMessage
+          message: (deliveredMessage ?? optimisticMessage)!
         })
       }
 
@@ -641,10 +657,8 @@ export function useChat({
         operation: 'send_message'
       })
       if (optimisticId) {
-        const finalOptimisticId = optimisticId
-        syncMessagesState(prev => prev.filter(msg => msg.id !== finalOptimisticId))
+        updateMessageStatus(optimisticId, 'failed', 'Failed to send')
       }
-      setNewMessage(messageContent)
 
       if (conversationCreatedForSend && newlyCreatedConversation) {
         try {
@@ -674,7 +688,27 @@ export function useChat({
     } finally {
       setSending(false)
     }
-  }
+  }, [
+    addToast,
+    conversation,
+    conversationDraftKey,
+    currentUserId,
+    onConversationCreated,
+    onMessageSent,
+    sending,
+    setNewMessage,
+    syncMessagesState,
+    updateMessageStatus
+  ])
+
+  const retryMessage = useCallback((messageId: string) => {
+    const failedMessage = messagesRef.current.find(msg => msg.id === messageId)
+    if (!failedMessage) {
+      return
+    }
+
+    void sendMessage(failedMessage.content, { reuseOptimisticId: messageId })
+  }, [sendMessage])
 
   // Realtime subscription
   useEffect(() => {
@@ -691,14 +725,24 @@ export function useChat({
           filter: `conversation_id=eq.${conversation.id}`
         },
         payload => {
-          const newMessage = payload.new as Message
-          
+          const newMessage: ChatMessage = { ...(payload.new as Message), status: 'delivered' }
+
+          let didInsert = false
           syncMessagesState(prev => {
             if (prev.some(msg => msg.id === newMessage.id)) {
               return prev
             }
+            didInsert = true
             return [...prev, newMessage]
           })
+
+          if (didInsert && onMessageSent && newMessage.sender_id !== currentUserId) {
+            onMessageSent({
+              type: 'received',
+              conversationId: conversation.id,
+              message: newMessage
+            })
+          }
         }
       )
       .on(
@@ -710,7 +754,7 @@ export function useChat({
           filter: `conversation_id=eq.${conversation.id}`
         },
         payload => {
-          const updated = payload.new as Message
+          const updated: ChatMessage = { ...(payload.new as Message), status: 'delivered' }
           syncMessagesState(prev =>
             prev.map(msg => (msg.id === updated.id ? updated : msg))
           )
@@ -721,7 +765,7 @@ export function useChat({
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [conversation.id, conversation.isPending, currentUserId, syncMessagesState])
+  }, [conversation.id, conversation.isPending, currentUserId, onMessageSent, syncMessagesState])
 
   // Initial load
   useEffect(() => {
@@ -777,6 +821,8 @@ export function useChat({
     hasMoreMessages,
     isLoadingMore,
     sendMessage,
+    retryMessage,
+    deleteFailedMessage,
     loadOlderMessages,
     queueReadReceipt,
     markConversationAsRead

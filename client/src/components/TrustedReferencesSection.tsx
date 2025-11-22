@@ -110,7 +110,7 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
       endorsement,
     })
     if (success) {
-      dismissNotification('reference_request', endorsementRequest.id)
+      dismissNotification('reference_request_received', endorsementRequest.id)
       setEndorsementRequest(null)
     }
     return success
@@ -119,7 +119,7 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
   const handleDeclineRequest = async (requestId: string) => {
     const success = await respondToRequest({ referenceId: requestId, accept: false })
     if (success) {
-      dismissNotification('reference_request', requestId)
+      dismissNotification('reference_request_received', requestId)
     }
   }
 

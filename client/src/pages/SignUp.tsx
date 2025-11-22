@@ -8,6 +8,7 @@ import { getAuthRedirectUrl } from '@/lib/siteUrl'
 import { logger } from '@/lib/logger'
 
 type UserRole = 'player' | 'coach' | 'club'
+type SignUpResponse = Awaited<ReturnType<typeof supabase.auth.signUp>>
 
 /**
  * SignUp - Step 1 of signup (PRE email verification)
@@ -50,7 +51,7 @@ export default function SignUp() {
       logger.debug('Creating auth account with role:', selectedRole)
 
       // Create auth account (no session until email verified)
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      const { data: authData, error: signUpError }: SignUpResponse = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
@@ -60,12 +61,13 @@ export default function SignUp() {
           }
         }
       })
+      const authUser = (authData as { user?: { id?: string | null } | null } | null)?.user ?? null
 
       if (signUpError) {
         Sentry.captureException(signUpError, {
           tags: { feature: 'auth_flow' },
           extra: {
-            userId: authData?.user?.id ?? null,
+            userId: authUser?.id ?? null,
             payload: {
               role: selectedRole,
               emailDomain: formData.email.split('@')[1] ?? null,
@@ -87,9 +89,9 @@ export default function SignUp() {
         throw signUpError
       }
 
-      if (!authData.user) throw new Error('No user data returned from signup')
+      if (!authUser) throw new Error('No user data returned from signup')
 
-      logger.debug('Auth account created successfully:', authData.user.id)
+      logger.debug('Auth account created successfully:', authUser.id)
 
       // Store role in localStorage as fallback
       localStorage.setItem('pending_role', selectedRole)

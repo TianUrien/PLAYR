@@ -1,5 +1,7 @@
 export type NullableDate = string | null
 
+export type MessageDeliveryStatus = 'sending' | 'sent' | 'delivered' | 'failed'
+
 export interface Message {
   id: string
   conversation_id: string
@@ -7,6 +9,12 @@ export interface Message {
   content: string
   sent_at: string
   read_at: NullableDate
+}
+
+export interface ChatMessage extends Message {
+  client_generated_id?: string
+  status?: MessageDeliveryStatus
+  error?: string | null
 }
 
 export interface ConversationParticipant {
@@ -31,6 +39,11 @@ export interface Conversation {
 export type ChatMessageEvent =
   | {
       type: 'sent'
+      conversationId: string
+      message: Message
+    }
+  | {
+      type: 'received'
       conversationId: string
       message: Message
     }

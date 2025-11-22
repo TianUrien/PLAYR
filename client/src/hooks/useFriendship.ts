@@ -178,7 +178,7 @@ export function useFriendship(profileId: string): FriendshipState {
 
         if (error) throw error
         addToast(successMessage, 'success')
-        dismissNotification('friend_request', friendshipId)
+        dismissNotification('friend_request_received', friendshipId)
         await fetchRelationship()
       } catch (error) {
         console.error('Failed to update friendship state', error)
