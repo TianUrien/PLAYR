@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { MapPin, Globe, Calendar, Edit2, MessageCircle } from 'lucide-react'
+import { MapPin, Globe, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { Avatar, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, PublicReferencesSection, RoleBadge, ScrollableTabs } from '@/components'
 import Header from '@/components/Header'
@@ -238,13 +238,22 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
 
                 {/* Action Buttons */}
                 {!readOnly ? (
-                  <button
-                    onClick={() => setShowEditModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    Edit Profile
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => navigate(`/players/id/${profile.id}`)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Public View
+                    </button>
+                    <button
+                      onClick={() => setShowEditModal(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      Edit Profile
+                    </button>
+                  </div>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">
                     <FriendshipButton profileId={profile.id} />

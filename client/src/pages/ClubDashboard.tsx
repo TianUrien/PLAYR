@@ -291,13 +291,22 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
                     </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setShowEditModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Edit Profile
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => navigate(`/clubs/id/${profile.id}`)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Public View
+                    </button>
+                    <button
+                      onClick={() => setShowEditModal(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Edit Profile
+                    </button>
+                  </div>
                 )}
               </div>
 

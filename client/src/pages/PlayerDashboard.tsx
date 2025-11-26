@@ -249,13 +249,22 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
                     </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setShowEditModal(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#6366f1] text-white rounded-lg hover:bg-[#4f46e5] transition-colors text-sm font-medium"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                    Edit Profile
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => navigate(`/players/id/${profile.id}`)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Public View
+                    </button>
+                    <button
+                      onClick={() => setShowEditModal(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#6366f1] text-white rounded-lg hover:bg-[#4f46e5] transition-colors text-sm font-medium"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      Edit Profile
+                    </button>
+                  </div>
                 )}
               </div>
 
