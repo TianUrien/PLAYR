@@ -130,20 +130,25 @@ jobs:
 
       - name: Create env file for E2E tests
         working-directory: ./client
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          E2E_PLAYER_EMAIL: ${{ secrets.E2E_PLAYER_EMAIL }}
+          E2E_PLAYER_PASSWORD: ${{ secrets.E2E_PLAYER_PASSWORD }}
+          E2E_CLUB_EMAIL: ${{ secrets.E2E_CLUB_EMAIL }}
+          E2E_CLUB_PASSWORD: ${{ secrets.E2E_CLUB_PASSWORD }}
         run: |
-          cat > .env << EOF
-          VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          E2E_PLAYER_EMAIL=${{ secrets.E2E_PLAYER_EMAIL }}
-          E2E_PLAYER_PASSWORD=${{ secrets.E2E_PLAYER_PASSWORD }}
-          E2E_CLUB_EMAIL=${{ secrets.E2E_CLUB_EMAIL }}
-          E2E_CLUB_PASSWORD=${{ secrets.E2E_CLUB_PASSWORD }}
-          EOF
+          echo "VITE_SUPABASE_URL=${VITE_SUPABASE_URL}" >> .env
+          echo "VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}" >> .env
+          echo "E2E_PLAYER_EMAIL=${E2E_PLAYER_EMAIL}" >> .env
+          echo "E2E_PLAYER_PASSWORD=${E2E_PLAYER_PASSWORD}" >> .env
+          echo "E2E_CLUB_EMAIL=${E2E_CLUB_EMAIL}" >> .env
+          echo "E2E_CLUB_PASSWORD=${E2E_CLUB_PASSWORD}" >> .env
           # Also create root .env.local for Supabase config
-          cat > ../.env.local << EOF
-          SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
-          SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          EOF
+          echo "SUPABASE_URL=${VITE_SUPABASE_URL}" >> ../.env.local
+          echo "SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}" >> ../.env.local
+          # Debug: show env file was created (without secrets)
+          echo "Created .env with $(wc -l < .env) lines"
 
       - name: Run E2E tests
         working-directory: ./client
