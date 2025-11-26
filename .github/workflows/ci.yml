@@ -128,17 +128,25 @@ jobs:
         working-directory: ./client
         run: npx playwright install --with-deps chromium
 
+      - name: Create env file for E2E tests
+        working-directory: ./client
+        run: |
+          cat > .env << EOF
+          VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          E2E_PLAYER_EMAIL=${{ secrets.E2E_PLAYER_EMAIL }}
+          E2E_PLAYER_PASSWORD=${{ secrets.E2E_PLAYER_PASSWORD }}
+          E2E_CLUB_EMAIL=${{ secrets.E2E_CLUB_EMAIL }}
+          E2E_CLUB_PASSWORD=${{ secrets.E2E_CLUB_PASSWORD }}
+          EOF
+          # Also create root .env.local for Supabase config
+          cat > ../.env.local << EOF
+          SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          EOF
+
       - name: Run E2E tests
         working-directory: ./client
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          E2E_PLAYER_EMAIL: ${{ secrets.E2E_PLAYER_EMAIL }}
-          E2E_PLAYER_PASSWORD: ${{ secrets.E2E_PLAYER_PASSWORD }}
-          E2E_CLUB_EMAIL: ${{ secrets.E2E_CLUB_EMAIL }}
-          E2E_CLUB_PASSWORD: ${{ secrets.E2E_CLUB_PASSWORD }}
         run: |
           npm run dev &
           npx wait-on http://localhost:5173 --timeout 60000
