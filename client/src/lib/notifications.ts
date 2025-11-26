@@ -20,7 +20,48 @@ let lifecycleListenersBound = false
 
 type ProfileNotificationRow = Tables<'profile_notifications'>
 
-const mapRealtimeNotification = (row: ProfileNotificationRow): NotificationRecord => ({
+interface ActorProfile {
+  id: string
+  full_name: string | null
+  role: string | null
+  username: string | null
+  avatar_url: string | null
+  base_location: string | null
+}
+
+// Cache for actor profiles to avoid refetching on every realtime notification
+const actorProfileCache = new Map<string, ActorProfile>()
+const ACTOR_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+const actorCacheTimestamps = new Map<string, number>()
+
+const fetchActorProfile = async (actorId: string): Promise<ActorProfile | null> => {
+  const now = Date.now()
+  const cachedTs = actorCacheTimestamps.get(actorId)
+  
+  if (cachedTs && now - cachedTs < ACTOR_CACHE_TTL_MS) {
+    return actorProfileCache.get(actorId) ?? null
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, role, username, avatar_url, base_location')
+      .eq('id', actorId)
+      .single()
+
+    if (error || !data) {
+      return null
+    }
+
+    actorProfileCache.set(actorId, data)
+    actorCacheTimestamps.set(actorId, now)
+    return data
+  } catch {
+    return null
+  }
+}
+
+const mapRealtimeNotification = (row: ProfileNotificationRow, actorProfile?: ActorProfile | null): NotificationRecord => ({
   id: row.id,
   kind: row.kind,
   sourceEntityId: row.source_entity_id,
@@ -32,11 +73,11 @@ const mapRealtimeNotification = (row: ProfileNotificationRow): NotificationRecor
   clearedAt: row.cleared_at,
   actor: {
     id: row.actor_profile_id,
-    fullName: null,
-    role: null,
-    username: null,
-    avatarUrl: null,
-    baseLocation: null,
+    fullName: actorProfile?.full_name ?? null,
+    role: actorProfile?.role ?? null,
+    username: actorProfile?.username ?? null,
+    avatarUrl: actorProfile?.avatar_url ?? null,
+    baseLocation: actorProfile?.base_location ?? null,
   },
 })
 
@@ -289,13 +330,22 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
           table: 'profile_notifications',
           filter: `recipient_profile_id=eq.${userId}`,
         },
-        (change) => {
+        async (change) => {
           const record = change.new ?? change.old
           if (!record) {
             return
           }
 
-          const normalized = mapRealtimeNotification(record as ProfileNotificationRow)
+          const row = record as ProfileNotificationRow
+          const actorId = row.actor_profile_id
+
+          // Fetch actor profile to display sender info immediately
+          let actorProfile: ActorProfile | null = null
+          if (actorId) {
+            actorProfile = await fetchActorProfile(actorId)
+          }
+
+          const normalized = mapRealtimeNotification(row, actorProfile)
           set((state) => ({
             ...upsertNotification(normalized, state),
           }))
