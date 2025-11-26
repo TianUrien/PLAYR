@@ -53,7 +53,8 @@ const PUBLIC_PROFILE_FIELDS = [
   'contact_email',
   'contact_email_public',
   'passport_1',
-  'passport_2'
+  'passport_2',
+  'social_links'
 ].join(',')
 
 export default function PublicPlayerProfile() {

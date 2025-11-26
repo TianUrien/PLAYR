@@ -40,7 +40,8 @@ const PUBLIC_CLUB_FIELDS = [
   'league_division',
   'email',
   'contact_email',
-  'contact_email_public'
+  'contact_email_public',
+  'social_links'
 ].join(',')
 
 export default function PublicClubProfile() {

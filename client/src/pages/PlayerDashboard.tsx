@@ -7,6 +7,7 @@ import MediaTab from '@/components/MediaTab'
 import JourneyTab from '@/components/JourneyTab'
 import CommentsTab from '@/components/CommentsTab'
 import Button from '@/components/Button'
+import SocialLinksDisplay from '@/components/SocialLinksDisplay'
 import type { Profile } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
 import { isUniqueViolationError } from '@/lib/supabaseErrors'
@@ -14,6 +15,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useToastStore } from '@/lib/toast'
 import { useNotificationStore } from '@/lib/notifications'
 import { derivePublicContactEmail } from '@/lib/profile'
+import type { SocialLinks } from '@/lib/socialLinks'
 
 type TabType = 'profile' | 'friends' | 'journey' | 'comments'
 
@@ -306,8 +308,12 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
                 )}
               </div>
 
-              <div className="mt-4">
+              <div className="mt-4 flex flex-wrap items-center gap-4">
                 <RoleBadge role="player" />
+                <SocialLinksDisplay 
+                  links={profile.social_links as SocialLinks | null | undefined} 
+                  iconSize="sm" 
+                />
               </div>
             </div>
           </div>

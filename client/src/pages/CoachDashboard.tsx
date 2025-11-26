@@ -5,6 +5,7 @@ import { Avatar, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, Friendsh
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import Button from '@/components/Button'
+import SocialLinksDisplay from '@/components/SocialLinksDisplay'
 import type { Profile } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
 import { isUniqueViolationError } from '@/lib/supabaseErrors'
@@ -12,6 +13,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useToastStore } from '@/lib/toast'
 import { useNotificationStore } from '@/lib/notifications'
 import { derivePublicContactEmail } from '@/lib/profile'
+import type { SocialLinks } from '@/lib/socialLinks'
 
 type TabType = 'profile' | 'journey' | 'friends' | 'comments'
 
@@ -225,8 +227,12 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">
                     {profile.full_name}
                   </h1>
-                  <div className="mb-3">
+                  <div className="mb-3 flex flex-wrap items-center gap-3">
                     <RoleBadge role="coach" />
+                    <SocialLinksDisplay 
+                      links={profile.social_links as SocialLinks | null | undefined} 
+                      iconSize="sm" 
+                    />
                   </div>
                 </div>
 

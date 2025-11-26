@@ -6,6 +6,7 @@ import { Avatar, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, Ro
 import VacanciesTab from '@/components/VacanciesTab'
 import ClubMediaTab from '@/components/ClubMediaTab'
 import Skeleton from '@/components/Skeleton'
+import SocialLinksDisplay from '@/components/SocialLinksDisplay'
 import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
@@ -13,6 +14,7 @@ import { isUniqueViolationError } from '@/lib/supabaseErrors'
 import { useToastStore } from '@/lib/toast'
 import { useNotificationStore } from '@/lib/notifications'
 import { derivePublicContactEmail } from '@/lib/profile'
+import type { SocialLinks } from '@/lib/socialLinks'
 
 type TabType = 'overview' | 'vacancies' | 'friends' | 'players' | 'comments'
 
@@ -316,8 +318,12 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
                 )}
               </div>
 
-              <div className="mt-2">
+              <div className="mt-2 flex flex-wrap items-center gap-3">
                 <RoleBadge role="club" />
+                <SocialLinksDisplay 
+                  links={profile.social_links as SocialLinks | null | undefined} 
+                  iconSize="sm" 
+                />
               </div>
             </div>
           </div>

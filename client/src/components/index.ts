@@ -24,6 +24,8 @@ export { default as ScrollableTabs } from './ScrollableTabs'
 export { default as RoleBadge } from './RoleBadge'
 export { default as InfoTooltip } from './InfoTooltip'
 export { default as SentryTestButton } from './SentryTestButton'
+export { default as SocialLinksInput } from './SocialLinksInput'
+export { default as SocialLinksDisplay } from './SocialLinksDisplay'
 export { ErrorBoundary } from './ErrorBoundary'
 
 // Loading States

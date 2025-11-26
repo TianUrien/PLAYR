@@ -12,6 +12,8 @@ import { invalidateProfile } from '@/lib/profile'
 import { useToastStore } from '@/lib/toast'
 import { deleteStorageObject } from '@/lib/storage'
 import { clearProfileDraft, loadProfileDraft, saveProfileDraft } from '@/lib/profileDrafts'
+import SocialLinksInput from './SocialLinksInput'
+import { type SocialLinks, cleanSocialLinks, validateSocialLinks } from '@/lib/socialLinks'
 
 interface EditProfileModalProps {
   isOpen: boolean
@@ -39,6 +41,7 @@ type ProfileFormData = {
   club_history: string
   bio: string
   avatar_url: string
+  social_links: SocialLinks
 }
 
 const getInitialContactEmail = (profile?: Profile | null): string => profile?.contact_email || ''
@@ -63,6 +66,7 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   club_history: profile?.club_history || '',
   bio: profile?.bio || '',
   avatar_url: profile?.avatar_url || '',
+  social_links: (profile?.social_links as SocialLinks) || {},
 })
 
 export default function EditProfileModal({ isOpen, onClose, role }: EditProfileModalProps) {
@@ -218,6 +222,14 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       return
     }
 
+    // Validate social links
+    const cleanedSocialLinks = cleanSocialLinks(formData.social_links)
+    const socialLinksValidation = validateSocialLinks(cleanedSocialLinks)
+    if (!socialLinksValidation.valid) {
+      setError(socialLinksValidation.error || 'Invalid social media links')
+      return
+    }
+
     setLoading(true)
 
     const trimmedContactEmail = formData.contact_email.trim()
@@ -230,6 +242,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       avatar_url: formData.avatar_url || null,
       contact_email: normalizedContactEmail,
       contact_email_public: formData.contact_email_public,
+      social_links: Object.keys(cleanedSocialLinks).length > 0 ? cleanedSocialLinks : {},
     }
 
     if (role === 'player') {
@@ -675,6 +688,14 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                 </div>
               </>
             )}
+
+            {/* Social Media Links - Available for all roles */}
+            <div className="pt-4 border-t border-gray-200">
+              <SocialLinksInput
+                value={formData.social_links}
+                onChange={(links) => setFormData({ ...formData, social_links: links })}
+              />
+            </div>
           </div>
         </form>
 
