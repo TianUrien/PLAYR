@@ -20,6 +20,13 @@ interface TrustedReferenceCardProps {
   showShield?: boolean
   messageLabel?: string
   onOpenProfile?: (profileId: string | null, role?: string | null) => void
+  /** Max characters for endorsement text (carousel only). Default: 180 */
+  maxEndorsementLength?: number
+}
+
+const truncateText = (text: string, maxLength: number): string => {
+  if (text.length <= maxLength) return text
+  return text.slice(0, maxLength).trimEnd() + '…'
 }
 
 export default function TrustedReferenceCard({
@@ -34,6 +41,7 @@ export default function TrustedReferenceCard({
   showShield = true,
   messageLabel = 'Message',
   onOpenProfile,
+  maxEndorsementLength = 180,
 }: TrustedReferenceCardProps) {
   const profileName = reference.profile?.fullName ?? 'PLAYR Member'
   const profileInitials = reference.profile?.fullName?.slice(0, 2) ?? 'PM'
@@ -43,12 +51,21 @@ export default function TrustedReferenceCard({
   }, [reference.profile])
 
   const messageDisabled = disabled || !reference.profile?.id || messageLoading
-  const layoutClasses = layout === 'carousel' ? 'min-w-[280px] flex-shrink-0' : ''
+  const isCarousel = layout === 'carousel'
+  const layoutClasses = isCarousel ? 'w-[300px] min-w-[300px] max-w-[300px] flex-shrink-0' : ''
   const canNavigateProfile = Boolean(onOpenProfile && reference.profile?.id)
 
-  const endorsementCopy = reference.endorsementText?.trim()
-    ? `"${reference.endorsementText.trim()}"`
-    : endorsementFallback
+  const endorsementCopy = useMemo(() => {
+    const rawText = reference.endorsementText?.trim()
+    if (!rawText) return endorsementFallback
+    
+    const quoted = `"${rawText}"`
+    // Only truncate in carousel layout
+    if (isCarousel && quoted.length > maxEndorsementLength) {
+      return `"${truncateText(rawText, maxEndorsementLength - 3)}"`
+    }
+    return quoted
+  }, [reference.endorsementText, endorsementFallback, isCarousel, maxEndorsementLength])
 
   const handleOpenProfile = () => {
     if (!canNavigateProfile) return
@@ -114,7 +131,7 @@ export default function TrustedReferenceCard({
         </div>
       </div>
 
-      <p className="mt-4 text-sm text-slate-600">{endorsementCopy}</p>
+      <p className="mt-4 text-sm text-slate-600 break-words whitespace-normal">{endorsementCopy}</p>
 
       {(secondaryAction || onMessage) && (
         <div className="mt-5 flex flex-wrap items-center gap-3">
