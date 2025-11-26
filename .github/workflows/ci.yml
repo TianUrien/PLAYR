@@ -152,10 +152,7 @@ jobs:
 
       - name: Run E2E tests
         working-directory: ./client
-        run: |
-          npm run dev &
-          npx wait-on http://localhost:5173 --timeout 60000
-          npx playwright test --project=setup --project=chromium --project=chromium-player
+        run: npx playwright test --project=setup --project=chromium --project=chromium-player
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
