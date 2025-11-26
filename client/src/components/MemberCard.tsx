@@ -41,13 +41,10 @@ export default function MemberCard({
     return self.findIndex((item) => item === value) === index
   })
 
-  // Title case formatter
-  const toTitleCase = (str: string | null) => {
+  // Capitalize first letter only (preserves rest of user input)
+  const capitalizeFirst = (str: string | null) => {
     if (!str) return ''
-    return str
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ')
+    return str.charAt(0).toUpperCase() + str.slice(1)
   }
 
   // Handle Message button
@@ -121,32 +118,32 @@ export default function MemberCard({
       </div>
 
       {/* Details - Hide empty fields */}
-      <div className="space-y-2 mb-4 text-sm text-gray-600">
+      <div className="space-y-2.5 mb-4 text-sm">
         {nationality && (
           <div className="flex items-start gap-2">
-            <span className="font-medium text-gray-500">Nationality:</span>
-            <span>{nationality}</span>
+            <span className="text-xs font-semibold text-gray-400 min-w-[72px]">Nationality:</span>
+            <span className="text-gray-700">{nationality}</span>
           </div>
         )}
 
         {base_location && (
           <div className="flex items-start gap-2">
-            <span className="font-medium text-gray-500">Location base:</span>
-            <span>{base_location}</span>
+            <span className="text-xs font-semibold text-gray-400 min-w-[72px]">Location base:</span>
+            <span className="text-gray-700">{base_location}</span>
           </div>
         )}
 
         {positions.length > 0 && (role === 'player' || role === 'coach') && (
           <div className="flex items-start gap-2">
-            <span className="font-medium text-gray-500">Position:</span>
-            <span>{positions.map(toTitleCase).join(' • ')}</span>
+            <span className="text-xs font-semibold text-gray-400 min-w-[72px]">Position:</span>
+            <span className="text-gray-700">{positions.map(capitalizeFirst).join(' • ')}</span>
           </div>
         )}
 
         {current_team && (
           <div className="flex items-start gap-2">
-            <span className="font-medium text-gray-500">Current team:</span>
-            <span>{toTitleCase(current_team)}</span>
+            <span className="text-xs font-semibold text-gray-400 min-w-[72px]">Current team:</span>
+            <span className="text-gray-700">{current_team}</span>
           </div>
         )}
       </div>
