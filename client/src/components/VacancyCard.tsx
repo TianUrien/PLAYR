@@ -144,7 +144,7 @@ export default function VacancyCard({
       {/* Position - Only show for player opportunities */}
       {vacancy.opportunity_type === 'player' && vacancy.position && (
         <div className="mb-4">
-          <span className="inline-block px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
+          <span className="inline-block px-3 py-1 bg-[#F4A640] text-white rounded-lg text-sm font-medium">
             {vacancy.position.charAt(0).toUpperCase() + vacancy.position.slice(1)}
           </span>
         </div>
