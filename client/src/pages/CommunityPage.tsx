@@ -3,6 +3,7 @@ import { Search } from 'lucide-react'
 import { Header, MemberCard } from '@/components'
 import { ProfileCardSkeleton } from '@/components/Skeleton'
 import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/lib/auth'
 import { requestCache } from '@/lib/requestCache'
 import { monitor } from '@/lib/monitor'
 
@@ -17,11 +18,15 @@ interface Profile {
   secondary_position: string | null
   current_club: string | null
   created_at: string
+  is_test_account?: boolean
 }
 
 type RoleFilter = 'all' | 'player' | 'coach' | 'club'
 
 export default function CommunityPage() {
+  const { profile: currentUserProfile } = useAuthStore()
+  const isCurrentUserTestAccount = currentUserProfile?.is_test_account ?? false
+  
   const [baseMembers, setBaseMembers] = useState<Profile[]>([])
   const [allMembers, setAllMembers] = useState<Profile[]>([])
   const [displayedMembers, setDisplayedMembers] = useState<Profile[]>([])
@@ -41,13 +46,23 @@ export default function CommunityPage() {
     
     await monitor.measure('fetch_community_members', async () => {
       try {
+        // Cache key includes test account status to avoid mixing results
+        const cacheKey = isCurrentUserTestAccount ? 'community-members-test' : 'community-members'
+        
         const members = await requestCache.dedupe(
-          'community-members',
+          cacheKey,
           async () => {
-            const { data, error } = await supabase
+            let query = supabase
               .from('profiles')
-              .select('id, avatar_url, full_name, role, nationality, base_location, position, secondary_position, current_club, created_at')
+              .select('id, avatar_url, full_name, role, nationality, base_location, position, secondary_position, current_club, created_at, is_test_account')
               .eq('onboarding_completed', true) // Only show fully onboarded users
+            
+            // If current user is NOT a test account, exclude test accounts from results
+            if (!isCurrentUserTestAccount) {
+              query = query.or('is_test_account.is.null,is_test_account.eq.false')
+            }
+            
+            const { data, error } = await query
               .order('created_at', { ascending: false })
               .limit(200) // Load reasonable batch for client-side filtering
 
@@ -67,7 +82,7 @@ export default function CommunityPage() {
         setIsLoading(false)
       }
     })
-  }, [pageSize])
+  }, [pageSize, isCurrentUserTestAccount])
 
   // Initial load
   useEffect(() => {
@@ -79,20 +94,30 @@ export default function CommunityPage() {
     setIsSearching(true)
     
     await monitor.measure('search_community_members', async () => {
-      const cacheKey = `community-search-${query}`
+      // Cache key includes test account status
+      const cacheKey = isCurrentUserTestAccount 
+        ? `community-search-test-${query}` 
+        : `community-search-${query}`
       
       try {
         const members = await requestCache.dedupe(
           cacheKey,
           async () => {
             const searchTerm = `%${query}%`
-            const { data, error } = await supabase
+            let dbQuery = supabase
               .from('profiles')
-              .select('id, avatar_url, full_name, role, nationality, base_location, position, secondary_position, current_club, created_at')
+              .select('id, avatar_url, full_name, role, nationality, base_location, position, secondary_position, current_club, created_at, is_test_account')
               .eq('onboarding_completed', true) // Only show fully onboarded users
               .or(
                 `full_name.ilike.${searchTerm},nationality.ilike.${searchTerm},base_location.ilike.${searchTerm},position.ilike.${searchTerm},secondary_position.ilike.${searchTerm},current_club.ilike.${searchTerm}`
               )
+            
+            // If current user is NOT a test account, exclude test accounts from results
+            if (!isCurrentUserTestAccount) {
+              dbQuery = dbQuery.or('is_test_account.is.null,is_test_account.eq.false')
+            }
+            
+            const { data, error } = await dbQuery
               .order('created_at', { ascending: false })
               .limit(200)
 
@@ -112,7 +137,7 @@ export default function CommunityPage() {
         setIsSearching(false)
       }
     }, { query })
-  }, [pageSize])
+  }, [pageSize, isCurrentUserTestAccount])
 
   // Server-side search with debounce
   useEffect(() => {

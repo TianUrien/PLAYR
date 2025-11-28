@@ -604,6 +604,7 @@ export type Database = {
           gender: string | null
           highlight_video_url: string | null
           id: string
+          is_test_account: boolean
           league_division: string | null
           nationality: string | null
           onboarding_completed: boolean
@@ -635,6 +636,7 @@ export type Database = {
           gender?: string | null
           highlight_video_url?: string | null
           id: string
+          is_test_account?: boolean
           league_division?: string | null
           nationality?: string | null
           onboarding_completed?: boolean
@@ -666,6 +668,7 @@ export type Database = {
           gender?: string | null
           highlight_video_url?: string | null
           id?: string
+          is_test_account?: boolean
           league_division?: string | null
           nationality?: string | null
           onboarding_completed?: boolean
@@ -1043,6 +1046,7 @@ export type Database = {
           gender: string | null
           highlight_video_url: string | null
           id: string
+          is_test_account: boolean
           league_division: string | null
           nationality: string | null
           onboarding_completed: boolean
@@ -1083,6 +1087,7 @@ export type Database = {
           gender: string | null
           highlight_video_url: string | null
           id: string
+          is_test_account: boolean
           league_division: string | null
           nationality: string | null
           onboarding_completed: boolean
@@ -1298,7 +1303,9 @@ export type Database = {
         Args: { p_batch?: number; p_user_id: string }
         Returns: Json
       }
+      is_current_user_test_account: { Args: never; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
+      is_test_vacancy: { Args: { vacancy_club_id: string }; Returns: boolean }
       mark_all_notifications_read: {
         Args: {
           p_kind?: Database["public"]["Enums"]["profile_notification_kind"]

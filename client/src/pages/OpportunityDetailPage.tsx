@@ -11,6 +11,8 @@ export default function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user, profile } = useAuthStore()
+  const isCurrentUserTestAccount = profile?.is_test_account ?? false
+  
   const [vacancy, setVacancy] = useState<Vacancy | null>(null)
   const [club, setClub] = useState<{ id: string; full_name: string | null; avatar_url: string | null } | null>(null)
   const [hasApplied, setHasApplied] = useState(false)
@@ -22,10 +24,18 @@ export default function OpportunityDetailPage() {
     if (!id) return
 
     try {
-      // Fetch vacancy
+      // Fetch vacancy with club details including is_test_account
       const { data: vacancyData, error: vacancyError } = await supabase
         .from('vacancies')
-        .select('*')
+        .select(`
+          *,
+          club:profiles!vacancies_club_id_fkey(
+            id,
+            full_name,
+            avatar_url,
+            is_test_account
+          )
+        `)
         .eq('id', id)
         .eq('status', 'open')
         .single()
@@ -36,21 +46,28 @@ export default function OpportunityDetailPage() {
         return
       }
 
+      // Check if this is a test vacancy and current user is not a test account
+      const vacancyWithClub = vacancyData as Vacancy & { club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean } }
+      if (vacancyWithClub.club?.is_test_account && !isCurrentUserTestAccount) {
+        // Real users cannot view test vacancies
+        console.log('Test vacancy not accessible to non-test user')
+        setNotFound(true)
+        return
+      }
+
       setVacancy(vacancyData as Vacancy)
 
-      // Fetch club details
-      const { data: clubData } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url')
-        .eq('id', vacancyData.club_id)
-        .single()
-
-      if (clubData) {
-        setClub(clubData)
+      // Set club from the joined data
+      if (vacancyWithClub.club) {
+        setClub({
+          id: vacancyWithClub.club.id,
+          full_name: vacancyWithClub.club.full_name,
+          avatar_url: vacancyWithClub.club.avatar_url,
+        })
       }
 
       // Check if user has applied
-      if (user && profile?.role === 'player') {
+      if (user && (profile?.role === 'player' || profile?.role === 'coach')) {
         const { data: applicationData } = await supabase
           .from('vacancy_applications')
           .select('id')
@@ -66,7 +83,7 @@ export default function OpportunityDetailPage() {
     } finally {
       setIsLoading(false)
     }
-  }, [id, user, profile])
+  }, [id, user, profile, isCurrentUserTestAccount])
 
   useEffect(() => {
     if (!id) {

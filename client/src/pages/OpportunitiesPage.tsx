@@ -29,6 +29,8 @@ const BENEFITS = ['housing', 'car', 'visa', 'flights', 'meals', 'job', 'insuranc
 
 export default function OpportunitiesPage() {
   const { user, profile } = useAuthStore()
+  const isCurrentUserTestAccount = profile?.is_test_account ?? false
+  
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
   const [filteredVacancies, setFilteredVacancies] = useState<Vacancy[]>([])
   const [clubs, setClubs] = useState<Record<string, { id: string; full_name: string; avatar_url: string | null }>>({})
@@ -58,16 +60,20 @@ export default function OpportunitiesPage() {
       setIsLoading(true)
     }
 
+    // Cache key includes test account status to separate results
+    const cacheKey = isCurrentUserTestAccount ? 'open-vacancies-test' : 'open-vacancies'
+    
     if (options?.skipCache) {
-      requestCache.invalidate('open-vacancies')
+      requestCache.invalidate(cacheKey)
     }
     
     await monitor.measure('fetch_vacancies', async () => {
       try {
         const { vacanciesData, clubsMap } = await requestCache.dedupe(
-          'open-vacancies',
+          cacheKey,
           async () => {
             // Fetch vacancies with club data in a single query using JOIN
+            // Include is_test_account to filter test vacancies
             const { data: vacanciesData, error: vacanciesError } = await supabase
               .from('vacancies')
               .select(`
@@ -75,7 +81,8 @@ export default function OpportunitiesPage() {
                 club:profiles!vacancies_club_id_fkey(
                   id,
                   full_name,
-                  avatar_url
+                  avatar_url,
+                  is_test_account
                 )
               `)
               .eq('status', 'open')
@@ -86,10 +93,21 @@ export default function OpportunitiesPage() {
 
             logger.debug('Fetched vacancies with clubs:', vacanciesData)
 
+            // Filter out test vacancies for non-test users
+            type VacancyWithClub = Vacancy & { club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean } }
+            let filteredVacancies = vacanciesData as VacancyWithClub[]
+            
+            if (!isCurrentUserTestAccount) {
+              filteredVacancies = filteredVacancies.filter((vacancy) => {
+                // Exclude vacancies where the club is a test account
+                return !vacancy.club?.is_test_account
+              })
+            }
+
             // Build clubs map from embedded data
             const clubsMap: Record<string, { id: string; full_name: string; avatar_url: string | null }> = {}
             
-            vacanciesData?.forEach((vacancy: Vacancy & { club?: { id: string; full_name: string | null; avatar_url: string | null } }) => {
+            filteredVacancies.forEach((vacancy) => {
               if (vacancy.club && vacancy.club.id) {
                 clubsMap[vacancy.club.id] = {
                   id: vacancy.club.id,
@@ -101,7 +119,7 @@ export default function OpportunitiesPage() {
 
             logger.debug('Clubs map:', clubsMap)
 
-            return { vacanciesData, clubsMap }
+            return { vacanciesData: filteredVacancies, clubsMap }
           },
           options?.skipCache ? 0 : 5000 // disable cache when explicitly requesting fresh data
         )
@@ -116,7 +134,7 @@ export default function OpportunitiesPage() {
         }
       }
     })
-  }, [])
+  }, [isCurrentUserTestAccount])
 
   const fetchUserApplications = useCallback(async (options?: { skipCache?: boolean }) => {
     if (!user || (profile?.role !== 'player' && profile?.role !== 'coach')) return

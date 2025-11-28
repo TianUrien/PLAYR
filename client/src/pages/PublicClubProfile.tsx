@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { Profile } from '../lib/supabase'
 import ClubDashboard from './ClubDashboard'
+import { useAuthStore } from '../lib/store'
 
 type PublicClubProfile = Partial<Profile> &
   Pick<
@@ -23,7 +24,7 @@ type PublicClubProfile = Partial<Profile> &
     | 'email'
     | 'contact_email'
     | 'contact_email_public'
-  >
+  > & { is_test_account?: boolean }
 
 const PUBLIC_CLUB_FIELDS = [
   'id',
@@ -41,12 +42,15 @@ const PUBLIC_CLUB_FIELDS = [
   'email',
   'contact_email',
   'contact_email_public',
-  'social_links'
+  'social_links',
+  'is_test_account'
 ].join(',')
 
 export default function PublicClubProfile() {
   const { username, id } = useParams<{ username?: string; id?: string }>()
   const navigate = useNavigate()
+  const { profile: currentUserProfile } = useAuthStore()
+  const isCurrentUserTestAccount = currentUserProfile?.is_test_account ?? false
   const [profile, setProfile] = useState<PublicClubProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -76,6 +80,12 @@ export default function PublicClubProfile() {
             return
           }
 
+          // Check if this is a test profile and current user is not a test account
+          if (data.is_test_account && !isCurrentUserTestAccount) {
+            setError('Club profile not found.')
+            return
+          }
+
           setProfile(data)
         } else if (id) {
           const { data, error: fetchError } = await supabase
@@ -95,6 +105,12 @@ export default function PublicClubProfile() {
             return
           }
 
+          // Check if this is a test profile and current user is not a test account
+          if (data.is_test_account && !isCurrentUserTestAccount) {
+            setError('Club profile not found.')
+            return
+          }
+
           setProfile(data)
         } else {
           setError('Invalid profile URL')
@@ -109,7 +125,7 @@ export default function PublicClubProfile() {
     }
 
     fetchProfile()
-  }, [username, id])
+  }, [username, id, isCurrentUserTestAccount])
 
   if (isLoading) {
     return (

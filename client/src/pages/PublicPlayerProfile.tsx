@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import type { Profile } from '../lib/supabase'
 import PlayerDashboard, { type PlayerProfileShape } from './PlayerDashboard'
 import CoachDashboard from './CoachDashboard'
+import { useAuthStore } from '../lib/store'
 
 type PublicProfileBase = Pick<
   Profile,
@@ -27,7 +28,7 @@ type PublicProfileBase = Pick<
   | 'contact_email_public'
   | 'passport_1'
   | 'passport_2'
->
+> & { is_test_account?: boolean }
 
 type PublicPlayerProfileShape = PublicProfileBase & { role: 'player' }
 type PublicCoachProfileShape = PublicProfileBase & { role: 'coach' }
@@ -54,12 +55,15 @@ const PUBLIC_PROFILE_FIELDS = [
   'contact_email_public',
   'passport_1',
   'passport_2',
-  'social_links'
+  'social_links',
+  'is_test_account'
 ].join(',')
 
 export default function PublicPlayerProfile() {
   const { username, id } = useParams<{ username?: string; id?: string }>()
   const navigate = useNavigate()
+  const { profile: currentUserProfile } = useAuthStore()
+  const isCurrentUserTestAccount = currentUserProfile?.is_test_account ?? false
   const [profile, setProfile] = useState<PublicProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -89,6 +93,12 @@ export default function PublicPlayerProfile() {
             return
           }
 
+          // Check if this is a test profile and current user is not a test account
+          if (data.is_test_account && !isCurrentUserTestAccount) {
+            setError('Profile not found.')
+            return
+          }
+
           setProfile(data)
         } else if (id) {
           const { data, error: fetchError } = await supabase
@@ -108,6 +118,12 @@ export default function PublicPlayerProfile() {
             return
           }
 
+          // Check if this is a test profile and current user is not a test account
+          if (data.is_test_account && !isCurrentUserTestAccount) {
+            setError('Profile not found.')
+            return
+          }
+
           setProfile(data)
         } else {
           setError('Invalid profile URL')
@@ -122,7 +138,7 @@ export default function PublicPlayerProfile() {
     }
 
     fetchProfile()
-  }, [username, id])
+  }, [username, id, isCurrentUserTestAccount])
 
   if (isLoading) {
     return (
