@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { Profile } from '../lib/supabase'
 import ClubDashboard from './ClubDashboard'
-import { useAuthStore } from '../lib/store'
+import { useAuthStore } from '../lib/auth'
 
 type PublicClubProfile = Partial<Profile> &
   Pick<

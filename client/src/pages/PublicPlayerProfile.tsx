@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import type { Profile } from '../lib/supabase'
 import PlayerDashboard, { type PlayerProfileShape } from './PlayerDashboard'
 import CoachDashboard from './CoachDashboard'
-import { useAuthStore } from '../lib/store'
+import { useAuthStore } from '../lib/auth'
 
 type PublicProfileBase = Pick<
   Profile,
