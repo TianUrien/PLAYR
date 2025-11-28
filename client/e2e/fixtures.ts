@@ -2,24 +2,36 @@ import { test as base, expect, Page } from '@playwright/test'
 
 /**
  * Test fixtures and helpers for PLAYR E2E tests
+ * 
+ * IMPORTANT: These are dedicated E2E test accounts, separate from manual test accounts.
+ * E2E accounts: e2e-*@playr.test (automated testing only)
+ * Manual accounts: Gmail-based accounts for human testing
  */
 
 // Test user credentials for E2E testing
 export const TEST_USERS = {
   player: {
     email: process.env.E2E_PLAYER_EMAIL || 'e2e-player@playr.test',
-    password: process.env.E2E_PLAYER_PASSWORD || 'Test1234!',
+    password: process.env.E2E_PLAYER_PASSWORD || 'Hola1234',
     fullName: 'E2E Test Player',
-    nationality: 'Netherlands',
-    baseLocation: 'Amsterdam',
-    position: 'Forward',
+    nationality: 'United Kingdom',
+    baseLocation: 'London, UK',
+    position: 'midfielder',
   },
   club: {
     email: process.env.E2E_CLUB_EMAIL || 'e2e-club@playr.test',
-    password: process.env.E2E_CLUB_PASSWORD || 'Test1234!',
-    clubName: 'E2E Test Club',
-    baseLocation: 'Rotterdam',
-    country: 'Netherlands',
+    password: process.env.E2E_CLUB_PASSWORD || 'Hola1234',
+    clubName: 'E2E Test FC',
+    baseLocation: 'Manchester, UK',
+    country: 'United Kingdom',
+  },
+  coach: {
+    email: process.env.E2E_COACH_EMAIL || 'e2e-coach@playr.test',
+    password: process.env.E2E_COACH_PASSWORD || 'Hola1234',
+    fullName: 'E2E Test Coach',
+    nationality: 'United Kingdom',
+    baseLocation: 'Birmingham, UK',
+    position: 'Head Coach',
   },
 } as const
 

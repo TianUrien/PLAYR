@@ -22,12 +22,16 @@ dotenv.config({ path: path.join(__dirname, '..', '..', '.env') })
  * session storage state to be reused across tests.
  * 
  * Test users are created in the database beforehand (see e2e/README.md)
+ * 
+ * IMPORTANT: These are dedicated E2E test accounts, separate from manual test accounts.
+ * E2E accounts: e2e-*@playr.test (automated testing only)
+ * Manual accounts: Gmail-based accounts for human testing
  */
 
 // Test user credentials - use environment variables or defaults
 const TEST_PLAYER = {
   email: process.env.E2E_PLAYER_EMAIL || 'e2e-player@playr.test',
-  password: process.env.E2E_PLAYER_PASSWORD || 'Test1234!',
+  password: process.env.E2E_PLAYER_PASSWORD || 'Hola1234',
   profile: {
     role: 'player',
     full_name: 'E2E Test Player',
@@ -40,12 +44,13 @@ const TEST_PLAYER = {
     date_of_birth: '1995-05-15',
     bio: 'E2E test player account for automated testing',
     onboarding_completed: true,
+    is_test_account: true,
   },
 }
 
 const TEST_CLUB = {
   email: process.env.E2E_CLUB_EMAIL || 'e2e-club@playr.test',
-  password: process.env.E2E_CLUB_PASSWORD || 'Test1234!',
+  password: process.env.E2E_CLUB_PASSWORD || 'Hola1234',
   profile: {
     role: 'club',
     full_name: 'E2E Test FC',
@@ -57,12 +62,30 @@ const TEST_CLUB = {
     contact_email: 'contact@e2e-test-fc.playr.test',
     year_founded: 2020,
     onboarding_completed: true,
+    is_test_account: true,
+  },
+}
+
+const TEST_COACH = {
+  email: process.env.E2E_COACH_EMAIL || 'e2e-coach@playr.test',
+  password: process.env.E2E_COACH_PASSWORD || 'Hola1234',
+  profile: {
+    role: 'coach',
+    full_name: 'E2E Test Coach',
+    username: 'e2e-test-coach',
+    base_location: 'Birmingham, UK',
+    nationality: 'United Kingdom',
+    bio: 'E2E test coach account for automated testing',
+    position: 'Head Coach',
+    onboarding_completed: true,
+    is_test_account: true,
   },
 }
 
 // Storage state file paths
 export const PLAYER_STORAGE_STATE = path.join(__dirname, '.auth/player.json')
 export const CLUB_STORAGE_STATE = path.join(__dirname, '.auth/club.json')
+export const COACH_STORAGE_STATE = path.join(__dirname, '.auth/coach.json')
 
 // Ensure auth directory exists
 const authDir = path.join(__dirname, '.auth')
@@ -241,4 +264,11 @@ setup('authenticate as player', async ({ page }) => {
  */
 setup('authenticate as club', async ({ page }) => {
   await authenticateUser(page, TEST_CLUB.email, TEST_CLUB.password, CLUB_STORAGE_STATE, TEST_CLUB.profile)
+})
+
+/**
+ * Setup: Authenticate Coach user  
+ */
+setup('authenticate as coach', async ({ page }) => {
+  await authenticateUser(page, TEST_COACH.email, TEST_COACH.password, COACH_STORAGE_STATE, TEST_COACH.profile)
 })
