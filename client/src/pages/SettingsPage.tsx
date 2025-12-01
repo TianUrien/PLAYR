@@ -21,6 +21,7 @@ export default function SettingsPage() {
 
   // Notification preferences state
   const [notifyOpportunities, setNotifyOpportunities] = useState(true)
+  const [notifyApplications, setNotifyApplications] = useState(true)
   const [notificationLoading, setNotificationLoading] = useState(false)
   const [notificationSuccess, setNotificationSuccess] = useState(false)
 
@@ -28,6 +29,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (profile) {
       setNotifyOpportunities(profile.notify_opportunities ?? true)
+      setNotifyApplications(profile.notify_applications ?? true)
     }
   }, [profile])
 
@@ -58,6 +60,38 @@ export default function SettingsPage() {
       console.error('Failed to update notification preferences:', error)
       // Revert on error
       setNotifyOpportunities(!newValue)
+    } finally {
+      setNotificationLoading(false)
+    }
+  }
+
+  const handleApplicationNotificationToggle = async () => {
+    if (!user) return
+
+    const newValue = !notifyApplications
+    setNotificationLoading(true)
+    setNotificationSuccess(false)
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ notify_applications: newValue })
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      setNotifyApplications(newValue)
+      setNotificationSuccess(true)
+      
+      // Refresh profile to sync state
+      await refreshProfile()
+
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setNotificationSuccess(false), 3000)
+    } catch (error) {
+      console.error('Failed to update notification preferences:', error)
+      // Revert on error
+      setNotifyApplications(!newValue)
     } finally {
       setNotificationLoading(false)
     }
@@ -203,6 +237,61 @@ export default function SettingsPage() {
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                           notifyOpportunities ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    )}
+                  </button>
+                </div>
+
+                {/* Success Message */}
+                {notificationSuccess && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    Notification preferences updated
+                  </div>
+                )}
+
+                <p className="text-sm text-gray-500">
+                  You can change these preferences at any time.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Notification Preferences Section - Only for clubs */}
+          {profile.role === 'club' && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
+                  <Bell className="w-5 h-5 text-indigo-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">Notification Preferences</h2>
+              </div>
+
+              <div className="space-y-4">
+                {/* Application Notifications Toggle */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex-1 pr-4">
+                    <p className="text-gray-900 font-medium">Application Notifications</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Receive email notifications when players apply to your opportunities.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleApplicationNotificationToggle}
+                    disabled={notificationLoading}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                      notifyApplications ? 'bg-indigo-600' : 'bg-gray-300'
+                    } ${notificationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {notificationLoading ? (
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <Loader2 className="w-4 h-4 text-white animate-spin" />
+                      </span>
+                    ) : (
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          notifyApplications ? 'translate-x-6' : 'translate-x-1'
                         }`}
                       />
                     )}

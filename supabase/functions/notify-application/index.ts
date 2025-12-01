@@ -166,7 +166,7 @@ Deno.serve(async (req: Request) => {
     // Fetch the club profile (recipient)
     const { data: club, error: clubError } = await supabase
       .from('profiles')
-      .select('id, email, full_name, is_test_account')
+      .select('id, email, full_name, is_test_account, notify_applications')
       .eq('id', vacancy.club_id)
       .single()
 
@@ -181,7 +181,8 @@ Deno.serve(async (req: Request) => {
     logger.info('Fetched club', { 
       clubId: club.id, 
       name: club.full_name,
-      isTestAccount: club.is_test_account 
+      isTestAccount: club.is_test_account,
+      notifyApplications: club.notify_applications
     })
 
     // ==========================================================================
@@ -195,6 +196,21 @@ Deno.serve(async (req: Request) => {
       })
       return new Response(
         JSON.stringify({ message: 'Ignored - club is a test account' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ==========================================================================
+    // CHECK NOTIFICATION PREFERENCE
+    // Respect the club's notification preferences
+    // ==========================================================================
+    if (club.notify_applications === false) {
+      logger.info('Club has disabled application notifications', { 
+        clubId: club.id,
+        notifyApplications: false
+      })
+      return new Response(
+        JSON.stringify({ message: 'Ignored - club has disabled application notifications' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

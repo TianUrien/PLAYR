@@ -607,6 +607,7 @@ export type Database = {
           is_test_account: boolean
           league_division: string | null
           nationality: string | null
+          notify_applications: boolean
           notify_opportunities: boolean
           onboarding_completed: boolean
           passport_1: string | null
@@ -640,6 +641,7 @@ export type Database = {
           is_test_account?: boolean
           league_division?: string | null
           nationality?: string | null
+          notify_applications?: boolean
           notify_opportunities?: boolean
           onboarding_completed?: boolean
           passport_1?: string | null
@@ -673,6 +675,7 @@ export type Database = {
           is_test_account?: boolean
           league_division?: string | null
           nationality?: string | null
+          notify_applications?: boolean
           notify_opportunities?: boolean
           onboarding_completed?: boolean
           passport_1?: string | null
