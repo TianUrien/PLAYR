@@ -3,6 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import {
   VacancyPayload,
+  VacancyRecord,
   createLogger,
   generateEmailHtml,
   generateEmailText,
@@ -12,36 +13,37 @@ import {
 
 /**
  * ============================================================================
- * TEST MODE Vacancy Notification Edge Function
+ * REAL MODE Vacancy Notification Edge Function
  * ============================================================================
  * 
- * ISOLATION: This function is COMPLETELY ISOLATED from production traffic.
+ * ISOLATION: This function is COMPLETELY ISOLATED from test traffic.
  * 
  * Purpose:
- * - Sends vacancy notification emails ONLY to hardcoded test recipients
- * - Triggered ONLY by vacancies from test accounts (is_test_account = true)
- * - Uses identical email template as production (same subject, HTML, sender)
+ * - Sends vacancy notification emails to REAL users (players/coaches)
+ * - Triggered ONLY by vacancies from REAL accounts (is_test_account = false)
+ * - Matches vacancy opportunity_type to user role (player/coach)
  * 
  * Safety guarantees:
- * 1. Recipients are HARDCODED - no database lookup for recipients
- * 2. Only processes vacancies from test accounts
- * 3. Real users will NEVER receive emails from this function
+ * 1. Only processes vacancies from NON-test accounts
+ * 2. Never sends to test recipients or test accounts
+ * 3. Only sends when vacancy is newly published (status becomes 'open')
+ * 4. Recipients are queried from database based on role matching
  * 
  * Webhook configuration:
  * - Create a separate webhook pointing to this function
  * - Trigger on: INSERT, UPDATE on vacancies table
- * - This function will filter for test accounts only
+ * - This function will filter for real accounts only
  * 
- * The REAL mode function (notify-vacancy) handles production traffic.
+ * The TEST mode function (notify-test-vacancy) handles test traffic.
  * ============================================================================
  */
 
 // =============================================================================
-// HARDCODED TEST RECIPIENTS - ONLY these emails will ever receive notifications
+// BLOCKED RECIPIENTS - These should NEVER receive production emails
 // =============================================================================
-const TEST_RECIPIENTS = [
-  'playrplayer93@gmail.com',  // test player
-  'coachplayr@gmail.com',     // test coach
+const BLOCKED_TEST_RECIPIENTS = [
+  'playrplayer93@gmail.com',
+  'coachplayr@gmail.com',
 ]
 
 interface ClubProfile {
@@ -50,9 +52,72 @@ interface ClubProfile {
   is_test_account: boolean
 }
 
+interface RecipientProfile {
+  id: string
+  email: string
+  role: string
+  is_test_account: boolean
+}
+
+/**
+ * Fetch eligible recipients based on vacancy opportunity type
+ * - For 'player' vacancies: fetch players
+ * - For 'coach' vacancies: fetch coaches
+ * - Excludes test accounts
+ * - Excludes blocked test recipients
+ */
+async function fetchEligibleRecipients(
+  supabase: any,
+  vacancy: VacancyRecord,
+  logger: ReturnType<typeof createLogger>
+): Promise<string[]> {
+  const targetRole = vacancy.opportunity_type // 'player' or 'coach'
+  
+  logger.info('Fetching eligible recipients', { 
+    targetRole,
+    vacancyId: vacancy.id 
+  })
+
+  // Query profiles matching the target role
+  // - Must match role (player/coach)
+  // - Must NOT be a test account
+  // - Must have completed onboarding
+  // - Must have a valid email
+  const { data: profiles, error } = await supabase
+    .from('profiles')
+    .select('id, email, role, is_test_account')
+    .eq('role', targetRole)
+    .eq('is_test_account', false)
+    .eq('onboarding_completed', true)
+    .not('email', 'is', null)
+
+  if (error) {
+    logger.error('Failed to fetch recipient profiles', { error: error.message })
+    return []
+  }
+
+  if (!profiles || profiles.length === 0) {
+    logger.info('No eligible recipients found', { targetRole })
+    return []
+  }
+
+  // Filter out blocked test recipients and extract emails
+  const eligibleEmails = (profiles as RecipientProfile[])
+    .filter(p => !BLOCKED_TEST_RECIPIENTS.includes(p.email.toLowerCase()))
+    .map(p => p.email)
+
+  logger.info('Found eligible recipients', { 
+    totalFound: profiles.length,
+    afterFiltering: eligibleEmails.length,
+    targetRole 
+  })
+
+  return eligibleEmails
+}
+
 Deno.serve(async (req: Request) => {
   const correlationId = crypto.randomUUID().slice(0, 8)
-  const logger = createLogger('NOTIFY_TEST_VACANCY', correlationId)
+  const logger = createLogger('NOTIFY_VACANCY', correlationId)
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -60,7 +125,7 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    logger.info('=== TEST MODE: Received webhook request ===')
+    logger.info('=== REAL MODE: Received webhook request ===')
 
     // Get environment variables
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
@@ -89,7 +154,8 @@ Deno.serve(async (req: Request) => {
       type: payload.type, 
       table: payload.table,
       vacancyId: payload.record?.id,
-      clubId: payload.record?.club_id 
+      clubId: payload.record?.club_id,
+      opportunityType: payload.record?.opportunity_type
     })
 
     // Validate this is a vacancy event
@@ -119,10 +185,11 @@ Deno.serve(async (req: Request) => {
       type: payload.type,
       vacancyId: vacancy.id,
       status: vacancy.status,
+      opportunityType: vacancy.opportunity_type,
       previousStatus: payload.old_record?.status
     })
 
-    // Create Supabase client to check if club is a test account
+    // Create Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Fetch the club profile to check is_test_account
@@ -141,41 +208,64 @@ Deno.serve(async (req: Request) => {
     }
 
     // ==========================================================================
-    // CRITICAL SAFETY CHECK: Only process TEST accounts
-    // This ensures TEST MODE never affects real users
+    // CRITICAL SAFETY CHECK: Only process REAL (non-test) accounts
+    // This ensures REAL MODE never processes test vacancies
     // ==========================================================================
-    if (!clubProfile.is_test_account) {
-      logger.info('Ignoring vacancy from NON-TEST account (correct behavior)', { 
+    if (clubProfile.is_test_account) {
+      logger.info('Ignoring vacancy from TEST account (correct behavior)', { 
         clubId: vacancy.club_id,
-        isTestAccount: false 
+        isTestAccount: true 
       })
       return new Response(
-        JSON.stringify({ message: 'Ignored - club is not a test account' }),
+        JSON.stringify({ message: 'Ignored - club is a test account' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    logger.info('Processing TEST vacancy notification', {
+    logger.info('Processing REAL vacancy notification', {
       vacancyId: vacancy.id,
       vacancyTitle: vacancy.title,
       clubName: clubProfile.full_name,
-      isTestAccount: true,
-      recipients: TEST_RECIPIENTS,
+      opportunityType: vacancy.opportunity_type,
+      isTestAccount: false,
     })
 
-    // Generate email content (using shared template - identical to production)
+    // Fetch eligible recipients based on vacancy type
+    const recipients = await fetchEligibleRecipients(supabase, vacancy, logger)
+
+    if (recipients.length === 0) {
+      logger.info('No eligible recipients found - skipping email send')
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          mode: 'REAL',
+          message: 'No eligible recipients found',
+          sent: [],
+          failed: [],
+          vacancyId: vacancy.id,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Generate email content (using shared template - identical to test mode)
     const clubName = clubProfile.full_name || 'Unknown Club'
     const subject = `New opportunity on PLAYR: ${vacancy.title}`
     const html = generateEmailHtml(vacancy, clubName)
     const text = generateEmailText(vacancy, clubName)
 
     // ==========================================================================
-    // SEND TO HARDCODED TEST RECIPIENTS ONLY
-    // These are the only recipients that will ever receive emails from TEST MODE
+    // SEND TO REAL USERS ONLY
+    // Recipients are filtered to exclude test accounts and blocked emails
     // ==========================================================================
+    logger.info('Sending to real recipients', { 
+      recipientCount: recipients.length,
+      opportunityType: vacancy.opportunity_type 
+    })
+
     const emailResult = await sendEmailsIndividually(
       resendApiKey,
-      TEST_RECIPIENTS,
+      recipients,
       subject,
       html,
       text,
@@ -183,25 +273,25 @@ Deno.serve(async (req: Request) => {
     )
 
     if (!emailResult.success) {
-      logger.warn('Some test emails failed to send', { 
-        sent: emailResult.sent, 
-        failed: emailResult.failed 
+      logger.warn('Some emails failed to send', { 
+        sent: emailResult.sent.length, 
+        failed: emailResult.failed.length 
       })
     }
 
-    logger.info('=== TEST MODE: Notification completed ===', {
+    logger.info('=== REAL MODE: Notification completed ===', {
       vacancyId: vacancy.id,
-      sent: emailResult.sent,
-      failed: emailResult.failed,
+      sentCount: emailResult.sent.length,
+      failedCount: emailResult.failed.length,
     })
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        mode: 'TEST',
-        message: 'Test notifications sent',
-        sent: emailResult.sent,
-        failed: emailResult.failed,
+        mode: 'REAL',
+        message: 'Production notifications sent',
+        sentCount: emailResult.sent.length,
+        failedCount: emailResult.failed.length,
         vacancyId: vacancy.id,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
