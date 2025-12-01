@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { ArrowLeft, Mail, Lock, Trash2, CheckCircle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { ArrowLeft, Mail, Lock, Trash2, CheckCircle, Bell, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
@@ -8,7 +8,7 @@ import DeleteAccountModal from '@/components/DeleteAccountModal'
 
 export default function SettingsPage() {
   const navigate = useNavigate()
-  const { user, profile } = useAuthStore()
+  const { user, profile, refreshProfile } = useAuthStore()
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -18,6 +18,50 @@ export default function SettingsPage() {
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordError, setPasswordError] = useState('')
   const [passwordSuccess, setPasswordSuccess] = useState(false)
+
+  // Notification preferences state
+  const [notifyOpportunities, setNotifyOpportunities] = useState(true)
+  const [notificationLoading, setNotificationLoading] = useState(false)
+  const [notificationSuccess, setNotificationSuccess] = useState(false)
+
+  // Load notification preferences from profile
+  useEffect(() => {
+    if (profile) {
+      setNotifyOpportunities(profile.notify_opportunities ?? true)
+    }
+  }, [profile])
+
+  const handleNotificationToggle = async () => {
+    if (!user) return
+
+    const newValue = !notifyOpportunities
+    setNotificationLoading(true)
+    setNotificationSuccess(false)
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ notify_opportunities: newValue })
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      setNotifyOpportunities(newValue)
+      setNotificationSuccess(true)
+      
+      // Refresh profile to sync state
+      await refreshProfile()
+
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setNotificationSuccess(false), 3000)
+    } catch (error) {
+      console.error('Failed to update notification preferences:', error)
+      // Revert on error
+      setNotifyOpportunities(!newValue)
+    } finally {
+      setNotificationLoading(false)
+    }
+  }
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -124,6 +168,61 @@ export default function SettingsPage() {
               </p>
             </div>
           </div>
+
+          {/* Notification Preferences Section - Only for players and coaches */}
+          {(profile.role === 'player' || profile.role === 'coach') && (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
+                  <Bell className="w-5 h-5 text-indigo-600" />
+                </div>
+                <h2 className="text-xl font-semibold text-gray-900">Notification Preferences</h2>
+              </div>
+
+              <div className="space-y-4">
+                {/* Opportunity Notifications Toggle */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex-1 pr-4">
+                    <p className="text-gray-900 font-medium">Opportunity Notifications</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Receive email notifications when clubs publish new opportunities matching your role.
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleNotificationToggle}
+                    disabled={notificationLoading}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                      notifyOpportunities ? 'bg-indigo-600' : 'bg-gray-300'
+                    } ${notificationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {notificationLoading ? (
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <Loader2 className="w-4 h-4 text-white animate-spin" />
+                      </span>
+                    ) : (
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          notifyOpportunities ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    )}
+                  </button>
+                </div>
+
+                {/* Success Message */}
+                {notificationSuccess && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    Notification preferences updated
+                  </div>
+                )}
+
+                <p className="text-sm text-gray-500">
+                  You can change these preferences at any time.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Change Password Section */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">

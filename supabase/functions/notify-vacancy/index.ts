@@ -57,6 +57,7 @@ interface RecipientProfile {
   email: string
   role: string
   is_test_account: boolean
+  notify_opportunities: boolean
 }
 
 /**
@@ -64,6 +65,7 @@ interface RecipientProfile {
  * - For 'player' vacancies: fetch players
  * - For 'coach' vacancies: fetch coaches
  * - Excludes test accounts
+ * - Excludes users who opted out of opportunity notifications
  * - Excludes blocked test recipients
  */
 async function fetchEligibleRecipients(
@@ -83,12 +85,14 @@ async function fetchEligibleRecipients(
   // - Must NOT be a test account
   // - Must have completed onboarding
   // - Must have a valid email
+  // - Must have notify_opportunities = true (opted in to receive emails)
   const { data: profiles, error } = await supabase
     .from('profiles')
-    .select('id, email, role, is_test_account')
+    .select('id, email, role, is_test_account, notify_opportunities')
     .eq('role', targetRole)
     .eq('is_test_account', false)
     .eq('onboarding_completed', true)
+    .eq('notify_opportunities', true)
     .not('email', 'is', null)
 
   if (error) {
