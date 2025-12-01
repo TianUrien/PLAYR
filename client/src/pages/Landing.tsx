@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { Input, Button } from '@/components'
@@ -8,7 +8,11 @@ import { supabase } from '@/lib/supabase'
 
 export default function Landing() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, profile } = useAuthStore()
+  
+  // Check if user was redirected from a protected route (e.g., /settings from email link)
+  const redirectTo = (location.state as { from?: string } | null)?.from
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -34,9 +38,10 @@ export default function Landing() {
   // Redirect if already logged in
   useEffect(() => {
     if (user && profile) {
-      navigate('/dashboard/profile')
+      const destination = redirectTo || '/dashboard/profile'
+      navigate(destination)
     }
-  }, [user, profile, navigate])
+  }, [user, profile, navigate, redirectTo])
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -110,9 +115,10 @@ export default function Landing() {
         return
       }
 
-      // Profile is complete - go to dashboard
-      console.log('[SIGN IN] Profile complete, redirecting to dashboard')
-      navigate('/dashboard/profile')
+      // Profile is complete - redirect to intended destination or dashboard
+      const destination = redirectTo || '/dashboard/profile'
+      console.log('[SIGN IN] Profile complete, redirecting to:', destination)
+      navigate(destination)
 
     } catch (err) {
       captureAuthFlowError(err, {
