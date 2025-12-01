@@ -5,14 +5,15 @@ import { corsHeaders } from '../_shared/cors.ts'
 /**
  * TEST MODE Vacancy Notification Edge Function
  * 
- * Sends email notifications via Resend when a TEST club creates a new vacancy.
+ * Sends PRODUCTION-IDENTICAL email notifications via Resend when a TEST club publishes a vacancy.
  * This is strictly for testing - only hardcoded test recipients receive emails.
  * 
  * Safety guarantees:
  * - Recipients are HARDCODED (no database lookup for recipients)
  * - Only processes vacancies from test accounts (is_test_account = true)
- * - Clear [TEST] prefix in subject line
- * - Disclaimer footer in email body
+ * 
+ * Note: The email content is identical to production - no "test" mentions.
+ * This allows testers to experience the real user journey.
  */
 
 // Hardcoded test recipients - ONLY these emails will ever receive notifications
@@ -86,37 +87,15 @@ function generateEmailHtml(vacancy: VacancyPayload['record'], clubName: string):
   const vacancyUrl = `${PLAYR_BASE_URL}/opportunities/${vacancy.id}`
   const safeClubName = clubName?.trim() || 'A club'
 
-  // Build table rows conditionally
-  const tableRows: string[] = []
-  
-  tableRows.push(`
-      <tr>
-        <td style="padding: 8px 0; color: #6b7280; width: 100px;">Club:</td>
-        <td style="padding: 8px 0; color: #1f2937; font-weight: 500;">${safeClubName}</td>
-      </tr>`)
+  // Build details section conditionally
+  const detailItems: string[] = []
   
   if (position) {
-    tableRows.push(`
-      <tr>
-        <td style="padding: 8px 0; color: #6b7280;">Position:</td>
-        <td style="padding: 8px 0; color: #1f2937; font-weight: 500;">${position}</td>
-      </tr>`)
+    detailItems.push(`<span style="display: inline-block; background: #f3f4f6; padding: 4px 12px; border-radius: 16px; font-size: 14px; color: #374151; margin-right: 8px; margin-bottom: 8px;">${position}</span>`)
   }
   
   if (location) {
-    tableRows.push(`
-      <tr>
-        <td style="padding: 8px 0; color: #6b7280;">Location:</td>
-        <td style="padding: 8px 0; color: #1f2937; font-weight: 500;">${location}</td>
-      </tr>`)
-  }
-  
-  if (summary) {
-    tableRows.push(`
-      <tr>
-        <td style="padding: 8px 0; color: #6b7280; vertical-align: top;">Summary:</td>
-        <td style="padding: 8px 0; color: #1f2937;">${summary}${hasMoreSummary ? '...' : ''}</td>
-      </tr>`)
+    detailItems.push(`<span style="display: inline-block; background: #f3f4f6; padding: 4px 12px; border-radius: 16px; font-size: 14px; color: #374151; margin-right: 8px; margin-bottom: 8px;">📍 ${location}</span>`)
   }
 
   return `
@@ -125,39 +104,53 @@ function generateEmailHtml(vacancy: VacancyPayload['record'], clubName: string):
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Test Vacancy on PLAYR</title>
+  <title>New Opportunity on PLAYR</title>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 20px; border-radius: 12px 12px 0 0; text-align: center;">
-    <img src="https://xtertgftujnebubxgqit.supabase.co/storage/v1/object/public/email-assets/playr-logo-white.png" alt="PLAYR" style="height: 40px; width: auto;" />
-    <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">The Home of Field Hockey</p>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+  
+  <!-- Header -->
+  <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 32px 24px; border-radius: 16px 16px 0 0; text-align: center;">
+    <img src="https://xtertgftujnebubxgqit.supabase.co/storage/v1/object/public/email-assets/playr-logo-white.png" alt="PLAYR" style="height: 36px; width: auto;" />
   </div>
   
-  <div style="background: #f9fafb; padding: 24px; border: 1px solid #e5e7eb; border-top: none;">
-    <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 12px; margin-bottom: 20px;">
-      <strong style="color: #92400e;">⚠️ TEST MODE</strong>
-      <p style="color: #92400e; margin: 4px 0 0 0; font-size: 14px;">This is a test notification. No real users are receiving this email.</p>
+  <!-- Main Content -->
+  <div style="background: #ffffff; padding: 32px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
+    
+    <h1 style="color: #1f2937; margin: 0 0 8px 0; font-size: 24px; font-weight: 700;">New Opportunity Available! 🏑</h1>
+    <p style="color: #6b7280; margin: 0 0 24px 0; font-size: 16px;">A club is looking for players like you.</p>
+    
+    <!-- Vacancy Card -->
+    <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+      <h2 style="color: #1f2937; margin: 0 0 4px 0; font-size: 20px; font-weight: 600;">${vacancy.title}</h2>
+      <p style="color: #6366f1; margin: 0 0 16px 0; font-size: 15px; font-weight: 500;">${safeClubName}</p>
+      
+      ${detailItems.length > 0 ? `<div style="margin-bottom: 16px;">${detailItems.join('')}</div>` : ''}
+      
+      ${summary ? `<p style="color: #4b5563; margin: 0; font-size: 14px; line-height: 1.6;">${summary}${hasMoreSummary ? '...' : ''}</p>` : ''}
     </div>
-
-    <h2 style="color: #1f2937; margin: 0 0 16px 0;">A new TEST vacancy has been created on PLAYR</h2>
     
-    <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">${tableRows.join('')}
-    </table>
-
-    <a href="${vacancyUrl}" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600;">
-      View Test Vacancy →
-    </a>
+    <!-- CTA Button -->
+    <div style="text-align: center;">
+      <a href="${vacancyUrl}" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        View Opportunity
+      </a>
+    </div>
     
-    <p style="color: #6b7280; font-size: 12px; margin-top: 24px;">
-      Click the link above to view this test vacancy and try the application flow.
+    <p style="color: #9ca3af; font-size: 13px; margin: 24px 0 0 0; text-align: center;">
+      Don't miss out – great opportunities go fast!
     </p>
   </div>
   
-  <div style="background: #f3f4f6; padding: 16px; border-radius: 0 0 12px 12px; border: 1px solid #e5e7eb; border-top: none;">
-    <p style="color: #9ca3af; font-size: 12px; margin: 0; text-align: center;">
-      (This is a TEST notification. No real users are receiving this email.)
+  <!-- Footer -->
+  <div style="background: #f3f4f6; padding: 24px; border-radius: 0 0 16px 16px; border: 1px solid #e5e7eb; border-top: none; text-align: center;">
+    <p style="color: #6b7280; font-size: 13px; margin: 0 0 8px 0;">
+      You're receiving this because you're on PLAYR.
+    </p>
+    <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+      <a href="${PLAYR_BASE_URL}/settings" style="color: #6366f1; text-decoration: none;">Manage notification preferences</a>
     </p>
   </div>
+  
 </body>
 </html>
   `.trim()
@@ -181,11 +174,14 @@ function generateEmailText(vacancy: VacancyPayload['record'], clubName: string):
   const vacancyUrl = `${PLAYR_BASE_URL}/opportunities/${vacancy.id}`
   const safeClubName = clubName?.trim() || 'A club'
 
-  // Build text lines conditionally
+  // Build text content
   const lines: string[] = [
-    '[TEST MODE] A new TEST vacancy has been created on PLAYR.',
+    'New Opportunity Available on PLAYR! 🏑',
     '',
-    `Club: ${safeClubName}`,
+    'A club is looking for players like you.',
+    '',
+    `${vacancy.title}`,
+    `${safeClubName}`,
   ]
   
   if (position) {
@@ -197,15 +193,20 @@ function generateEmailText(vacancy: VacancyPayload['record'], clubName: string):
   }
   
   if (summary) {
-    lines.push(`Summary: ${summary}${hasMoreSummary ? '...' : ''}`)
+    lines.push('')
+    lines.push(`${summary}${hasMoreSummary ? '...' : ''}`)
   }
   
   lines.push(
     '',
-    'Click the link below to view this test vacancy and try the application flow:',
+    'View this opportunity:',
     vacancyUrl,
     '',
-    '(This is a TEST notification. No real users are receiving this email.)'
+    "Don't miss out – great opportunities go fast!",
+    '',
+    '---',
+    "You're receiving this because you're on PLAYR.",
+    `Manage preferences: ${PLAYR_BASE_URL}/settings`
   )
 
   return lines.join('\n')
@@ -396,7 +397,7 @@ Deno.serve(async (req: Request) => {
 
     // Generate email content
     const clubName = clubProfile.full_name || 'Unknown Club'
-    const subject = `[TEST] New test vacancy on PLAYR: ${vacancy.title}`
+    const subject = `New opportunity on PLAYR: ${vacancy.title}`
     const html = generateEmailHtml(vacancy, clubName)
     const text = generateEmailText(vacancy, clubName)
 
@@ -426,7 +427,7 @@ Deno.serve(async (req: Request) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Test notifications sent individually',
+        message: 'Notifications sent',
         sent: emailResult.sent,
         failed: emailResult.failed,
         vacancyId: vacancy.id,
