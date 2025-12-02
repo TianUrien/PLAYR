@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { MapPin, Globe, Calendar, Plus, Eye, MessageCircle, Edit, Loader2 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '@/components/Header'
-import { Avatar, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, RoleBadge, ScrollableTabs } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
 import VacanciesTab from '@/components/VacanciesTab'
 import ClubMediaTab from '@/components/ClubMediaTab'
 import Skeleton from '@/components/Skeleton'
@@ -44,9 +44,11 @@ type ClubProfileShape =
 interface ClubDashboardProps {
   profileData?: ClubProfileShape
   readOnly?: boolean
+  /** When true and readOnly is true, shows a banner indicating user is viewing their own public profile */
+  isOwnProfile?: boolean
 }
 
-export default function ClubDashboard({ profileData, readOnly = false }: ClubDashboardProps) {
+export default function ClubDashboard({ profileData, readOnly = false, isOwnProfile = false }: ClubDashboardProps) {
   const { profile: authProfile, user } = useAuthStore()
   const profile = (profileData ?? authProfile) as ClubProfileShape | null
   const navigate = useNavigate()
@@ -253,6 +255,9 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+      
+      {/* Public View Banner - shown when user views their own profile in public mode */}
+      {readOnly && isOwnProfile && <PublicViewBanner />}
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-12">
         <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm mb-6 animate-fade-in">
@@ -306,6 +311,7 @@ export default function ClubDashboard({ profileData, readOnly = false }: ClubDas
                       <Edit className="w-4 h-4" />
                       Edit Profile
                     </button>
+                    <DashboardMenu />
                   </div>
                 )}
               </div>

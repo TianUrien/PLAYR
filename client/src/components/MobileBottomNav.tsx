@@ -1,11 +1,10 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Users, Briefcase, MessageCircle, LayoutDashboard, Settings, LogOut, Bell } from 'lucide-react'
+import { Users, Briefcase, MessageCircle, Bell } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { Avatar, NotificationBadge } from '@/components'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
 import { useOpportunityNotifications } from '@/hooks/useOpportunityNotifications'
-import { useToastStore } from '@/lib/toast'
 import { useNotificationStore } from '@/lib/notifications'
 
 interface NavItem {
@@ -18,17 +17,14 @@ interface NavItem {
 export default function MobileBottomNav() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { profile, user, signOut } = useAuthStore()
+  const { profile, user } = useAuthStore()
   const { count: unreadCount } = useUnreadMessages()
   const { count: opportunityCount } = useOpportunityNotifications()
   const notificationCount = useNotificationStore((state) => state.unreadCount)
   const toggleNotificationDrawer = useNotificationStore((state) => state.toggleDrawer)
   const closeNotificationsDrawer = () => toggleNotificationDrawer(false)
-  const { addToast } = useToastStore()
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false)
   const [isHidden, setIsHidden] = useState(false)
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
-  const profileMenuRef = useRef<HTMLDivElement>(null)
   const handleNavigate = (path: string) => {
     closeNotificationsDrawer()
     navigate(path)
@@ -54,19 +50,10 @@ export default function MobileBottomNav() {
       path: '/messages',
       icon: MessageCircle,
     },
-    {
-      id: 'dashboard',
-      label: 'Dashboard',
-      path: '/dashboard/profile',
-      icon: LayoutDashboard,
-    },
   ]
 
   // Check if path is active
   const isActive = (path: string) => {
-    if (path === '/dashboard/profile') {
-      return location.pathname.startsWith('/dashboard')
-    }
     return location.pathname === path || location.pathname.startsWith(path + '/')
   }
 
@@ -104,20 +91,6 @@ export default function MobileBottomNav() {
       isImmersiveMessagesView
     setIsHidden(shouldHide)
   }, [location.pathname, location.search])
-
-  // Close profile menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-        setProfileMenuOpen(false)
-      }
-    }
-
-    if (profileMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [profileMenuOpen])
 
   // Don't render if user is not authenticated or on hidden routes
   if (!user || !profile || isHidden) {
@@ -208,84 +181,41 @@ export default function MobileBottomNav() {
             <span className="text-[10px] font-medium opacity-0">Alerts</span>
           </button>
 
-          {/* Profile Avatar with Menu */}
-          <div className="relative" ref={profileMenuRef}>
-            <button
-              onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-              className={`flex flex-col items-center justify-center min-w-[48px] min-h-[44px] py-1 px-2 rounded-xl transition-all duration-200 ${
-                profileMenuOpen || location.pathname === '/dashboard/profile'
-                  ? 'text-[#6366f1]'
-                  : 'text-gray-600 active:bg-gray-100'
-              }`}
-              aria-label="Profile menu"
-              aria-haspopup="true"
-            >
-              <div className={`relative mb-0.5 transition-transform duration-200 ${
-                profileMenuOpen || location.pathname === '/dashboard/profile' ? 'scale-110' : 'scale-100'
-              }`}>
-                <Avatar
-                  src={profile.avatar_url}
-                  initials={getInitials(profile.full_name)}
-                  size="sm"
-                  className={`transition-all duration-200 ${
-                    profileMenuOpen || location.pathname === '/dashboard/profile'
-                      ? 'ring-2 ring-[#6366f1] ring-offset-2'
-                      : ''
-                  }`}
-                />
-                {(profileMenuOpen || location.pathname === '/dashboard/profile') && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] opacity-20 rounded-full blur-md" />
-                )}
-              </div>
-              <span 
-                className={`text-[10px] font-medium transition-all duration-200 ${
-                  profileMenuOpen || location.pathname === '/dashboard/profile' ? 'opacity-100' : 'opacity-0'
+          {/* Profile Avatar - Direct Dashboard Navigation */}
+          <button
+            onClick={() => handleNavigate('/dashboard/profile')}
+            className={`flex flex-col items-center justify-center min-w-[48px] min-h-[44px] py-1 px-2 rounded-xl transition-all duration-200 ${
+              location.pathname.startsWith('/dashboard')
+                ? 'text-[#6366f1]'
+                : 'text-gray-600 active:bg-gray-100'
+            }`}
+            aria-label="Go to Dashboard"
+          >
+            <div className={`relative mb-0.5 transition-transform duration-200 ${
+              location.pathname.startsWith('/dashboard') ? 'scale-110' : 'scale-100'
+            }`}>
+              <Avatar
+                src={profile.avatar_url}
+                initials={getInitials(profile.full_name)}
+                size="sm"
+                className={`transition-all duration-200 ${
+                  location.pathname.startsWith('/dashboard')
+                    ? 'ring-2 ring-[#6366f1] ring-offset-2'
+                    : ''
                 }`}
-              >
-                Profile
-              </span>
-            </button>
-
-            {/* Profile Menu Popup */}
-            {profileMenuOpen && (
-              <div 
-                className="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-200/50 py-2 z-50 animate-slide-in-up"
-                role="menu"
-                aria-orientation="vertical"
-              >
-                <button
-                  onClick={() => {
-                    setProfileMenuOpen(false)
-                    handleNavigate('/settings')
-                  }}
-                  className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-3"
-                  role="menuitem"
-                >
-                  <Settings className="w-5 h-5" />
-                  Settings
-                </button>
-                <div className="h-px bg-gray-200 my-1" />
-                <button
-                  onClick={async () => {
-                    setProfileMenuOpen(false)
-                    try {
-                      closeNotificationsDrawer()
-                      await signOut()
-                      navigate('/')
-                    } catch (error) {
-                      console.error('Failed to sign out', error)
-                      addToast('Could not sign out. Please try again.', 'error')
-                    }
-                  }}
-                  className="w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors flex items-center gap-3"
-                  role="menuitem"
-                >
-                  <LogOut className="w-5 h-5" />
-                  Sign Out
-                </button>
-              </div>
-            )}
-          </div>
+              />
+              {location.pathname.startsWith('/dashboard') && (
+                <div className="absolute inset-0 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] opacity-20 rounded-full blur-md" />
+              )}
+            </div>
+            <span 
+              className={`text-[10px] font-medium transition-all duration-200 ${
+                location.pathname.startsWith('/dashboard') ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              Dashboard
+            </span>
+          </button>
         </div>
       </nav>
     </>

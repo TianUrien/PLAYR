@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { MapPin, Globe, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, RoleBadge, ScrollableTabs } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import JourneyTab from '@/components/JourneyTab'
@@ -45,9 +45,11 @@ export type PlayerProfileShape =
 interface PlayerDashboardProps {
   profileData?: PlayerProfileShape
   readOnly?: boolean
+  /** When true and readOnly is true, shows a banner indicating user is viewing their own public profile */
+  isOwnProfile?: boolean
 }
 
-export default function PlayerDashboard({ profileData, readOnly = false }: PlayerDashboardProps) {
+export default function PlayerDashboard({ profileData, readOnly = false, isOwnProfile = false }: PlayerDashboardProps) {
   const { profile: authProfile, user } = useAuthStore()
   const profile = (profileData ?? authProfile) as PlayerProfileShape | null
   const navigate = useNavigate()
@@ -212,6 +214,9 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+      
+      {/* Public View Banner - shown when user views their own profile in public mode */}
+      {readOnly && isOwnProfile && <PublicViewBanner />}
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-12">
         {/* Profile Header */}
@@ -264,6 +269,7 @@ export default function PlayerDashboard({ profileData, readOnly = false }: Playe
                       <Edit2 className="w-4 h-4" />
                       Edit Profile
                     </button>
+                    <DashboardMenu />
                   </div>
                 )}
               </div>

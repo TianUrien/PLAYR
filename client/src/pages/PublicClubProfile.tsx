@@ -159,6 +159,9 @@ export default function PublicClubProfile() {
     )
   }
 
+  // Check if the current user is viewing their own profile
+  const isOwnProfile = currentUserProfile?.id === profile.id
+
   return (
     <ClubDashboard
       profileData={{
@@ -167,6 +170,7 @@ export default function PublicClubProfile() {
         contact_email_public: profile.contact_email_public ?? false,
       }}
       readOnly={true}
+      isOwnProfile={isOwnProfile}
     />
   )
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { MapPin, Globe, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, PublicReferencesSection, RoleBadge, ScrollableTabs } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import Button from '@/components/Button'
@@ -40,9 +40,11 @@ export type CoachProfileShape =
 interface CoachDashboardProps {
   profileData?: CoachProfileShape
   readOnly?: boolean
+  /** When true and readOnly is true, shows a banner indicating user is viewing their own public profile */
+  isOwnProfile?: boolean
 }
 
-export default function CoachDashboard({ profileData, readOnly = false }: CoachDashboardProps) {
+export default function CoachDashboard({ profileData, readOnly = false, isOwnProfile = false }: CoachDashboardProps) {
   const { profile: authProfile, user } = useAuthStore()
   const profile = (profileData ?? authProfile) as CoachProfileShape | null
   const navigate = useNavigate()
@@ -203,6 +205,9 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+      
+      {/* Public View Banner - shown when user views their own profile in public mode */}
+      {readOnly && isOwnProfile && <PublicViewBanner />}
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-12">
         {/* Profile Header */}
@@ -253,6 +258,7 @@ export default function CoachDashboard({ profileData, readOnly = false }: CoachD
                       <Edit2 className="w-4 h-4" />
                       Edit Profile
                     </button>
+                    <DashboardMenu />
                   </div>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">

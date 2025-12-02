@@ -173,8 +173,11 @@ export default function PublicPlayerProfile() {
   }
 
   // Render CoachDashboard for coaches, PlayerDashboard for players
+  // Check if the current user is viewing their own profile
+  const isOwnProfile = currentUserProfile?.id === profile.id
+
   if (profile.role === 'coach') {
-    return <CoachDashboard profileData={{ ...profile, email: profile.email ?? '', contact_email_public: profile.contact_email_public ?? false }} readOnly={true} />
+    return <CoachDashboard profileData={{ ...profile, email: profile.email ?? '', contact_email_public: profile.contact_email_public ?? false }} readOnly={true} isOwnProfile={isOwnProfile} />
   }
 
   const playerProfileData: PlayerProfileShape = {
@@ -183,5 +186,5 @@ export default function PublicPlayerProfile() {
     contact_email_public: profile.contact_email_public ?? false,
   }
 
-  return <PlayerDashboard profileData={playerProfileData} readOnly={true} />
+  return <PlayerDashboard profileData={playerProfileData} readOnly={true} isOwnProfile={isOwnProfile} />
 }

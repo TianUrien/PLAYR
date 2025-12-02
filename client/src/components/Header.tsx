@@ -1,24 +1,20 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MessageCircle, LogOut, Users, Briefcase, LayoutDashboard, Settings, Bell } from 'lucide-react'
+import { MessageCircle, Users, Briefcase, Bell } from 'lucide-react'
 import { Avatar, NotificationBadge } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
 import { useOpportunityNotifications } from '@/hooks/useOpportunityNotifications'
-import { useToastStore } from '@/lib/toast'
 import { useNotificationStore } from '@/lib/notifications'
 
 export default function Header() {
   const navigate = useNavigate()
-  const { user, profile, signOut } = useAuthStore()
+  const { user, profile } = useAuthStore()
   const { count: unreadCount } = useUnreadMessages()
   const { count: opportunityCount } = useOpportunityNotifications()
   const notificationCount = useNotificationStore((state) => state.unreadCount)
   const toggleNotificationDrawer = useNotificationStore((state) => state.toggleDrawer)
   const closeNotificationsDrawer = () => toggleNotificationDrawer(false)
-  const { addToast } = useToastStore()
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
   const headerRef = useRef<HTMLElement>(null)
   const fullName = profile?.full_name ?? ''
   const profileInitials = fullName
@@ -27,20 +23,6 @@ export default function Header() {
     .filter(Boolean)
     .map(part => part[0])
     .join('') || '?'
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setDropdownOpen(false)
-      }
-    }
-
-    if (dropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [dropdownOpen])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !headerRef.current) {
@@ -84,17 +66,6 @@ export default function Header() {
   const handleNavigate = (path: string) => {
     closeNotificationsDrawer()
     navigate(path)
-  }
-
-  const handleSignOut = async () => {
-    try {
-      closeNotificationsDrawer()
-      await signOut()
-      navigate('/')
-    } catch (error) {
-      console.error('Failed to sign out', error)
-      addToast('Could not sign out. Please try again.', 'error')
-    }
   }
 
   return (
@@ -165,64 +136,19 @@ export default function Header() {
                   </div>
                   <NotificationBadge count={notificationCount} className="-right-3 -top-2" />
                 </button>
-                <button
-                  onClick={() => handleNavigate('/dashboard/profile')}
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <LayoutDashboard className="w-5 h-5" />
-                    <span>Dashboard</span>
-                  </div>
-                </button>
                 
-                {/* Avatar Dropdown */}
-                <div className="relative" ref={dropdownRef}>
-                  <button 
-                    onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-                    aria-label="Open user menu"
-                    aria-haspopup="true"
-                  >
-                    <Avatar
-                      src={profile.avatar_url}
-                      initials={profileInitials}
-                      size="sm"
-                    />
-                    <span className="text-sm font-medium text-gray-700">{fullName || 'Profile'}</span>
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {dropdownOpen && (
-                    <div 
-                      className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50"
-                      role="menu"
-                      aria-orientation="vertical"
-                    >
-                      <button
-                        onClick={() => {
-                          setDropdownOpen(false)
-                          handleNavigate('/settings')
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
-                        role="menuitem"
-                      >
-                        <Settings className="w-4 h-4" />
-                        Settings
-                      </button>
-                      <button
-                        onClick={() => {
-                          setDropdownOpen(false)
-                          handleSignOut()
-                        }}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
-                        role="menuitem"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        Sign Out
-                      </button>
-                    </div>
-                  )}
-                </div>
+                {/* Profile Avatar - Direct Dashboard Navigation */}
+                <button 
+                  onClick={() => handleNavigate('/dashboard/profile')}
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  aria-label="Go to Dashboard"
+                >
+                  <Avatar
+                    src={profile.avatar_url}
+                    initials={profileInitials}
+                    size="sm"
+                  />
+                </button>
               </>
             ) : (
               <>
