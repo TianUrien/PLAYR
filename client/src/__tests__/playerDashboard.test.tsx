@@ -26,10 +26,12 @@ vi.mock('@/lib/toast', () => ({
 
 vi.mock('@/components', () => ({
   Avatar: ({ initials }: { initials?: string }) => <div data-testid="avatar">{initials}</div>,
+  DashboardMenu: () => <div data-testid="dashboard-menu" />,
   EditProfileModal: () => <div data-testid="edit-profile-modal" />, 
   FriendsTab: () => <div data-testid="friends-tab">Friends tab</div>,
   FriendshipButton: () => <button data-testid="friendship-button" type="button">Friendship</button>,
   PublicReferencesSection: () => <div data-testid="public-references">Public references</div>,
+  PublicViewBanner: () => <div data-testid="public-view-banner" />,
   RoleBadge: () => <span data-testid="role-badge">Role badge</span>,
   ScrollableTabs: ({ tabs, activeTab, onTabChange }: { tabs: { id: string; label: string }[]; activeTab: string; onTabChange: (id: string) => void }) => (
     <div>
