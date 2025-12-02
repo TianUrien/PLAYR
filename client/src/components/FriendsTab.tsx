@@ -30,7 +30,8 @@ type FriendConnection = FriendEdge & {
 export default function FriendsTab({ profileId, readOnly = false, profileRole }: FriendsTabProps) {
   const { profile: authProfile } = useAuthStore()
   const { addToast } = useToastStore()
-  const isOwner = authProfile?.id === profileId
+  // In readOnly mode, treat as non-owner even if viewing own profile
+  const isOwner = !readOnly && authProfile?.id === profileId
   const [connections, setConnections] = useState<FriendConnection[]>([])
   const [loading, setLoading] = useState(true)
   const [actionTarget, setActionTarget] = useState<string | null>(null)
@@ -310,6 +311,7 @@ export default function FriendsTab({ profileId, readOnly = false, profileRole }:
           profileId={profileId}
           friendOptions={referenceFriendOptions}
           profileRole={profileRole}
+          readOnly={readOnly}
         />
       )}
       <section className="space-y-3">

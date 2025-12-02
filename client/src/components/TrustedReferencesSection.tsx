@@ -20,6 +20,8 @@ interface TrustedReferencesSectionProps {
   profileId: string
   friendOptions: ReferenceFriendOption[]
   profileRole?: Profile['role'] | null
+  /** When true, hides owner-only features (for Public View mode) */
+  readOnly?: boolean
 }
 
 type ConfirmState = {
@@ -41,10 +43,10 @@ const TRUSTED_REFERENCES_GUIDE = (
   </div>
 )
 
-export default function TrustedReferencesSection({ profileId, friendOptions, profileRole }: TrustedReferencesSectionProps) {
+export default function TrustedReferencesSection({ profileId, friendOptions, profileRole, readOnly = false }: TrustedReferencesSectionProps) {
   const {
     loading,
-    isOwner,
+    isOwner: isActualOwner,
     acceptedReferences,
     pendingReferences,
     incomingRequests,
@@ -59,6 +61,9 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
     refresh,
     isMutating,
   } = useTrustedReferences(profileId)
+
+  // In readOnly mode, treat as non-owner even if viewing own profile
+  const isOwner = !readOnly && isActualOwner
 
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [endorsementRequest, setEndorsementRequest] = useState<typeof incomingRequests[number] | null>(null)
