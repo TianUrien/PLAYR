@@ -34,7 +34,7 @@ test.describe('Opportunities Page - Authenticated Player', () => {
 
   test('shows position filters', async ({ page }) => {
     // Position filter section should be visible
-    await expect(page.getByText('Position')).toBeVisible()
+    await expect(page.getByText('Position', { exact: true })).toBeVisible()
     
     // Position checkbox options - use role to be specific
     await expect(page.getByRole('checkbox', { name: /goalkeeper/i })).toBeVisible()
@@ -44,7 +44,7 @@ test.describe('Opportunities Page - Authenticated Player', () => {
   })
 
   test('shows gender filters', async ({ page }) => {
-    await expect(page.getByText('Gender')).toBeVisible()
+    await expect(page.getByText('Gender', { exact: true })).toBeVisible()
     // Gender radio buttons - use role to be specific
     await expect(page.getByRole('radio', { name: 'Men', exact: true })).toBeVisible()
     await expect(page.getByRole('radio', { name: 'Women' })).toBeVisible()
@@ -183,7 +183,7 @@ test.describe('Responsive Opportunities - Authenticated', () => {
       await filtersButton.click()
       
       // Filters panel should now be visible
-      await expect(page.getByText('Position')).toBeVisible()
+      await expect(page.getByText('Position', { exact: true })).toBeVisible()
     }
   })
 })
