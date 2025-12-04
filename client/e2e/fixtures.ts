@@ -3,15 +3,33 @@ import { test as base, expect, Page } from '@playwright/test'
 /**
  * Test fixtures and helpers for PLAYR E2E tests
  * 
- * IMPORTANT: These are dedicated E2E test accounts, separate from manual test accounts.
- * E2E accounts: e2e-*@playr.test (automated testing only)
- * Manual accounts: Gmail-based accounts for human testing
+ * IMPORTANT: E2E tests require REAL email addresses to avoid Supabase email bounces.
+ * Set these environment variables in .env.local:
+ *   - E2E_PLAYER_EMAIL (e.g., yourname+e2e-player@gmail.com)
+ *   - E2E_CLUB_EMAIL (e.g., yourname+e2e-club@gmail.com)
+ *   - E2E_COACH_EMAIL (e.g., yourname+e2e-coach@gmail.com)
+ * 
+ * These accounts must be pre-created in Supabase with password: Hola1234
+ * Use the SQL script in e2e/setup-e2e-accounts.sql to create them.
  */
+
+// Validate required environment variables
+function getRequiredEnv(name: string): string {
+  const value = process.env[name]
+  if (!value) {
+    throw new Error(
+      `Missing required environment variable: ${name}\n` +
+      `E2E tests require real email addresses to avoid Supabase email bounces.\n` +
+      `Set ${name} in your .env.local file (e.g., yourname+e2e-player@gmail.com)`
+    )
+  }
+  return value
+}
 
 // Test user credentials for E2E testing
 export const TEST_USERS = {
   player: {
-    email: process.env.E2E_PLAYER_EMAIL || 'e2e-player@playr.test',
+    get email() { return getRequiredEnv('E2E_PLAYER_EMAIL') },
     password: process.env.E2E_PLAYER_PASSWORD || 'Hola1234',
     fullName: 'E2E Test Player',
     nationality: 'United Kingdom',
@@ -19,14 +37,14 @@ export const TEST_USERS = {
     position: 'midfielder',
   },
   club: {
-    email: process.env.E2E_CLUB_EMAIL || 'e2e-club@playr.test',
+    get email() { return getRequiredEnv('E2E_CLUB_EMAIL') },
     password: process.env.E2E_CLUB_PASSWORD || 'Hola1234',
     clubName: 'E2E Test FC',
     baseLocation: 'Manchester, UK',
     country: 'United Kingdom',
   },
   coach: {
-    email: process.env.E2E_COACH_EMAIL || 'e2e-coach@playr.test',
+    get email() { return getRequiredEnv('E2E_COACH_EMAIL') },
     password: process.env.E2E_COACH_PASSWORD || 'Hola1234',
     fullName: 'E2E Test Coach',
     nationality: 'United Kingdom',

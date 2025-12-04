@@ -2,6 +2,35 @@
 
 This directory contains end-to-end tests for PLAYR using Playwright.
 
+## ⚠️ IMPORTANT: Real Gmail Test Accounts Required
+
+**E2E tests use dedicated Gmail test accounts to avoid Supabase email bounces.**
+
+The following accounts are pre-configured for E2E testing:
+
+| Role | Email | Password |
+|------|-------|----------|
+| Player | `playrplayer93@gmail.com` | `Hola1234` |
+| Club | `clubplayr8@gmail.com` | `Hola1234` |
+| Coach | `coachplayr@gmail.com` | `Hola1234` |
+
+These accounts already exist in production Supabase with completed profiles.
+
+### Environment Setup
+
+Add these to your `.env` or `.env.local`:
+
+```bash
+E2E_PLAYER_EMAIL=playrplayer93@gmail.com
+E2E_PLAYER_PASSWORD=Hola1234
+E2E_CLUB_EMAIL=clubplayr8@gmail.com
+E2E_CLUB_PASSWORD=Hola1234
+E2E_COACH_EMAIL=coachplayr@gmail.com
+E2E_COACH_PASSWORD=Hola1234
+```
+
+---
+
 ## Current Test Status ✅
 
 | Category | Tests | Status |
@@ -48,34 +77,20 @@ The auth setup script (`auth.setup.ts`) automatically:
 2. Creates/completes their profiles if not already done
 3. Saves the session state for use in authenticated tests
 
-### Option 1: Use Environment Variables (Recommended)
+### Required Environment Variables
 
-Create test users in Supabase and set these environment variables:
+These are already configured in `.env` with the real Gmail test accounts:
 
 ```bash
-# .env or .env.local
-E2E_PLAYER_EMAIL=your-test-player@example.com
-E2E_PLAYER_PASSWORD=YourSecurePassword123!
-E2E_CLUB_EMAIL=your-test-club@example.com
-E2E_CLUB_PASSWORD=YourSecurePassword123!
+E2E_PLAYER_EMAIL=playrplayer93@gmail.com
+E2E_PLAYER_PASSWORD=Hola1234
+E2E_CLUB_EMAIL=clubplayr8@gmail.com
+E2E_CLUB_PASSWORD=Hola1234
+E2E_COACH_EMAIL=coachplayr@gmail.com
+E2E_COACH_PASSWORD=Hola1234
 ```
 
-The auth setup will automatically complete the profile for these users on first run.
-```
-
-### Option 2: Create Test Users Manually
-
-1. Sign up a test player at `/signup` with role "Player"
-2. Complete the profile
-3. Note the credentials
-4. Repeat for a test club
-
-### Option 3: Use SQL to Create Test Users
-
-```sql
--- Create test users via Supabase Admin API or SQL Editor
--- Note: Passwords must be hashed, so it's easier to use the signup flow
-```
+If these are not set, E2E tests will fail with a clear error message.
 
 ## Running Tests
 

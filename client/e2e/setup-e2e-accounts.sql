@@ -1,11 +1,16 @@
 -- =====================================================
--- E2E Test Account Setup Script
+-- E2E Test Account Setup Script (DEPRECATED)
 -- =====================================================
--- This script creates dedicated accounts for automated E2E testing.
--- These are SEPARATE from manual Gmail test accounts.
+-- ⚠️ THIS SCRIPT IS NO LONGER NEEDED
+-- 
+-- We now use real Gmail test accounts that were manually created:
+--   Player: playrplayer93@gmail.com
+--   Club:   clubplayr8@gmail.com  
+--   Coach:  coachplayr@gmail.com
+--   Password for all: Hola1234
 --
--- Run this script in Supabase SQL Editor to set up the test users.
--- Password for all accounts: Hola1234
+-- These accounts already exist in Supabase and should NOT be recreated.
+-- This script is kept for reference only.
 -- =====================================================
 
 -- Helper function to create a test user with profile
@@ -27,7 +32,7 @@ BEGIN
   -- =====================================================
   
   -- Check if user already exists
-  SELECT id INTO player_id FROM auth.users WHERE email = 'e2e-player@playr.test';
+  SELECT id INTO player_id FROM auth.users WHERE email = 'playrplayer93@gmail.com';
   
   IF player_id IS NULL THEN
     -- Generate new UUID
@@ -54,7 +59,7 @@ BEGIN
     ) VALUES (
       player_id,
       '00000000-0000-0000-0000-000000000000',
-      'e2e-player@playr.test',
+      'playrplayer93@gmail.com',
       hashed_password,
       NOW(),
       NOW(),
@@ -100,7 +105,7 @@ BEGIN
     updated_at
   ) VALUES (
     player_id,
-    'e2e-player@playr.test',
+    'playrplayer93@gmail.com',
     'player',
     'E2E Test Player',
     'e2e-test-player',
@@ -125,7 +130,7 @@ BEGIN
   -- 2. E2E Test Club
   -- =====================================================
   
-  SELECT id INTO club_id FROM auth.users WHERE email = 'e2e-club@playr.test';
+  SELECT id INTO club_id FROM auth.users WHERE email = 'clubplayr8@gmail.com';
   
   IF club_id IS NULL THEN
     club_id := gen_random_uuid();
@@ -150,7 +155,7 @@ BEGIN
     ) VALUES (
       club_id,
       '00000000-0000-0000-0000-000000000000',
-      'e2e-club@playr.test',
+      'clubplayr8@gmail.com',
       hashed_password,
       NOW(),
       NOW(),
@@ -193,7 +198,7 @@ BEGIN
     updated_at
   ) VALUES (
     club_id,
-    'e2e-club@playr.test',
+    'clubplayr8@gmail.com',
     'club',
     'E2E Test FC',
     'e2e-test-fc',
@@ -201,7 +206,7 @@ BEGIN
     'United Kingdom',
     'E2E test club account for automated testing',
     'Division 1',
-    'contact@e2e-test-fc.playr.test',
+    'clubplayr8@gmail.com',
     2020,
     TRUE,
     TRUE,
@@ -217,7 +222,7 @@ BEGIN
   -- 3. E2E Test Coach
   -- =====================================================
   
-  SELECT id INTO coach_id FROM auth.users WHERE email = 'e2e-coach@playr.test';
+  SELECT id INTO coach_id FROM auth.users WHERE email = 'coachplayr@gmail.com';
   
   IF coach_id IS NULL THEN
     coach_id := gen_random_uuid();
@@ -242,7 +247,7 @@ BEGIN
     ) VALUES (
       coach_id,
       '00000000-0000-0000-0000-000000000000',
-      'e2e-coach@playr.test',
+      'coachplayr@gmail.com',
       hashed_password,
       NOW(),
       NOW(),
@@ -283,7 +288,7 @@ BEGIN
     updated_at
   ) VALUES (
     coach_id,
-    'e2e-coach@playr.test',
+    'coachplayr@gmail.com',
     'coach',
     'E2E Test Coach',
     'e2e-test-coach',
@@ -304,9 +309,9 @@ BEGIN
   RAISE NOTICE '=====================================================';
   RAISE NOTICE 'E2E Test Accounts Created/Updated Successfully!';
   RAISE NOTICE '=====================================================';
-  RAISE NOTICE 'Player: e2e-player@playr.test (ID: %)', player_id;
-  RAISE NOTICE 'Club: e2e-club@playr.test (ID: %)', club_id;
-  RAISE NOTICE 'Coach: e2e-coach@playr.test (ID: %)', coach_id;
+  RAISE NOTICE 'Player: playrplayer93@gmail.com (ID: %)', player_id;
+  RAISE NOTICE 'Club: clubplayr8@gmail.com (ID: %)', club_id;
+  RAISE NOTICE 'Coach: coachplayr@gmail.com (ID: %)', coach_id;
   RAISE NOTICE 'Password for all: Hola1234';
   RAISE NOTICE '=====================================================';
 

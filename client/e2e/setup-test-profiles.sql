@@ -1,6 +1,14 @@
--- Setup E2E Test Profiles
--- This script completes the profiles for E2E test users
--- Run this after creating the test users in auth.users
+-- Setup E2E Test Profiles (DEPRECATED)
+-- ⚠️ THIS SCRIPT IS NO LONGER NEEDED
+-- 
+-- We now use real Gmail test accounts that were manually created:
+--   Player: playrplayer93@gmail.com
+--   Club:   clubplayr8@gmail.com  
+--   Coach:  coachplayr@gmail.com
+--   Password for all: Hola1234
+--
+-- These accounts already exist in Supabase with completed profiles.
+-- This script is kept for reference only.
 
 -- Player test account profile
 INSERT INTO public.profiles (
@@ -19,7 +27,7 @@ INSERT INTO public.profiles (
   onboarding_completed
 ) VALUES (
   'cf211e83-4fc7-4246-a567-c987737f51cc',
-  'e2e-player@playr.test',
+  'playrplayer93@gmail.com',
   'player',
   'E2E Test Player',
   'e2e-test-player',
@@ -61,7 +69,7 @@ INSERT INTO public.profiles (
   onboarding_completed
 ) VALUES (
   'b7e77f0c-d28f-419c-89e6-ff69704a9663',
-  'e2e-club@playr.test',
+  'clubplayr8@gmail.com',
   'club',
   'E2E Test FC',
   'e2e-test-fc',
@@ -69,7 +77,7 @@ INSERT INTO public.profiles (
   'United Kingdom',
   'E2E test club account for automated testing',
   'Division 1',
-  'contact@e2e-test-fc.playr.test',
+  'clubplayr8@gmail.com',
   2020,
   true
 )
@@ -87,4 +95,4 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- Verify the profiles were created/updated
 SELECT id, email, role, full_name, onboarding_completed FROM public.profiles 
-WHERE email IN ('e2e-player@playr.test', 'e2e-club@playr.test');
+WHERE email IN ('playrplayer93@gmail.com', 'clubplayr8@gmail.com', 'coachplayr@gmail.com');

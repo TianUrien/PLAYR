@@ -95,26 +95,34 @@ test.describe('Signup Flow', () => {
     expect(isInvalid).toBe(true)
   })
 
-  test('shows validation or success message after signup form submission', async ({ page }) => {
+  test('signup form submits and shows feedback', async ({ page }) => {
     await page.goto('/signup')
     await page.getByRole('button', { name: /join as player/i }).click()
     
-    // Use a unique test email - note: test domains may be rejected by the backend
-    const uniqueEmail = `test-${Date.now()}@playr.test`
-    await page.getByPlaceholder(/enter your email/i).fill(uniqueEmail)
+    // Fill the form with valid-looking data but intercept the API call
+    // to avoid triggering actual Supabase emails
+    await page.route('**/auth/v1/signup**', async (route) => {
+      // Mock a successful signup response without actually creating a user
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id: 'mock-user-id',
+          email: 'test@example.com',
+          confirmation_sent_at: new Date().toISOString(),
+        }),
+      })
+    })
     
-    // Fill password
+    await page.getByPlaceholder(/enter your email/i).fill('test-signup@example.com')
     await page.getByPlaceholder(/create a password/i).fill('TestPassword123!')
     
     await page.getByRole('button', { name: /create account/i }).click()
     
-    // Should show either:
-    // 1. Success - verification message or redirect to verification page
-    // 2. Error - email validation error (test domains may be rejected)
-    // 3. Error - already registered
+    // Should show verification message (our mocked response triggers success flow)
+    // Use .first() since multiple elements may match the verification text
     await expect(
-      page.getByText(/check your email|verification|verify|invalid|already registered|error/i)
-        .or(page.locator('[data-testid="verify-email"]'))
+      page.getByText(/we've sent a verification/i)
     ).toBeVisible({ timeout: 10000 })
   })
 
@@ -151,8 +159,9 @@ test.describe('Sign In Flow', () => {
   test('shows error for invalid credentials', async ({ page }) => {
     await page.goto('/')
     
-    // Enter invalid credentials - use placeholder or input type
-    await page.locator('input[type="email"]').fill('invalid@test.com')
+    // Enter invalid credentials - use a non-existent but valid-format email
+    // This tests the error handling without triggering password reset emails
+    await page.locator('input[type="email"]').fill('nonexistent-user-12345@gmail.com')
     await page.locator('input[type="password"]').first().fill('wrongpassword')
     await page.getByRole('button', { name: /sign in/i }).click()
     

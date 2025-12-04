@@ -23,14 +23,29 @@ dotenv.config({ path: path.join(__dirname, '..', '..', '.env') })
  * 
  * Test users are created in the database beforehand (see e2e/README.md)
  * 
- * IMPORTANT: These are dedicated E2E test accounts, separate from manual test accounts.
- * E2E accounts: e2e-*@playr.test (automated testing only)
- * Manual accounts: Gmail-based accounts for human testing
+ * IMPORTANT: E2E tests require REAL email addresses to avoid Supabase email bounces.
+ * Set these environment variables in .env.local:
+ *   - E2E_PLAYER_EMAIL (e.g., yourname+e2e-player@gmail.com)
+ *   - E2E_CLUB_EMAIL (e.g., yourname+e2e-club@gmail.com) 
+ *   - E2E_COACH_EMAIL (e.g., yourname+e2e-coach@gmail.com)
  */
 
-// Test user credentials - use environment variables or defaults
+// Validate required environment variables
+function getRequiredEnv(name: string): string {
+  const value = process.env[name]
+  if (!value) {
+    throw new Error(
+      `Missing required environment variable: ${name}\n` +
+      `E2E tests require real email addresses to avoid Supabase email bounces.\n` +
+      `Set ${name} in your .env.local file (e.g., yourname+e2e-player@gmail.com)`
+    )
+  }
+  return value
+}
+
+// Test user credentials - MUST use real email addresses
 const TEST_PLAYER = {
-  email: process.env.E2E_PLAYER_EMAIL || 'e2e-player@playr.test',
+  get email() { return getRequiredEnv('E2E_PLAYER_EMAIL') },
   password: process.env.E2E_PLAYER_PASSWORD || 'Hola1234',
   profile: {
     role: 'player',
@@ -49,7 +64,7 @@ const TEST_PLAYER = {
 }
 
 const TEST_CLUB = {
-  email: process.env.E2E_CLUB_EMAIL || 'e2e-club@playr.test',
+  get email() { return getRequiredEnv('E2E_CLUB_EMAIL') },
   password: process.env.E2E_CLUB_PASSWORD || 'Hola1234',
   profile: {
     role: 'club',
@@ -67,7 +82,7 @@ const TEST_CLUB = {
 }
 
 const TEST_COACH = {
-  email: process.env.E2E_COACH_EMAIL || 'e2e-coach@playr.test',
+  get email() { return getRequiredEnv('E2E_COACH_EMAIL') },
   password: process.env.E2E_COACH_PASSWORD || 'Hola1234',
   profile: {
     role: 'coach',
