@@ -34,6 +34,12 @@ const actorProfileCache = new Map<string, ActorProfile>()
 const ACTOR_CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 const actorCacheTimestamps = new Map<string, number>()
 
+/** Clears the actor profile cache to prevent memory leaks across sessions */
+const clearActorCache = () => {
+  actorProfileCache.clear()
+  actorCacheTimestamps.clear()
+}
+
 const fetchActorProfile = async (actorId: string): Promise<ActorProfile | null> => {
   const now = Date.now()
   const cachedTs = actorCacheTimestamps.get(actorId)
@@ -235,12 +241,16 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
       return
     }
 
-    const { userId, channel } = get()
+    const { userId, channel, isDrawerOpen } = get()
     if (!userId) {
       return
     }
 
-    void get().refresh({ bypassCache: true })
+    // Only perform full refresh when drawer is open (user actively viewing notifications)
+    // This reduces unnecessary API calls while maintaining realtime updates via channel
+    if (isDrawerOpen) {
+      void get().refresh({ bypassCache: true })
+    }
 
     if (!channel) {
       scheduleReconnect()
@@ -385,6 +395,11 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
         return
       }
       set({ isDrawerOpen: nextOpen })
+      
+      // Refresh notifications when drawer opens to ensure fresh data
+      if (nextOpen) {
+        void get().refresh({ bypassCache: true })
+      }
     },
 
     initialize: async (userId: string | null, options?: { force?: boolean }) => {
@@ -392,6 +407,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
 
       if (!userId) {
         await teardownChannel()
+        clearActorCache() // Clear actor cache on signout to prevent memory leak
         set({
           userId: null,
           channel: null,
@@ -408,6 +424,11 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
 
       if (!options?.force && currentUserId === userId && channel) {
         return
+      }
+
+      // Clear actor cache when switching users to prevent stale data and memory leaks
+      if (currentUserId !== userId) {
+        clearActorCache()
       }
 
       await teardownChannel()
@@ -533,6 +554,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
           return false
         }
 
+        // Optimistically remove the notification from local state
         set((state) => ({
           pendingFriendshipId: null,
           notifications: state.notifications.filter((item) => item.sourceEntityId !== friendshipId),
@@ -540,6 +562,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
             (item) => item.sourceEntityId !== friendshipId && !item.readAt && !item.clearedAt
           ).length,
         }))
+
+        // Force refresh to sync with server state (handles realtime channel issues)
+        // Use a short delay to allow the database trigger to process the status change
+        setTimeout(() => {
+          void get().refresh({ bypassCache: true })
+        }, 500)
 
         return true
       } finally {

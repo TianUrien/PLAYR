@@ -140,7 +140,14 @@ const notificationConfigs: Partial<Record<NotificationKind, NotificationRenderCo
     icon: MessageSquare,
     badgeText: 'Message',
     accentClassName: 'bg-sky-50 text-sky-600',
-    getTitle: (notification) => `${getActorName(notification)} sent you a message`,
+    getTitle: (notification) => {
+      const messageCount = notification.metadata?.message_count
+      const count = typeof messageCount === 'number' ? messageCount : 1
+      if (count > 1) {
+        return `${getActorName(notification)} sent ${count} new messages`
+      }
+      return `${getActorName(notification)} sent you a message`
+    },
     getDescription: (notification) => getMetadataString(notification, 'snippet'),
     getRoute: conversationRoute,
   },
