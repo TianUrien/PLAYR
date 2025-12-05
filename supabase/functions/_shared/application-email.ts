@@ -262,14 +262,35 @@ export function createLogger(prefix: string, correlationId: string): Logger {
   }
 }
 
+/**
+ * Maximum retry attempts for transient failures
+ */
+const MAX_RETRIES = 2
+
+/**
+ * Delay between retries in milliseconds (exponential backoff base)
+ */
+const RETRY_DELAY_BASE_MS = 500
+
+/**
+ * Helper function to delay execution
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/**
+ * Send a single email with retry logic for transient failures
+ */
 export async function sendEmail(
   resendApiKey: string,
   to: string,
   subject: string,
   html: string,
   text: string,
-  logger: Logger
-): Promise<{ success: boolean; error?: string }> {
+  logger: Logger,
+  retryCount = 0
+): Promise<{ success: boolean; error?: string; retried?: boolean }> {
   try {
     const response = await fetch(RESEND_API_URL, {
       method: 'POST',
@@ -286,18 +307,82 @@ export async function sendEmail(
       }),
     })
 
+    // Handle rate limiting (429) with retry
+    if (response.status === 429 && retryCount < MAX_RETRIES) {
+      const retryAfter = response.headers.get('Retry-After')
+      const delayMs = retryAfter 
+        ? parseInt(retryAfter, 10) * 1000 
+        : RETRY_DELAY_BASE_MS * Math.pow(2, retryCount)
+      
+      logger.warn('Rate limited, retrying', { 
+        recipient: to, 
+        retryCount: retryCount + 1, 
+        delayMs 
+      })
+      
+      await delay(delayMs)
+      return sendEmail(resendApiKey, to, subject, html, text, logger, retryCount + 1)
+    }
+
+    // Handle server errors (5xx) with retry
+    if (response.status >= 500 && retryCount < MAX_RETRIES) {
+      const delayMs = RETRY_DELAY_BASE_MS * Math.pow(2, retryCount)
+      
+      logger.warn('Server error, retrying', { 
+        status: response.status,
+        recipient: to, 
+        retryCount: retryCount + 1, 
+        delayMs 
+      })
+      
+      await delay(delayMs)
+      return sendEmail(resendApiKey, to, subject, html, text, logger, retryCount + 1)
+    }
+
     if (!response.ok) {
       const errorData = await response.text()
-      logger.error('Resend API error', { status: response.status, error: errorData, recipient: to })
-      return { success: false, error: `Resend API error: ${response.status} - ${errorData}` }
+      logger.error('Resend API error', { 
+        status: response.status, 
+        error: errorData, 
+        recipient: to,
+        retryCount 
+      })
+      return { 
+        success: false, 
+        error: `Resend API error: ${response.status} - ${errorData}`,
+        retried: retryCount > 0 
+      }
     }
 
     const result = await response.json()
-    logger.info('Email sent successfully', { emailId: result.id, recipient: to })
-    return { success: true }
+    logger.info('Email sent successfully', { 
+      emailId: result.id, 
+      recipient: to,
+      retried: retryCount > 0 
+    })
+    return { success: true, retried: retryCount > 0 }
   } catch (error) {
+    // Retry on network errors
+    if (retryCount < MAX_RETRIES) {
+      const delayMs = RETRY_DELAY_BASE_MS * Math.pow(2, retryCount)
+      
+      logger.warn('Network error, retrying', { 
+        error: error instanceof Error ? error.message : 'Unknown',
+        recipient: to, 
+        retryCount: retryCount + 1, 
+        delayMs 
+      })
+      
+      await delay(delayMs)
+      return sendEmail(resendApiKey, to, subject, html, text, logger, retryCount + 1)
+    }
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    logger.error('Failed to send email', { error: errorMessage, recipient: to })
-    return { success: false, error: errorMessage }
+    logger.error('Failed to send email after retries', { 
+      error: errorMessage, 
+      recipient: to,
+      retryCount 
+    })
+    return { success: false, error: errorMessage, retried: retryCount > 0 }
   }
 }

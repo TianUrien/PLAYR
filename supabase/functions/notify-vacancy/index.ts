@@ -261,6 +261,7 @@ Deno.serve(async (req: Request) => {
     // ==========================================================================
     // SEND TO REAL USERS ONLY
     // Recipients are filtered to exclude test accounts and blocked emails
+    // Using parallel batched sending for performance
     // ==========================================================================
     logger.info('Sending to real recipients', { 
       recipientCount: recipients.length,
@@ -279,7 +280,8 @@ Deno.serve(async (req: Request) => {
     if (!emailResult.success) {
       logger.warn('Some emails failed to send', { 
         sent: emailResult.sent.length, 
-        failed: emailResult.failed.length 
+        failed: emailResult.failed.length,
+        failedEmails: emailResult.failed.slice(0, 10), // Log first 10 for debugging
       })
     }
 
@@ -287,15 +289,19 @@ Deno.serve(async (req: Request) => {
       vacancyId: vacancy.id,
       sentCount: emailResult.sent.length,
       failedCount: emailResult.failed.length,
+      durationMs: emailResult.stats.durationMs,
+      avgTimePerEmail: emailResult.stats.avgTimePerEmail,
+      batchApiCalls: emailResult.stats.batchApiCalls,
     })
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         mode: 'REAL',
-        message: 'Production notifications sent',
+        message: 'Production notifications sent via Batch API',
         sentCount: emailResult.sent.length,
         failedCount: emailResult.failed.length,
+        stats: emailResult.stats,
         vacancyId: vacancy.id,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

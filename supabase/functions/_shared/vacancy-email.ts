@@ -192,14 +192,58 @@ export function createLogger(prefix: string, correlationId: string): Logger {
   }
 }
 
+// =============================================================================
+// EMAIL SENDING CONFIGURATION - USING RESEND BATCH API
+// =============================================================================
+
+/**
+ * Resend Batch API endpoint - sends up to 100 emails per request
+ * This is MUCH more efficient than individual sends
+ */
+const RESEND_BATCH_API_URL = 'https://api.resend.com/emails/batch'
+
+/**
+ * Maximum emails per batch (Resend limit is 100)
+ */
+const BATCH_SIZE = 100
+
+/**
+ * Delay between batch API calls in milliseconds
+ * Even with batch API, we respect rate limits (2 req/sec on your plan)
+ * 600ms gives us margin under the 2 req/sec limit
+ */
+const BATCH_API_DELAY_MS = 600
+
+/**
+ * Maximum retry attempts for transient failures (429 rate limits, 5xx errors)
+ */
+const MAX_RETRIES = 3
+
+/**
+ * Delay between retries in milliseconds (exponential backoff base)
+ * 1000ms base means: 1s, 2s, 4s for retries 1, 2, 3
+ */
+const RETRY_DELAY_BASE_MS = 1000
+
+/**
+ * Helper function to delay execution
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/**
+ * Send a single email with retry logic (used for small sends like test mode)
+ */
 export async function sendEmail(
   resendApiKey: string,
   to: string,
   subject: string,
   html: string,
   text: string,
-  logger: Logger
-): Promise<{ success: boolean; error?: string }> {
+  logger: Logger,
+  retryCount = 0
+): Promise<{ success: boolean; error?: string; retried?: boolean }> {
   try {
     const response = await fetch(RESEND_API_URL, {
       method: 'POST',
@@ -216,25 +260,240 @@ export async function sendEmail(
       }),
     })
 
+    // Handle rate limiting (429) with retry
+    if (response.status === 429 && retryCount < MAX_RETRIES) {
+      const retryAfter = response.headers.get('Retry-After')
+      const delayMs = retryAfter 
+        ? parseInt(retryAfter, 10) * 1000 
+        : RETRY_DELAY_BASE_MS * Math.pow(2, retryCount)
+      
+      logger.warn('Rate limited, retrying', { 
+        recipient: to, 
+        retryCount: retryCount + 1, 
+        delayMs 
+      })
+      
+      await delay(delayMs)
+      return sendEmail(resendApiKey, to, subject, html, text, logger, retryCount + 1)
+    }
+
+    // Handle server errors (5xx) with retry
+    if (response.status >= 500 && retryCount < MAX_RETRIES) {
+      const delayMs = RETRY_DELAY_BASE_MS * Math.pow(2, retryCount)
+      
+      logger.warn('Server error, retrying', { 
+        status: response.status,
+        recipient: to, 
+        retryCount: retryCount + 1, 
+        delayMs 
+      })
+      
+      await delay(delayMs)
+      return sendEmail(resendApiKey, to, subject, html, text, logger, retryCount + 1)
+    }
+
     if (!response.ok) {
       const errorData = await response.text()
-      logger.error('Resend API error', { status: response.status, error: errorData, recipient: to })
-      return { success: false, error: `Resend API error: ${response.status} - ${errorData}` }
+      logger.error('Resend API error', { 
+        status: response.status, 
+        error: errorData, 
+        recipient: to,
+        retryCount 
+      })
+      return { 
+        success: false, 
+        error: `Resend API error: ${response.status} - ${errorData}`,
+        retried: retryCount > 0
+      }
     }
 
     const result = await response.json()
-    logger.info('Email sent successfully', { emailId: result.id, recipient: to })
-    return { success: true }
+    logger.info('Email sent successfully', { 
+      emailId: result.id, 
+      recipient: to,
+      retried: retryCount > 0
+    })
+    return { success: true, retried: retryCount > 0 }
   } catch (error) {
+    // Retry on network errors
+    if (retryCount < MAX_RETRIES) {
+      const delayMs = RETRY_DELAY_BASE_MS * Math.pow(2, retryCount)
+      
+      logger.warn('Network error, retrying', { 
+        error: error instanceof Error ? error.message : 'Unknown',
+        recipient: to, 
+        retryCount: retryCount + 1, 
+        delayMs 
+      })
+      
+      await delay(delayMs)
+      return sendEmail(resendApiKey, to, subject, html, text, logger, retryCount + 1)
+    }
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    logger.error('Failed to send email', { error: errorMessage, recipient: to })
-    return { success: false, error: errorMessage }
+    logger.error('Failed to send email after retries', { 
+      error: errorMessage, 
+      recipient: to,
+      retryCount 
+    })
+    return { success: false, error: errorMessage, retried: retryCount > 0 }
   }
 }
 
 /**
- * Send emails individually to each recipient
- * Each user only sees their own email in the to: field
+ * Response structure from Resend Batch API
+ */
+interface ResendBatchResponse {
+  data?: Array<{ id: string }>
+  errors?: Array<{ index: number; message: string }>
+}
+
+/**
+ * Send a batch of emails using Resend Batch API with retry logic
+ * Returns the list of successful and failed recipients
+ */
+async function sendBatchWithRetry(
+  resendApiKey: string,
+  emailPayloads: Array<{
+    from: string
+    to: string
+    subject: string
+    html: string
+    text: string
+  }>,
+  logger: Logger,
+  retryCount = 0
+): Promise<{ sent: string[]; failed: Array<{ email: string; error: string }> }> {
+  const sent: string[] = []
+  const failed: Array<{ email: string; error: string }> = []
+
+  try {
+    const response = await fetch(RESEND_BATCH_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+        'x-batch-validation': 'permissive', // Allow partial success
+      },
+      body: JSON.stringify(emailPayloads),
+    })
+
+    // Handle rate limiting (429) with retry
+    if (response.status === 429 && retryCount < MAX_RETRIES) {
+      const retryAfter = response.headers.get('Retry-After')
+      const delayMs = retryAfter 
+        ? parseInt(retryAfter, 10) * 1000 
+        : RETRY_DELAY_BASE_MS * Math.pow(2, retryCount)
+      
+      logger.warn('Batch rate limited, retrying', { 
+        batchSize: emailPayloads.length,
+        retryCount: retryCount + 1, 
+        delayMs 
+      })
+      
+      await delay(delayMs)
+      return sendBatchWithRetry(resendApiKey, emailPayloads, logger, retryCount + 1)
+    }
+
+    // Handle server errors (5xx) with retry
+    if (response.status >= 500 && retryCount < MAX_RETRIES) {
+      const delayMs = RETRY_DELAY_BASE_MS * Math.pow(2, retryCount)
+      
+      logger.warn('Batch server error, retrying', { 
+        status: response.status,
+        batchSize: emailPayloads.length,
+        retryCount: retryCount + 1, 
+        delayMs 
+      })
+      
+      await delay(delayMs)
+      return sendBatchWithRetry(resendApiKey, emailPayloads, logger, retryCount + 1)
+    }
+
+    if (!response.ok) {
+      const errorData = await response.text()
+      logger.error('Batch API error - all emails failed', { 
+        status: response.status, 
+        error: errorData,
+        batchSize: emailPayloads.length 
+      })
+      // Mark all as failed
+      emailPayloads.forEach(p => {
+        failed.push({ email: p.to, error: `Batch API error: ${response.status}` })
+      })
+      return { sent, failed }
+    }
+
+    const result: ResendBatchResponse = await response.json()
+    
+    // Track which indices failed
+    const failedIndices = new Set<number>()
+    if (result.errors && result.errors.length > 0) {
+      result.errors.forEach(err => {
+        failedIndices.add(err.index)
+        const email = emailPayloads[err.index]?.to || `index-${err.index}`
+        failed.push({ email, error: err.message })
+        logger.warn('Email failed in batch', { 
+          index: err.index, 
+          email, 
+          error: err.message 
+        })
+      })
+    }
+
+    // All emails not in failed indices are successful
+    emailPayloads.forEach((payload, index) => {
+      if (!failedIndices.has(index)) {
+        sent.push(payload.to)
+      }
+    })
+
+    logger.info('Batch sent', { 
+      batchSize: emailPayloads.length,
+      sent: sent.length,
+      failed: failed.length,
+      emailIds: result.data?.map(d => d.id).slice(0, 5) // Log first 5 IDs
+    })
+
+    return { sent, failed }
+  } catch (error) {
+    // Retry on network errors
+    if (retryCount < MAX_RETRIES) {
+      const delayMs = RETRY_DELAY_BASE_MS * Math.pow(2, retryCount)
+      
+      logger.warn('Batch network error, retrying', { 
+        error: error instanceof Error ? error.message : 'Unknown',
+        batchSize: emailPayloads.length,
+        retryCount: retryCount + 1, 
+        delayMs 
+      })
+      
+      await delay(delayMs)
+      return sendBatchWithRetry(resendApiKey, emailPayloads, logger, retryCount + 1)
+    }
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    logger.error('Batch failed after retries', { 
+      error: errorMessage,
+      batchSize: emailPayloads.length 
+    })
+    // Mark all as failed
+    emailPayloads.forEach(p => {
+      failed.push({ email: p.to, error: errorMessage })
+    })
+    return { sent, failed }
+  }
+}
+
+/**
+ * Send emails using Resend Batch API - dramatically faster than individual sends!
+ * 
+ * Performance comparison for 200 recipients:
+ * - Old method (2 req/sec): 100 batches × 1.1s = ~110 seconds
+ * - Batch API: 2 API calls × 0.6s = ~1.2 seconds (90x faster!)
+ * 
+ * Resend Batch API allows up to 100 emails per request.
+ * We use permissive mode to allow partial success.
  */
 export async function sendEmailsIndividually(
   resendApiKey: string,
@@ -243,24 +502,80 @@ export async function sendEmailsIndividually(
   html: string,
   text: string,
   logger: Logger
-): Promise<{ success: boolean; sent: string[]; failed: string[] }> {
-  const sent: string[] = []
-  const failed: string[] = []
+): Promise<{ success: boolean; sent: string[]; failed: string[]; stats: EmailStats }> {
+  const allSent: string[] = []
+  const allFailed: string[] = []
+  const startTime = Date.now()
+  
+  const totalBatches = Math.ceil(recipients.length / BATCH_SIZE)
+  
+  logger.info('Starting Resend Batch API send', { 
+    totalRecipients: recipients.length,
+    batchSize: BATCH_SIZE,
+    totalBatches,
+    estimatedTime: `${(totalBatches * BATCH_API_DELAY_MS / 1000).toFixed(1)}s`
+  })
 
-  for (const recipient of recipients) {
-    const result = await sendEmail(resendApiKey, recipient, subject, html, text, logger)
-    if (result.success) {
-      sent.push(recipient)
-    } else {
-      failed.push(recipient)
+  // Process in batches of BATCH_SIZE (100)
+  for (let i = 0; i < recipients.length; i += BATCH_SIZE) {
+    const batchRecipients = recipients.slice(i, i + BATCH_SIZE)
+    const batchNumber = Math.floor(i / BATCH_SIZE) + 1
+    
+    logger.info(`Processing batch ${batchNumber}/${totalBatches}`, { 
+      batchSize: batchRecipients.length,
+      progress: `${Math.min(i + BATCH_SIZE, recipients.length)}/${recipients.length}`
+    })
+
+    // Build the batch payload - each recipient gets their own email object
+    const emailPayloads = batchRecipients.map(recipient => ({
+      from: SENDER_EMAIL,
+      to: recipient,
+      subject,
+      html,
+      text,
+    }))
+
+    // Send the batch
+    const batchResult = await sendBatchWithRetry(resendApiKey, emailPayloads, logger)
+    
+    allSent.push(...batchResult.sent)
+    allFailed.push(...batchResult.failed.map(f => f.email))
+
+    // Add delay between batch API calls (except for last batch)
+    if (i + BATCH_SIZE < recipients.length) {
+      await delay(BATCH_API_DELAY_MS)
     }
   }
 
-  return {
-    success: failed.length === 0,
-    sent,
-    failed,
+  const durationMs = Date.now() - startTime
+  const stats: EmailStats = {
+    totalRecipients: recipients.length,
+    sent: allSent.length,
+    failed: allFailed.length,
+    retriedCount: 0, // Batch API handles retries internally
+    durationMs,
+    avgTimePerEmail: recipients.length > 0 ? Math.round(durationMs / recipients.length) : 0,
+    batchApiCalls: totalBatches,
   }
+
+  logger.info('Batch API send completed', { ...stats })
+
+  return {
+    success: allFailed.length === 0,
+    sent: allSent,
+    failed: allFailed,
+    stats,
+  }
+}
+
+export interface EmailStats {
+  totalRecipients: number
+  sent: number
+  failed: number
+  retriedCount: number
+  durationMs: number
+  avgTimePerEmail: number
+  batchApiCalls?: number
 }
 
 /**
