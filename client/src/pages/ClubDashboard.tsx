@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { MapPin, Globe, Calendar, Plus, Eye, MessageCircle, Edit, Loader2 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '@/components/Header'
-import { Avatar, DashboardMenu, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
+import { useClubProfileStrength } from '@/hooks/useClubProfileStrength'
 import VacanciesTab from '@/components/VacanciesTab'
 import ClubMediaTab from '@/components/ClubMediaTab'
 import Skeleton from '@/components/Skeleton'
@@ -69,6 +70,14 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
 
   const tabParam = searchParams.get('tab') as TabType | null
 
+  // Profile strength for clubs (only compute for own profile)
+  const { percentage, buckets, loading: strengthLoading, refresh: refreshStrength } = useClubProfileStrength({
+    profile: readOnly ? null : (profileData ?? authProfile) as ClubProfileShape | null,
+  })
+
+  // Track previous percentage to show toast on improvement
+  const prevPercentageRef = useRef<number | null>(null)
+
   useEffect(() => {
     if (!tabParam) return
     if (!allowedTabs.includes(tabParam)) {
@@ -82,6 +91,25 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
       setActiveTab(tabParam)
     }
   }, [tabParam, allowedTabs, activeTab])
+
+  // Refresh profile strength when switching to overview tab (to pick up gallery changes)
+  useEffect(() => {
+    if (!readOnly && activeTab === 'overview') {
+      void refreshStrength()
+    }
+  }, [activeTab, readOnly, refreshStrength])
+
+  // Show toast when profile strength improves
+  useEffect(() => {
+    if (readOnly || strengthLoading) return
+    if (prevPercentageRef.current !== null && percentage > prevPercentageRef.current) {
+      addToast({
+        type: 'success',
+        message: `Profile strength: ${percentage}%`,
+      })
+    }
+    prevPercentageRef.current = percentage
+  }, [percentage, readOnly, strengthLoading, addToast])
 
   useEffect(() => {
     if (readOnly) {
@@ -359,6 +387,26 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
           <div className="p-6 md:p-8">
             {activeTab === 'overview' && (
               <div className="space-y-8 animate-fade-in">
+                {/* Profile Strength Card - only for own profile */}
+                {!readOnly && (
+                  <ProfileStrengthCard
+                    percentage={percentage}
+                    buckets={buckets}
+                    loading={strengthLoading}
+                    onBucketAction={(bucket) => {
+                      if (bucket.actionId === 'edit-profile') {
+                        setShowEditModal(true)
+                      } else if (bucket.actionId === 'gallery-section') {
+                        // Scroll to gallery section
+                        const gallerySection = document.querySelector('[data-section="gallery"]')
+                        if (gallerySection) {
+                          gallerySection.scrollIntoView({ behavior: 'smooth' })
+                        }
+                      }
+                    }}
+                  />
+                )}
+
                 {!readOnly && (
                   <div className="bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] rounded-xl p-6 text-white">
                     <h3 className="text-lg font-semibold mb-2">Quick Actions</h3>
@@ -468,7 +516,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
                   </div>
                 </div>
 
-                <section className="space-y-4 pt-6 border-t border-gray-200">
+                <section data-section="gallery" className="space-y-4 pt-6 border-t border-gray-200">
                   <div>
                     <h2 className="text-2xl font-bold text-gray-900">Media</h2>
                     <p className="text-gray-600 text-sm">Club gallery content now surfaces directly on your overview.</p>

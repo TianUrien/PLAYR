@@ -659,20 +659,22 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                 />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2" htmlFor="club-bio">
-                  Bio
-                </label>
-                <textarea
-                  id="club-bio"
-                  value={formData.club_bio || ''}
-                  onChange={(e) => setFormData({ ...formData, club_bio: e.target.value })}
-                  rows={4}
-                  className="w-full px-4 py-3 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-yellow-400 focus:outline-none resize-none"
-                  placeholder="Tell us about your club..."
-                  aria-label="Club bio"
-                />
-              </div>                <div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="club-bio">
+                    Bio
+                  </label>
+                  <textarea
+                    id="club-bio"
+                    value={formData.club_bio || ''}
+                    onChange={(e) => setFormData({ ...formData, club_bio: e.target.value })}
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent resize-none"
+                    placeholder="Tell us about your club..."
+                    aria-label="Club bio"
+                  />
+                </div>
+
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="club-history">
                     Club History (Optional)
                   </label>
