@@ -28,6 +28,7 @@ export { default as InfoTooltip } from './InfoTooltip'
 export { default as SentryTestButton } from './SentryTestButton'
 export { default as SocialLinksInput } from './SocialLinksInput'
 export { default as SocialLinksDisplay } from './SocialLinksDisplay'
+export { default as ProfileStrengthCard } from './ProfileStrengthCard'
 export { ErrorBoundary } from './ErrorBoundary'
 
 // Loading States

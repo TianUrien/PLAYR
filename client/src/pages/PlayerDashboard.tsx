@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { MapPin, Globe, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, ProfileStrengthCard } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import JourneyTab from '@/components/JourneyTab'
 import CommentsTab from '@/components/CommentsTab'
+import AddVideoLinkModal from '@/components/AddVideoLinkModal'
 import Button from '@/components/Button'
 import SocialLinksDisplay from '@/components/SocialLinksDisplay'
 import type { Profile } from '@/lib/supabase'
@@ -16,6 +17,7 @@ import { useToastStore } from '@/lib/toast'
 import { useNotificationStore } from '@/lib/notifications'
 import { derivePublicContactEmail } from '@/lib/profile'
 import type { SocialLinks } from '@/lib/socialLinks'
+import { useProfileStrength, type ProfileStrengthBucket } from '@/hooks/useProfileStrength'
 
 type TabType = 'profile' | 'friends' | 'journey' | 'comments'
 
@@ -60,8 +62,13 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
     return tabParam && ['profile', 'friends', 'journey', 'comments'].includes(tabParam) ? tabParam : 'profile'
   })
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showAddVideoModal, setShowAddVideoModal] = useState(false)
   const [sendingMessage, setSendingMessage] = useState(false)
   const claimCommentHighlights = useNotificationStore((state) => state.claimCommentHighlights)
+  
+  // Profile strength for player profiles (only for own profile)
+  const profileStrength = useProfileStrength(!readOnly ? (profile as Profile) : null)
+  const prevPercentageRef = useRef<number | null>(null)
   const clearCommentNotifications = useNotificationStore((state) => state.clearCommentNotifications)
   const commentHighlightVersion = useNotificationStore((state) => state.commentHighlightVersion)
   const [highlightedComments, setHighlightedComments] = useState<Set<string>>(new Set())
@@ -99,6 +106,45 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
 
     void clearCommentNotifications()
   }, [activeTab, claimCommentHighlights, clearCommentNotifications, commentHighlightVersion, readOnly, highlightedComments])
+
+  // Show toast when profile strength increases
+  useEffect(() => {
+    if (readOnly || profileStrength.loading) return
+    
+    const currentPercentage = profileStrength.percentage
+    const prevPercentage = prevPercentageRef.current
+    
+    // Only show toast if we have a previous value and the percentage increased
+    if (prevPercentage !== null && currentPercentage > prevPercentage) {
+      const increase = currentPercentage - prevPercentage
+      if (currentPercentage >= 100) {
+        addToast("Your profile is now complete! Clubs can fully evaluate you.", 'success')
+      } else {
+        addToast(`Profile strength +${increase}%. Keep going!`, 'success')
+      }
+    }
+    
+    prevPercentageRef.current = currentPercentage
+  }, [profileStrength.percentage, profileStrength.loading, readOnly, addToast])
+
+  // Handler for profile strength bucket actions
+  const handleProfileStrengthAction = (bucket: ProfileStrengthBucket) => {
+    switch (bucket.action.type) {
+      case 'edit-profile':
+        setShowEditModal(true)
+        break
+      case 'tab':
+        handleTabChange(bucket.action.tab as TabType)
+        break
+      case 'add-video':
+        // Navigate to profile tab first, then open video modal
+        if (activeTab !== 'profile') {
+          handleTabChange('profile')
+        }
+        setShowAddVideoModal(true)
+        break
+    }
+  }
 
   if (!profile) return null
 
@@ -352,6 +398,15 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
           <div className="p-6 md:p-8">
             {activeTab === 'profile' && (
               <div className="space-y-10 animate-fade-in">
+                {/* Profile Strength Card - Only show for own profile (not readOnly) */}
+                {!readOnly && (
+                  <ProfileStrengthCard
+                    percentage={profileStrength.percentage}
+                    buckets={profileStrength.buckets}
+                    loading={profileStrength.loading}
+                    onBucketAction={handleProfileStrengthAction}
+                  />
+                )}
                 <section className="space-y-6">
                   <div className="flex items-start justify-between gap-4">
                     <h2 className="text-2xl font-bold text-gray-900">Basic Information</h2>
@@ -586,6 +641,17 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         role={profile.role as 'player' | 'coach'}
+      />
+
+      {/* Add Video Link Modal - for profile strength action */}
+      <AddVideoLinkModal
+        isOpen={showAddVideoModal}
+        onClose={() => {
+          setShowAddVideoModal(false)
+          // Refresh profile strength after closing (video may have been added)
+          void profileStrength.refresh()
+        }}
+        currentVideoUrl={(profile as Profile)?.highlight_video_url || ''}
       />
     </div>
   )
