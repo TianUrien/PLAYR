@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { User, MapPin, Globe, Calendar, Building2, Camera } from 'lucide-react'
 import * as Sentry from '@sentry/react'
-import { Input, Button } from '@/components'
+import { Input, Button, CountrySelect } from '@/components'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
@@ -47,6 +47,7 @@ export default function CompleteProfile() {
     clubName: '',
     city: '',
     nationality: '',
+    nationalityCountryId: null as number | null,
     country: '',
     dateOfBirth: '',
     position: '',
@@ -54,6 +55,8 @@ export default function CompleteProfile() {
     gender: '',
     passport1: '',
     passport2: '',
+    passport1CountryId: null as number | null,
+    passport2CountryId: null as number | null,
     yearFounded: '',
     leagueDivision: '',
     website: '',
@@ -267,6 +270,7 @@ export default function CompleteProfile() {
         full_name: formData.fullName || formData.clubName || '',
         base_location: formData.city || '',
         nationality: profileNationality || '',
+        nationality_country_id: formData.nationalityCountryId,
         onboarding_completed: true, // Mark onboarding as complete
         avatar_url: avatarUrl || null, // Include avatar if uploaded
       }
@@ -278,6 +282,8 @@ export default function CompleteProfile() {
           secondary_position: formData.secondaryPosition || null,
           gender: normalizeGender(formData.gender),
           date_of_birth: formData.dateOfBirth || null,
+          passport1_country_id: formData.passport1CountryId,
+          passport2_country_id: formData.passport2CountryId,
         }
       } else if (userRole === 'coach') {
         updateData = {
@@ -286,6 +292,8 @@ export default function CompleteProfile() {
           date_of_birth: formData.dateOfBirth || null,
           passport_1: formData.passport1 || null,
           passport_2: formData.passport2 || null,
+          passport1_country_id: formData.passport1CountryId,
+          passport2_country_id: formData.passport2CountryId,
         }
       } else if (userRole === 'club') {
         updateData = {
@@ -539,12 +547,12 @@ export default function CompleteProfile() {
                     required
                   />
 
-                  <Input
+                  <CountrySelect
                     label="Nationality"
-                    icon={<Globe className="w-5 h-5" />}
-                    placeholder="Your nationality"
-                    value={formData.nationality}
-                    onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+                    value={formData.nationalityCountryId}
+                    onChange={(id) => setFormData({ ...formData, nationalityCountryId: id })}
+                    placeholder="Select your nationality"
+                    showNationality
                     required
                   />
 
@@ -634,12 +642,12 @@ export default function CompleteProfile() {
                     required
                   />
 
-                  <Input
+                  <CountrySelect
                     label="Nationality"
-                    icon={<Globe className="w-5 h-5" />}
-                    placeholder="Your nationality"
-                    value={formData.nationality}
-                    onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+                    value={formData.nationalityCountryId}
+                    onChange={(id) => setFormData({ ...formData, nationalityCountryId: id })}
+                    placeholder="Select your nationality"
+                    showNationality
                     required
                   />
 
@@ -669,20 +677,18 @@ export default function CompleteProfile() {
                     onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
                   />
 
-                  <Input
-                    label="Passport 1"
-                    icon={<Globe className="w-5 h-5" />}
-                    placeholder="Primary passport/nationality (optional)"
-                    value={formData.passport1}
-                    onChange={(e) => setFormData({ ...formData, passport1: e.target.value })}
+                  <CountrySelect
+                    label="Passport 1 (Optional)"
+                    value={formData.passport1CountryId}
+                    onChange={(id) => setFormData({ ...formData, passport1CountryId: id })}
+                    placeholder="Select primary passport country"
                   />
 
-                  <Input
-                    label="Passport 2"
-                    icon={<Globe className="w-5 h-5" />}
-                    placeholder="Secondary passport/nationality (optional)"
-                    value={formData.passport2}
-                    onChange={(e) => setFormData({ ...formData, passport2: e.target.value })}
+                  <CountrySelect
+                    label="Passport 2 (Optional)"
+                    value={formData.passport2CountryId}
+                    onChange={(id) => setFormData({ ...formData, passport2CountryId: id })}
+                    placeholder="Select secondary passport country"
                   />
                 </>
               )}

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { MapPin, Globe, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, CountryDisplay } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import Button from '@/components/Button'
@@ -29,6 +29,7 @@ export type CoachProfileShape =
     | 'base_location'
     | 'bio'
     | 'nationality'
+    | 'nationality_country_id'
     | 'gender'
     | 'date_of_birth'
     | 'email'
@@ -36,6 +37,8 @@ export type CoachProfileShape =
     | 'contact_email_public'
     | 'passport_1'
     | 'passport_2'
+    | 'passport1_country_id'
+    | 'passport2_country_id'
   >
 
 interface CoachDashboardProps {
@@ -307,7 +310,12 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
               <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
                 <div className="flex items-center gap-2">
                   <Globe className="w-5 h-5" />
-                  <span className="font-medium">{profile.nationality}</span>
+                  <CountryDisplay
+                    countryId={profile.nationality_country_id}
+                    fallbackText={profile.nationality}
+                    showNationality
+                    className="font-medium"
+                  />
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="w-5 h-5" />
@@ -378,7 +386,12 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Nationality
                       </label>
-                      <p className="text-gray-900">{profile.nationality}</p>
+                      <CountryDisplay
+                        countryId={profile.nationality_country_id}
+                        fallbackText={profile.nationality}
+                        showNationality
+                        className="text-gray-900"
+                      />
                     </div>
 
                     <div>
@@ -415,22 +428,33 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                   </div>
                 </div>
 
-                {/* Passports Section */}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Passports & Eligibility</h3>
                   <div className="space-y-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Passport 1</label>
-                      <p className={profile.passport_1 ? 'text-gray-900' : 'text-gray-500 italic'}>
-                        {profile.passport_1 || 'Not specified'}
-                      </p>
+                      {profile.passport1_country_id || profile.passport_1 ? (
+                        <CountryDisplay
+                          countryId={profile.passport1_country_id}
+                          fallbackText={profile.passport_1}
+                          className="text-gray-900"
+                        />
+                      ) : (
+                        <p className="text-gray-500 italic">Not specified</p>
+                      )}
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Passport 2</label>
-                      <p className={profile.passport_2 ? 'text-gray-900' : 'text-gray-500 italic'}>
-                        {profile.passport_2 || 'Not specified'}
-                      </p>
+                      {profile.passport2_country_id || profile.passport_2 ? (
+                        <CountryDisplay
+                          countryId={profile.passport2_country_id}
+                          fallbackText={profile.passport_2}
+                          className="text-gray-900"
+                        />
+                      ) : (
+                        <p className="text-gray-500 italic">Not specified</p>
+                      )}
                     </div>
                   </div>
                 </div>

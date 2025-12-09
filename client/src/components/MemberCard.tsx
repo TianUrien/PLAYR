@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MessageCircle, User } from 'lucide-react'
-import { Avatar, RoleBadge } from '@/components'
+import { Avatar, RoleBadge, CountryDisplay } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { useToastStore } from '@/lib/toast'
@@ -13,6 +13,7 @@ interface MemberCardProps {
   full_name: string
   role: 'player' | 'coach' | 'club'
   nationality: string | null
+  nationality_country_id?: number | null
   base_location: string | null
   position: string | null
   secondary_position: string | null
@@ -26,6 +27,7 @@ export default function MemberCard({
   full_name,
   role,
   nationality,
+  nationality_country_id,
   base_location,
   position,
   secondary_position,
@@ -119,10 +121,15 @@ export default function MemberCard({
 
       {/* Details - Hide empty fields */}
       <div className="space-y-2.5 mb-4 text-sm">
-        {nationality && (
+        {(nationality_country_id || nationality) && (
           <div className="flex items-start gap-2">
             <span className="text-xs font-semibold text-gray-400 min-w-[72px]">Nationality:</span>
-            <span className="text-gray-700">{nationality}</span>
+            <CountryDisplay
+              countryId={nationality_country_id}
+              fallbackText={nationality}
+              showNationality
+              className="text-gray-700"
+            />
           </div>
         )}
 

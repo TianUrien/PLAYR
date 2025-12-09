@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
-import { Button, Input } from '@/components'
+import { Button, Input, CountrySelect } from '@/components'
 import { logger } from '@/lib/logger'
 import { optimizeAvatarImage, validateImage } from '@/lib/imageOptimization'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
@@ -25,12 +25,15 @@ type ProfileFormData = {
   full_name: string
   base_location: string
   nationality: string
+  nationality_country_id: number | null
   date_of_birth: string
   position: string
   secondary_position: string
   gender: string
   passport_1: string
   passport_2: string
+  passport1_country_id: number | null
+  passport2_country_id: number | null
   current_club: string
   year_founded: string
   league_division: string
@@ -50,12 +53,15 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   full_name: profile?.full_name || '',
   base_location: profile?.base_location || '',
   nationality: profile?.nationality || '',
+  nationality_country_id: profile?.nationality_country_id ?? null,
   date_of_birth: profile?.date_of_birth || '',
   position: profile?.position || '',
   secondary_position: profile?.secondary_position || '',
   gender: profile?.gender || '',
   passport_1: profile?.passport_1 || '',
   passport_2: profile?.passport_2 || '',
+  passport1_country_id: profile?.passport1_country_id ?? null,
+  passport2_country_id: profile?.passport2_country_id ?? null,
   current_club: profile?.current_club || '',
   year_founded: profile?.year_founded?.toString() || '',
   league_division: profile?.league_division || '',
@@ -247,23 +253,30 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
 
     if (role === 'player') {
       optimisticUpdate.nationality = formData.nationality
+      optimisticUpdate.nationality_country_id = formData.nationality_country_id
       optimisticUpdate.position = formData.position
       optimisticUpdate.secondary_position = formData.secondary_position || null
       optimisticUpdate.gender = formData.gender
       optimisticUpdate.date_of_birth = formData.date_of_birth || null
       optimisticUpdate.passport_1 = formData.passport_1 || null
       optimisticUpdate.passport_2 = formData.passport_2 || null
+      optimisticUpdate.passport1_country_id = formData.passport1_country_id
+      optimisticUpdate.passport2_country_id = formData.passport2_country_id
       optimisticUpdate.current_club = formData.current_club || null
       optimisticUpdate.bio = formData.bio || null
     } else if (role === 'coach') {
       optimisticUpdate.nationality = formData.nationality
+      optimisticUpdate.nationality_country_id = formData.nationality_country_id
       optimisticUpdate.gender = formData.gender || null
       optimisticUpdate.date_of_birth = formData.date_of_birth || null
       optimisticUpdate.passport_1 = formData.passport_1 || null
       optimisticUpdate.passport_2 = formData.passport_2 || null
+      optimisticUpdate.passport1_country_id = formData.passport1_country_id
+      optimisticUpdate.passport2_country_id = formData.passport2_country_id
       optimisticUpdate.bio = formData.bio || null
     } else if (role === 'club') {
       optimisticUpdate.nationality = formData.nationality
+      optimisticUpdate.nationality_country_id = formData.nationality_country_id
       optimisticUpdate.year_founded = formData.year_founded ? parseInt(formData.year_founded) : null
       optimisticUpdate.league_division = formData.league_division || null
       optimisticUpdate.website = formData.website || null
@@ -432,10 +445,11 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
               required
             />
 
-            <Input
+            <CountrySelect
               label="Country"
-              value={formData.nationality}
-              onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
+              value={formData.nationality_country_id}
+              onChange={(id) => setFormData({ ...formData, nationality_country_id: id })}
+              placeholder="Select your country"
               required
             />
 
@@ -538,21 +552,19 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
                 />
 
-                <Input
-                  label="Passport 1 (Required)"
-                  type="text"
-                  value={formData.passport_1}
-                  onChange={(e) => setFormData({ ...formData, passport_1: e.target.value })}
-                  placeholder="e.g., New Zealand Passport"
+                <CountrySelect
+                  label="Passport 1"
+                  value={formData.passport1_country_id}
+                  onChange={(id) => setFormData({ ...formData, passport1_country_id: id })}
+                  placeholder="Select your primary passport country"
                   required
                 />
 
-                <Input
+                <CountrySelect
                   label="Passport 2 (Optional)"
-                  type="text"
-                  value={formData.passport_2}
-                  onChange={(e) => setFormData({ ...formData, passport_2: e.target.value })}
-                  placeholder="e.g., Australian Passport"
+                  value={formData.passport2_country_id}
+                  onChange={(id) => setFormData({ ...formData, passport2_country_id: id })}
+                  placeholder="Select secondary passport country"
                 />
 
                 <Input
@@ -607,18 +619,18 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
                 />
 
-                <Input
+                <CountrySelect
                   label="Passport 1 (Optional)"
-                  placeholder="Primary passport/nationality"
-                  value={formData.passport_1}
-                  onChange={(e) => setFormData({ ...formData, passport_1: e.target.value })}
+                  value={formData.passport1_country_id}
+                  onChange={(id) => setFormData({ ...formData, passport1_country_id: id })}
+                  placeholder="Select primary passport country"
                 />
 
-                <Input
+                <CountrySelect
                   label="Passport 2 (Optional)"
-                  placeholder="Secondary passport/nationality"
-                  value={formData.passport_2}
-                  onChange={(e) => setFormData({ ...formData, passport_2: e.target.value })}
+                  value={formData.passport2_country_id}
+                  onChange={(id) => setFormData({ ...formData, passport2_country_id: id })}
+                  placeholder="Select secondary passport country"
                 />
 
                 <div>

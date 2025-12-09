@@ -18,6 +18,7 @@ type PublicProfileBase = Pick<
   | 'bio'
   | 'highlight_video_url'
   | 'nationality'
+  | 'nationality_country_id'
   | 'current_club'
   | 'gender'
   | 'date_of_birth'
@@ -28,6 +29,8 @@ type PublicProfileBase = Pick<
   | 'contact_email_public'
   | 'passport_1'
   | 'passport_2'
+  | 'passport1_country_id'
+  | 'passport2_country_id'
 > & { is_test_account?: boolean }
 
 type PublicPlayerProfileShape = PublicProfileBase & { role: 'player' }
@@ -45,6 +48,7 @@ const PUBLIC_PROFILE_FIELDS = [
   'bio',
   'highlight_video_url',
   'nationality',
+  'nationality_country_id',
   'current_club',
   'gender',
   'date_of_birth',
@@ -55,6 +59,8 @@ const PUBLIC_PROFILE_FIELDS = [
   'contact_email_public',
   'passport_1',
   'passport_2',
+  'passport1_country_id',
+  'passport2_country_id',
   'social_links',
   'is_test_account'
 ].join(',')

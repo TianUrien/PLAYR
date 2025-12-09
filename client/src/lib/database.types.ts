@@ -122,6 +122,74 @@ export type Database = {
           },
         ]
       }
+      countries: {
+        Row: {
+          id: number
+          code: string
+          code_alpha3: string
+          name: string
+          common_name: string | null
+          nationality_name: string
+          region: string | null
+          flag_emoji: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          code: string
+          code_alpha3: string
+          name: string
+          common_name?: string | null
+          nationality_name: string
+          region?: string | null
+          flag_emoji?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          code?: string
+          code_alpha3?: string
+          name?: string
+          common_name?: string | null
+          nationality_name?: string
+          region?: string | null
+          flag_emoji?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      country_text_aliases: {
+        Row: {
+          id: number
+          alias_text: string
+          country_id: number
+          confidence: string
+          created_at: string
+        }
+        Insert: {
+          id?: number
+          alias_text: string
+          country_id: number
+          confidence?: string
+          created_at?: string
+        }
+        Update: {
+          id?: number
+          alias_text?: string
+          country_id?: number
+          confidence?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "country_text_aliases_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       conversations: {
         Row: {
           created_at: string
@@ -590,6 +658,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          base_country_id: number | null
           base_location: string | null
           bio: string | null
           club_bio: string | null
@@ -607,11 +676,14 @@ export type Database = {
           is_test_account: boolean
           league_division: string | null
           nationality: string | null
+          nationality_country_id: number | null
           notify_applications: boolean
           notify_opportunities: boolean
           onboarding_completed: boolean
           passport_1: string | null
           passport_2: string | null
+          passport1_country_id: number | null
+          passport2_country_id: number | null
           position: string | null
           role: string
           secondary_position: string | null
@@ -624,6 +696,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          base_country_id?: number | null
           base_location?: string | null
           bio?: string | null
           club_bio?: string | null
@@ -641,11 +714,14 @@ export type Database = {
           is_test_account?: boolean
           league_division?: string | null
           nationality?: string | null
+          nationality_country_id?: number | null
           notify_applications?: boolean
           notify_opportunities?: boolean
           onboarding_completed?: boolean
           passport_1?: string | null
           passport_2?: string | null
+          passport1_country_id?: number | null
+          passport2_country_id?: number | null
           position?: string | null
           role: string
           secondary_position?: string | null
@@ -658,6 +734,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          base_country_id?: number | null
           base_location?: string | null
           bio?: string | null
           club_bio?: string | null
@@ -675,11 +752,14 @@ export type Database = {
           is_test_account?: boolean
           league_division?: string | null
           nationality?: string | null
+          nationality_country_id?: number | null
           notify_applications?: boolean
           notify_opportunities?: boolean
           onboarding_completed?: boolean
           passport_1?: string | null
           passport_2?: string | null
+          passport1_country_id?: number | null
+          passport2_country_id?: number | null
           position?: string | null
           role?: string
           secondary_position?: string | null
@@ -690,7 +770,36 @@ export type Database = {
           website?: string | null
           year_founded?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_nationality_country_id_fkey"
+            columns: ["nationality_country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_passport1_country_id_fkey"
+            columns: ["passport1_country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_passport2_country_id_fkey"
+            columns: ["passport2_country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_base_country_id_fkey"
+            columns: ["base_country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          }
+        ]
       }
       storage_cleanup_queue: {
         Row: {

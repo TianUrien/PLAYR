@@ -13,6 +13,7 @@ interface Profile {
   full_name: string
   role: 'player' | 'coach' | 'club'
   nationality: string | null
+  nationality_country_id: number | null
   base_location: string | null
   position: string | null
   secondary_position: string | null
@@ -54,7 +55,7 @@ export default function CommunityPage() {
           async () => {
             let query = supabase
               .from('profiles')
-              .select('id, avatar_url, full_name, role, nationality, base_location, position, secondary_position, current_club, created_at, is_test_account')
+              .select('id, avatar_url, full_name, role, nationality, nationality_country_id, base_location, position, secondary_position, current_club, created_at, is_test_account')
               .eq('onboarding_completed', true) // Only show fully onboarded users
             
             // If current user is NOT a test account, exclude test accounts from results
@@ -106,7 +107,7 @@ export default function CommunityPage() {
             const searchTerm = `%${query}%`
             let dbQuery = supabase
               .from('profiles')
-              .select('id, avatar_url, full_name, role, nationality, base_location, position, secondary_position, current_club, created_at, is_test_account')
+              .select('id, avatar_url, full_name, role, nationality, nationality_country_id, base_location, position, secondary_position, current_club, created_at, is_test_account')
               .eq('onboarding_completed', true) // Only show fully onboarded users
               .or(
                 `full_name.ilike.${searchTerm},nationality.ilike.${searchTerm},base_location.ilike.${searchTerm},position.ilike.${searchTerm},secondary_position.ilike.${searchTerm},current_club.ilike.${searchTerm}`
@@ -277,6 +278,7 @@ export default function CommunityPage() {
                     full_name={member.full_name}
                     role={member.role}
                     nationality={member.nationality}
+                    nationality_country_id={member.nationality_country_id}
                     base_location={member.base_location}
                     position={member.position}
                     secondary_position={member.secondary_position}
