@@ -26,6 +26,7 @@ type ProfileFormData = {
   base_location: string
   nationality: string
   nationality_country_id: number | null
+  nationality2_country_id: number | null
   date_of_birth: string
   position: string
   secondary_position: string
@@ -54,6 +55,7 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   base_location: profile?.base_location || '',
   nationality: profile?.nationality || '',
   nationality_country_id: profile?.nationality_country_id ?? null,
+  nationality2_country_id: profile?.nationality2_country_id ?? null,
   date_of_birth: profile?.date_of_birth || '',
   position: profile?.position || '',
   secondary_position: profile?.secondary_position || '',
@@ -254,6 +256,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
     if (role === 'player') {
       optimisticUpdate.nationality = formData.nationality
       optimisticUpdate.nationality_country_id = formData.nationality_country_id
+      optimisticUpdate.nationality2_country_id = formData.nationality2_country_id
       optimisticUpdate.position = formData.position
       optimisticUpdate.secondary_position = formData.secondary_position || null
       optimisticUpdate.gender = formData.gender
@@ -267,6 +270,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
     } else if (role === 'coach') {
       optimisticUpdate.nationality = formData.nationality
       optimisticUpdate.nationality_country_id = formData.nationality_country_id
+      optimisticUpdate.nationality2_country_id = formData.nationality2_country_id
       optimisticUpdate.gender = formData.gender || null
       optimisticUpdate.date_of_birth = formData.date_of_birth || null
       optimisticUpdate.passport_1 = formData.passport_1 || null
@@ -446,11 +450,18 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
             />
 
             <CountrySelect
-              label="Country"
+              label="Nationality"
               value={formData.nationality_country_id}
               onChange={(id) => setFormData({ ...formData, nationality_country_id: id })}
-              placeholder="Select your country"
+              placeholder="Select your nationality"
               required
+            />
+
+            <CountrySelect
+              label="Secondary Nationality (Optional)"
+              value={formData.nationality2_country_id}
+              onChange={(id) => setFormData({ ...formData, nationality2_country_id: id })}
+              placeholder="Select secondary nationality"
             />
 
             <div>

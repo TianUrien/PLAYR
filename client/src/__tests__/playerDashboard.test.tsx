@@ -37,6 +37,9 @@ vi.mock('@/components', () => ({
   CountryDisplay: ({ fallbackText, className }: { countryId?: number | null; fallbackText?: string | null; showNationality?: boolean; className?: string }) => (
     <span data-testid="country-display" className={className}>{fallbackText}</span>
   ),
+  DualNationalityDisplay: ({ fallbackText, className }: { primaryCountryId?: number | null; secondaryCountryId?: number | null; passport1CountryId?: number | null; passport2CountryId?: number | null; fallbackText?: string | null; mode?: string; className?: string }) => (
+    <span data-testid="dual-nationality-display" className={className}>{fallbackText}</span>
+  ),
   ScrollableTabs: ({ tabs, activeTab, onTabChange }: { tabs: { id: string; label: string }[]; activeTab: string; onTabChange: (id: string) => void }) => (
     <div>
       {tabs.map((tab) => (

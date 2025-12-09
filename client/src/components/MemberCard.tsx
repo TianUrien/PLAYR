@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MessageCircle, User } from 'lucide-react'
-import { Avatar, RoleBadge, CountryDisplay } from '@/components'
+import { Avatar, RoleBadge, NationalityFlagsInline } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { useToastStore } from '@/lib/toast'
@@ -14,6 +14,9 @@ interface MemberCardProps {
   role: 'player' | 'coach' | 'club'
   nationality: string | null
   nationality_country_id?: number | null
+  nationality2_country_id?: number | null
+  passport1_country_id?: number | null
+  passport2_country_id?: number | null
   base_location: string | null
   position: string | null
   secondary_position: string | null
@@ -28,6 +31,9 @@ export default function MemberCard({
   role,
   nationality,
   nationality_country_id,
+  nationality2_country_id,
+  passport1_country_id,
+  passport2_country_id,
   base_location,
   position,
   secondary_position,
@@ -124,10 +130,12 @@ export default function MemberCard({
         {(nationality_country_id || nationality) && (
           <div className="flex items-start gap-2">
             <span className="text-xs font-semibold text-gray-400 min-w-[72px]">Nationality:</span>
-            <CountryDisplay
-              countryId={nationality_country_id}
+            <NationalityFlagsInline
+              primaryCountryId={nationality_country_id}
+              secondaryCountryId={nationality2_country_id}
+              passport1CountryId={passport1_country_id}
+              passport2CountryId={passport2_country_id}
               fallbackText={nationality}
-              showNationality
               className="text-gray-700"
             />
           </div>

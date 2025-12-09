@@ -1,6 +1,37 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
+// EU member state country codes (ISO 3166-1 alpha-2)
+const EU_COUNTRY_CODES = new Set([
+  'AT', // Austria
+  'BE', // Belgium
+  'BG', // Bulgaria
+  'HR', // Croatia
+  'CY', // Cyprus
+  'CZ', // Czech Republic
+  'DK', // Denmark
+  'EE', // Estonia
+  'FI', // Finland
+  'FR', // France
+  'DE', // Germany
+  'GR', // Greece
+  'HU', // Hungary
+  'IE', // Ireland
+  'IT', // Italy
+  'LV', // Latvia
+  'LT', // Lithuania
+  'LU', // Luxembourg
+  'MT', // Malta
+  'NL', // Netherlands
+  'PL', // Poland
+  'PT', // Portugal
+  'RO', // Romania
+  'SK', // Slovakia
+  'SI', // Slovenia
+  'ES', // Spain
+  'SE', // Sweden
+])
+
 export interface Country {
   id: number
   code: string
@@ -18,6 +49,8 @@ interface UseCountriesResult {
   error: Error | null
   getCountryById: (id: number | null) => Country | undefined
   getCountryByCode: (code: string) => Country | undefined
+  isEuCountry: (countryId: number | null) => boolean
+  hasEuPassport: (passport1CountryId: number | null, passport2CountryId: number | null) => boolean
 }
 
 let cachedCountries: Country[] | null = null
@@ -73,12 +106,24 @@ export function useCountries(): UseCountriesResult {
     return countries.find((c) => c.code === upperCode || c.code_alpha3 === upperCode)
   }
 
+  const isEuCountry = (countryId: number | null): boolean => {
+    if (countryId === null) return false
+    const country = countries.find((c) => c.id === countryId)
+    return country ? EU_COUNTRY_CODES.has(country.code) : false
+  }
+
+  const hasEuPassport = (passport1CountryId: number | null, passport2CountryId: number | null): boolean => {
+    return isEuCountry(passport1CountryId) || isEuCountry(passport2CountryId)
+  }
+
   return {
     countries,
     loading,
     error,
     getCountryById,
     getCountryByCode,
+    isEuCountry,
+    hasEuPassport,
   }
 }
 

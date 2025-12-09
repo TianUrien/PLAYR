@@ -48,6 +48,7 @@ export default function CompleteProfile() {
     city: '',
     nationality: '',
     nationalityCountryId: null as number | null,
+    nationality2CountryId: null as number | null,
     country: '',
     dateOfBirth: '',
     position: '',
@@ -278,6 +279,7 @@ export default function CompleteProfile() {
       if (userRole === 'player') {
         updateData = {
           ...updateData,
+          nationality2_country_id: formData.nationality2CountryId,
           position: formData.position,
           secondary_position: formData.secondaryPosition || null,
           gender: normalizeGender(formData.gender),
@@ -288,6 +290,7 @@ export default function CompleteProfile() {
       } else if (userRole === 'coach') {
         updateData = {
           ...updateData,
+          nationality2_country_id: formData.nationality2CountryId,
           gender: normalizeGender(formData.gender),
           date_of_birth: formData.dateOfBirth || null,
           passport_1: formData.passport1 || null,
@@ -649,6 +652,14 @@ export default function CompleteProfile() {
                     placeholder="Select your nationality"
                     showNationality
                     required
+                  />
+
+                  <CountrySelect
+                    label="Secondary Nationality (Optional)"
+                    value={formData.nationality2CountryId}
+                    onChange={(id) => setFormData({ ...formData, nationality2CountryId: id })}
+                    placeholder="Select secondary nationality"
+                    showNationality
                   />
 
                   <div>

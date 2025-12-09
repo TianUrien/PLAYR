@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, ProfileStrengthCard, CountryDisplay } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, ProfileStrengthCard, DualNationalityDisplay, CountryDisplay } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import JourneyTab from '@/components/JourneyTab'
@@ -33,6 +33,7 @@ export type PlayerProfileShape =
     | 'bio'
     | 'nationality'
     | 'nationality_country_id'
+    | 'nationality2_country_id'
     | 'gender'
     | 'date_of_birth'
     | 'position'
@@ -326,11 +327,13 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
               <div className="flex flex-wrap items-center gap-2 text-gray-600 text-sm md:text-base">
                 {/* Nationality */}
                 <div className="flex items-center gap-1.5">
-                  <CountryDisplay
-                    countryId={profile.nationality_country_id}
+                  <DualNationalityDisplay
+                    primaryCountryId={profile.nationality_country_id}
+                    secondaryCountryId={profile.nationality2_country_id}
+                    passport1CountryId={profile.passport1_country_id}
+                    passport2CountryId={profile.passport2_country_id}
                     fallbackText={profile.nationality}
-                    showNationality
-                    className="font-medium"
+                    mode="compact"
                   />
                 </div>
                 
@@ -475,10 +478,13 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Nationality
                       </label>
-                      <CountryDisplay
-                        countryId={profile.nationality_country_id}
+                      <DualNationalityDisplay
+                        primaryCountryId={profile.nationality_country_id}
+                        secondaryCountryId={profile.nationality2_country_id}
+                        passport1CountryId={profile.passport1_country_id}
+                        passport2CountryId={profile.passport2_country_id}
                         fallbackText={profile.nationality}
-                        showNationality
+                        mode="full"
                         className="text-gray-900"
                       />
                     </div>

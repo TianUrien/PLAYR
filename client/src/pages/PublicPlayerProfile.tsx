@@ -19,6 +19,7 @@ type PublicProfileBase = Pick<
   | 'highlight_video_url'
   | 'nationality'
   | 'nationality_country_id'
+  | 'nationality2_country_id'
   | 'current_club'
   | 'gender'
   | 'date_of_birth'
@@ -49,6 +50,7 @@ const PUBLIC_PROFILE_FIELDS = [
   'highlight_video_url',
   'nationality',
   'nationality_country_id',
+  'nationality2_country_id',
   'current_club',
   'gender',
   'date_of_birth',

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { MapPin, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, CountryDisplay } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, DualNationalityDisplay, CountryDisplay } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import Button from '@/components/Button'
@@ -30,6 +30,7 @@ export type CoachProfileShape =
     | 'bio'
     | 'nationality'
     | 'nationality_country_id'
+    | 'nationality2_country_id'
     | 'gender'
     | 'date_of_birth'
     | 'email'
@@ -309,11 +310,13 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
 
               <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
                 <div className="flex items-center gap-2">
-                  <CountryDisplay
-                    countryId={profile.nationality_country_id}
+                  <DualNationalityDisplay
+                    primaryCountryId={profile.nationality_country_id}
+                    secondaryCountryId={profile.nationality2_country_id}
+                    passport1CountryId={profile.passport1_country_id}
+                    passport2CountryId={profile.passport2_country_id}
                     fallbackText={profile.nationality}
-                    showNationality
-                    className="font-medium"
+                    mode="compact"
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -385,10 +388,13 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Nationality
                       </label>
-                      <CountryDisplay
-                        countryId={profile.nationality_country_id}
+                      <DualNationalityDisplay
+                        primaryCountryId={profile.nationality_country_id}
+                        secondaryCountryId={profile.nationality2_country_id}
+                        passport1CountryId={profile.passport1_country_id}
+                        passport2CountryId={profile.passport2_country_id}
                         fallbackText={profile.nationality}
-                        showNationality
+                        mode="full"
                         className="text-gray-900"
                       />
                     </div>

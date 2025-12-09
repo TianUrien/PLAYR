@@ -677,6 +677,7 @@ export type Database = {
           league_division: string | null
           nationality: string | null
           nationality_country_id: number | null
+          nationality2_country_id: number | null
           notify_applications: boolean
           notify_opportunities: boolean
           onboarding_completed: boolean
@@ -715,6 +716,7 @@ export type Database = {
           league_division?: string | null
           nationality?: string | null
           nationality_country_id?: number | null
+          nationality2_country_id?: number | null
           notify_applications?: boolean
           notify_opportunities?: boolean
           onboarding_completed?: boolean
@@ -753,6 +755,7 @@ export type Database = {
           league_division?: string | null
           nationality?: string | null
           nationality_country_id?: number | null
+          nationality2_country_id?: number | null
           notify_applications?: boolean
           notify_opportunities?: boolean
           onboarding_completed?: boolean
