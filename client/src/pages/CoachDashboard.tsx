@@ -64,12 +64,40 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
 
   const tabParam = searchParams.get('tab') as TabType | null
 
+  // Profile strength for coaches (only compute for own profile)
+  // Must be called before any early returns to satisfy React hooks rules
+  const { percentage, buckets, loading: strengthLoading, refresh: refreshStrength } = useCoachProfileStrength({
+    profile: readOnly ? null : (profileData ?? authProfile) as CoachProfileShape | null,
+  })
+
+  // Track previous percentage to show toast on improvement
+  const prevPercentageRef = useRef<number | null>(null)
+
   useEffect(() => {
     if (!tabParam) return
     if (tabParam !== activeTab && ['profile', 'journey', 'friends', 'comments'].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [tabParam, activeTab])
+
+  // Refresh profile strength when switching to profile tab (to pick up gallery/journey changes)
+  useEffect(() => {
+    if (!readOnly && activeTab === 'profile') {
+      void refreshStrength()
+    }
+  }, [activeTab, readOnly, refreshStrength])
+
+  // Show toast when profile strength improves
+  useEffect(() => {
+    if (readOnly || strengthLoading) return
+    if (prevPercentageRef.current !== null && percentage > prevPercentageRef.current) {
+      addToast({
+        type: 'success',
+        message: `Profile strength: ${percentage}%`,
+      })
+    }
+    prevPercentageRef.current = percentage
+  }, [percentage, readOnly, strengthLoading, addToast])
 
   useEffect(() => {
     if (readOnly) {
@@ -96,32 +124,6 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
   }, [activeTab, claimCommentHighlights, clearCommentNotifications, commentHighlightVersion, highlightedComments, readOnly])
 
   if (!profile) return null
-
-  // Profile strength for coaches (only compute for own profile)
-  const { percentage, buckets, loading: strengthLoading, refresh: refreshStrength } = useCoachProfileStrength({
-    profile: readOnly ? null : profile,
-  })
-
-  // Refresh profile strength when switching to profile tab (to pick up gallery/journey changes)
-  useEffect(() => {
-    if (!readOnly && activeTab === 'profile') {
-      void refreshStrength()
-    }
-  }, [activeTab, readOnly, refreshStrength])
-
-  // Track previous percentage to show toast on improvement
-  const prevPercentageRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    if (readOnly || strengthLoading) return
-    if (prevPercentageRef.current !== null && percentage > prevPercentageRef.current) {
-      addToast({
-        type: 'success',
-        message: `Profile strength: ${percentage}%`,
-      })
-    }
-    prevPercentageRef.current = percentage
-  }, [percentage, readOnly, strengthLoading, addToast])
 
   const publicContact = derivePublicContactEmail(profile)
   const savedContactEmail = profile.contact_email?.trim() || ''
