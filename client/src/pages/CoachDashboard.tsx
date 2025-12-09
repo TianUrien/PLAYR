@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { MapPin, Globe, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import Button from '@/components/Button'
@@ -14,6 +14,7 @@ import { useToastStore } from '@/lib/toast'
 import { useNotificationStore } from '@/lib/notifications'
 import { derivePublicContactEmail } from '@/lib/profile'
 import type { SocialLinks } from '@/lib/socialLinks'
+import { useCoachProfileStrength } from '@/hooks/useCoachProfileStrength'
 
 type TabType = 'profile' | 'journey' | 'friends' | 'comments'
 
@@ -95,6 +96,32 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
   }, [activeTab, claimCommentHighlights, clearCommentNotifications, commentHighlightVersion, highlightedComments, readOnly])
 
   if (!profile) return null
+
+  // Profile strength for coaches (only compute for own profile)
+  const { percentage, buckets, loading: strengthLoading, refresh: refreshStrength } = useCoachProfileStrength({
+    profile: readOnly ? null : profile,
+  })
+
+  // Refresh profile strength when switching to profile tab (to pick up gallery/journey changes)
+  useEffect(() => {
+    if (!readOnly && activeTab === 'profile') {
+      void refreshStrength()
+    }
+  }, [activeTab, readOnly, refreshStrength])
+
+  // Track previous percentage to show toast on improvement
+  const prevPercentageRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (readOnly || strengthLoading) return
+    if (prevPercentageRef.current !== null && percentage > prevPercentageRef.current) {
+      addToast({
+        type: 'success',
+        message: `Profile strength: ${percentage}%`,
+      })
+    }
+    prevPercentageRef.current = percentage
+  }, [percentage, readOnly, strengthLoading, addToast])
 
   const publicContact = derivePublicContactEmail(profile)
   const savedContactEmail = profile.contact_email?.trim() || ''
@@ -312,6 +339,29 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
             {/* Profile Tab */}
             {activeTab === 'profile' && (
               <div className="space-y-6 animate-fade-in">
+                {/* Profile Strength Card - only for own profile */}
+                {!readOnly && (
+                  <ProfileStrengthCard
+                    percentage={percentage}
+                    buckets={buckets}
+                    loading={strengthLoading}
+                    onBucketAction={(actionId) => {
+                      if (actionId === 'edit-profile') {
+                        setShowEditModal(true)
+                      } else if (actionId === 'journey-tab') {
+                        setActiveTab('journey')
+                        setSearchParams({ tab: 'journey' })
+                      } else if (actionId === 'gallery-tab') {
+                        // Scroll to MediaTab section within profile tab
+                        const mediaSection = document.querySelector('[data-section="media"]')
+                        if (mediaSection) {
+                          mediaSection.scrollIntoView({ behavior: 'smooth' })
+                        }
+                      }
+                    }}
+                  />
+                )}
+
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -448,7 +498,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                   <PublicReferencesSection profileId={profile.id} profileName={profile.full_name} />
                 )}
 
-                <section className="space-y-3 pt-6 border-t border-gray-200">
+                <section data-section="media" className="space-y-3 pt-6 border-t border-gray-200">
                   <MediaTab
                     profileId={profile.id}
                     readOnly={readOnly}
