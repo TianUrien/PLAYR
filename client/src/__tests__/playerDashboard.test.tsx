@@ -33,6 +33,7 @@ vi.mock('@/components', () => ({
   PublicReferencesSection: () => <div data-testid="public-references">Public references</div>,
   PublicViewBanner: () => <div data-testid="public-view-banner" />,
   RoleBadge: () => <span data-testid="role-badge">Role badge</span>,
+  ProfileStrengthCard: () => <div data-testid="profile-strength-card">Profile Strength</div>,
   ScrollableTabs: ({ tabs, activeTab, onTabChange }: { tabs: { id: string; label: string }[]; activeTab: string; onTabChange: (id: string) => void }) => (
     <div>
       {tabs.map((tab) => (
@@ -72,6 +73,25 @@ vi.mock('@/components/JourneyTab', () => ({
 
 vi.mock('@/components/CommentsTab', () => ({
   default: () => <div data-testid="comments-tab">Comments Tab</div>,
+}))
+
+vi.mock('@/components/AddVideoLinkModal', () => ({
+  default: () => <div data-testid="add-video-modal" />,
+}))
+
+vi.mock('@/hooks/useProfileStrength', () => ({
+  useProfileStrength: () => ({
+    percentage: 60,
+    buckets: [
+      { id: 'basic-info', label: 'Basic info completed', completed: true, weight: 25, action: { type: 'edit-profile' } },
+      { id: 'profile-photo', label: 'Add a profile photo', completed: true, weight: 20, action: { type: 'edit-profile' } },
+      { id: 'highlight-video', label: 'Add your highlight video', completed: false, weight: 25, action: { type: 'add-video' } },
+      { id: 'journey', label: 'Share a moment in your Journey', completed: true, weight: 15, action: { type: 'tab', tab: 'journey' } },
+      { id: 'media-gallery', label: 'Add a photo or video to your Gallery', completed: false, weight: 15, action: { type: 'tab', tab: 'profile' } },
+    ],
+    loading: false,
+    refresh: vi.fn(),
+  }),
 }))
 
 type NotificationStoreSlice = {
