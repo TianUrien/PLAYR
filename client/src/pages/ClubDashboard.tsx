@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { MapPin, Globe, Calendar, Plus, Eye, MessageCircle, Edit, Loader2 } from 'lucide-react'
+import { MapPin, Calendar, Plus, Eye, MessageCircle, Edit, Loader2 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '@/components/Header'
 import { Avatar, DashboardMenu, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
@@ -346,7 +346,6 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
 
               <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
                 <div className="flex items-center gap-2">
-                  <Globe className="w-5 h-5" />
                   <span className="font-medium">{profile.nationality}</span>
                 </div>
                 <div className="flex items-center gap-2">

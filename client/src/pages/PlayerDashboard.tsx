@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { MapPin, Globe, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
+import { MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, ProfileStrengthCard, CountryDisplay } from '@/components'
 import Header from '@/components/Header'
@@ -326,7 +326,6 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
               <div className="flex flex-wrap items-center gap-2 text-gray-600 text-sm md:text-base">
                 {/* Nationality */}
                 <div className="flex items-center gap-1.5">
-                  <Globe className="w-4 h-4 md:w-5 md:h-5" />
                   <CountryDisplay
                     countryId={profile.nationality_country_id}
                     fallbackText={profile.nationality}
@@ -370,7 +369,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                   <>
                     <span className="text-gray-400">•</span>
                     <div className="flex items-center gap-1.5">
-                      <span>🏆</span>
+                      <Landmark className="w-4 h-4 md:w-5 md:h-5" />
                       <span>{profile.current_club}</span>
                     </div>
                   </>

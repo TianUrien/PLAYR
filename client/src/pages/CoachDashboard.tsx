@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { MapPin, Globe, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
+import { MapPin, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, CountryDisplay } from '@/components'
 import Header from '@/components/Header'
@@ -309,7 +309,6 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
 
               <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
                 <div className="flex items-center gap-2">
-                  <Globe className="w-5 h-5" />
                   <CountryDisplay
                     countryId={profile.nationality_country_id}
                     fallbackText={profile.nationality}
