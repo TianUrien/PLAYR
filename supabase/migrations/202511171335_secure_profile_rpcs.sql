@@ -136,6 +136,9 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.complete_user_profile TO authenticated;
+-- Use full signature to avoid ambiguity with overloaded functions
+GRANT EXECUTE ON FUNCTION public.complete_user_profile(
+  UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, DATE, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, BOOLEAN, INTEGER, TEXT, TEXT
+) TO authenticated;
 
 COMMIT;
