@@ -8,6 +8,7 @@ import { Button, Input, CountrySelect } from '@/components'
 import { logger } from '@/lib/logger'
 import { optimizeAvatarImage, validateImage } from '@/lib/imageOptimization'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
+import { useCountries } from '@/hooks/useCountries'
 import { invalidateProfile } from '@/lib/profile'
 import { useToastStore } from '@/lib/toast'
 import { deleteStorageObject } from '@/lib/storage'
@@ -80,6 +81,7 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
 export default function EditProfileModal({ isOpen, onClose, role }: EditProfileModalProps) {
   const { profile, setProfile } = useAuthStore()
   const { addToast } = useToastStore()
+  const { getCountryById } = useCountries()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -90,6 +92,16 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
   const activeProfileId = profile?.id ?? null
 
   const [formData, setFormData] = useState<ProfileFormData>(() => buildInitialFormData(profile))
+
+  // Handler to update both nationality_country_id and the legacy nationality string
+  const handleNationalityChange = useCallback((countryId: number | null) => {
+    const country = countryId ? getCountryById(countryId) : null
+    setFormData(prev => ({
+      ...prev,
+      nationality_country_id: countryId,
+      nationality: country?.name || '',
+    }))
+  }, [getCountryById])
 
   const captureOnboardingError = (error: unknown, payload: Record<string, unknown>, sourceComponent: string) => {
     Sentry.captureException(error, {
@@ -452,7 +464,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
             <CountrySelect
               label="Nationality"
               value={formData.nationality_country_id}
-              onChange={(id) => setFormData({ ...formData, nationality_country_id: id })}
+              onChange={handleNationalityChange}
               placeholder="Select your nationality"
               required
             />

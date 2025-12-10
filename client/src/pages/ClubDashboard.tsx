@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { MapPin, Calendar, Plus, Eye, MessageCircle, Edit, Loader2 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '@/components/Header'
-import { Avatar, DashboardMenu, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
+import { Avatar, CountryDisplay, DashboardMenu, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
 import { useClubProfileStrength } from '@/hooks/useClubProfileStrength'
 import VacanciesTab from '@/components/VacanciesTab'
 import ClubMediaTab from '@/components/ClubMediaTab'
@@ -32,6 +32,7 @@ type ClubProfileShape =
     | 'avatar_url'
     | 'base_location'
     | 'nationality'
+    | 'nationality_country_id'
     | 'club_bio'
     | 'club_history'
     | 'website'
@@ -346,7 +347,11 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
 
               <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">{profile.nationality}</span>
+                  <CountryDisplay
+                    countryId={profile.nationality_country_id}
+                    fallbackText={profile.nationality}
+                    className="font-medium"
+                  />
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="w-5 h-5" />
@@ -436,7 +441,11 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-                      <p className="text-gray-900">{profile.nationality}</p>
+                      <CountryDisplay
+                        countryId={profile.nationality_country_id}
+                        fallbackText={profile.nationality}
+                        className="text-gray-900"
+                      />
                     </div>
 
                     <div>
