@@ -23,6 +23,15 @@ const PublicPlayerProfile = lazy(() => import('@/pages/PublicPlayerProfile'))
 const PublicClubProfile = lazy(() => import('@/pages/PublicClubProfile'))
 const MessagesPage = lazy(() => import('@/pages/MessagesPage'))
 
+// Lazy load admin components (code splitting)
+const AdminGuard = lazy(() => import('@/features/admin/components/AdminGuard').then(m => ({ default: m.AdminGuard })))
+const AdminLayout = lazy(() => import('@/features/admin/components/AdminLayout').then(m => ({ default: m.AdminLayout })))
+const AdminOverview = lazy(() => import('@/features/admin/pages/AdminOverview').then(m => ({ default: m.AdminOverview })))
+const AdminDataIssues = lazy(() => import('@/features/admin/pages/AdminDataIssues').then(m => ({ default: m.AdminDataIssues })))
+const AdminDirectory = lazy(() => import('@/features/admin/pages/AdminDirectory').then(m => ({ default: m.AdminDirectory })))
+const AdminAuditLog = lazy(() => import('@/features/admin/pages/AdminAuditLog').then(m => ({ default: m.AdminAuditLog })))
+const AdminSettings = lazy(() => import('@/features/admin/pages/AdminSettings').then(m => ({ default: m.AdminSettings })))
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -91,6 +100,16 @@ function App() {
                 <Route path="/players/id/:id" element={<PublicPlayerProfile />} />
                 <Route path="/clubs/:username" element={<PublicClubProfile />} />
                 <Route path="/clubs/id/:id" element={<PublicClubProfile />} />
+                
+                {/* Admin Routes - Protected + Admin Guard */}
+                <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
+                  <Route index element={<Navigate to="/admin/overview" replace />} />
+                  <Route path="overview" element={<AdminOverview />} />
+                  <Route path="data-issues" element={<AdminDataIssues />} />
+                  <Route path="directory" element={<AdminDirectory />} />
+                  <Route path="audit-log" element={<AdminAuditLog />} />
+                  <Route path="settings" element={<AdminSettings />} />
+                </Route>
                 
                   {/* Fallback */}
                   <Route path="*" element={<Navigate to="/" replace />} />
