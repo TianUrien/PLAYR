@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       admin_audit_logs: {
@@ -814,6 +839,8 @@ export type Database = {
           notify_applications: boolean
           notify_opportunities: boolean
           onboarding_completed: boolean
+          open_to_coach: boolean
+          open_to_play: boolean
           passport_1: string | null
           passport_2: string | null
           passport1_country_id: number | null
@@ -857,6 +884,8 @@ export type Database = {
           notify_applications?: boolean
           notify_opportunities?: boolean
           onboarding_completed?: boolean
+          open_to_coach?: boolean
+          open_to_play?: boolean
           passport_1?: string | null
           passport_2?: string | null
           passport1_country_id?: number | null
@@ -900,6 +929,8 @@ export type Database = {
           notify_applications?: boolean
           notify_opportunities?: boolean
           onboarding_completed?: boolean
+          open_to_coach?: boolean
+          open_to_play?: boolean
           passport_1?: string | null
           passport_2?: string | null
           passport1_country_id?: number | null
@@ -1217,6 +1248,13 @@ export type Database = {
             foreignKeyName: "vacancy_applications_vacancy_id_fkey"
             columns: ["vacancy_id"]
             isOneToOne: false
+            referencedRelation: "public_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vacancy_applications_vacancy_id_fkey"
+            columns: ["vacancy_id"]
+            isOneToOne: false
             referencedRelation: "vacancies"
             referencedColumns: ["id"]
           },
@@ -1298,6 +1336,34 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      public_opportunities: {
+        Row: {
+          application_deadline: string | null
+          benefits: string[] | null
+          club_league: string | null
+          club_location: string | null
+          club_logo_url: string | null
+          club_name: string | null
+          created_at: string | null
+          custom_benefits: string[] | null
+          description: string | null
+          duration_text: string | null
+          gender: Database["public"]["Enums"]["vacancy_gender"] | null
+          id: string | null
+          location_city: string | null
+          location_country: string | null
+          opportunity_type:
+            | Database["public"]["Enums"]["opportunity_type"]
+            | null
+          position: Database["public"]["Enums"]["vacancy_position"] | null
+          priority: Database["public"]["Enums"]["vacancy_priority"] | null
+          published_at: string | null
+          requirements: string[] | null
+          start_date: string | null
+          title: string | null
+        }
+        Relationships: []
       }
       user_unread_counts: {
         Row: {
@@ -1478,6 +1544,7 @@ export type Database = {
           is_blocked: boolean
           is_test_account: boolean
           nationality: string
+          nationality2: string
           onboarding_completed: boolean
           role: string
           total_count: number
@@ -1558,6 +1625,8 @@ export type Database = {
           notify_applications: boolean
           notify_opportunities: boolean
           onboarding_completed: boolean
+          open_to_coach: boolean
+          open_to_play: boolean
           passport_1: string | null
           passport_2: string | null
           passport1_country_id: number | null
@@ -1610,6 +1679,8 @@ export type Database = {
           notify_applications: boolean
           notify_opportunities: boolean
           onboarding_completed: boolean
+          open_to_coach: boolean
+          open_to_play: boolean
           passport_1: string | null
           passport_2: string | null
           passport1_country_id: number | null
@@ -2184,6 +2255,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       application_status: [

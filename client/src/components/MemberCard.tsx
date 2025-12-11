@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MessageCircle, User } from 'lucide-react'
-import { Avatar, RoleBadge, NationalityCardDisplay } from '@/components'
+import { Avatar, RoleBadge, NationalityCardDisplay, AvailabilityPill } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { useToastStore } from '@/lib/toast'
@@ -22,6 +22,8 @@ interface MemberCardProps {
   secondary_position: string | null
   current_team: string | null
   created_at: string
+  open_to_play?: boolean
+  open_to_coach?: boolean
 }
 
 export default function MemberCard({
@@ -39,6 +41,8 @@ export default function MemberCard({
   secondary_position,
   current_team,
   created_at,
+  open_to_play,
+  open_to_coach,
 }: MemberCardProps) {
   const navigate = useNavigate()
   const { user } = useAuthStore()
@@ -121,7 +125,11 @@ export default function MemberCard({
         />
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-gray-900 truncate">{full_name}</h3>
-          <RoleBadge role={role} className="mt-1" />
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <RoleBadge role={role} />
+            {role === 'player' && open_to_play && <AvailabilityPill variant="play" size="sm" />}
+            {role === 'coach' && open_to_coach && <AvailabilityPill variant="coach" size="sm" />}
+          </div>
         </div>
       </div>
 

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, ProfileStrengthCard, DualNationalityDisplay, CountryDisplay } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, ProfileStrengthCard, DualNationalityDisplay, CountryDisplay, AvailabilityPill } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import JourneyTab from '@/components/JourneyTab'
@@ -370,6 +370,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
 
               <div className="mt-4 flex flex-wrap items-center gap-4">
                 <RoleBadge role="player" />
+                {profile.open_to_play && <AvailabilityPill variant="play" />}
                 <SocialLinksDisplay 
                   links={profile.social_links as SocialLinks | null | undefined} 
                   iconSize="sm" 

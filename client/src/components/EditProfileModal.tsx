@@ -47,6 +47,8 @@ type ProfileFormData = {
   bio: string
   avatar_url: string
   social_links: SocialLinks
+  open_to_play: boolean
+  open_to_coach: boolean
 }
 
 const getInitialContactEmail = (profile?: Profile | null): string => profile?.contact_email || ''
@@ -76,6 +78,8 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   bio: profile?.bio || '',
   avatar_url: profile?.avatar_url || '',
   social_links: (profile?.social_links as SocialLinks) || {},
+  open_to_play: Boolean(profile?.open_to_play),
+  open_to_coach: Boolean(profile?.open_to_coach),
 })
 
 export default function EditProfileModal({ isOpen, onClose, role }: EditProfileModalProps) {
@@ -279,6 +283,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.passport2_country_id = formData.passport2_country_id
       optimisticUpdate.current_club = formData.current_club || null
       optimisticUpdate.bio = formData.bio || null
+      optimisticUpdate.open_to_play = formData.open_to_play
     } else if (role === 'coach') {
       optimisticUpdate.nationality = formData.nationality
       optimisticUpdate.nationality_country_id = formData.nationality_country_id
@@ -290,6 +295,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.passport1_country_id = formData.passport1_country_id
       optimisticUpdate.passport2_country_id = formData.passport2_country_id
       optimisticUpdate.bio = formData.bio || null
+      optimisticUpdate.open_to_coach = formData.open_to_coach
     } else if (role === 'club') {
       optimisticUpdate.nationality = formData.nationality
       optimisticUpdate.nationality_country_id = formData.nationality_country_id
@@ -612,6 +618,24 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     aria-label="About me"
                   />
                 </div>
+
+                {/* Availability Status */}
+                <div className="pt-4 border-t border-gray-200">
+                  <label className="flex items-start gap-3 text-sm text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
+                      checked={formData.open_to_play}
+                      onChange={(e) => setFormData({ ...formData, open_to_play: e.target.checked })}
+                    />
+                    <span>
+                      <span className="font-medium">Open to Play</span>
+                      <span className="block text-xs text-gray-500 mt-1">
+                        Show that you're actively looking for playing opportunities. A badge will appear on your profile in the Community.
+                      </span>
+                    </span>
+                  </label>
+                </div>
               </>
             )}
 
@@ -667,6 +691,24 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent resize-none"
                     placeholder="Tell us about your coaching experience..."
                   />
+                </div>
+
+                {/* Availability Status */}
+                <div className="pt-4 border-t border-gray-200">
+                  <label className="flex items-start gap-3 text-sm text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-purple-500 focus:ring-purple-500"
+                      checked={formData.open_to_coach}
+                      onChange={(e) => setFormData({ ...formData, open_to_coach: e.target.checked })}
+                    />
+                    <span>
+                      <span className="font-medium">Open to Coach</span>
+                      <span className="block text-xs text-gray-500 mt-1">
+                        Show that you're actively looking for coaching opportunities. A badge will appear on your profile in the Community.
+                      </span>
+                    </span>
+                  </label>
                 </div>
               </>
             )}

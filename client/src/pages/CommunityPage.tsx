@@ -23,9 +23,12 @@ interface Profile {
   current_club: string | null
   created_at: string
   is_test_account?: boolean
+  open_to_play?: boolean
+  open_to_coach?: boolean
 }
 
 type RoleFilter = 'all' | 'player' | 'coach' | 'club'
+type AvailabilityFilter = 'all' | 'open'
 
 export default function CommunityPage() {
   const { profile: currentUserProfile } = useAuthStore()
@@ -36,6 +39,7 @@ export default function CommunityPage() {
   const [displayedMembers, setDisplayedMembers] = useState<Profile[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
+  const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>('all')
   const [isLoading, setIsLoading] = useState(true)
   const [isSearching, setIsSearching] = useState(false)
   const [page, setPage] = useState(1)
@@ -58,7 +62,7 @@ export default function CommunityPage() {
           async () => {
             let query = supabase
               .from('profiles')
-              .select('id, avatar_url, full_name, role, nationality, nationality_country_id, nationality2_country_id, passport1_country_id, passport2_country_id, base_location, position, secondary_position, current_club, created_at, is_test_account')
+              .select('id, avatar_url, full_name, role, nationality, nationality_country_id, nationality2_country_id, passport1_country_id, passport2_country_id, base_location, position, secondary_position, current_club, created_at, is_test_account, open_to_play, open_to_coach')
               .eq('onboarding_completed', true) // Only show fully onboarded users
             
             // If current user is NOT a test account, exclude test accounts from results
@@ -110,7 +114,7 @@ export default function CommunityPage() {
             const searchTerm = `%${query}%`
             let dbQuery = supabase
               .from('profiles')
-              .select('id, avatar_url, full_name, role, nationality, nationality_country_id, nationality2_country_id, passport1_country_id, passport2_country_id, base_location, position, secondary_position, current_club, created_at, is_test_account')
+              .select('id, avatar_url, full_name, role, nationality, nationality_country_id, nationality2_country_id, passport1_country_id, passport2_country_id, base_location, position, secondary_position, current_club, created_at, is_test_account, open_to_play, open_to_coach')
               .eq('onboarding_completed', true) // Only show fully onboarded users
               .or(
                 `full_name.ilike.${searchTerm},nationality.ilike.${searchTerm},base_location.ilike.${searchTerm},position.ilike.${searchTerm},secondary_position.ilike.${searchTerm},current_club.ilike.${searchTerm}`
@@ -162,18 +166,32 @@ export default function CommunityPage() {
     return () => clearTimeout(debounceTimer)
   }, [searchQuery, allMembers, baseMembers, pageSize, performServerSearch])
 
-  // Client-side role filtering
+  // Client-side role and availability filtering
   const filteredMembers = useMemo(() => {
-    if (roleFilter === 'all') return allMembers
-    return allMembers.filter(member => member.role === roleFilter)
-  }, [allMembers, roleFilter])
+    let result = allMembers
+    
+    // Role filter
+    if (roleFilter !== 'all') {
+      result = result.filter(member => member.role === roleFilter)
+    }
+    
+    // Availability filter
+    if (availabilityFilter === 'open') {
+      result = result.filter(member => 
+        (member.role === 'player' && member.open_to_play) ||
+        (member.role === 'coach' && member.open_to_coach)
+      )
+    }
+    
+    return result
+  }, [allMembers, roleFilter, availabilityFilter])
 
   // Update displayed members when filter changes
   useEffect(() => {
     setDisplayedMembers(filteredMembers.slice(0, pageSize))
     setPage(1)
     setHasMore(filteredMembers.length > pageSize)
-  }, [filteredMembers, roleFilter, pageSize])
+  }, [filteredMembers, roleFilter, availabilityFilter, pageSize])
 
   // Load more handler
   const handleLoadMore = () => {
@@ -248,6 +266,31 @@ export default function CommunityPage() {
           ))}
         </div>
 
+        {/* Availability Filter */}
+        <div className="flex flex-wrap justify-center gap-2 mb-8">
+          <button
+            onClick={() => setAvailabilityFilter('all')}
+            className={`px-6 py-2.5 min-h-[44px] rounded-full text-sm font-medium transition-all ${
+              availabilityFilter === 'all'
+                ? 'bg-gradient-to-r from-gray-600 to-gray-700 text-white shadow-md'
+                : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'
+            }`}
+          >
+            All Members
+          </button>
+          <button
+            onClick={() => setAvailabilityFilter('open')}
+            className={`px-6 py-2.5 min-h-[44px] rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+              availabilityFilter === 'open'
+                ? 'bg-gradient-to-r from-emerald-400 to-green-500 text-white shadow-md'
+                : 'bg-white text-gray-700 border border-gray-300 hover:border-emerald-400'
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-current" />
+            Open to Opportunities
+          </button>
+        </div>
+
         {/* New Members Section */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">New Members</h2>
@@ -264,7 +307,7 @@ export default function CommunityPage() {
             // Empty State
             <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
               <p className="text-gray-500">
-                {searchQuery.trim() || roleFilter !== 'all'
+                {searchQuery.trim() || roleFilter !== 'all' || availabilityFilter !== 'all'
                   ? 'No results found. Try a different name or filter.'
                   : 'No members yet.'}
               </p>
@@ -290,6 +333,8 @@ export default function CommunityPage() {
                     secondary_position={member.secondary_position}
                     current_team={member.current_club}
                     created_at={member.created_at}
+                    open_to_play={member.open_to_play}
+                    open_to_coach={member.open_to_coach}
                   />
                 ))}
               </div>

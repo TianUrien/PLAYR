@@ -32,6 +32,8 @@ type PublicProfileBase = Pick<
   | 'passport_2'
   | 'passport1_country_id'
   | 'passport2_country_id'
+  | 'open_to_play'
+  | 'open_to_coach'
 > & { is_test_account?: boolean }
 
 type PublicPlayerProfileShape = PublicProfileBase & { role: 'player' }
@@ -64,7 +66,9 @@ const PUBLIC_PROFILE_FIELDS = [
   'passport1_country_id',
   'passport2_country_id',
   'social_links',
-  'is_test_account'
+  'is_test_account',
+  'open_to_play',
+  'open_to_coach'
 ].join(',')
 
 export default function PublicPlayerProfile() {
