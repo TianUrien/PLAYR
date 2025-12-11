@@ -7,6 +7,7 @@ import Header from '../components/Header'
 import VacancyCard from '../components/VacancyCard'
 import VacancyDetailView from '../components/VacancyDetailView'
 import ApplyToVacancyModal from '../components/ApplyToVacancyModal'
+import SignInPromptModal from '../components/SignInPromptModal'
 import Button from '../components/Button'
 import { VacancyCardSkeleton } from '../components/Skeleton'
 import { OpportunitiesListJsonLd } from '../components/VacancyJsonLd'
@@ -38,6 +39,7 @@ export default function OpportunitiesPage() {
   const [userApplications, setUserApplications] = useState<string[]>([])
   const [selectedVacancy, setSelectedVacancy] = useState<Vacancy | null>(null)
   const [showApplyModal, setShowApplyModal] = useState(false)
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false)
   const [showDetailView, setShowDetailView] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -194,6 +196,26 @@ export default function OpportunitiesPage() {
       setIsSyncingNewVacancies(false)
     }
   }, [fetchVacancies, fetchUserApplications, isSyncingNewVacancies, markSeen, refreshOpportunityNotifications])
+
+  // Handle apply button click - shows sign-in prompt for unauthenticated users
+  const handleApplyClick = (vacancy: Vacancy) => {
+    setSelectedVacancy(vacancy)
+    if (!user) {
+      // Not authenticated - show sign-in prompt
+      setShowSignInPrompt(true)
+    } else if ((profile?.role === 'player' || profile?.role === 'coach') && !userApplications.includes(vacancy.id)) {
+      // Authenticated player/coach who hasn't applied - show apply modal
+      setShowApplyModal(true)
+    }
+  }
+
+  // Check if user can see apply button for a vacancy
+  const canShowApplyButton = (vacancyId: string) => {
+    const isApplied = userApplications.includes(vacancyId)
+    if (isApplied) return false
+    // Show for unauthenticated or player/coach roles
+    return !user || profile?.role === 'player' || profile?.role === 'coach'
+  }
 
   // Apply filters
   useEffect(() => {
@@ -614,14 +636,7 @@ export default function OpportunitiesPage() {
                         setSelectedVacancy(vacancy)
                         setShowDetailView(true)
                       }}
-                      onApply={
-                        user && (profile?.role === 'player' || profile?.role === 'coach') && !isApplied
-                          ? () => {
-                              setSelectedVacancy(vacancy)
-                              setShowApplyModal(true)
-                            }
-                          : undefined
-                      }
+                      onApply={canShowApplyButton(vacancy.id) ? () => handleApplyClick(vacancy) : undefined}
                       hasApplied={isApplied}
                     />
                   )
@@ -644,16 +659,28 @@ export default function OpportunitiesPage() {
             setSelectedVacancy(null)
           }}
           onApply={
-            user && (profile?.role === 'player' || profile?.role === 'coach') && !userApplications.includes(selectedVacancy.id)
+            canShowApplyButton(selectedVacancy.id)
               ? () => {
-                  setShowDetailView(false)
-                  setShowApplyModal(true)
+                  if (!user) {
+                    setShowSignInPrompt(true)
+                  } else {
+                    setShowDetailView(false)
+                    setShowApplyModal(true)
+                  }
                 }
               : undefined
           }
           hasApplied={userApplications.includes(selectedVacancy.id)}
         />
       )}
+
+      {/* Sign In Prompt Modal - for unauthenticated users */}
+      <SignInPromptModal
+        isOpen={showSignInPrompt}
+        onClose={() => setShowSignInPrompt(false)}
+        title="Sign in to apply"
+        message="Sign in or create a free PLAYR account to apply to this opportunity."
+      />
 
       {/* Apply Modal */}
       {selectedVacancy && (

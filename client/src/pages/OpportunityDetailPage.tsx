@@ -6,6 +6,7 @@ import type { Vacancy } from '../lib/supabase'
 import Header from '../components/Header'
 import VacancyDetailView from '../components/VacancyDetailView'
 import ApplyToVacancyModal from '../components/ApplyToVacancyModal'
+import SignInPromptModal from '../components/SignInPromptModal'
 import VacancyJsonLd from '../components/VacancyJsonLd'
 
 export default function OpportunityDetailPage() {
@@ -18,6 +19,7 @@ export default function OpportunityDetailPage() {
   const [club, setClub] = useState<{ id: string; full_name: string | null; avatar_url: string | null } | null>(null)
   const [hasApplied, setHasApplied] = useState(false)
   const [showApplyModal, setShowApplyModal] = useState(false)
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
 
@@ -142,6 +144,25 @@ export default function OpportunityDetailPage() {
     )
   }
 
+  // Determine what happens when user clicks "Apply"
+  const handleApplyClick = () => {
+    if (!user) {
+      // Not authenticated - show sign-in prompt
+      setShowSignInPrompt(true)
+    } else if ((profile?.role === 'player' || profile?.role === 'coach') && !hasApplied) {
+      // Authenticated player/coach who hasn't applied - show apply modal
+      setShowApplyModal(true)
+    }
+    // Clubs or users who have already applied - button shouldn't be shown
+  }
+
+  // Determine if user can apply (or should see the apply button)
+  const canShowApplyButton = !hasApplied && (
+    !user || // Not logged in - show button to trigger sign-in prompt
+    profile?.role === 'player' || 
+    profile?.role === 'coach'
+  )
+
   return (
     <>
       {/* Structured data for AI discoverability */}
@@ -162,15 +183,19 @@ export default function OpportunityDetailPage() {
             clubLogo={club.avatar_url}
             clubId={club.id}
             onClose={() => navigate('/opportunities')}
-            onApply={
-              user && (profile?.role === 'player' || profile?.role === 'coach') && !hasApplied
-                ? () => setShowApplyModal(true)
-                : undefined
-            }
+            onApply={canShowApplyButton ? handleApplyClick : undefined}
             hasApplied={hasApplied}
           />
         </div>
       </div>
+
+      {/* Sign In Prompt Modal - for unauthenticated users */}
+      <SignInPromptModal
+        isOpen={showSignInPrompt}
+        onClose={() => setShowSignInPrompt(false)}
+        title="Sign in to apply"
+        message="Sign in or create a free PLAYR account to apply to this opportunity."
+      />
 
       {/* Apply Modal */}
       {vacancy && (
