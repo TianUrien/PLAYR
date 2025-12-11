@@ -15,6 +15,7 @@ import { useNotificationStore } from '@/lib/notifications'
 import { derivePublicContactEmail } from '@/lib/profile'
 import type { SocialLinks } from '@/lib/socialLinks'
 import { useCoachProfileStrength } from '@/hooks/useCoachProfileStrength'
+import { calculateAge, formatDateOfBirth } from '@/lib/utils'
 
 type TabType = 'profile' | 'journey' | 'friends' | 'comments'
 
@@ -221,18 +222,6 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
       .slice(0, 2)  // Limit to 2 characters
   }
 
-  const calculateAge = (dateOfBirth: string | null): number | null => {
-    if (!dateOfBirth) return null
-    const today = new Date()
-    const birthDate = new Date(dateOfBirth)
-    let age = today.getFullYear() - birthDate.getFullYear()
-    const monthDiff = today.getMonth() - birthDate.getMonth()
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--
-    }
-    return age
-  }
-
   const age = calculateAge(profile.date_of_birth)
 
   return (
@@ -421,11 +410,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                           Date of Birth
                         </label>
                         <p className="text-gray-900">
-                          {new Date(profile.date_of_birth).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
+                          {formatDateOfBirth(profile.date_of_birth)}
                           {age && <span className="text-gray-500 ml-2">({age} years old)</span>}
                         </p>
                       </div>

@@ -18,6 +18,7 @@ import { useNotificationStore } from '@/lib/notifications'
 import { derivePublicContactEmail } from '@/lib/profile'
 import type { SocialLinks } from '@/lib/socialLinks'
 import { useProfileStrength, type ProfileStrengthBucket } from '@/hooks/useProfileStrength'
+import { calculateAge, formatDateOfBirth } from '@/lib/utils'
 
 type TabType = 'profile' | 'friends' | 'journey' | 'comments'
 
@@ -239,18 +240,6 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
       .join('')
       .toUpperCase()
       .slice(0, 2)  // Limit to 2 characters
-  }
-
-  const calculateAge = (dateOfBirth: string | null): number | null => {
-    if (!dateOfBirth) return null
-    const today = new Date()
-    const birthDate = new Date(dateOfBirth)
-    let age = today.getFullYear() - birthDate.getFullYear()
-    const monthDiff = today.getMonth() - birthDate.getMonth()
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--
-    }
-    return age
   }
 
   const age = calculateAge(profile.date_of_birth)
@@ -524,11 +513,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                       </label>
                       {profile.date_of_birth ? (
                         <p className="text-gray-900">
-                          {new Date(profile.date_of_birth).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
+                          {formatDateOfBirth(profile.date_of_birth)}
                         </p>
                       ) : (
                         <p className="text-gray-500 italic">Not specified</p>

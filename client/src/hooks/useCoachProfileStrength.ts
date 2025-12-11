@@ -52,11 +52,11 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
         supabase
           .from('playing_history')
           .select('id', { count: 'exact', head: true })
-          .eq('profile_id', profileId),
+          .eq('user_id', profileId),
         supabase
           .from('gallery_photos')
           .select('id', { count: 'exact', head: true })
-          .eq('user_id', profileId),  // gallery_photos uses user_id, not profile_id
+          .eq('user_id', profileId),
       ])
       setJourneyCount(journeyRes.count ?? 0)
       setGalleryCount(galleryRes.count ?? 0)
