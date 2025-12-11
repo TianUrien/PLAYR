@@ -113,7 +113,7 @@ export default function OpportunityDetailPage() {
     const metaDescription = `${vacancy.title} opportunity at ${club.full_name || 'a club'}${location ? ` in ${location}` : ''}. ${vacancy.description?.slice(0, 120) || 'Apply now on PLAYR - the field hockey community platform.'}`
 
     // Update or create meta description
-    let metaDescTag = document.querySelector('meta[name="description"]')
+    const metaDescTag = document.querySelector('meta[name="description"]')
     if (metaDescTag) {
       metaDescTag.setAttribute('content', metaDescription)
     }
