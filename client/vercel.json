@@ -1,9 +1,16 @@
 {
-  "rewrites": [
-    { "source": "/api/sitemap.xml", "destination": "https://xtertgftujnebubxgqit.supabase.co/functions/v1/sitemap" },
-    { 
-      "source": "/((?!robots\\.txt|manifest\\.json|favicon\\.ico|pwa-icons|assets|google).*)",
-      "destination": "/index.html" 
+  "headers": [
+    {
+      "source": "/robots.txt",
+      "headers": [
+        { "key": "Content-Type", "value": "text/plain" }
+      ]
     }
+  ],
+  "rewrites": [
+    { "source": "/robots.txt", "destination": "/robots.txt" },
+    { "source": "/manifest.json", "destination": "/manifest.json" },
+    { "source": "/api/sitemap.xml", "destination": "https://xtertgftujnebubxgqit.supabase.co/functions/v1/sitemap" },
+    { "source": "/:path*", "destination": "/index.html" }
   ]
 }
