@@ -117,6 +117,7 @@ export interface AdminProfileListItem {
   username: string | null
   role: string
   nationality: string | null
+  nationality2: string | null
   base_location: string | null
   is_blocked: boolean
   is_test_account: boolean

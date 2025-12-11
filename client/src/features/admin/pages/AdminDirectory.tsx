@@ -194,20 +194,29 @@ export function AdminDirectory() {
       ),
     },
     {
-      key: 'base_location',
-      label: 'Location',
-      render: (_, row) => (
-        <div className="text-sm text-gray-600">
-          {row.base_location || '-'}
-        </div>
-      ),
-    },
-    {
       key: 'nationality',
       label: 'Nationality',
       render: (_, row) => (
         <div className="text-sm text-gray-600">
           {row.nationality || '-'}
+        </div>
+      ),
+    },
+    {
+      key: 'nationality2',
+      label: 'Secondary',
+      render: (_, row) => (
+        <div className="text-sm text-gray-600">
+          {row.nationality2 || '-'}
+        </div>
+      ),
+    },
+    {
+      key: 'base_location',
+      label: 'Location',
+      render: (_, row) => (
+        <div className="text-sm text-gray-600">
+          {row.base_location || '-'}
         </div>
       ),
     },
