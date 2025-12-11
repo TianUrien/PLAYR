@@ -32,6 +32,8 @@ export { default as SentryTestButton } from './SentryTestButton'
 export { default as SocialLinksInput } from './SocialLinksInput'
 export { default as SocialLinksDisplay } from './SocialLinksDisplay'
 export { default as ProfileStrengthCard } from './ProfileStrengthCard'
+export { default as InstallPrompt } from './InstallPrompt'
+export { default as VacancyJsonLd, OpportunitiesListJsonLd } from './VacancyJsonLd'
 export { ErrorBoundary } from './ErrorBoundary'
 
 // Loading States

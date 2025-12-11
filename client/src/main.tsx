@@ -2,10 +2,37 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
 import * as Sentry from '@sentry/react'
+import { registerSW } from 'virtual:pwa-register'
 import './globals.css'
 import App from './App.tsx'
 import { initWebVitals } from './lib/monitor'
 import { queryClient } from './lib/queryClient'
+
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+  registerSW({
+    immediate: true,
+    onRegisteredSW(swScriptUrl, registration) {
+      console.log('[PWA] Service Worker registered:', swScriptUrl)
+      // Check for updates every hour
+      if (registration) {
+        setInterval(() => {
+          registration.update()
+        }, 60 * 60 * 1000)
+      }
+    },
+    onOfflineReady() {
+      console.log('[PWA] App is ready for offline use')
+    },
+    onNeedRefresh() {
+      // Could show a toast here prompting user to refresh
+      console.log('[PWA] New content available, refresh to update')
+    },
+    onRegisterError(error) {
+      console.error('[PWA] Service Worker registration failed:', error)
+    },
+  })
+}
 
 const sentryEnvironment = import.meta.env.MODE === 'production' ? 'production' : 'development'
 

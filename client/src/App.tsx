@@ -4,13 +4,16 @@ import { initializeAuth } from '@/lib/auth'
 import { ProtectedRoute, ErrorBoundary, Layout, SentryTestButton } from '@/components'
 import ToastContainer from '@/components/ToastContainer'
 import { ProfileImagePreviewProvider } from '@/components/ProfileImagePreviewProvider'
+import InstallPrompt from '@/components/InstallPrompt'
 import Landing from '@/pages/Landing'
 import SignUp from '@/pages/SignUp'
 import AuthCallback from '@/pages/AuthCallback'
 import VerifyEmail from '@/pages/VerifyEmail'
 import PrivacyPolicy from '@/pages/PrivacyPolicy'
 import Terms from '@/pages/Terms'
+import DevelopersPage from '@/pages/DevelopersPage'
 import SettingsPage from '@/pages/SettingsPage'
+import OfflinePage from '@/pages/OfflinePage'
 
 // Lazy load heavy components
 const CompleteProfile = lazy(() => import('@/pages/CompleteProfile'))
@@ -73,6 +76,7 @@ function App() {
       <BrowserRouter>
         <ProfileImagePreviewProvider>
           <ToastContainer />
+          <InstallPrompt />
           {!isProduction && <SentryTestButton />}
           <ProtectedRoute>
             <Layout>
@@ -85,6 +89,8 @@ function App() {
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 <Route path="/terms" element={<Terms />} />
+                <Route path="/developers" element={<DevelopersPage />} />
+                <Route path="/offline" element={<OfflinePage />} />
                 
                 {/* Protected Routes (require authentication) - Lazy loaded */}
                 <Route path="/complete-profile" element={<CompleteProfile />} />

@@ -9,6 +9,7 @@ import VacancyDetailView from '../components/VacancyDetailView'
 import ApplyToVacancyModal from '../components/ApplyToVacancyModal'
 import Button from '../components/Button'
 import { VacancyCardSkeleton } from '../components/Skeleton'
+import { OpportunitiesListJsonLd } from '../components/VacancyJsonLd'
 import { requestCache } from '@/lib/requestCache'
 import { monitor } from '@/lib/monitor'
 import { logger } from '@/lib/logger'
@@ -312,31 +313,40 @@ export default function OpportunitiesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
+    <>
+      {/* Structured data for AI discoverability */}
+      {!isLoading && filteredVacancies.length > 0 && (
+        <OpportunitiesListJsonLd 
+          opportunities={filteredVacancies} 
+          totalCount={filteredVacancies.length} 
+        />
+      )}
+      
+      <div className="min-h-screen bg-gray-50">
+        <Header />
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-12">
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            Opportunities
-          </h1>
-          <p className="text-gray-600">
-            Discover field hockey opportunities from clubs around the world
-          </p>
-        </div>
+        <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-12">
+          {/* Page Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+              Opportunities
+            </h1>
+            <p className="text-gray-600">
+              Discover field hockey opportunities from clubs around the world
+            </p>
+          </div>
 
-        {opportunityCount > 0 && (
-          <div className="bg-blue-50 border border-blue-100 text-blue-900 rounded-xl p-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <p className="font-semibold">{opportunityCount === 1 ? 'New opportunity available' : `${opportunityCount} new opportunities available`}</p>
-              <p className="text-sm text-blue-900/80">
-                {opportunityCount === 1 ? 'A new vacancy was just published.' : 'Fresh vacancies were published since you opened this page.'}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
+          {opportunityCount > 0 && (
+            <div className="bg-blue-50 border border-blue-100 text-blue-900 rounded-xl p-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <p className="font-semibold">{opportunityCount === 1 ? 'New opportunity available' : `${opportunityCount} new opportunities available`}</p>
+                <p className="text-sm text-blue-900/80">
+                  {opportunityCount === 1 ? 'A new vacancy was just published.' : 'Fresh vacancies were published since you opened this page.'}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
                 className="border-blue-300 text-blue-700 bg-white hover:bg-blue-100 disabled:opacity-60"
                 disabled={isSyncingNewVacancies}
                 onClick={handleSyncNewVacancies}
@@ -670,6 +680,7 @@ export default function OpportunitiesPage() {
           }}
         />
       )}
-    </div>
+      </div>
+    </>
   )
 }

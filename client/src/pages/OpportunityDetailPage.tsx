@@ -6,6 +6,7 @@ import type { Vacancy } from '../lib/supabase'
 import Header from '../components/Header'
 import VacancyDetailView from '../components/VacancyDetailView'
 import ApplyToVacancyModal from '../components/ApplyToVacancyModal'
+import VacancyJsonLd from '../components/VacancyJsonLd'
 
 export default function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -143,6 +144,15 @@ export default function OpportunityDetailPage() {
 
   return (
     <>
+      {/* Structured data for AI discoverability */}
+      <VacancyJsonLd 
+        vacancy={vacancy} 
+        club={{
+          name: club.full_name || 'Unknown Club',
+          logoUrl: club.avatar_url,
+        }}
+      />
+      
       <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="pt-20">
