@@ -7,10 +7,42 @@ import './globals.css'
 import App from './App.tsx'
 import { initWebVitals } from './lib/monitor'
 import { queryClient } from './lib/queryClient'
+import UpdatePrompt from './components/UpdatePrompt'
+
+// Create a container for the update prompt (outside main React tree)
+let updatePromptRoot: ReturnType<typeof createRoot> | null = null
+
+function showUpdatePrompt(updateSW: () => void) {
+  // Create container if it doesn't exist
+  let container = document.getElementById('update-prompt-root')
+  if (!container) {
+    container = document.createElement('div')
+    container.id = 'update-prompt-root'
+    document.body.appendChild(container)
+  }
+
+  // Render the update prompt
+  if (!updatePromptRoot) {
+    updatePromptRoot = createRoot(container)
+  }
+
+  updatePromptRoot.render(
+    <UpdatePrompt
+      onUpdate={() => {
+        // Hide the prompt
+        updatePromptRoot?.unmount()
+        updatePromptRoot = null
+        container?.remove()
+        // Trigger the service worker update
+        updateSW()
+      }}
+    />
+  )
+}
 
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
-  registerSW({
+  const updateSW = registerSW({
     immediate: true,
     onRegisteredSW(swScriptUrl, registration) {
       console.log('[PWA] Service Worker registered:', swScriptUrl)
@@ -25,8 +57,8 @@ if ('serviceWorker' in navigator) {
       console.log('[PWA] App is ready for offline use')
     },
     onNeedRefresh() {
-      // Could show a toast here prompting user to refresh
-      console.log('[PWA] New content available, refresh to update')
+      console.log('[PWA] New content available, showing update prompt')
+      showUpdatePrompt(updateSW)
     },
     onRegisterError(error) {
       console.error('[PWA] Service Worker registration failed:', error)
