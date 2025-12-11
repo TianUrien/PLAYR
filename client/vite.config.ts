@@ -77,6 +77,9 @@ export default defineConfig(({ mode }) => {
           ],
           navigateFallback: '/index.html',
           navigateFallbackDenylist: [/^\/api/, /^\/auth/],
+          // Ensure new service worker takes control immediately when activated
+          skipWaiting: false, // We handle this manually via prompt
+          clientsClaim: true, // Take control of all clients once activated
         },
         devOptions: {
           enabled: false, // Enable in dev for testing: set to true

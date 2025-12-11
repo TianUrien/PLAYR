@@ -12,7 +12,7 @@ import UpdatePrompt from './components/UpdatePrompt'
 // Create a container for the update prompt (outside main React tree)
 let updatePromptRoot: ReturnType<typeof createRoot> | null = null
 
-function showUpdatePrompt(updateSW: () => void) {
+function showUpdatePrompt(updateSW: (reloadPage?: boolean) => Promise<void>) {
   // Create container if it doesn't exist
   let container = document.getElementById('update-prompt-root')
   if (!container) {
@@ -28,13 +28,14 @@ function showUpdatePrompt(updateSW: () => void) {
 
   updatePromptRoot.render(
     <UpdatePrompt
-      onUpdate={() => {
+      onUpdate={async () => {
         // Hide the prompt
         updatePromptRoot?.unmount()
         updatePromptRoot = null
         container?.remove()
-        // Trigger the service worker update
-        updateSW()
+        // Trigger the service worker update and reload
+        // The true parameter tells vite-plugin-pwa to reload the page
+        await updateSW(true)
       }}
     />
   )
@@ -46,11 +47,15 @@ if ('serviceWorker' in navigator) {
     immediate: true,
     onRegisteredSW(swScriptUrl, registration) {
       console.log('[PWA] Service Worker registered:', swScriptUrl)
-      // Check for updates every hour
       if (registration) {
+        // Check for updates immediately on registration
+        registration.update().catch(console.error)
+        
+        // Then check for updates every 15 minutes (more frequent for better UX)
         setInterval(() => {
-          registration.update()
-        }, 60 * 60 * 1000)
+          console.log('[PWA] Checking for updates...')
+          registration.update().catch(console.error)
+        }, 15 * 60 * 1000)
       }
     },
     onOfflineReady() {
