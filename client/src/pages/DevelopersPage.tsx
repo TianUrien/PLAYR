@@ -336,6 +336,54 @@ export default function DevelopersPage() {
             </p>
           </section>
 
+          {/* Using with ChatGPT */}
+          <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Zap className="w-5 h-5 text-emerald-600" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900">Using PLAYR with ChatGPT</h2>
+              </div>
+            </div>
+            <p className="text-gray-700 mb-4">
+              You can create a Custom GPT that searches PLAYR opportunities. Here's how:
+            </p>
+            <ol className="list-decimal list-inside space-y-3 text-gray-700 mb-6">
+              <li>
+                <strong>Create a Custom GPT</strong> in ChatGPT (requires ChatGPT Plus or Enterprise).
+              </li>
+              <li>
+                <strong>Go to the "Actions" tab</strong> in your GPT configuration.
+              </li>
+              <li>
+                <strong>Click "Import from URL"</strong> and paste:
+                <div className="mt-2 mb-2">
+                  <code className="block bg-gray-100 px-4 py-2 rounded-lg text-purple-600 text-sm break-all">
+                    https://www.oplayr.com/api/openapi.json
+                  </code>
+                </div>
+              </li>
+              <li>
+                <strong>ChatGPT will import the API</strong> and create an action for <code className="bg-gray-100 px-1.5 py-0.5 rounded text-purple-600">GET /public-opportunities</code>.
+              </li>
+              <li>
+                <strong>Test your GPT</strong> with queries like:
+                <ul className="list-disc list-inside ml-4 mt-2 text-gray-600">
+                  <li>"Find me defender positions in Italy"</li>
+                  <li>"Show high-priority goalkeeper opportunities"</li>
+                  <li>"What coaching opportunities are available in the Netherlands?"</li>
+                </ul>
+              </li>
+            </ol>
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+              <p className="text-emerald-900 text-sm">
+                <strong>Tip:</strong> In your GPT's instructions, tell it to always include the <code className="bg-emerald-100 px-1 py-0.5 rounded">apply_url</code> so 
+                users can visit PLAYR to apply for opportunities.
+              </p>
+            </div>
+          </section>
+
           {/* Contact */}
           <section className="bg-gray-100 rounded-2xl p-8 text-center">
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Questions?</h2>
