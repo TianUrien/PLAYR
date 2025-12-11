@@ -1,6 +1,9 @@
 {
   "rewrites": [
     { "source": "/api/sitemap.xml", "destination": "https://xtertgftujnebubxgqit.supabase.co/functions/v1/sitemap" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { 
+      "source": "/((?!robots\\.txt|manifest\\.json|favicon\\.ico|pwa-icons|assets|google).*)",
+      "destination": "/index.html" 
+    }
   ]
 }
