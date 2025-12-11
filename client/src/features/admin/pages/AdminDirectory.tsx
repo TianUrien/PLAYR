@@ -20,8 +20,9 @@ import {
   Globe,
   Shield,
   AlertTriangle,
+  Pencil,
 } from 'lucide-react'
-import { DataTable, ConfirmDialog } from '../components'
+import { DataTable, ConfirmDialog, EditUserModal } from '../components'
 import type { Column, Action } from '../components'
 import type { AdminProfileListItem, AdminProfileDetails, ProfileSearchParams } from '../types'
 import {
@@ -30,6 +31,7 @@ import {
   blockUser,
   unblockUser,
   setTestAccount,
+  updateProfile,
 } from '../api/adminApi'
 
 const PAGE_SIZE = 20
@@ -50,6 +52,10 @@ export function AdminDirectory() {
   // Profile detail drawer
   const [selectedProfile, setSelectedProfile] = useState<AdminProfileDetails | null>(null)
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
+
+  // Edit modal state
+  const [editProfile, setEditProfile] = useState<AdminProfileDetails | null>(null)
+  const [isLoadingEditProfile, setIsLoadingEditProfile] = useState(false)
 
   // Confirm dialogs
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -127,6 +133,25 @@ export function AdminDirectory() {
     await fetchProfiles()
   }
 
+  const handleEditUser = async (profile: AdminProfileListItem) => {
+    setIsLoadingEditProfile(true)
+    try {
+      const details = await getProfileDetails(profile.id)
+      setEditProfile(details)
+    } catch (err) {
+      console.error('[AdminDirectory] Failed to fetch profile for editing:', err)
+    } finally {
+      setIsLoadingEditProfile(false)
+    }
+  }
+
+  const handleSaveEdit = async (updates: Record<string, unknown>, reason?: string) => {
+    if (!editProfile) return
+    await updateProfile(editProfile.profile.id, updates, reason)
+    setEditProfile(null)
+    await fetchProfiles()
+  }
+
   const columns: Column<AdminProfileListItem>[] = [
     {
       key: 'full_name',
@@ -169,11 +194,20 @@ export function AdminDirectory() {
       ),
     },
     {
-      key: 'nationality',
+      key: 'base_location',
       label: 'Location',
       render: (_, row) => (
         <div className="text-sm text-gray-600">
-          {row.base_location || row.nationality || '-'}
+          {row.base_location || '-'}
+        </div>
+      ),
+    },
+    {
+      key: 'nationality',
+      label: 'Nationality',
+      render: (_, row) => (
+        <div className="text-sm text-gray-600">
+          {row.nationality || '-'}
         </div>
       ),
     },
@@ -221,6 +255,11 @@ export function AdminDirectory() {
       label: 'View Details',
       icon: <Eye className="w-4 h-4" />,
       onClick: handleViewProfile,
+    },
+    {
+      label: 'Edit User',
+      icon: <Pencil className="w-4 h-4" />,
+      onClick: handleEditUser,
     },
     {
       label: 'Block User',
@@ -592,6 +631,14 @@ export function AdminDirectory() {
         }
         confirmLabel={confirmDialog.type === 'mark-test' ? 'Mark as Test' : 'Remove Test Flag'}
         variant="warning"
+      />
+
+      {/* Edit User Modal */}
+      <EditUserModal
+        isOpen={editProfile !== null || isLoadingEditProfile}
+        onClose={() => setEditProfile(null)}
+        onSave={handleSaveEdit}
+        profile={editProfile?.profile ?? null}
       />
     </div>
   )

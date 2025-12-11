@@ -135,6 +135,8 @@ export interface AdminProfileDetails {
     username: string | null
     role: string
     nationality: string | null
+    nationality_country_id: number | null
+    nationality2_country_id: number | null
     base_location: string | null
     bio: string | null
     club_bio: string | null
@@ -146,6 +148,8 @@ export interface AdminProfileDetails {
     highlight_video_url: string | null
     current_club: string | null
     league_division: string | null
+    passport1_country_id: number | null
+    passport2_country_id: number | null
     is_blocked: boolean
     is_test_account: boolean
     onboarding_completed: boolean
