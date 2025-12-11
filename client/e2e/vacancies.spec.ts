@@ -1,26 +1,25 @@
 import { test, expect } from './fixtures'
 
 test.describe('Vacancy Application Flow', () => {
-  test.describe('Opportunities Page - Unauthenticated', () => {
-    test('redirects unauthenticated users to landing page', async ({ page }) => {
+  test.describe('Opportunities Page - Public Access', () => {
+    test('allows unauthenticated users to browse opportunities', async ({ page }) => {
       await page.goto('/opportunities')
       
-      // Should redirect to landing page since /opportunities is protected
-      await page.waitForURL('/', { timeout: 10000 })
+      // Should stay on opportunities page (now publicly accessible)
+      await expect(page).toHaveURL('/opportunities')
       
-      // Landing page should be visible
-      await expect(page.getByRole('heading', { name: /sign in to playr/i })).toBeVisible()
+      // Page should load with opportunities content
+      await expect(page.getByRole('main')).toBeVisible()
     })
 
-    test('stores intended destination for post-login redirect', async ({ page }) => {
+    test('shows sign-in prompt when unauthenticated user tries to apply', async ({ page }) => {
       await page.goto('/opportunities')
       
-      // Should redirect to landing
-      await page.waitForURL('/', { timeout: 10000 })
+      // Should stay on opportunities page
+      await expect(page).toHaveURL('/opportunities')
       
-      // The app should store the intended destination (checked via state)
-      // For now, just verify the redirect happened
-      await expect(page).toHaveURL('/')
+      // The page should be visible and browsable
+      await expect(page.getByRole('main')).toBeVisible()
     })
   })
 
@@ -275,32 +274,32 @@ test.describe('Vacancy Page Accessibility', () => {
 })
 
 test.describe('Responsive Vacancy Display', () => {
-  // These tests verify redirect behavior works across viewport sizes
+  // These tests verify opportunities page works across viewport sizes
   
-  test('opportunities redirect works on mobile', async ({ page }) => {
+  test('opportunities page works on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/opportunities')
     
-    // Should redirect to landing
-    await page.waitForURL('/', { timeout: 10000 })
+    // Should stay on opportunities (now publicly accessible)
+    await expect(page).toHaveURL('/opportunities')
     await expect(page.getByRole('main')).toBeVisible()
   })
 
-  test('opportunities redirect works on tablet', async ({ page }) => {
+  test('opportunities page works on tablet', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 })
     await page.goto('/opportunities')
     
-    // Should redirect to landing
-    await page.waitForURL('/', { timeout: 10000 })
+    // Should stay on opportunities (now publicly accessible)
+    await expect(page).toHaveURL('/opportunities')
     await expect(page.getByRole('main')).toBeVisible()
   })
 
-  test('opportunities redirect works on desktop', async ({ page }) => {
+  test('opportunities page works on desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/opportunities')
     
-    // Should redirect to landing
-    await page.waitForURL('/', { timeout: 10000 })
+    // Should stay on opportunities (now publicly accessible)
+    await expect(page).toHaveURL('/opportunities')
     await expect(page.getByRole('main')).toBeVisible()
   })
 })
