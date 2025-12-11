@@ -3,8 +3,11 @@ User-agent: *
 Allow: /
 
 # Sitemap
-Sitemap: https://oplayr.com/sitemap.xml
+Sitemap: https://www.oplayr.com/sitemap.xml
 
-# Disallow admin/private routes if any exist
+# Disallow admin/private routes
+Disallow: /admin/
 Disallow: /dashboard/
-Disallow: /api/
+Disallow: /settings
+Disallow: /messages
+Disallow: /complete-profile

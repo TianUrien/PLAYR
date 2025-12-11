@@ -97,6 +97,58 @@ export default function OpportunityDetailPage() {
     fetchVacancyDetails()
   }, [id, navigate, fetchVacancyDetails])
 
+  // SEO: Update page title and meta tags for crawlers
+  useEffect(() => {
+    if (!vacancy || !club) {
+      document.title = 'Field Hockey Opportunity | PLAYR'
+      return
+    }
+
+    // Dynamic page title
+    const pageTitle = `${vacancy.title} at ${club.full_name || 'Club'} | PLAYR`
+    document.title = pageTitle
+
+    // Build meta description
+    const location = [vacancy.location, vacancy.country].filter(Boolean).join(', ')
+    const metaDescription = `${vacancy.title} opportunity at ${club.full_name || 'a club'}${location ? ` in ${location}` : ''}. ${vacancy.description?.slice(0, 120) || 'Apply now on PLAYR - the field hockey community platform.'}`
+
+    // Update or create meta description
+    let metaDescTag = document.querySelector('meta[name="description"]')
+    if (metaDescTag) {
+      metaDescTag.setAttribute('content', metaDescription)
+    }
+
+    // Update Open Graph tags
+    const ogTitle = document.querySelector('meta[property="og:title"]')
+    if (ogTitle) ogTitle.setAttribute('content', pageTitle)
+
+    const ogDesc = document.querySelector('meta[property="og:description"]')
+    if (ogDesc) ogDesc.setAttribute('content', metaDescription)
+
+    const ogUrl = document.querySelector('meta[property="og:url"]')
+    if (ogUrl) ogUrl.setAttribute('content', `https://www.oplayr.com/opportunities/${vacancy.id}`)
+
+    // Update Twitter tags
+    const twitterTitle = document.querySelector('meta[name="twitter:title"]')
+    if (twitterTitle) twitterTitle.setAttribute('content', pageTitle)
+
+    const twitterDesc = document.querySelector('meta[name="twitter:description"]')
+    if (twitterDesc) twitterDesc.setAttribute('content', metaDescription)
+
+    // Cleanup: restore defaults when leaving page
+    return () => {
+      document.title = 'PLAYR | Field Hockey Community'
+      const defaultDesc = 'Connect players, coaches, and clubs. Raise the sport together. Join PLAYR.'
+      
+      if (metaDescTag) metaDescTag.setAttribute('content', defaultDesc)
+      if (ogTitle) ogTitle.setAttribute('content', 'PLAYR | Field Hockey Community')
+      if (ogDesc) ogDesc.setAttribute('content', defaultDesc)
+      if (ogUrl) ogUrl.setAttribute('content', 'https://www.oplayr.com')
+      if (twitterTitle) twitterTitle.setAttribute('content', 'PLAYR | Field Hockey Community')
+      if (twitterDesc) twitterDesc.setAttribute('content', defaultDesc)
+    }
+  }, [vacancy, club])
+
   const refreshApplicationStatus = async () => {
     if (!id || !user || profile?.role !== 'player') return
 

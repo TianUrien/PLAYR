@@ -179,6 +179,35 @@ export default function OpportunitiesPage() {
     void markSeen()
   }, [fetchVacancies, fetchUserApplications, markSeen])
 
+  // SEO: Set page title and meta tags for opportunities listing
+  useEffect(() => {
+    document.title = 'Field Hockey Opportunities | PLAYR'
+    
+    const metaDescription = 'Browse field hockey opportunities for players and coaches. Find your next team, coaching position, or club role on PLAYR.'
+    
+    const metaDescTag = document.querySelector('meta[name="description"]')
+    if (metaDescTag) metaDescTag.setAttribute('content', metaDescription)
+    
+    const ogTitle = document.querySelector('meta[property="og:title"]')
+    if (ogTitle) ogTitle.setAttribute('content', 'Field Hockey Opportunities | PLAYR')
+    
+    const ogDesc = document.querySelector('meta[property="og:description"]')
+    if (ogDesc) ogDesc.setAttribute('content', metaDescription)
+    
+    const ogUrl = document.querySelector('meta[property="og:url"]')
+    if (ogUrl) ogUrl.setAttribute('content', 'https://www.oplayr.com/opportunities')
+    
+    return () => {
+      document.title = 'PLAYR | Field Hockey Community'
+      const defaultDesc = 'Connect players, coaches, and clubs. Raise the sport together. Join PLAYR.'
+      
+      if (metaDescTag) metaDescTag.setAttribute('content', defaultDesc)
+      if (ogTitle) ogTitle.setAttribute('content', 'PLAYR | Field Hockey Community')
+      if (ogDesc) ogDesc.setAttribute('content', defaultDesc)
+      if (ogUrl) ogUrl.setAttribute('content', 'https://www.oplayr.com')
+    }
+  }, [])
+
   const handleSyncNewVacancies = useCallback(async () => {
     if (isSyncingNewVacancies) {
       return
