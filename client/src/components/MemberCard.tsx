@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MessageCircle, User } from 'lucide-react'
-import { Avatar, RoleBadge, NationalityFlagsInline } from '@/components'
+import { Avatar, RoleBadge, NationalityCardDisplay } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { useToastStore } from '@/lib/toast'
@@ -130,7 +130,7 @@ export default function MemberCard({
         {(nationality_country_id || nationality) && (
           <div className="flex items-start gap-2">
             <span className="text-xs font-semibold text-gray-400 min-w-[72px]">Nationality:</span>
-            <NationalityFlagsInline
+            <NationalityCardDisplay
               primaryCountryId={nationality_country_id}
               secondaryCountryId={nationality2_country_id}
               passport1CountryId={passport1_country_id}
