@@ -55,7 +55,8 @@ export default function CompleteProfile() {
     secondaryPosition: '',
     gender: '',
     yearFounded: '',
-    leagueDivision: '',
+    womensLeagueDivision: '',
+    mensLeagueDivision: '',
     website: '',
     contactEmail: '',
     clubBio: '',
@@ -148,7 +149,8 @@ export default function CompleteProfile() {
         next.clubName = profile.full_name ?? prev.clubName
         next.country = profile.nationality ?? prev.country
         next.yearFounded = profile.year_founded ? String(profile.year_founded) : prev.yearFounded
-        next.leagueDivision = profile.league_division ?? prev.leagueDivision
+        next.womensLeagueDivision = (profile as unknown as { womens_league_division?: string | null }).womens_league_division ?? prev.womensLeagueDivision
+        next.mensLeagueDivision = (profile as unknown as { mens_league_division?: string | null }).mens_league_division ?? prev.mensLeagueDivision
         next.website = profile.website ?? prev.website
         next.contactEmail = profile.contact_email ?? next.contactEmail
         next.clubBio = profile.club_bio ?? prev.clubBio
@@ -290,7 +292,8 @@ export default function CompleteProfile() {
           base_location: formData.city, // City is stored in base_location
           nationality: profileNationality || '',
           year_founded: formData.yearFounded ? parseInt(formData.yearFounded) : null,
-          league_division: formData.leagueDivision,
+          womens_league_division: formData.womensLeagueDivision || null,
+          mens_league_division: formData.mensLeagueDivision || null,
           website: formData.website,
           contact_email: formData.contactEmail,
           club_bio: formData.clubBio,
@@ -714,10 +717,17 @@ export default function CompleteProfile() {
                   />
 
                   <Input
-                    label="League/Division (Optional)"
-                    placeholder="e.g., Premier League"
-                    value={formData.leagueDivision}
-                    onChange={(e) => setFormData({ ...formData, leagueDivision: e.target.value })}
+                    label="Women’s League / Division (Optional)"
+                    placeholder="e.g. Serie A1"
+                    value={formData.womensLeagueDivision}
+                    onChange={(e) => setFormData({ ...formData, womensLeagueDivision: e.target.value })}
+                  />
+
+                  <Input
+                    label="Men’s League / Division (Optional)"
+                    placeholder="e.g. Elite Division"
+                    value={formData.mensLeagueDivision}
+                    onChange={(e) => setFormData({ ...formData, mensLeagueDivision: e.target.value })}
                   />
 
                   <Input

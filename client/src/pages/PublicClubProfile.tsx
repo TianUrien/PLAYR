@@ -21,10 +21,12 @@ type PublicClubProfile = Partial<Profile> &
     | 'club_history'
     | 'website'
     | 'year_founded'
-    | 'league_division'
     | 'contact_email'
     | 'contact_email_public'
-  >
+  > & {
+    womens_league_division?: string | null
+    mens_league_division?: string | null
+  }
 
 const PUBLIC_CLUB_FIELDS = [
   'id',
@@ -39,7 +41,8 @@ const PUBLIC_CLUB_FIELDS = [
   'club_history',
   'website',
   'year_founded',
-  'league_division',
+  'womens_league_division',
+  'mens_league_division',
   'contact_email',
   'contact_email_public',
   'social_links',

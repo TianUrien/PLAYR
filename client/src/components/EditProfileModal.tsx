@@ -34,7 +34,8 @@ type ProfileFormData = {
   gender: string
   current_club: string
   year_founded: string
-  league_division: string
+  womens_league_division: string
+  mens_league_division: string
   website: string
   contact_email: string
   contact_email_public: boolean
@@ -61,7 +62,8 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   gender: profile?.gender || '',
   current_club: profile?.current_club || '',
   year_founded: profile?.year_founded?.toString() || '',
-  league_division: profile?.league_division || '',
+  womens_league_division: (profile as unknown as { womens_league_division?: string | null })?.womens_league_division || '',
+  mens_league_division: (profile as unknown as { mens_league_division?: string | null })?.mens_league_division || '',
   website: profile?.website || '',
   contact_email: getInitialContactEmail(profile),
   contact_email_public: Boolean(profile?.contact_email_public),
@@ -285,7 +287,8 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.nationality_country_id = formData.nationality_country_id
       optimisticUpdate.nationality2_country_id = null
       optimisticUpdate.year_founded = formData.year_founded ? parseInt(formData.year_founded) : null
-      optimisticUpdate.league_division = formData.league_division || null
+      optimisticUpdate.womens_league_division = formData.womens_league_division || null
+      optimisticUpdate.mens_league_division = formData.mens_league_division || null
       optimisticUpdate.website = formData.website || null
       optimisticUpdate.club_bio = formData.club_bio || null
       optimisticUpdate.club_history = formData.club_history || null
@@ -682,9 +685,17 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                 />
 
                 <Input
-                  label="League/Division (Optional)"
-                  value={formData.league_division}
-                  onChange={(e) => setFormData({ ...formData, league_division: e.target.value })}
+                  label="Women’s League / Division (Optional)"
+                  placeholder="e.g. Serie A1"
+                  value={formData.womens_league_division}
+                  onChange={(e) => setFormData({ ...formData, womens_league_division: e.target.value })}
+                />
+
+                <Input
+                  label="Men’s League / Division (Optional)"
+                  placeholder="e.g. Elite Division"
+                  value={formData.mens_league_division}
+                  onChange={(e) => setFormData({ ...formData, mens_league_division: e.target.value })}
                 />
 
                 <Input

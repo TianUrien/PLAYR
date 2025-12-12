@@ -23,12 +23,14 @@ type ClubProfile = Pick<
   | 'nationality'
   | 'base_location'
   | 'year_founded'
-  | 'league_division'
   | 'website'
   | 'contact_email'
   | 'avatar_url'
   | 'club_bio'
->
+> & {
+  womens_league_division?: string | null
+  mens_league_division?: string | null
+}
 
 interface UseClubProfileStrengthOptions {
   profile: ClubProfile | null
@@ -38,7 +40,7 @@ interface UseClubProfileStrengthOptions {
  * Club-specific profile strength calculation.
  *
  * Buckets (v1 - no vacancies or players/friends):
- * - Basic Info (35%): nationality, base_location, year_founded, league_division (optional), website OR contact_email
+ * - Basic Info (35%): nationality, base_location, year_founded, women/men league (optional), website OR contact_email
  * - Club Logo (25%): avatar_url present
  * - Club Bio (20%): club_bio field filled
  * - Photo Gallery (20%): at least 1 club_media entry
@@ -79,7 +81,7 @@ export function useClubProfileStrength({ profile }: UseClubProfileStrengthOption
    * - nationality (country) is filled
    * - base_location (city) is filled
    * - year_founded is filled
-   * - league_division is optional but counts if present
+    * - women/men league divisions are optional
    * - website OR contact_email (at least one) exists
    */
   const isBasicInfoComplete = useCallback(() => {

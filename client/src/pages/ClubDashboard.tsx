@@ -37,11 +37,13 @@ type ClubProfileShape =
     | 'club_history'
     | 'website'
     | 'year_founded'
-    | 'league_division'
     | 'email'
     | 'contact_email'
     | 'contact_email_public'
-  >
+  > & {
+    womens_league_division?: string | null
+    mens_league_division?: string | null
+  }
 
 interface ClubDashboardProps {
   profileData?: ClubProfileShape
@@ -460,9 +462,14 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">League/Division</label>
-                      <p className={profile.league_division ? 'text-gray-900' : 'text-gray-500 italic'}>
-                        {profile.league_division || 'Not specified'}
-                      </p>
+                      {profile.womens_league_division || profile.mens_league_division ? (
+                        <div className="text-gray-900 space-y-1">
+                          {profile.womens_league_division ? <div>Women: {profile.womens_league_division}</div> : null}
+                          {profile.mens_league_division ? <div>Men: {profile.mens_league_division}</div> : null}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 italic">Not specified</p>
+                      )}
                     </div>
 
                     <div>
