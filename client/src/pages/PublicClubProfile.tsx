@@ -22,7 +22,6 @@ type PublicClubProfile = Partial<Profile> &
     | 'website'
     | 'year_founded'
     | 'league_division'
-    | 'email'
     | 'contact_email'
     | 'contact_email_public'
   >
@@ -41,7 +40,6 @@ const PUBLIC_CLUB_FIELDS = [
   'website',
   'year_founded',
   'league_division',
-  'email',
   'contact_email',
   'contact_email_public',
   'social_links',
@@ -170,7 +168,7 @@ export default function PublicClubProfile() {
     <ClubDashboard
       profileData={{
         ...profile,
-        email: profile.email ?? '',
+        email: '',
         contact_email_public: profile.contact_email_public ?? false,
         nationality_country_id: profile.nationality_country_id ?? null,
       }}

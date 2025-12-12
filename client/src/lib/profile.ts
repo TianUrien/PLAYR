@@ -41,7 +41,6 @@ export async function invalidateProfile({ userId, reason }: InvalidateProfileOpt
 }
 
 export function derivePublicContactEmail(profile: ContactEmailCarrier): DerivedContactEmail {
-  const accountEmail = profile.email?.trim() || null
   const contactEmail = profile.contact_email?.trim() || null
   const shouldShow = Boolean(profile.contact_email_public)
 
@@ -53,5 +52,7 @@ export function derivePublicContactEmail(profile: ContactEmailCarrier): DerivedC
     return { shouldShow: true, displayEmail: contactEmail, source: 'contact' }
   }
 
-  return { shouldShow: Boolean(accountEmail), displayEmail: accountEmail, source: accountEmail ? 'account' : null }
+  // Safety: never fall back to exposing the login/account email.
+  // If a user wants to be reachable, they must explicitly set a contact email.
+  return { shouldShow: true, displayEmail: null, source: null }
 }

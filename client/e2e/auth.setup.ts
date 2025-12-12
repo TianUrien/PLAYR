@@ -15,6 +15,66 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') })
 dotenv.config({ path: path.join(__dirname, '..', '..', '.env.local') })
 dotenv.config({ path: path.join(__dirname, '..', '..', '.env') })
 
+function assertSafeE2EEnvironment() {
+  // Hard opt-in: E2E writes are never allowed by default.
+  if (process.env.E2E_ALLOW_WRITES !== '1') {
+    throw new Error(
+      '[E2E Safety Gate] Refusing to run E2E setup because writes are not explicitly enabled.\n' +
+        'Set E2E_ALLOW_WRITES=1 to opt-in (required for auth.setup which can upsert profiles, seed vacancies, and send messages).\n' +
+        'Tip: use a staging/test Supabase project, never production.'
+    )
+  }
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
+  if (!supabaseUrl) {
+    throw new Error('[E2E Safety Gate] Missing VITE_SUPABASE_URL (or SUPABASE_URL).')
+  }
+
+  // Hard allowlist: must match either exact URL or regex.
+  const allowedExact = process.env.E2E_ALLOWED_SUPABASE_URL
+  const allowedRegexRaw = process.env.E2E_ALLOWED_SUPABASE_URL_REGEX
+
+  if (allowedExact) {
+    if (supabaseUrl !== allowedExact) {
+      throw new Error(
+        '[E2E Safety Gate] Refusing to run: Supabase URL does not match allowlisted URL.\n' +
+          `Expected: ${allowedExact}\n` +
+          `Actual:   ${supabaseUrl}`
+      )
+    }
+    return
+  }
+
+  if (allowedRegexRaw) {
+    let allowedRegex: RegExp
+    try {
+      allowedRegex = new RegExp(allowedRegexRaw)
+    } catch {
+      throw new Error(
+        '[E2E Safety Gate] Invalid E2E_ALLOWED_SUPABASE_URL_REGEX. Provide a valid JS regex string.\n' +
+          `Got: ${allowedRegexRaw}`
+      )
+    }
+    if (!allowedRegex.test(supabaseUrl)) {
+      throw new Error(
+        '[E2E Safety Gate] Refusing to run: Supabase URL does not match allowlisted regex.\n' +
+          `Regex:  ${allowedRegexRaw}\n` +
+          `Actual: ${supabaseUrl}`
+      )
+    }
+    return
+  }
+
+  throw new Error(
+    '[E2E Safety Gate] Refusing to run: no allowlist configured.\n' +
+      'Set either E2E_ALLOWED_SUPABASE_URL (exact match) or E2E_ALLOWED_SUPABASE_URL_REGEX (pattern match).\n' +
+      `Current Supabase URL: ${supabaseUrl}`
+  )
+}
+
+// Enforce safety gates as soon as this file is loaded.
+assertSafeE2EEnvironment()
+
 /**
  * Authentication Setup for E2E Tests
  * 
@@ -367,20 +427,20 @@ async function authenticateUser(
 /**
  * Setup: Authenticate Player user
  */
-setup('authenticate as player', async ({ page }) => {
+setup('@smoke authenticate as player', async ({ page }) => {
   await authenticateUser(page, TEST_PLAYER.email, TEST_PLAYER.password, PLAYER_STORAGE_STATE, TEST_PLAYER.profile)
 })
 
 /**
  * Setup: Authenticate Club user  
  */
-setup('authenticate as club', async ({ page }) => {
+setup('@smoke authenticate as club', async ({ page }) => {
   await authenticateUser(page, TEST_CLUB.email, TEST_CLUB.password, CLUB_STORAGE_STATE, TEST_CLUB.profile)
 })
 
 /**
  * Setup: Authenticate Coach user  
  */
-setup('authenticate as coach', async ({ page }) => {
+setup('@smoke authenticate as coach', async ({ page }) => {
   await authenticateUser(page, TEST_COACH.email, TEST_COACH.password, COACH_STORAGE_STATE, TEST_COACH.profile)
 })

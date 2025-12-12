@@ -25,13 +25,8 @@ type PublicProfileBase = Pick<
   | 'date_of_birth'
   | 'position'
   | 'secondary_position'
-  | 'email'
   | 'contact_email'
   | 'contact_email_public'
-  | 'passport_1'
-  | 'passport_2'
-  | 'passport1_country_id'
-  | 'passport2_country_id'
   | 'open_to_play'
   | 'open_to_coach'
 > & { is_test_account?: boolean }
@@ -58,13 +53,8 @@ const PUBLIC_PROFILE_FIELDS = [
   'date_of_birth',
   'position',
   'secondary_position',
-  'email',
   'contact_email',
   'contact_email_public',
-  'passport_1',
-  'passport_2',
-  'passport1_country_id',
-  'passport2_country_id',
   'social_links',
   'is_test_account',
   'open_to_play',
@@ -191,12 +181,12 @@ export default function PublicPlayerProfile() {
   const isOwnProfile = currentUserProfile?.id === profile.id
 
   if (profile.role === 'coach') {
-    return <CoachDashboard profileData={{ ...profile, email: profile.email ?? '', contact_email_public: profile.contact_email_public ?? false }} readOnly={true} isOwnProfile={isOwnProfile} />
+    return <CoachDashboard profileData={{ ...profile, email: '', contact_email_public: profile.contact_email_public ?? false }} readOnly={true} isOwnProfile={isOwnProfile} />
   }
 
   const playerProfileData: PlayerProfileShape = {
     ...profile,
-    email: profile.email ?? '',
+    email: '',
     contact_email_public: profile.contact_email_public ?? false,
   }
 

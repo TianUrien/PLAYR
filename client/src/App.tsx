@@ -102,6 +102,11 @@ function App() {
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/dashboard/profile" element={<DashboardRouter />} />
                 <Route path="/dashboard/club/vacancies/:vacancyId/applicants" element={<ApplicantsList />} />
+
+                {/* Network-only profile routes (alias for clarity; still behind auth) */}
+                <Route path="/members/:username" element={<PublicPlayerProfile />} />
+                <Route path="/members/id/:id" element={<PublicPlayerProfile />} />
+
                 <Route path="/players/:username" element={<PublicPlayerProfile />} />
                 <Route path="/players/id/:id" element={<PublicPlayerProfile />} />
                 <Route path="/clubs/:username" element={<PublicClubProfile />} />

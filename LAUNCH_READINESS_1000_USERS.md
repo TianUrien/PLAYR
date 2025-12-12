@@ -47,6 +47,40 @@ This is a practical, testable checklist to answer: “Are we ready for 1,000 rea
 - No sensitive tokens persisted or exposed in client logs.
 - RLS policies validated for user data access boundaries.
 
+### Identity, Visibility & Role Structure Cleanup (Non-Disruptive) — A–D Record
+
+Date: 2025-12-12
+
+**A) Summary of fixes applied (non-breaking)**
+- Added network-view route aliases for member profiles: `/members/:username` and `/members/id/:id` (old `/players/*` and `/clubs/*` routes left intact).
+- Fixed a dead unauthenticated redirect in references messaging CTA (`/sign-in` → `/`).
+- Aligned UI semantics away from “Public” toward “Network / PLAYR members” across banners and dashboard CTAs.
+- Reduced accidental sensitive exposure:
+  - Network-view profile fetches no longer select `email`.
+  - Contact email display logic no longer falls back to account/login email.
+- Tightened role/field integrity in the edit modal (club-facing labels and fields).
+
+**B) Before → After logic (what changed, concretely)**
+- **Profile visibility semantics**
+  - Before: UI used “Public View” wording and some CTAs routed to `/players/id/:id` despite the product rule that profiles are network-only.
+  - After: UI uses “Network View” wording; primary CTAs route to `/members/id/:id` (while keeping old routes to avoid breaking existing links).
+- **Unauthenticated messaging CTA (references)**
+  - Before: attempted to send users to `/sign-in` (dead route), undermining trust.
+  - After: sends users to `/` with a clear toast (“Sign in to message PLAYR members.”).
+- **Contact email visibility**
+  - Before: if a user enabled “show email” but left `contact_email` blank, the system could fall back to the account/login email (unintended exposure).
+  - After: only an explicitly saved `contact_email` can be displayed; account/login email is never displayed in network views.
+
+**C) Risk / blast radius**
+- Users who previously relied on fallback-to-login-email may become less reachable until they set a `contact_email`.
+- Mitigation: copy now explicitly communicates that contact email must be set to share it, and that login email is never shown.
+- Compatibility: existing profile routes are preserved; `/members/*` is additive.
+
+**D) Constraint confirmation (non-negotiables respected)**
+- Opportunities and vacancies remain public and indexable (no changes to public routing or indexing posture).
+- Profiles and dashboards remain network-only (still behind the auth gate); this cleanup only aligns naming, routing aliases, and data exposure.
+- Verification: client unit tests are green (`npm test`).
+
 ## 5) Operations
 
 **Go criteria (must-have)**

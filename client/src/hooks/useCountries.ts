@@ -50,7 +50,6 @@ interface UseCountriesResult {
   getCountryById: (id: number | null) => Country | undefined
   getCountryByCode: (code: string) => Country | undefined
   isEuCountry: (countryId: number | null) => boolean
-  hasEuPassport: (passport1CountryId: number | null, passport2CountryId: number | null) => boolean
 }
 
 let cachedCountries: Country[] | null = null
@@ -112,10 +111,6 @@ export function useCountries(): UseCountriesResult {
     return country ? EU_COUNTRY_CODES.has(country.code) : false
   }
 
-  const hasEuPassport = (passport1CountryId: number | null, passport2CountryId: number | null): boolean => {
-    return isEuCountry(passport1CountryId) || isEuCountry(passport2CountryId)
-  }
-
   return {
     countries,
     loading,
@@ -123,7 +118,6 @@ export function useCountries(): UseCountriesResult {
     getCountryById,
     getCountryByCode,
     isEuCountry,
-    hasEuPassport,
   }
 }
 

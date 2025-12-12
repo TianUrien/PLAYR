@@ -129,8 +129,8 @@ describe('PublicReferencesSection', () => {
     await user.click(screen.getByRole('button', { name: /message/i }))
 
     await waitFor(() => {
-      expect(toastMocks.addToast).toHaveBeenCalledWith('Sign in to message references.', 'info')
-      expect(navigateMock).toHaveBeenCalledWith('/sign-in')
+        expect(toastMocks.addToast).toHaveBeenCalledWith('Sign in to message PLAYR members.', 'info')
+        expect(navigateMock).toHaveBeenCalledWith('/')
     })
     expect(supabaseState.lastTable).toBe('')
   })

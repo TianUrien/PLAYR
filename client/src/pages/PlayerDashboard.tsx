@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
-import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, ProfileStrengthCard, DualNationalityDisplay, CountryDisplay, AvailabilityPill } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, ProfileStrengthCard, DualNationalityDisplay, AvailabilityPill } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import JourneyTab from '@/components/JourneyTab'
@@ -43,10 +43,6 @@ export type PlayerProfileShape =
     | 'email'
     | 'contact_email'
     | 'contact_email_public'
-    | 'passport_1'
-    | 'passport_2'
-    | 'passport1_country_id'
-    | 'passport2_country_id'
   >
 
 interface PlayerDashboardProps {
@@ -280,52 +276,56 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
                       <Eye className="w-4 h-4" />
-                      Public View
+                      Network View
                     </div>
                     <FriendshipButton profileId={profile.id} />
-                    <button
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={handleSendMessage}
                       disabled={sendingMessage}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium disabled:opacity-50"
+                      className="gap-2"
                     >
                       <MessageCircle className="w-4 h-4" />
                       Message
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={() => navigate(`/players/id/${profile.id}`)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/members/id/${profile.id}`)}
+                      className="gap-2"
                     >
                       <Eye className="w-4 h-4" />
-                      Public View
-                    </button>
-                    <button
+                      Network View
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={() => setShowEditModal(true)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#6366f1] text-white rounded-lg hover:bg-[#4f46e5] transition-colors text-sm font-medium"
+                      className="gap-2"
                     >
                       <Edit2 className="w-4 h-4" />
                       Edit Profile
-                    </button>
+                    </Button>
                     <DashboardMenu />
                   </div>
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 text-gray-600 text-sm md:text-base">
+              <div className="flex flex-wrap items-center gap-3 text-gray-600">
                 {/* Nationality */}
                 <div className="flex items-center gap-1.5">
                   <DualNationalityDisplay
                     primaryCountryId={profile.nationality_country_id}
                     secondaryCountryId={profile.nationality2_country_id}
-                    passport1CountryId={profile.passport1_country_id}
-                    passport2CountryId={profile.passport2_country_id}
                     fallbackText={profile.nationality}
                     mode="compact"
                   />
                 </div>
-                
+
                 <span className="text-gray-400">•</span>
                 
                 {/* Base Location */}
@@ -443,14 +443,14 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                           {publicContact.displayEmail}
                         </a>
                       ) : (
-                        <p className="text-gray-500 italic">Not shown publicly</p>
+                        <p className="text-gray-500 italic">Not shared with other PLAYR members</p>
                       )}
                       {!readOnly && (
                         <p className="text-xs text-gray-500 mt-1">
                           {profile.contact_email_public
                             ? publicContact.source === 'contact'
-                              ? 'Public viewers see this contact email.'
-                              : 'Public viewers see your account email.'
+                              ? 'Other PLAYR members see your contact email.'
+                              : 'Add a contact email to be reachable.'
                             : savedContactEmail
                               ? 'Saved contact email is private.'
                               : 'No contact email saved; only private channels apply.'}
@@ -471,8 +471,6 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                       <DualNationalityDisplay
                         primaryCountryId={profile.nationality_country_id}
                         secondaryCountryId={profile.nationality2_country_id}
-                        passport1CountryId={profile.passport1_country_id}
-                        passport2CountryId={profile.passport2_country_id}
                         fallbackText={profile.nationality}
                         mode="full"
                         className="text-gray-900"
@@ -519,38 +517,6 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                       ) : (
                         <p className="text-gray-500 italic">Not specified</p>
                       )}
-                    </div>
-
-                    <div className="md:col-span-2 space-y-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Passport 1
-                        </label>
-                        {profile.passport1_country_id || profile.passport_1 ? (
-                          <CountryDisplay
-                            countryId={profile.passport1_country_id}
-                            fallbackText={profile.passport_1}
-                            className="text-gray-900"
-                          />
-                        ) : (
-                          <p className="text-gray-500 italic">Not specified</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Passport 2
-                        </label>
-                        {profile.passport2_country_id || profile.passport_2 ? (
-                          <CountryDisplay
-                            countryId={profile.passport2_country_id}
-                            fallbackText={profile.passport_2}
-                            className="text-gray-900"
-                          />
-                        ) : (
-                          <p className="text-gray-500 italic">Not specified</p>
-                        )}
-                      </div>
                     </div>
 
                     {/* Left Column */}

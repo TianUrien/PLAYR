@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, ArrowLeft } from 'lucide-react'
 
 /**
- * PublicViewBanner - Shows when a user is viewing their own profile in public mode
+ * PublicViewBanner - Shows when a user is viewing their own profile in network mode
  * 
  * Displays a fixed banner below the navbar explaining that the user is
  * viewing how others see their profile, with a button to return to their dashboard.
@@ -29,10 +29,10 @@ export default function PublicViewBanner() {
               </div>
               <div className="text-center sm:text-left">
                 <p className="font-semibold text-sm md:text-base">
-                  You are viewing your public profile.
+                  You are viewing your network profile.
                 </p>
                 <p className="text-white/80 text-xs md:text-sm">
-                  This is how others see your information.
+                  This is how other PLAYR members see you.
                 </p>
               </div>
             </div>
@@ -41,7 +41,7 @@ export default function PublicViewBanner() {
               className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#6366f1] rounded-lg hover:bg-white/90 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
             >
               <ArrowLeft className="w-4 h-4" />
-              Return to Dashboard
+              Back to My Profile
             </button>
           </div>
         </div>

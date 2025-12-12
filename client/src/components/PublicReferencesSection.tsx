@@ -47,8 +47,8 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
     if (!targetId) return
 
     if (!user) {
-      addToast('Sign in to message references.', 'info')
-      navigate('/sign-in')
+      addToast('Sign in to message PLAYR members.', 'info')
+      navigate('/')
       return
     }
 

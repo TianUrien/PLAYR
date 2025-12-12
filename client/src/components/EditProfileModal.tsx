@@ -32,10 +32,6 @@ type ProfileFormData = {
   position: string
   secondary_position: string
   gender: string
-  passport_1: string
-  passport_2: string
-  passport1_country_id: number | null
-  passport2_country_id: number | null
   current_club: string
   year_founded: string
   league_division: string
@@ -63,10 +59,6 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   position: profile?.position || '',
   secondary_position: profile?.secondary_position || '',
   gender: profile?.gender || '',
-  passport_1: profile?.passport_1 || '',
-  passport_2: profile?.passport_2 || '',
-  passport1_country_id: profile?.passport1_country_id ?? null,
-  passport2_country_id: profile?.passport2_country_id ?? null,
   current_club: profile?.current_club || '',
   year_founded: profile?.year_founded?.toString() || '',
   league_division: profile?.league_division || '',
@@ -277,10 +269,6 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.secondary_position = formData.secondary_position || null
       optimisticUpdate.gender = formData.gender
       optimisticUpdate.date_of_birth = formData.date_of_birth || null
-      optimisticUpdate.passport_1 = formData.passport_1 || null
-      optimisticUpdate.passport_2 = formData.passport_2 || null
-      optimisticUpdate.passport1_country_id = formData.passport1_country_id
-      optimisticUpdate.passport2_country_id = formData.passport2_country_id
       optimisticUpdate.current_club = formData.current_club || null
       optimisticUpdate.bio = formData.bio || null
       optimisticUpdate.open_to_play = formData.open_to_play
@@ -290,15 +278,12 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.nationality2_country_id = formData.nationality2_country_id
       optimisticUpdate.gender = formData.gender || null
       optimisticUpdate.date_of_birth = formData.date_of_birth || null
-      optimisticUpdate.passport_1 = formData.passport_1 || null
-      optimisticUpdate.passport_2 = formData.passport_2 || null
-      optimisticUpdate.passport1_country_id = formData.passport1_country_id
-      optimisticUpdate.passport2_country_id = formData.passport2_country_id
       optimisticUpdate.bio = formData.bio || null
       optimisticUpdate.open_to_coach = formData.open_to_coach
     } else if (role === 'club') {
       optimisticUpdate.nationality = formData.nationality
       optimisticUpdate.nationality_country_id = formData.nationality_country_id
+      optimisticUpdate.nationality2_country_id = null
       optimisticUpdate.year_founded = formData.year_founded ? parseInt(formData.year_founded) : null
       optimisticUpdate.league_division = formData.league_division || null
       optimisticUpdate.website = formData.website || null
@@ -468,19 +453,21 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
             />
 
             <CountrySelect
-              label="Nationality"
+              label={role === 'club' ? 'Country' : 'Nationality'}
               value={formData.nationality_country_id}
               onChange={handleNationalityChange}
-              placeholder="Select your nationality"
+              placeholder={role === 'club' ? 'Select your club country' : 'Select your nationality'}
               required
             />
 
-            <CountrySelect
-              label="Secondary Nationality (Optional)"
-              value={formData.nationality2_country_id}
-              onChange={(id) => setFormData({ ...formData, nationality2_country_id: id })}
-              placeholder="Select secondary nationality"
-            />
+            {role !== 'club' && (
+              <CountrySelect
+                label="Secondary Nationality (Optional)"
+                value={formData.nationality2_country_id}
+                onChange={(id) => setFormData({ ...formData, nationality2_country_id: id })}
+                placeholder="Select secondary nationality"
+              />
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Account Email</label>
@@ -506,9 +493,9 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                 onChange={(e) => setFormData({ ...formData, contact_email_public: e.target.checked })}
               />
               <span>
-                Show my email on my public profile
+                Share my contact email with other PLAYR members
                 <span className="block text-xs text-gray-500 mt-1">
-                  We'll display this contact email, or your account email if left blank.
+                  Your login email is never shown. Add a contact email above to be reachable.
                 </span>
               </span>
             </label>
@@ -581,21 +568,6 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
                 />
 
-                <CountrySelect
-                  label="Passport 1"
-                  value={formData.passport1_country_id}
-                  onChange={(id) => setFormData({ ...formData, passport1_country_id: id })}
-                  placeholder="Select your primary passport country"
-                  required
-                />
-
-                <CountrySelect
-                  label="Passport 2 (Optional)"
-                  value={formData.passport2_country_id}
-                  onChange={(id) => setFormData({ ...formData, passport2_country_id: id })}
-                  placeholder="Select secondary passport country"
-                />
-
                 <Input
                   label="Current Club (Optional)"
                   type="text"
@@ -664,20 +636,6 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   type="date"
                   value={formData.date_of_birth}
                   onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-                />
-
-                <CountrySelect
-                  label="Passport 1 (Optional)"
-                  value={formData.passport1_country_id}
-                  onChange={(id) => setFormData({ ...formData, passport1_country_id: id })}
-                  placeholder="Select primary passport country"
-                />
-
-                <CountrySelect
-                  label="Passport 2 (Optional)"
-                  value={formData.passport2_country_id}
-                  onChange={(id) => setFormData({ ...formData, passport2_country_id: id })}
-                  placeholder="Select secondary passport country"
                 />
 
                 <div>

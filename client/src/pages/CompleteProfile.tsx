@@ -54,10 +54,6 @@ export default function CompleteProfile() {
     position: '',
     secondaryPosition: '',
     gender: '',
-    passport1: '',
-    passport2: '',
-    passport1CountryId: null as number | null,
-    passport2CountryId: null as number | null,
     yearFounded: '',
     leagueDivision: '',
     website: '',
@@ -165,11 +161,6 @@ export default function CompleteProfile() {
         if (profile.role === 'player') {
           next.position = profile.position ?? prev.position
           next.secondaryPosition = profile.secondary_position ?? prev.secondaryPosition
-        }
-
-        if (profile.role === 'coach') {
-          next.passport1 = profile.passport_1 ?? prev.passport1
-          next.passport2 = profile.passport_2 ?? prev.passport2
         }
       }
 
@@ -284,8 +275,6 @@ export default function CompleteProfile() {
           secondary_position: formData.secondaryPosition || null,
           gender: normalizeGender(formData.gender),
           date_of_birth: formData.dateOfBirth || null,
-          passport1_country_id: formData.passport1CountryId,
-          passport2_country_id: formData.passport2CountryId,
         }
       } else if (userRole === 'coach') {
         updateData = {
@@ -293,10 +282,6 @@ export default function CompleteProfile() {
           nationality2_country_id: formData.nationality2CountryId,
           gender: normalizeGender(formData.gender),
           date_of_birth: formData.dateOfBirth || null,
-          passport_1: formData.passport1 || null,
-          passport_2: formData.passport2 || null,
-          passport1_country_id: formData.passport1CountryId,
-          passport2_country_id: formData.passport2CountryId,
         }
       } else if (userRole === 'club') {
         updateData = {
@@ -686,20 +671,6 @@ export default function CompleteProfile() {
                     icon={<Calendar className="w-5 h-5" />}
                     value={formData.dateOfBirth}
                     onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                  />
-
-                  <CountrySelect
-                    label="Passport 1 (Optional)"
-                    value={formData.passport1CountryId}
-                    onChange={(id) => setFormData({ ...formData, passport1CountryId: id })}
-                    placeholder="Select primary passport country"
-                  />
-
-                  <CountrySelect
-                    label="Passport 2 (Optional)"
-                    value={formData.passport2CountryId}
-                    onChange={(id) => setFormData({ ...formData, passport2CountryId: id })}
-                    placeholder="Select secondary passport country"
                   />
                 </>
               )}

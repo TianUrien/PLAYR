@@ -15,8 +15,6 @@ interface MemberCardProps {
   nationality: string | null
   nationality_country_id?: number | null
   nationality2_country_id?: number | null
-  passport1_country_id?: number | null
-  passport2_country_id?: number | null
   base_location: string | null
   position: string | null
   secondary_position: string | null
@@ -34,8 +32,6 @@ export default function MemberCard({
   nationality,
   nationality_country_id,
   nationality2_country_id,
-  passport1_country_id,
-  passport2_country_id,
   base_location,
   position,
   secondary_position,
@@ -141,8 +137,6 @@ export default function MemberCard({
             <NationalityCardDisplay
               primaryCountryId={nationality_country_id}
               secondaryCountryId={nationality2_country_id}
-              passport1CountryId={passport1_country_id}
-              passport2CountryId={passport2_country_id}
               fallbackText={nationality}
               className="text-gray-700"
             />

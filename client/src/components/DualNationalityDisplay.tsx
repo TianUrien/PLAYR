@@ -5,10 +5,6 @@ interface DualNationalityDisplayProps {
   primaryCountryId: number | null | undefined
   /** Secondary nationality country ID (optional) */
   secondaryCountryId?: number | null
-  /** Primary passport country ID */
-  passport1CountryId?: number | null
-  /** Secondary passport country ID */
-  passport2CountryId?: number | null
   /** Fallback text for primary nationality if no country ID */
   fallbackText?: string | null
   /** Display mode: 'full' for profile pages, 'compact' for inline cards, 'card' for vertical card display */
@@ -18,24 +14,12 @@ interface DualNationalityDisplayProps {
 }
 
 /**
- * Displays dual nationality with EU passport indication.
- * 
- * Full mode (profile headers/pages):
- * 🇦🇷 Argentine
- * 🇮🇹 Italian • EU Passport
- * 
- * Card mode (member cards with vertical layout):
- * • 🇦🇷 Argentina
- * • 🇮🇹 Italy (EU)
- * 
- * Compact mode (inline):
- * 🇦🇷 Argentine, 🇮🇹 Italian EU
+ * Displays nationality (and optional second nationality), with an EU indicator
+ * derived from the nationality country IDs.
  */
 export default function DualNationalityDisplay({
   primaryCountryId,
   secondaryCountryId,
-  passport1CountryId,
-  passport2CountryId,
   fallbackText,
   mode = 'full',
   className = '',
@@ -49,8 +33,9 @@ export default function DualNationalityDisplay({
   const primaryCountry = getCountryById(primaryCountryId ?? null)
   const secondaryCountry = getCountryById(secondaryCountryId ?? null)
 
-  // Check if any passport is EU
-  const hasEu = isEuCountry(passport1CountryId ?? null) || isEuCountry(passport2CountryId ?? null)
+  const hasEuNationality =
+    (primaryCountry?.id ? isEuCountry(primaryCountry.id) : false) ||
+    (secondaryCountry?.id ? isEuCountry(secondaryCountry.id) : false)
 
   // Fallback to legacy text if no structured data
   if (!primaryCountry && !secondaryCountry) {
@@ -65,7 +50,7 @@ export default function DualNationalityDisplay({
       <CompactDisplay
         primaryCountry={primaryCountry}
         secondaryCountry={secondaryCountry}
-        hasEuPassport={hasEu}
+        hasEuNationality={hasEuNationality}
         className={className}
       />
     )
@@ -76,8 +61,6 @@ export default function DualNationalityDisplay({
       <CardDisplay
         primaryCountry={primaryCountry}
         secondaryCountry={secondaryCountry}
-        passport1CountryId={passport1CountryId}
-        passport2CountryId={passport2CountryId}
         isEuCountry={isEuCountry}
         className={className}
       />
@@ -88,9 +71,6 @@ export default function DualNationalityDisplay({
     <FullDisplay
       primaryCountry={primaryCountry}
       secondaryCountry={secondaryCountry}
-      passport1CountryId={passport1CountryId}
-      passport2CountryId={passport2CountryId}
-      hasEuPassport={hasEu}
       isEuCountry={isEuCountry}
       className={className}
     />
@@ -100,11 +80,11 @@ export default function DualNationalityDisplay({
 interface CompactDisplayProps {
   primaryCountry: Country | undefined
   secondaryCountry: Country | undefined
-  hasEuPassport: boolean
+  hasEuNationality: boolean
   className: string
 }
 
-function CompactDisplay({ primaryCountry, secondaryCountry, hasEuPassport, className }: CompactDisplayProps) {
+function CompactDisplay({ primaryCountry, secondaryCountry, hasEuNationality, className }: CompactDisplayProps) {
   const nationalities: { flag: string; name: string }[] = []
 
   if (primaryCountry) {
@@ -129,7 +109,7 @@ function CompactDisplay({ primaryCountry, secondaryCountry, hasEuPassport, class
           {i < nationalities.length - 1 && <span className="mx-1">,</span>}
         </span>
       ))}
-      {hasEuPassport && (
+      {hasEuNationality && (
         <span className="ml-0.5 text-xs text-blue-600 font-medium">EU</span>
       )}
     </span>
@@ -139,8 +119,6 @@ function CompactDisplay({ primaryCountry, secondaryCountry, hasEuPassport, class
 interface CardDisplayProps {
   primaryCountry: Country | undefined
   secondaryCountry: Country | undefined
-  passport1CountryId?: number | null
-  passport2CountryId?: number | null
   isEuCountry: (id: number | null) => boolean
   className: string
 }
@@ -153,15 +131,12 @@ interface CardDisplayProps {
 function CardDisplay({
   primaryCountry,
   secondaryCountry,
-  passport1CountryId,
-  passport2CountryId,
   isEuCountry,
   className,
 }: CardDisplayProps) {
-  // Determine which nationalities/passports are EU
+  // Determine which nationalities are EU
   const primaryIsEu = primaryCountry ? isEuCountry(primaryCountry.id) : false
   const secondaryIsEu = secondaryCountry ? isEuCountry(secondaryCountry.id) : false
-  const hasEuPassport = isEuCountry(passport1CountryId ?? null) || isEuCountry(passport2CountryId ?? null)
 
   // For single nationality, show without bullet
   const hasDualNationality = primaryCountry && secondaryCountry
@@ -171,7 +146,7 @@ function CardDisplay({
       <span className={`inline-flex items-center gap-1.5 ${className}`}>
         <span className="text-base">{primaryCountry.flag_emoji}</span>
         <span>{primaryCountry.name}</span>
-        {(primaryIsEu || hasEuPassport) && (
+        {primaryIsEu && (
           <span className="text-xs text-blue-600 font-medium">(EU)</span>
         )}
       </span>
@@ -195,7 +170,7 @@ function CardDisplay({
           <span className="text-gray-400">•</span>
           <span className="text-base">{secondaryCountry.flag_emoji}</span>
           <span>{secondaryCountry.name}</span>
-          {(secondaryIsEu || (hasEuPassport && !primaryIsEu)) && (
+          {secondaryIsEu && (
             <span className="text-xs text-blue-600 font-medium">(EU)</span>
           )}
         </div>
@@ -207,9 +182,6 @@ function CardDisplay({
 interface FullDisplayProps {
   primaryCountry: Country | undefined
   secondaryCountry: Country | undefined
-  passport1CountryId?: number | null
-  passport2CountryId?: number | null
-  hasEuPassport: boolean
   isEuCountry: (id: number | null) => boolean
   className: string
 }
@@ -217,17 +189,12 @@ interface FullDisplayProps {
 function FullDisplay({
   primaryCountry,
   secondaryCountry,
-  passport1CountryId,
-  passport2CountryId,
-  hasEuPassport,
   isEuCountry,
   className,
 }: FullDisplayProps) {
-  // Determine which nationalities/passports are EU
+  // Determine which nationalities are EU
   const primaryIsEu = primaryCountry ? isEuCountry(primaryCountry.id) : false
   const secondaryIsEu = secondaryCountry ? isEuCountry(secondaryCountry.id) : false
-  const passport1IsEu = isEuCountry(passport1CountryId ?? null)
-  const passport2IsEu = isEuCountry(passport2CountryId ?? null)
 
   return (
     <div className={`flex flex-col gap-0.5 ${className}`}>
@@ -257,14 +224,6 @@ function FullDisplay({
         </div>
       )}
 
-      {/* EU Passport eligibility badge - show if has EU passport but nationalities shown aren't EU */}
-      {hasEuPassport && !primaryIsEu && !secondaryIsEu && (passport1IsEu || passport2IsEu) && (
-        <div className="flex items-center gap-1.5 mt-1">
-          <span className="text-xs text-blue-600 font-medium">
-            ✓ Eligible to work in EU
-          </span>
-        </div>
-      )}
     </div>
   )
 }
@@ -275,8 +234,6 @@ function FullDisplay({
 export function NationalityFlagsInline({
   primaryCountryId,
   secondaryCountryId,
-  passport1CountryId,
-  passport2CountryId,
   fallbackText,
   className = '',
 }: Omit<DualNationalityDisplayProps, 'mode'>) {
@@ -284,8 +241,6 @@ export function NationalityFlagsInline({
     <DualNationalityDisplay
       primaryCountryId={primaryCountryId}
       secondaryCountryId={secondaryCountryId}
-      passport1CountryId={passport1CountryId}
-      passport2CountryId={passport2CountryId}
       fallbackText={fallbackText}
       mode="compact"
       className={className}
@@ -299,8 +254,6 @@ export function NationalityFlagsInline({
 export function NationalityCardDisplay({
   primaryCountryId,
   secondaryCountryId,
-  passport1CountryId,
-  passport2CountryId,
   fallbackText,
   className = '',
 }: Omit<DualNationalityDisplayProps, 'mode'>) {
@@ -308,8 +261,6 @@ export function NationalityCardDisplay({
     <DualNationalityDisplay
       primaryCountryId={primaryCountryId}
       secondaryCountryId={secondaryCountryId}
-      passport1CountryId={passport1CountryId}
-      passport2CountryId={passport2CountryId}
       fallbackText={fallbackText}
       mode="card"
       className={className}

@@ -37,7 +37,7 @@ vi.mock('@/components', () => ({
   CountryDisplay: ({ fallbackText, className }: { countryId?: number | null; fallbackText?: string | null; showNationality?: boolean; className?: string }) => (
     <span data-testid="country-display" className={className}>{fallbackText}</span>
   ),
-  DualNationalityDisplay: ({ fallbackText, className }: { primaryCountryId?: number | null; secondaryCountryId?: number | null; passport1CountryId?: number | null; passport2CountryId?: number | null; fallbackText?: string | null; mode?: string; className?: string }) => (
+  DualNationalityDisplay: ({ fallbackText, className }: { primaryCountryId?: number | null; secondaryCountryId?: number | null; fallbackText?: string | null; mode?: string; className?: string }) => (
     <span data-testid="dual-nationality-display" className={className}>{fallbackText}</span>
   ),
   ScrollableTabs: ({ tabs, activeTab, onTabChange }: { tabs: { id: string; label: string }[]; activeTab: string; onTabChange: (id: string) => void }) => (
@@ -169,10 +169,6 @@ const baseProfile: PlayerProfileShape = {
   email: 'jordan@example.com',
   contact_email: 'jordan@example.com',
   contact_email_public: true,
-  passport_1: null,
-  passport_2: null,
-  passport1_country_id: null,
-  passport2_country_id: null,
 }
 
 type RenderOptions = {
@@ -251,16 +247,17 @@ describe('PlayerDashboard', () => {
     expect(screen.getByRole('link', { name: publicEmail })).toBeInTheDocument()
   })
 
-  it('falls back to account email when contact email is blank but visibility is on', () => {
+  it('does not fall back to account email when contact email is blank (even if visibility is on)', () => {
     renderDashboard({ readOnly: true, profileOverrides: { contact_email: '', contact_email_public: true } })
 
-    expect(screen.getByRole('link', { name: baseProfile.email })).toBeInTheDocument()
+    expect(screen.getByText(/Not shared with other PLAYR members/i)).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: baseProfile.email })).not.toBeInTheDocument()
   })
 
   it('hides the email when visibility is disabled', () => {
     renderDashboard({ readOnly: true, profileOverrides: { contact_email_public: false } })
 
-    expect(screen.getByText(/Not shown publicly/i)).toBeInTheDocument()
+    expect(screen.getByText(/Not shared with other PLAYR members/i)).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: baseProfile.email })).not.toBeInTheDocument()
   })
 

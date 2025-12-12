@@ -1,7 +1,7 @@
 import { useCountries } from '@/hooks/useCountries'
 
 interface CountryDisplayProps {
-  /** The country ID from nationality_country_id, passport1_country_id, etc. */
+  /** The country ID from a normalized *_country_id column (e.g., nationality_country_id). */
   countryId: number | null | undefined
   /** Fallback text to show if countryId is null but we have legacy text */
   fallbackText?: string | null

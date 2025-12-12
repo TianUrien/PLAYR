@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { MapPin, Calendar, Plus, Eye, MessageCircle, Edit, Loader2 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '@/components/Header'
-import { Avatar, CountryDisplay, DashboardMenu, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
+import { Avatar, Button, CountryDisplay, DashboardMenu, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
 import { useClubProfileStrength } from '@/hooks/useClubProfileStrength'
 import VacanciesTab from '@/components/VacanciesTab'
 import ClubMediaTab from '@/components/ClubMediaTab'
@@ -305,13 +305,15 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
                       <Eye className="w-4 h-4" />
-                      Public View
+                      Network View
                     </div>
                     <FriendshipButton profileId={profile.id} />
-                    <button
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={handleSendMessage}
                       disabled={sendingMessage}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium disabled:opacity-50"
+                      className="gap-2"
                     >
                       {sendingMessage ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -319,24 +321,28 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
                         <MessageCircle className="w-4 h-4" />
                       )}
                       {sendingMessage ? 'Starting...' : 'Message'}
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => navigate(`/clubs/id/${profile.id}`)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                      className="gap-2"
                     >
                       <Eye className="w-4 h-4" />
-                      Public View
-                    </button>
-                    <button
+                      Network View
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
                       onClick={() => setShowEditModal(true)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
+                      className="gap-2"
                     >
                       <Edit className="w-4 h-4" />
                       Edit Profile
-                    </button>
+                    </Button>
                     <DashboardMenu />
                   </div>
                 )}
@@ -485,14 +491,14 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
                           {publicContact.displayEmail}
                         </a>
                       ) : (
-                        <p className="text-gray-500 italic">Not shown publicly</p>
+                        <p className="text-gray-500 italic">Not shared with other PLAYR members</p>
                       )}
                       {!readOnly && (
                         <p className="text-xs text-gray-500 mt-1">
                           {profile.contact_email_public
                             ? publicContact.source === 'contact'
-                              ? 'Public viewers see this contact email.'
-                              : 'Public viewers see your account email.'
+                              ? 'Other PLAYR members see your contact email.'
+                              : 'Add a contact email to be reachable.'
                             : savedContactEmail
                               ? 'Saved contact email is private.'
                               : 'No contact email saved; only private channels apply.'}
