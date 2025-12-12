@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Menu, Settings, LogOut, X } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
@@ -18,19 +19,25 @@ export default function DashboardMenu() {
   const toggleNotificationDrawer = useNotificationStore((state) => state.toggleDrawer)
   const closeNotificationsDrawer = () => toggleNotificationDrawer(false)
   const [isOpen, setIsOpen] = useState(false)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Close menu when clicking outside
+  const canUseDOM = typeof window !== 'undefined' && typeof document !== 'undefined'
+
+  // Close menu when clicking outside (works with portal)
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
-      }
+    const handlePointerDownOutside = (event: Event) => {
+      const target = event.target as Node | null
+      if (!target) return
+
+      const clickedButton = buttonRef.current?.contains(target) ?? false
+      const clickedDropdown = dropdownRef.current?.contains(target) ?? false
+      if (!clickedButton && !clickedDropdown) setIsOpen(false)
     }
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
+      document.addEventListener('pointerdown', handlePointerDownOutside)
+      return () => document.removeEventListener('pointerdown', handlePointerDownOutside)
     }
   }, [isOpen])
 
@@ -67,10 +74,11 @@ export default function DashboardMenu() {
   }
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative">
       {/* Hamburger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
+        ref={buttonRef}
         className={`p-2.5 rounded-xl transition-all duration-200 ${
           isOpen
             ? 'bg-gray-100 text-gray-900'
@@ -85,32 +93,35 @@ export default function DashboardMenu() {
         )}
       </button>
 
-      {/* Dropdown Menu */}
-      {isOpen && (
-        <div 
-          className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-200/50 py-2 z-[9999] animate-fade-in"
-          role="menu"
-          aria-orientation="vertical"
-        >
-          <button
-            onClick={() => handleNavigate('/settings')}
-            className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-3"
-            role="menuitem"
+      {/* Dropdown Menu (portaled to body to avoid clipping/stacking issues on mobile) */}
+      {isOpen && canUseDOM &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            className="fixed right-[calc(1rem+env(safe-area-inset-right))] top-[calc(4.5rem+env(safe-area-inset-top))] w-48 bg-white rounded-xl shadow-2xl border border-gray-200/50 py-2 z-[9999] animate-fade-in"
+            role="menu"
+            aria-orientation="vertical"
           >
-            <Settings className="w-5 h-5" />
-            Settings
-          </button>
-          <div className="h-px bg-gray-200 my-1" />
-          <button
-            onClick={handleSignOut}
-            className="w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors flex items-center gap-3"
-            role="menuitem"
-          >
-            <LogOut className="w-5 h-5" />
-            Sign Out
-          </button>
-        </div>
-      )}
+            <button
+              onClick={() => handleNavigate('/settings')}
+              className="w-full text-left px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-3"
+              role="menuitem"
+            >
+              <Settings className="w-5 h-5" />
+              Settings
+            </button>
+            <div className="h-px bg-gray-200 my-1" />
+            <button
+              onClick={handleSignOut}
+              className="w-full text-left px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors flex items-center gap-3"
+              role="menuitem"
+            >
+              <LogOut className="w-5 h-5" />
+              Sign Out
+            </button>
+          </div>,
+          document.body
+        )}
     </div>
   )
 }
