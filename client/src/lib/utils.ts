@@ -25,15 +25,32 @@ export function parseDateOnly(dateString: string | null | undefined): Date | nul
   
   // Handle ISO datetime strings (with time component) - use as-is
   if (dateString.includes('T')) {
-    return new Date(dateString)
+    const d = new Date(dateString)
+    return Number.isNaN(d.getTime()) ? null : d
   }
   
   // Parse YYYY-MM-DD format without timezone conversion
-  const [year, month, day] = dateString.split('-').map(Number)
-  if (!year || !month || !day) return null
-  
+  // Validate strictly to avoid rollover dates like 2025-02-31.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return null
+
+  const [yearStr, monthStr, dayStr] = dateString.split('-')
+  const year = Number(yearStr)
+  const month = Number(monthStr)
+  const day = Number(dayStr)
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null
+  if (month < 1 || month > 12) return null
+  if (day < 1 || day > 31) return null
+
   // Create date using local timezone (month is 0-indexed)
-  return new Date(year, month - 1, day)
+  const date = new Date(year, month - 1, day)
+  if (Number.isNaN(date.getTime())) return null
+
+  // Ensure the constructed date matches the input components exactly (no rollover)
+  if (date.getFullYear() !== year) return null
+  if (date.getMonth() !== month - 1) return null
+  if (date.getDate() !== day) return null
+
+  return date
 }
 
 /**
@@ -79,6 +96,9 @@ export function calculateAge(dateOfBirth: string | null | undefined): number | n
   if (!birthDate) return null
   
   const today = new Date()
+  // Guard against future dates producing negative ages
+  if (birthDate.getTime() > today.getTime()) return null
+
   let age = today.getFullYear() - birthDate.getFullYear()
   const monthDiff = today.getMonth() - birthDate.getMonth()
   
