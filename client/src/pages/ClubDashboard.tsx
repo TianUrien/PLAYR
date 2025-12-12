@@ -534,12 +534,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
                   </div>
                 </div>
 
-                <section data-section="gallery" className="space-y-4 pt-6 border-t border-gray-200">
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Media</h2>
-                    <p className="text-gray-600 text-sm">Club gallery content now surfaces directly on your overview.</p>
-                  </div>
-
+                <section data-section="gallery" className="pt-6 border-t border-gray-200">
                   <ClubMediaTab clubId={profile.id} readOnly={readOnly} />
                 </section>
 

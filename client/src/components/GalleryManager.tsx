@@ -73,7 +73,7 @@ const MODE_CONFIG: Record<GalleryMode, ModeConfig> = {
     ownerColumn: 'club_id',
     urlField: 'file_url',
     title: 'Photo Gallery',
-    description: 'Upload and manage your club photos',
+    description: 'Manage your club photos',
     emptyStateDescription: 'No photos yet',
     addButtonLabel: 'Add Photos',
     optimizeUploads: false,

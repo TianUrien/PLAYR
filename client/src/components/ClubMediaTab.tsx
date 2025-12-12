@@ -12,7 +12,7 @@ export default function ClubMediaTab({ clubId, readOnly = false }: ClubMediaTabP
       entityId={clubId}
       readOnly={readOnly}
       title="Photo Gallery"
-      description="Upload and manage your club photos"
+      description="Manage your club photos"
       emptyStateDescription="No photos yet"
       addButtonLabel="Add Photos"
     />
