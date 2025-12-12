@@ -19,6 +19,8 @@ const authDir = path.join(__dirname, 'e2e/.auth')
 export const PLAYER_STORAGE_STATE = path.join(authDir, 'player.json')
 export const CLUB_STORAGE_STATE = path.join(authDir, 'club.json')
 
+const includeWebkit = process.env.PLAYWRIGHT_WEBKIT === '1'
+
 /**
  * Playwright configuration for PLAYR E2E tests
  * @see https://playwright.dev/docs/test-configuration
@@ -86,6 +88,26 @@ export default defineConfig({
       dependencies: ['setup'],
       testMatch: /.*\.club\.spec\.ts/,
     },
+
+    // Optional WebKit projects (iOS Safari proxy). Enable with PLAYWRIGHT_WEBKIT=1
+    ...(includeWebkit
+      ? [
+          {
+            name: 'webkit',
+            use: { ...devices['iPhone 14'] },
+            testIgnore: /.*\.authenticated\.spec\.ts|.*\.player\.spec\.ts|.*\.club\.spec\.ts/,
+          },
+          {
+            name: 'webkit-player',
+            use: {
+              ...devices['iPhone 14'],
+              storageState: PLAYER_STORAGE_STATE,
+            },
+            dependencies: ['setup'],
+            testMatch: /.*\.authenticated\.spec\.ts|.*\.player\.spec\.ts/,
+          },
+        ]
+      : []),
   ],
 
   /* Run your local dev server before starting the tests */
