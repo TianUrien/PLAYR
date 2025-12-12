@@ -39,7 +39,8 @@ test.describe('@smoke player', () => {
 
     await expect(page.getByRole('heading', { level: 1, name: /e2e test fc/i })).toBeVisible({ timeout: 20000 })
 
-    await page.getByRole('button', { name: /message/i }).click()
+    // Avoid strict-mode ambiguity with the "Messages" nav button.
+    await page.getByRole('button', { name: 'Message', exact: true }).click()
 
     // Messaging page should load
     await expect(page).toHaveURL(/\/messages/i, { timeout: 20000 })
@@ -50,7 +51,8 @@ test.describe('@smoke player', () => {
     await page.goto(`/clubs/${E2E_CLUB_USERNAME}`)
     await expect(page.getByRole('heading', { level: 1, name: /e2e test fc/i })).toBeVisible({ timeout: 20000 })
 
-    await page.getByRole('button', { name: /message/i }).click()
+    // Avoid strict-mode ambiguity with the "Messages" nav button.
+    await page.getByRole('button', { name: 'Message', exact: true }).click()
     await expect(page).toHaveURL(/\/messages/i, { timeout: 20000 })
 
     const message = `E2E smoke message ${Date.now()}`
