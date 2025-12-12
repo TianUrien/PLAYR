@@ -1,9 +1,11 @@
 import { Zap } from 'lucide-react'
 
-type AvailabilityType = 'play' | 'coach'
+type AvailabilityVariant = 'play' | 'coach'
+type AvailabilitySize = 'sm' | 'md'
 
 interface AvailabilityPillProps {
-  type: AvailabilityType
+  variant: AvailabilityVariant
+  size?: AvailabilitySize
   className?: string
 }
 
@@ -19,28 +21,34 @@ interface AvailabilityPillProps {
  * - Players (Open to Play): Green gradient
  * - Coaches (Open to Coach): Purple/violet gradient
  */
-export default function AvailabilityPill({ type, className = '' }: AvailabilityPillProps) {
-  const isPlay = type === 'play'
+export default function AvailabilityPill({ variant, size = 'md', className = '' }: AvailabilityPillProps) {
+  const isPlay = variant === 'play'
   
   const gradientClass = isPlay
     ? 'bg-gradient-to-r from-emerald-400 to-green-500'
     : 'bg-gradient-to-r from-violet-500 to-purple-600'
   
   const label = isPlay ? 'Open to Play' : 'Open to Coach'
+  
+  const sizeClasses = size === 'sm' 
+    ? 'px-2 py-0.5 text-[10px]' 
+    : 'px-3 py-1 text-xs'
+  
+  const iconSize = size === 'sm' ? 'w-2.5 h-2.5' : 'w-3 h-3'
 
   return (
     <span
       className={`
         inline-flex items-center gap-1.5
-        px-3 py-1
+        ${sizeClasses}
         rounded-full
-        text-white text-xs font-medium
+        text-white font-medium
         ${gradientClass}
         shadow-sm
         ${className}
       `}
     >
-      <Zap className="w-3 h-3" fill="currentColor" />
+      <Zap className={iconSize} fill="currentColor" />
       {label}
     </span>
   )
@@ -65,12 +73,12 @@ export function ConditionalAvailabilityPill({
 }: ConditionalAvailabilityPillProps) {
   // Players with open_to_play = true
   if (role === 'player' && openToPlay) {
-    return <AvailabilityPill type="play" className={className} />
+    return <AvailabilityPill variant="play" className={className} />
   }
   
   // Coaches with open_to_coach = true
   if (role === 'coach' && openToCoach) {
-    return <AvailabilityPill type="coach" className={className} />
+    return <AvailabilityPill variant="coach" className={className} />
   }
   
   // Clubs or inactive availability: render nothing
