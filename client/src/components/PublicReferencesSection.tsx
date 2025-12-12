@@ -136,9 +136,9 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
         onScroll={updateScrollButtons}
         onLoad={updateScrollButtons}
         className={cn(
-          'flex gap-4 overflow-x-auto pb-2 scrollbar-hide',
+          'flex gap-3 overflow-x-auto pb-2 scrollbar-hide',
           'snap-x snap-mandatory scroll-smooth',
-          '-mx-2 px-2' // Allow cards to peek from edges
+          '-mx-1 px-1' // Minimal edge peek
         )}
       >
         {acceptedReferences.map((reference) => (
@@ -178,7 +178,7 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
   )
 
   return (
-    <section className="space-y-4 rounded-[30px] border border-slate-200 bg-white/95 p-6 shadow-[0_24px_80px_rgba(15,23,42,0.08)]">
+    <section className="space-y-4 rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-sm sm:p-5">
       <header className="space-y-1">
         <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Trusted References</p>
         <h3 className="text-xl font-bold text-gray-900">{primaryName ? `${primaryName}'s trusted circle` : 'Trusted circle'}</h3>

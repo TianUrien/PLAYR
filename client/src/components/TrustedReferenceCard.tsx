@@ -1,5 +1,5 @@
-import { type ReactNode, useMemo } from 'react'
-import { ShieldCheck, MessageCircle, Loader2 } from 'lucide-react'
+import { type ReactNode, useMemo, useState } from 'react'
+import { ShieldCheck, MessageCircle, Loader2, Quote } from 'lucide-react'
 import Avatar from './Avatar'
 import RoleBadge from './RoleBadge'
 import { cn } from '@/lib/utils'
@@ -20,14 +20,12 @@ interface TrustedReferenceCardProps {
   showShield?: boolean
   messageLabel?: string
   onOpenProfile?: (profileId: string | null, role?: string | null) => void
-  /** Max characters for endorsement text (carousel only). Default: 180 */
+  /** Max characters for endorsement text before truncation. Default: 120 */
   maxEndorsementLength?: number
 }
 
-const truncateText = (text: string, maxLength: number): string => {
-  if (text.length <= maxLength) return text
-  return text.slice(0, maxLength).trimEnd() + '…'
-}
+/** Character threshold for showing "Read more" */
+const TRUNCATION_THRESHOLD = 120
 
 export default function TrustedReferenceCard({
   reference,
@@ -41,8 +39,10 @@ export default function TrustedReferenceCard({
   showShield = true,
   messageLabel = 'Message',
   onOpenProfile,
-  maxEndorsementLength = 180,
+  maxEndorsementLength = TRUNCATION_THRESHOLD,
 }: TrustedReferenceCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false)
+  
   const profileName = reference.profile?.fullName ?? 'PLAYR Member'
   const profileInitials = reference.profile?.fullName?.slice(0, 2) ?? 'PM'
   const profileDetails = useMemo(() => {
@@ -52,20 +52,23 @@ export default function TrustedReferenceCard({
 
   const messageDisabled = disabled || !reference.profile?.id || messageLoading
   const isCarousel = layout === 'carousel'
-  const layoutClasses = isCarousel ? 'w-[300px] min-w-[300px] max-w-[300px] flex-shrink-0' : ''
+  // Responsive width: fills mobile viewport nicely, fixed on larger screens
+  const layoutClasses = isCarousel 
+    ? 'w-[calc(100vw-4rem)] min-w-[280px] max-w-[320px] flex-shrink-0 sm:w-[320px]' 
+    : ''
   const canNavigateProfile = Boolean(onOpenProfile && reference.profile?.id)
 
-  const endorsementCopy = useMemo(() => {
-    const rawText = reference.endorsementText?.trim()
-    if (!rawText) return endorsementFallback
-    
-    const quoted = `"${rawText}"`
-    // Only truncate in carousel layout
-    if (isCarousel && quoted.length > maxEndorsementLength) {
-      return `"${truncateText(rawText, maxEndorsementLength - 3)}"`
-    }
-    return quoted
-  }, [reference.endorsementText, endorsementFallback, isCarousel, maxEndorsementLength])
+  const rawEndorsement = reference.endorsementText?.trim() ?? ''
+  const hasEndorsement = rawEndorsement.length > 0
+  const needsTruncation = rawEndorsement.length > maxEndorsementLength
+  
+  const endorsementDisplay = useMemo(() => {
+    if (!hasEndorsement) return endorsementFallback
+    if (isExpanded || !needsTruncation) return `"${rawEndorsement}"`
+    // Truncate at word boundary
+    const truncated = rawEndorsement.slice(0, maxEndorsementLength).replace(/\s+\S*$/, '')
+    return `"${truncated}…"`
+  }, [rawEndorsement, hasEndorsement, endorsementFallback, isExpanded, needsTruncation, maxEndorsementLength])
 
   const handleOpenProfile = () => {
     if (!canNavigateProfile) return
@@ -75,18 +78,32 @@ export default function TrustedReferenceCard({
   return (
     <article
       className={cn(
-        'relative flex flex-col overflow-hidden rounded-[26px] border border-[#f4d58a] bg-gradient-to-b from-white via-white to-[#fff9ef] p-5 text-slate-900 shadow-[0_30px_90px_rgba(248,196,105,0.28)] transition-transform hover:-translate-y-0.5',
+        // Softer gold styling - premium but not "warning box"
+        'relative flex flex-col overflow-hidden rounded-2xl',
+        'border border-amber-200/50 bg-gradient-to-b from-white via-white to-amber-50/30',
+        'p-5 text-slate-900',
+        'shadow-sm shadow-amber-100/40',
+        'transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:shadow-amber-100/50',
         layoutClasses,
         className
       )}
     >
-      <div className="pointer-events-none absolute inset-0 rounded-[26px] border border-white/50" />
-      <div className="flex items-start gap-4">
+      {/* Subtle quote watermark - smaller and more subtle */}
+      <Quote 
+        className="pointer-events-none absolute -right-1 -top-1 h-12 w-12 rotate-12 text-amber-100/40" 
+        aria-hidden 
+      />
+      
+      {/* Inner glow border */}
+      <div className="pointer-events-none absolute inset-0 rounded-2xl border border-white/50" />
+      
+      {/* Header: Avatar + Info */}
+      <div className="relative flex items-start gap-4">
         {canNavigateProfile ? (
           <button
             type="button"
             onClick={handleOpenProfile}
-            className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500"
+            className="flex-shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500"
             aria-label={`View ${profileName}'s profile`}
           >
             <Avatar
@@ -94,7 +111,7 @@ export default function TrustedReferenceCard({
               alt={profileName}
               initials={profileInitials}
               size="md"
-              className="shadow-[0_10px_25px_rgba(15,23,42,0.15)]"
+              className="shadow-md"
             />
           </button>
         ) : (
@@ -103,44 +120,72 @@ export default function TrustedReferenceCard({
             alt={profileName}
             initials={profileInitials}
             size="md"
-            className="shadow-[0_10px_25px_rgba(15,23,42,0.15)]"
+            className="flex-shrink-0 shadow-md"
           />
         )}
-        <div className="flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
               {canNavigateProfile ? (
                 <button
                   type="button"
                   onClick={handleOpenProfile}
-                  className="text-left text-base font-semibold text-slate-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500"
+                  className="truncate text-left text-base font-semibold text-slate-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500"
                 >
                   {profileName}
                 </button>
               ) : (
-                <p className="text-base font-semibold text-slate-900">{profileName}</p>
+                <p className="truncate text-base font-semibold text-slate-900">{profileName}</p>
               )}
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 <RoleBadge role={reference.profile?.role ?? undefined} className="px-2 py-0.5 text-[11px]" />
-                <span className="font-medium text-slate-500">{reference.relationshipType}</span>
+                <span className="text-xs font-medium text-slate-500">{reference.relationshipType}</span>
               </div>
             </div>
-            {showShield && <ShieldCheck className="h-5 w-5 text-emerald-500" aria-hidden />}
+            {showShield && (
+              <ShieldCheck className="h-5 w-5 flex-shrink-0 text-emerald-500" aria-hidden />
+            )}
           </div>
-          {profileDetails && <p className="mt-2 text-sm font-medium text-slate-600">{profileDetails}</p>}
+          {profileDetails && (
+            <p className="mt-2 truncate text-sm text-slate-500">{profileDetails}</p>
+          )}
         </div>
       </div>
 
-      <p className="mt-4 text-sm text-slate-600 break-words whitespace-normal">{endorsementCopy}</p>
+      {/* Endorsement Quote */}
+      <div className="relative mt-5">
+        <p 
+          className={cn(
+            'text-sm leading-relaxed text-slate-600',
+            !hasEndorsement && 'italic text-slate-400',
+            // Smooth height transition
+            'transition-all duration-300 ease-out'
+          )}
+        >
+          {endorsementDisplay}
+        </p>
+        
+        {/* Read more / Show less toggle */}
+        {hasEndorsement && needsTruncation && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="mt-2 text-sm font-medium text-amber-600 hover:text-amber-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+          >
+            {isExpanded ? 'Show less' : 'Read more'}
+          </button>
+        )}
+      </div>
 
+      {/* Action buttons */}
       {(secondaryAction || onMessage) && (
-        <div className="mt-5 flex flex-wrap items-center gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-amber-100/40 pt-3">
           {onMessage && (
             <button
               type="button"
               onClick={() => onMessage(reference.profile?.id ?? null)}
               disabled={messageDisabled}
-              className="inline-flex items-center gap-2 rounded-full border border-transparent bg-gradient-to-r from-[#21c97a] to-[#14b869] px-5 py-2 text-sm font-semibold text-white shadow-[0_15px_35px_rgba(32,201,122,0.35)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-emerald-500/20 transition-all hover:shadow-md hover:shadow-emerald-500/25 hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {messageLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
               <span>{messageLoading ? 'Messaging…' : messageLabel}</span>

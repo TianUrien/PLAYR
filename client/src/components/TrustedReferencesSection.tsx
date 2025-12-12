@@ -206,9 +206,9 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
         </header>
 
         {loading ? (
-          <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2 [scrollbar-width:none]">
+          <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none]">
             {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="min-w-[220px] flex-shrink-0 rounded-3xl border border-gray-100 bg-gray-50 p-4 shadow-sm animate-pulse">
+              <div key={index} className="min-w-[220px] flex-shrink-0 rounded-2xl border border-gray-100 bg-gray-50 p-4 shadow-sm animate-pulse">
                 <div className="mb-4 h-4 w-2/3 rounded bg-gray-200" />
                 <div className="h-3 w-full rounded bg-gray-100" />
                 <div className="mt-2 h-3 w-3/4 rounded bg-gray-100" />
@@ -216,11 +216,11 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
             ))}
           </div>
         ) : acceptedReferences.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-gray-200 bg-white/90 p-6 text-center">
+          <div className="rounded-2xl border border-dashed border-gray-200 bg-white/90 p-5 text-center">
             <p className="text-sm text-gray-600">No trusted references yet. This user hasn&apos;t added any references on PLAYR.</p>
           </div>
         ) : (
-          <div className="-mx-2 flex gap-4 overflow-x-auto px-2 pb-2 [scrollbar-width:none]">
+          <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none]">
             {acceptedReferences.map((reference) => (
               <TrustedReferenceCard
                 key={reference.id}
@@ -311,17 +311,17 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
           <h3 className="text-lg font-semibold text-gray-900">Trusted contacts ({acceptedCount}/{maxReferences})</h3>
           {!isOwner && <p className="text-sm text-gray-500">Message anyone to learn more.</p>}
         </div>
-        <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-3 [scrollbar-width:none] sm:mx-0 sm:px-0">
+        <div className="-mx-2 flex gap-3 overflow-x-auto px-2 pb-3 [scrollbar-width:none] sm:mx-0 sm:px-0">
           {loading && acceptedReferences.length === 0 ? (
             Array.from({ length: 2 }).map((_, index) => (
-              <div key={index} className="min-w-[280px] flex-shrink-0 rounded-3xl border border-gray-100 bg-gray-50 p-5 shadow-sm animate-pulse">
+              <div key={index} className="min-w-[280px] flex-shrink-0 rounded-2xl border border-gray-100 bg-gray-50 p-4 shadow-sm animate-pulse">
                 <div className="mb-4 h-4 w-1/2 rounded bg-gray-200" />
                 <div className="mb-2 h-3 w-3/4 rounded bg-gray-200" />
                 <div className="h-24 rounded-xl bg-gray-200" />
               </div>
             ))
           ) : acceptedReferences.length === 0 ? (
-            <div className="min-w-full rounded-3xl border border-dashed border-gray-200 bg-white/80 p-5 text-center text-sm text-gray-500">
+            <div className="min-w-full rounded-2xl border border-dashed border-gray-200 bg-white/80 p-4 text-center text-sm text-gray-500">
               {canCollectReferences
                 ? 'No trusted references yet. Send a request to get started.'
                 : 'You do not have any trusted references selected.'}
