@@ -88,7 +88,7 @@ export default function DashboardMenu() {
       {/* Dropdown Menu */}
       {isOpen && (
         <div 
-          className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-200/50 py-2 z-50 animate-fade-in"
+          className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-200/50 py-2 z-[9999] animate-fade-in"
           role="menu"
           aria-orientation="vertical"
         >

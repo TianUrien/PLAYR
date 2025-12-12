@@ -233,7 +233,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-12">
         {/* Profile Header */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6 overflow-visible">
           <div className="flex flex-col md:flex-row gap-6">
             {/* Avatar */}
             <div className="flex-shrink-0">

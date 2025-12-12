@@ -289,7 +289,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
       {readOnly && isOwnProfile && <PublicViewBanner />}
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-12">
-        <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm mb-6 animate-fade-in">
+        <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm mb-6 animate-fade-in overflow-visible">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
             <Avatar
               src={profile.avatar_url}
