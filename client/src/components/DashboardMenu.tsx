@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Menu, Settings, LogOut, X } from 'lucide-react'
@@ -10,7 +10,7 @@ import { useNotificationStore } from '@/lib/notifications'
  * DashboardMenu - Hamburger menu for Dashboard pages
  * 
  * Contains Settings and Sign Out options.
- * Positioned in the top-right corner of Dashboard pages.
+ * Dropdown is anchored to the hamburger button position.
  */
 export default function DashboardMenu() {
   const navigate = useNavigate()
@@ -19,10 +19,54 @@ export default function DashboardMenu() {
   const toggleNotificationDrawer = useNotificationStore((state) => state.toggleDrawer)
   const closeNotificationsDrawer = () => toggleNotificationDrawer(false)
   const [isOpen, setIsOpen] = useState(false)
+  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number } | null>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   const canUseDOM = typeof window !== 'undefined' && typeof document !== 'undefined'
+
+  // Calculate dropdown position based on button location
+  const updateDropdownPosition = useCallback(() => {
+    if (!buttonRef.current) return
+    
+    const buttonRect = buttonRef.current.getBoundingClientRect()
+    const dropdownWidth = 192 // w-48 = 12rem = 192px
+    const viewportWidth = window.innerWidth
+    
+    // Position dropdown below the button, aligned to button's left edge
+    let left = buttonRect.left
+    
+    // Ensure dropdown doesn't overflow right edge of viewport
+    if (left + dropdownWidth > viewportWidth - 16) {
+      left = viewportWidth - dropdownWidth - 16
+    }
+    
+    // Ensure dropdown doesn't overflow left edge
+    if (left < 16) {
+      left = 16
+    }
+    
+    setDropdownPosition({
+      top: buttonRect.bottom + 8, // 8px gap below button
+      left
+    })
+  }, [])
+
+  // Update position when menu opens or on scroll/resize
+  useEffect(() => {
+    if (!isOpen) return
+    
+    updateDropdownPosition()
+    
+    const handleUpdate = () => updateDropdownPosition()
+    window.addEventListener('scroll', handleUpdate, true)
+    window.addEventListener('resize', handleUpdate)
+    
+    return () => {
+      window.removeEventListener('scroll', handleUpdate, true)
+      window.removeEventListener('resize', handleUpdate)
+    }
+  }, [isOpen, updateDropdownPosition])
 
   // Close menu when clicking outside (works with portal)
   useEffect(() => {
@@ -93,12 +137,16 @@ export default function DashboardMenu() {
         )}
       </button>
 
-      {/* Dropdown Menu (portaled to body to avoid clipping/stacking issues on mobile) */}
-      {isOpen && canUseDOM &&
+      {/* Dropdown Menu (portaled to body, anchored to hamburger button position) */}
+      {isOpen && canUseDOM && dropdownPosition &&
         createPortal(
           <div
             ref={dropdownRef}
-            className="fixed right-[calc(1rem+env(safe-area-inset-right))] top-[calc(4.5rem+env(safe-area-inset-top))] w-48 bg-white rounded-xl shadow-2xl border border-gray-200/50 py-2 z-[9999] animate-fade-in"
+            className="fixed w-48 bg-white rounded-xl shadow-2xl border border-gray-200/50 py-2 z-[9999] animate-fade-in"
+            style={{
+              top: dropdownPosition.top,
+              left: dropdownPosition.left,
+            }}
             role="menu"
             aria-orientation="vertical"
           >
