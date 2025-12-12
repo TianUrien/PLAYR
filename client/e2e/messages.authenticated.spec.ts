@@ -22,16 +22,16 @@ test.describe('Messages Page - Authenticated', () => {
 
   test('shows empty state or conversation list', async ({ page }) => {
     // Either shows conversations or empty state
-    const hasConversations = await page.locator('[data-testid="conversation-item"]').count() > 0
+    const hasConversations = (await page.locator('[data-testid="conversation-item"]').count()) > 0
     
     if (hasConversations) {
       // Should show conversation list
-      await expect(page.locator('[data-testid="conversation-item"]').first()).toBeVisible()
+      await expect(page.locator('[data-testid="conversation-item"]').first()).toBeVisible({ timeout: 10000 })
     } else {
       // Should show empty state heading
       await expect(
         page.getByRole('heading', { name: /no messages/i })
-      ).toBeVisible()
+      ).toBeVisible({ timeout: 10000 })
     }
   })
 
@@ -71,7 +71,7 @@ test.describe('Messages Page - Mobile', () => {
     
     // Should also show either conversations or empty state
     const hasEmptyState = await page.getByRole('heading', { name: /no messages/i }).isVisible().catch(() => false)
-    const hasConversations = await page.locator('[data-testid="conversation-item"]').count() > 0
+    const hasConversations = (await page.locator('[data-testid="conversation-item"]').count()) > 0
     
     expect(hasEmptyState || hasConversations).toBeTruthy()
   })

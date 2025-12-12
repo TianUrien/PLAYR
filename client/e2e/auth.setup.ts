@@ -68,7 +68,10 @@ function assertSafeE2EEnvironment() {
   throw new Error(
     '[E2E Safety Gate] Refusing to run: no allowlist configured.\n' +
       'Set either E2E_ALLOWED_SUPABASE_URL (exact match) or E2E_ALLOWED_SUPABASE_URL_REGEX (pattern match).\n' +
-      `Current Supabase URL: ${supabaseUrl}`
+      `Current Supabase URL: ${supabaseUrl}\n\n` +
+      'Local example (safe for localhost only):\n' +
+      '  export E2E_ALLOW_WRITES=1\n' +
+      "  export E2E_ALLOWED_SUPABASE_URL_REGEX='^(http://127\\.0\\.0\\.1:54321|http://localhost:54321)$'\n"
   )
 }
 

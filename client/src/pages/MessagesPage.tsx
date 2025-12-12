@@ -875,47 +875,47 @@ export default function MessagesPage() {
 
   const rootContainerClasses = isMobile
     ? 'flex flex-1 min-h-0 flex-col bg-white'
-    : 'flex flex-1 min-h-0 flex-col overflow-hidden bg-gray-50'
+    : 'flex h-screen flex-col bg-gray-100'
 
   const mainPaddingClasses = isMobile
     ? shouldHideGlobalHeader
-      ? 'mx-auto w-full max-w-7xl px-0 md:px-6'
-      : 'mx-auto w-full max-w-7xl px-4 pb-4 pt-[calc(var(--app-header-offset,0px)+1rem)] md:px-6'
-    : 'mx-auto w-full max-w-7xl px-4 pb-12 pt-[calc(var(--app-header-offset,0px)+1.5rem)] md:px-6'
+      ? 'mx-auto w-full max-w-7xl px-0'
+      : 'mx-auto w-full max-w-7xl px-4 pb-4 pt-4'
+    : 'mx-auto w-full max-w-5xl flex-1 min-h-0 px-4 py-6 lg:px-6 flex flex-col'
 
   const containerClasses = shouldHideGlobalHeader
-    ? 'flex min-h-0 flex-1 flex-col bg-white md:flex-row md:overflow-hidden'
+    ? 'flex min-h-0 flex-1 flex-col bg-white md:flex-row'
     : isMobile
-      ? 'flex min-h-0 flex-1 flex-col bg-white md:flex-row md:overflow-hidden'
-      : 'flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-sm md:flex-row'
+      ? 'flex min-h-0 flex-1 flex-col bg-white md:flex-row'
+      : 'flex flex-1 min-h-0 flex-row overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm'
 
   if (loading) {
     return (
       <div className={rootContainerClasses}>
         {!shouldHideGlobalHeader && <Header />}
-        <main className={`${mainPaddingClasses} flex min-h-0 flex-1 flex-col overflow-hidden`}>
+        <main className={mainPaddingClasses}>
           <div className={containerClasses}>
-            <div className="flex min-h-0 flex-1">
-              <div
-                className={`flex w-full flex-shrink-0 flex-col border-b border-gray-100 md:w-96 md:border-b-0 md:border-r ${
-                  hasActiveConversation ? 'hidden md:flex' : 'flex'
-                }`}
-              >
-                <div className="p-4 border-b border-gray-200">
-                  <div className="h-8 w-32 bg-gray-200 rounded animate-pulse mb-4"></div>
-                  <div className="h-10 bg-gray-100 rounded-lg animate-pulse"></div>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  {[...Array(8)].map((_, i) => (
-                    <ConversationSkeleton key={i} />
-                  ))}
-                </div>
+            {/* Left: Conversations list skeleton */}
+            <div
+              className={`flex w-full flex-shrink-0 flex-col border-r border-gray-200 md:w-80 lg:w-[340px] ${
+                hasActiveConversation ? 'hidden md:flex' : 'flex'
+              }`}
+            >
+              <div className="p-4 border-b border-gray-200">
+                <div className="h-7 w-28 bg-gray-200 rounded animate-pulse mb-3"></div>
+                <div className="h-10 bg-gray-100 rounded-full animate-pulse"></div>
               </div>
-              <div className="hidden md:flex flex-1 items-center justify-center bg-gray-50">
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-gray-200 rounded-full animate-pulse mx-auto mb-4"></div>
-                  <div className="h-6 w-48 bg-gray-200 rounded animate-pulse mx-auto"></div>
-                </div>
+              <div className="flex-1 overflow-y-auto">
+                {[...Array(8)].map((_, i) => (
+                  <ConversationSkeleton key={i} />
+                ))}
+              </div>
+            </div>
+            {/* Right: Empty state skeleton */}
+            <div className="hidden md:flex flex-1 items-center justify-center bg-gray-50">
+              <div className="text-center">
+                <div className="w-14 h-14 bg-gray-200 rounded-full animate-pulse mx-auto mb-3"></div>
+                <div className="h-5 w-44 bg-gray-200 rounded animate-pulse mx-auto"></div>
               </div>
             </div>
           </div>
@@ -928,129 +928,125 @@ export default function MessagesPage() {
     <div className={rootContainerClasses}>
       {!shouldHideGlobalHeader && <Header />}
 
-      <main className={`${mainPaddingClasses} flex min-h-0 flex-1 flex-col overflow-hidden`}>
+      <main className={mainPaddingClasses}>
         <div className={containerClasses}>
-          <div className="flex min-h-0 flex-1">
-            {/* Left Column - Conversations List */}
-            <div
-              className={`flex w-full flex-shrink-0 flex-col border-b border-gray-100 md:w-96 md:border-b-0 md:border-r ${
-                hasActiveConversation ? 'hidden md:flex' : 'flex'
-              }`}
-            >
-              {/* Header */}
-              <div className="p-4 border-b border-gray-200">
-                <h1 className="text-2xl font-bold text-gray-900 mb-4">Messages</h1>
-                
-                {/* Search Bar */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search conversations..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              {/* Conversations List */}
-              <div className={`flex-1 min-h-0 ${isMobile ? 'border-t border-gray-100 bg-white/95' : ''}`}>
-                {error ? (
-                  <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                    <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
-                      <MessageCircle className="w-8 h-8 text-red-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Something went wrong</h3>
-                    <p className="text-sm text-gray-600 mb-6">
-                      {error}
-                    </p>
-                    <button
-                      onClick={() => fetchConversations({ force: true })}
-                      className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
-                    >
-                      Try again
-                    </button>
-                  </div>
-                ) : filteredConversations.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                      <MessageCircle className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No messages yet</h3>
-                    <p className="text-sm text-gray-600 mb-6">
-                      Start a conversation from a player or club profile
-                    </p>
-                    <button
-                      onClick={() => fetchConversations({ force: true })}
-                      className="text-sm font-medium text-purple-600 hover:text-purple-700"
-                    >
-                      Refresh list
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <ConversationList
-                      key={conversationListKey}
-                      conversations={filteredConversations}
-                      selectedConversationId={selectedConversationId}
-                      onSelectConversation={handleSelectConversation}
-                      currentUserId={user?.id || ''}
-                      variant={isMobile ? 'compact' : 'default'}
-                    />
-                    {hasMoreConversations && !searchQuery && (
-                      <div className="border-t border-gray-100 bg-white/90 backdrop-blur-sm p-4">
-                        <button
-                          type="button"
-                          onClick={handleLoadMoreConversations}
-                          disabled={isFetchingMoreConversations}
-                          className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
-                        >
-                          {isFetchingMoreConversations ? 'Loading more conversations...' : 'Load older conversations'}
-                        </button>
-                      </div>
-                    )}
-                  </>
-                )}
+          {/* Left Column - Conversations List */}
+          <div
+            className={`flex w-full flex-shrink-0 flex-col overflow-hidden border-r border-gray-200 md:w-80 lg:w-[340px] ${
+              hasActiveConversation ? 'hidden md:flex' : 'flex'
+            }`}
+          >
+            {/* Header */}
+            <div className="flex-shrink-0 p-4 border-b border-gray-200">
+              <h1 className="text-xl font-bold text-gray-900 mb-3">Messages</h1>
+              
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search conversations..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent placeholder:text-gray-400"
+                />
               </div>
             </div>
 
-            {/* Right Column - Chat Window */}
-            <div className={`flex min-h-0 flex-1 flex-col ${hasActiveConversation ? 'flex' : 'hidden md:flex'}`}>
-              {selectedConversation ? (
-                <ChatWindowV2
-                  conversation={selectedConversation}
-                  currentUserId={user?.id || ''}
-                  onBack={handleBackToList}
-                  onMessageSent={handleConversationMessageEvent}
-                  onConversationCreated={handleConversationCreated}
-                  onConversationRead={handleConversationRead}
-                  isImmersiveMobile={shouldHideGlobalHeader}
-                />
-              ) : selectedConversationId ? (
-                <div className="flex h-full min-h-[320px] flex-col items-center justify-center bg-gray-50 p-8 text-center">
-                  <div className="w-16 h-16 animate-spin rounded-full border-2 border-purple-200 border-t-transparent mb-4"></div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading conversation...</h3>
-                  <p className="text-gray-600">Hang tight while we fetch the latest messages.</p>
+            {/* Conversations List */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              {error ? (
+                <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+                  <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mb-3">
+                    <MessageCircle className="w-7 h-7 text-red-400" />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900 mb-1">Something went wrong</h3>
+                  <p className="text-sm text-gray-500 mb-4">{error}</p>
                   <button
-                    onClick={handleBackToList}
-                    className="mt-6 inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+                    onClick={() => fetchConversations({ force: true })}
+                    className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
                   >
-                    Back to conversations
+                    Try again
+                  </button>
+                </div>
+              ) : filteredConversations.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full p-6 text-center">
+                  <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                    <MessageCircle className="w-7 h-7 text-gray-400" />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900 mb-1">No messages yet</h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Start a conversation from a player or club profile
+                  </p>
+                  <button
+                    onClick={() => fetchConversations({ force: true })}
+                    className="text-sm font-medium text-purple-600 hover:text-purple-700"
+                  >
+                    Refresh list
                   </button>
                 </div>
               ) : (
-                <div className="flex h-full min-h-[320px] flex-col items-center justify-center bg-gray-50 p-8 text-center">
-                  <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <MessageCircle className="w-10 h-10 text-gray-400" />
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Select a conversation</h3>
-                  <p className="text-gray-600 mb-6">
-                    Choose a conversation from the list to start messaging
-                  </p>
-                </div>
+                <>
+                  <ConversationList
+                    key={conversationListKey}
+                    conversations={filteredConversations}
+                    selectedConversationId={selectedConversationId}
+                    onSelectConversation={handleSelectConversation}
+                    currentUserId={user?.id || ''}
+                    variant={isMobile ? 'compact' : 'default'}
+                  />
+                  {hasMoreConversations && !searchQuery && (
+                    <div className="border-t border-gray-100 p-3">
+                      <button
+                        type="button"
+                        onClick={handleLoadMoreConversations}
+                        disabled={isFetchingMoreConversations}
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
+                      >
+                        {isFetchingMoreConversations ? 'Loading...' : 'Load more'}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
+          </div>
+
+          {/* Right Column - Chat Window */}
+          <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${hasActiveConversation ? 'flex' : 'hidden md:flex'}`}>
+            {selectedConversation ? (
+              <ChatWindowV2
+                conversation={selectedConversation}
+                currentUserId={user?.id || ''}
+                onBack={handleBackToList}
+                onMessageSent={handleConversationMessageEvent}
+                onConversationCreated={handleConversationCreated}
+                onConversationRead={handleConversationRead}
+                isImmersiveMobile={shouldHideGlobalHeader}
+              />
+            ) : selectedConversationId ? (
+              <div className="flex h-full flex-col items-center justify-center bg-gray-50 p-6 text-center">
+                <div className="w-12 h-12 animate-spin rounded-full border-2 border-purple-200 border-t-purple-500 mb-3"></div>
+                <h3 className="text-base font-semibold text-gray-900 mb-1">Loading conversation...</h3>
+                <p className="text-sm text-gray-500">Fetching messages</p>
+                <button
+                  onClick={handleBackToList}
+                  className="mt-4 text-sm font-medium text-purple-600 hover:text-purple-700"
+                >
+                  Back to conversations
+                </button>
+              </div>
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center bg-gray-50 p-6 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                  <MessageCircle className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Select a conversation</h3>
+                <p className="text-sm text-gray-500">
+                  Choose a conversation from the list to start messaging
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </main>

@@ -95,11 +95,9 @@ export default function ConversationList({
           const isUnread = (conversation.unreadCount || 0) > 0
           const isSentByMe = conversation.lastMessage?.sender_id === currentUserId
           const otherParticipantLabel = conversation.otherParticipant?.full_name?.split(' ')[0] || conversation.otherParticipant?.username || 'Contact'
-          const buttonClasses = `w-full flex items-start gap-3 ${isCompact ? 'px-3 py-3' : 'p-4'} transition-colors ${
+          const buttonClasses = `w-full flex items-start gap-3 ${isCompact ? 'px-3 py-2.5' : 'px-4 py-3'} transition-colors ${
             isSelected
-              ? isCompact
-                ? 'bg-gray-100 hover:bg-gray-100'
-                : 'bg-purple-50 hover:bg-purple-50'
+              ? 'bg-gray-100'
               : 'hover:bg-gray-50'
           }`
           const participantName =
@@ -119,48 +117,53 @@ export default function ConversationList({
               data-index={virtualRow.index}
               className="absolute left-0 w-full border-b border-gray-100"
             >
-              <button onClick={() => onSelectConversation(conversation.id)} className={buttonClasses}>
+              <button
+                data-testid="conversation-item"
+                data-conversation-id={conversation.id}
+                onClick={() => onSelectConversation(conversation.id)}
+                className={buttonClasses}
+              >
                 <div className="relative flex-shrink-0">
                   <Avatar
                     src={avatarUrl}
                     alt={participantName}
                     initials={avatarInitials}
-                    className="w-12 h-12 text-lg shadow-sm"
+                    className="w-12 h-12 text-base ring-2 ring-gray-100"
                     enablePreview
                     previewTitle={participantName}
                     previewInteraction="pointer"
                   />
+                  {isUnread && (
+                    <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-purple-500 ring-2 ring-white" />
+                  )}
                 </div>
 
                 <div className="flex-1 min-w-0 text-left">
-                  <div className="mb-1 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="mb-0.5 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
                       <h3
-                        className={`truncate font-semibold text-gray-900 ${
-                          isUnread ? 'font-bold' : ''
-                        } ${isCompact ? 'text-sm' : ''}`}
+                        className={`truncate text-sm text-gray-900 ${
+                          isUnread ? 'font-semibold' : 'font-medium'
+                        }`}
                       >
                         {participantName}
                       </h3>
-                      <RoleBadge role={conversation.otherParticipant?.role ?? 'member'} />
+                      <RoleBadge role={conversation.otherParticipant?.role ?? 'member'} className="text-[10px] flex-shrink-0" />
                     </div>
                     {conversation.last_message_at && (
-                      <span className="flex-shrink-0 text-xs text-gray-500">
-                        {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: true })}
+                      <span className="flex-shrink-0 text-[11px] text-gray-400">
+                        {formatDistanceToNow(new Date(conversation.last_message_at), { addSuffix: false })}
                       </span>
                     )}
                   </div>
 
                   {conversation.lastMessage && (
-                    <div className="flex items-center justify-between">
-                      <p className={`text-sm truncate ${isUnread ? 'text-gray-900 font-medium' : 'text-gray-600'}`}>
-                        <span className="text-gray-500">
-                          {isSentByMe ? 'You' : otherParticipantLabel}:
-                        </span>{' '}
-                        {truncateMessage(conversation.lastMessage.content)}
-                      </p>
-                      {isUnread && <span className="ml-2 h-2 w-2 flex-shrink-0 rounded-full bg-purple-600"></span>}
-                    </div>
+                    <p className={`text-[13px] truncate ${isUnread ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
+                      <span className="text-gray-400">
+                        {isSentByMe ? 'You' : otherParticipantLabel}:
+                      </span>{' '}
+                      {truncateMessage(conversation.lastMessage.content, 40)}
+                    </p>
                   )}
                 </div>
               </button>

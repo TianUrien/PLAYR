@@ -21,6 +21,23 @@ E2E_COACH_EMAIL=yourname+e2e-coach@gmail.com
 E2E_COACH_PASSWORD=your-strong-test-password
 ```
 
+### E2E Safety Gate (writes)
+
+`e2e/auth.setup.ts` can write to the database (create/patch profiles, seed vacancies, send messages). To prevent accidental writes to production, it is **blocked by default**.
+
+To enable it, you must set:
+
+```bash
+# 1) Explicit opt-in
+export E2E_ALLOW_WRITES=1
+
+# 2) Explicit allowlist for the target Supabase URL
+# Recommended for local Supabase only:
+export E2E_ALLOWED_SUPABASE_URL_REGEX='^(http://127\\.0\\.0\\.1:54321|http://localhost:54321)$'
+```
+
+For CI or staging, prefer `E2E_ALLOWED_SUPABASE_URL` (exact match) instead of a regex.
+
 ---
 
 ## Current Test Status ✅

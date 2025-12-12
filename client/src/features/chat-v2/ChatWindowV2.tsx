@@ -217,12 +217,12 @@ export default function ChatWindowV2({
   // On desktop or mobile without immersive, use flex layout within parent container
   const containerClasses = isMobile && isImmersiveMobile
     ? "fixed inset-0 flex flex-col bg-white overflow-hidden"
-    : "flex flex-col flex-1 min-h-0 h-full bg-white overflow-hidden w-full"
+    : "flex flex-1 flex-col min-h-0 bg-white overflow-hidden"
 
   // Adjust padding based on whether header/composer are fixed or not
   const scrollPaddingClasses = isMobile && isImmersiveMobile
     ? "px-4 pt-[calc(4.5rem+1rem)] pb-[calc(7rem+var(--chat-safe-area-bottom,0px))] md:px-6"
-    : "px-4 py-6 md:px-6"
+    : "px-4 py-4 md:px-5"
 
   return (
     <div className={containerClasses}>
@@ -233,11 +233,11 @@ export default function ChatWindowV2({
         isMobile={isMobile}
         immersiveMobile={isImmersiveMobile}
       />
-      <div className="relative flex-1 min-h-0 w-full">
+      <div className="relative flex-1 min-h-0 overflow-hidden">
         <div
           ref={scrollContainerRef}
           data-testid="chat-message-list"
-          className={`chat-scroll-container absolute inset-0 bg-white overflow-y-auto overscroll-contain ${scrollPaddingClasses}`}
+          className={`absolute inset-0 bg-gray-50 overflow-y-auto overscroll-contain ${scrollPaddingClasses}`}
         >
           {messages.length === 0 ? (
             <EmptyState />
