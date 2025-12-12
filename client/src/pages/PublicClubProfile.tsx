@@ -16,6 +16,7 @@ type PublicClubProfile = Partial<Profile> &
     | 'avatar_url'
     | 'base_location'
     | 'nationality'
+    | 'nationality_country_id'
     | 'club_bio'
     | 'club_history'
     | 'website'
@@ -24,7 +25,7 @@ type PublicClubProfile = Partial<Profile> &
     | 'email'
     | 'contact_email'
     | 'contact_email_public'
-  > & { is_test_account?: boolean }
+  >
 
 const PUBLIC_CLUB_FIELDS = [
   'id',
@@ -34,6 +35,7 @@ const PUBLIC_CLUB_FIELDS = [
   'avatar_url',
   'base_location',
   'nationality',
+  'nationality_country_id',
   'club_bio',
   'club_history',
   'website',
@@ -68,7 +70,6 @@ export default function PublicClubProfile() {
             .select(PUBLIC_CLUB_FIELDS)
             .eq('role', 'club')
             .eq('username', username)
-            .returns<PublicClubProfile>()
             .single()
 
           if (fetchError) {
@@ -80,20 +81,21 @@ export default function PublicClubProfile() {
             return
           }
 
+          const typed = data as unknown as PublicClubProfile
+
           // Check if this is a test profile and current user is not a test account
-          if (data.is_test_account && !isCurrentUserTestAccount) {
+          if (typed.is_test_account && !isCurrentUserTestAccount) {
             setError('Club profile not found.')
             return
           }
 
-          setProfile(data)
+          setProfile(typed)
         } else if (id) {
           const { data, error: fetchError } = await supabase
             .from('profiles')
             .select(PUBLIC_CLUB_FIELDS)
             .eq('role', 'club')
             .eq('id', id)
-            .returns<PublicClubProfile>()
             .single()
 
           if (fetchError) {
@@ -105,13 +107,15 @@ export default function PublicClubProfile() {
             return
           }
 
+          const typed = data as unknown as PublicClubProfile
+
           // Check if this is a test profile and current user is not a test account
-          if (data.is_test_account && !isCurrentUserTestAccount) {
+          if (typed.is_test_account && !isCurrentUserTestAccount) {
             setError('Club profile not found.')
             return
           }
 
-          setProfile(data)
+          setProfile(typed)
         } else {
           setError('Invalid profile URL')
           return
@@ -168,6 +172,7 @@ export default function PublicClubProfile() {
         ...profile,
         email: profile.email ?? '',
         contact_email_public: profile.contact_email_public ?? false,
+        nationality_country_id: profile.nationality_country_id ?? null,
       }}
       readOnly={true}
       isOwnProfile={isOwnProfile}

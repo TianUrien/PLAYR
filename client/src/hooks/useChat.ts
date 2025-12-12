@@ -352,7 +352,7 @@ export function useChat({
       })
       const { data: updatedRows, error } = await supabase.rpc('mark_conversation_messages_read', {
         p_conversation_id: conversation.id,
-        p_before: latestPendingSentAt
+        p_before: latestPendingSentAt ?? undefined
       })
 
       if (error) throw error

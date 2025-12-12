@@ -1,4 +1,12 @@
 // deno-lint-ignore-file no-explicit-any
+// NOTE: This file runs on Supabase Edge Functions (Deno runtime).
+// Some TS tooling in the workspace may not include Deno types, so we declare a minimal Deno shape.
+declare const Deno: {
+  env: { get(key: string): string | undefined }
+  serve: (handler: (req: Request) => Response | Promise<Response>) => void
+}
+
+// @ts-expect-error Deno URL imports are resolved at runtime in Supabase Edge Functions.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import {
@@ -37,12 +45,14 @@ import {
  */
 
 // =============================================================================
-// HARDCODED TEST RECIPIENTS - ONLY these emails will ever receive notifications
+// TEST RECIPIENTS (via env) - ONLY these emails will ever receive notifications
 // =============================================================================
-const TEST_RECIPIENTS = [
-  'playrplayer93@gmail.com',  // test player
-  'coachplayr@gmail.com',     // test coach
-]
+// Configure in Supabase Dashboard → Functions → notify-test-vacancy → Settings
+// Example: TEST_NOTIFICATION_RECIPIENTS="a@example.com,b@example.com"
+const TEST_RECIPIENTS = (Deno.env.get('TEST_NOTIFICATION_RECIPIENTS') ?? '')
+  .split(',')
+  .map((s: string) => s.trim().toLowerCase())
+  .filter(Boolean)
 
 interface ClubProfile {
   id: string
@@ -61,6 +71,14 @@ Deno.serve(async (req: Request) => {
 
   try {
     logger.info('=== TEST MODE: Received webhook request ===')
+
+    if (TEST_RECIPIENTS.length === 0) {
+      logger.error('TEST_NOTIFICATION_RECIPIENTS is not configured')
+      return new Response(
+        JSON.stringify({ error: 'TEST_NOTIFICATION_RECIPIENTS is not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // Get environment variables
     const resendApiKey = Deno.env.get('RESEND_API_KEY')

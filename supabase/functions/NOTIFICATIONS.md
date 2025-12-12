@@ -20,9 +20,9 @@ The notification system is split into **two completely isolated modes**:
 │   │  - is_test_account = TRUE   │      │  - is_test_account = FALSE  │     │
 │   │                             │      │                             │     │
 │   │  Recipients:                │      │  Recipients:                │     │
-│   │  - HARDCODED test emails    │      │  - Real players/coaches     │     │
-│   │  - playrplayer93@gmail.com  │      │  - Based on vacancy type    │     │
-│   │  - coachplayr@gmail.com     │      │  - From database            │     │
+│   │  - Env-configured emails    │      │  - Real players/coaches     │     │
+│   │  - TEST_NOTIFICATION_...    │      │  - Based on vacancy type    │     │
+│   │                             │      │  - From database            │     │
 │   │                             │      │                             │     │
 │   │  Safety:                    │      │  Safety:                    │     │
 │   │  - Never sends to real      │      │  - Never sends to test      │     │
@@ -57,8 +57,7 @@ The notification system is split into **two completely isolated modes**:
 - ✅ Real users will NEVER receive emails from this function
 
 **Test Recipients:**
-- `playrplayer93@gmail.com` (test player)
-- `coachplayr@gmail.com` (test coach)
+- Configure `TEST_NOTIFICATION_RECIPIENTS` in the `notify-test-vacancy` function settings.
 
 ### 2. `notify-vacancy` (REAL MODE)
 
@@ -66,7 +65,7 @@ The notification system is split into **two completely isolated modes**:
 
 **Safety Guarantees:**
 - ✅ Only processes vacancies from REAL accounts (`is_test_account = false`)
-- ✅ Never sends to test recipients (explicitly blocked)
+-- ✅ Never sends to blocked recipients (explicitly blocked)
 - ✅ Matches vacancy `opportunity_type` to user `role` (player/coach)
 - ✅ Only sends to users with `onboarding_completed = true`
 
@@ -115,6 +114,10 @@ supabase functions deploy
 ```
 
 ## Environment Variables
+
+Additional (recommended) safety vars:
+- `TEST_NOTIFICATION_RECIPIENTS` (notify-test-vacancy) – comma-separated emails
+- `BLOCKED_NOTIFICATION_RECIPIENTS` (notify-vacancy) – comma-separated emails
 
 Both functions require these secrets (set in Supabase Dashboard):
 

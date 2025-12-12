@@ -680,6 +680,8 @@ export type Database = {
           nationality2_country_id: number | null
           notify_applications: boolean
           notify_opportunities: boolean
+          open_to_coach: boolean
+          open_to_play: boolean
           onboarding_completed: boolean
           passport_1: string | null
           passport_2: string | null
@@ -719,6 +721,8 @@ export type Database = {
           nationality2_country_id?: number | null
           notify_applications?: boolean
           notify_opportunities?: boolean
+          open_to_coach?: boolean
+          open_to_play?: boolean
           onboarding_completed?: boolean
           passport_1?: string | null
           passport_2?: string | null
@@ -758,6 +762,8 @@ export type Database = {
           nationality2_country_id?: number | null
           notify_applications?: boolean
           notify_opportunities?: boolean
+          open_to_coach?: boolean
+          open_to_play?: boolean
           onboarding_completed?: boolean
           passport_1?: string | null
           passport_2?: string | null

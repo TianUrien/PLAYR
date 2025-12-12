@@ -8,9 +8,8 @@ import { test as base, expect, Page } from '@playwright/test'
  *   - E2E_PLAYER_EMAIL (e.g., yourname+e2e-player@gmail.com)
  *   - E2E_CLUB_EMAIL (e.g., yourname+e2e-club@gmail.com)
  *   - E2E_COACH_EMAIL (e.g., yourname+e2e-coach@gmail.com)
- * 
- * These accounts must be pre-created in Supabase with password: Hola1234
- * Use the SQL script in e2e/setup-e2e-accounts.sql to create them.
+ *
+ * Set passwords via environment variables (do not hard-code secrets in code or docs).
  */
 
 // Validate required environment variables
@@ -30,7 +29,7 @@ function getRequiredEnv(name: string): string {
 export const TEST_USERS = {
   player: {
     get email() { return getRequiredEnv('E2E_PLAYER_EMAIL') },
-    password: process.env.E2E_PLAYER_PASSWORD || 'Hola1234',
+    get password() { return getRequiredEnv('E2E_PLAYER_PASSWORD') },
     fullName: 'E2E Test Player',
     nationality: 'United Kingdom',
     baseLocation: 'London, UK',
@@ -38,14 +37,14 @@ export const TEST_USERS = {
   },
   club: {
     get email() { return getRequiredEnv('E2E_CLUB_EMAIL') },
-    password: process.env.E2E_CLUB_PASSWORD || 'Hola1234',
+    get password() { return getRequiredEnv('E2E_CLUB_PASSWORD') },
     clubName: 'E2E Test FC',
     baseLocation: 'Manchester, UK',
     country: 'United Kingdom',
   },
   coach: {
     get email() { return getRequiredEnv('E2E_COACH_EMAIL') },
-    password: process.env.E2E_COACH_PASSWORD || 'Hola1234',
+    get password() { return getRequiredEnv('E2E_COACH_PASSWORD') },
     fullName: 'E2E Test Coach',
     nationality: 'United Kingdom',
     baseLocation: 'Birmingham, UK',

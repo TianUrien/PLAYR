@@ -93,7 +93,6 @@ export default function PublicPlayerProfile() {
             .select(PUBLIC_PROFILE_FIELDS)
             .in('role', ['player', 'coach']) // Support both players and coaches
             .eq('username', username)
-            .returns<PublicProfile>()
             .single()
 
           if (fetchError) {
@@ -105,20 +104,21 @@ export default function PublicPlayerProfile() {
             return
           }
 
+          const typed = data as unknown as PublicProfile
+
           // Check if this is a test profile and current user is not a test account
-          if (data.is_test_account && !isCurrentUserTestAccount) {
+          if (typed.is_test_account && !isCurrentUserTestAccount) {
             setError('Profile not found.')
             return
           }
 
-          setProfile(data)
+          setProfile(typed)
         } else if (id) {
           const { data, error: fetchError } = await supabase
             .from('profiles')
             .select(PUBLIC_PROFILE_FIELDS)
             .in('role', ['player', 'coach']) // Support both players and coaches
             .eq('id', id)
-            .returns<PublicProfile>()
             .single()
 
           if (fetchError) {
@@ -130,13 +130,15 @@ export default function PublicPlayerProfile() {
             return
           }
 
+          const typed = data as unknown as PublicProfile
+
           // Check if this is a test profile and current user is not a test account
-          if (data.is_test_account && !isCurrentUserTestAccount) {
+          if (typed.is_test_account && !isCurrentUserTestAccount) {
             setError('Profile not found.')
             return
           }
 
-          setProfile(data)
+          setProfile(typed)
         } else {
           setError('Invalid profile URL')
           return

@@ -2,31 +2,23 @@
 
 This directory contains end-to-end tests for PLAYR using Playwright.
 
-## ⚠️ IMPORTANT: Real Gmail Test Accounts Required
+## ⚠️ IMPORTANT: Use Dedicated Test Accounts
 
-**E2E tests use dedicated Gmail test accounts to avoid Supabase email bounces.**
+E2E tests should use dedicated test accounts with **real, deliverable email addresses** (Gmail aliases are fine) to avoid Supabase email bounces.
 
-The following accounts are pre-configured for E2E testing:
-
-| Role | Email | Password |
-|------|-------|----------|
-| Player | `playrplayer93@gmail.com` | `Hola1234` |
-| Club | `clubplayr8@gmail.com` | `Hola1234` |
-| Coach | `coachplayr@gmail.com` | `Hola1234` |
-
-These accounts already exist in production Supabase with completed profiles.
+Do not hard-code real emails/passwords in this repo. Use environment variables locally and CI secrets in your pipeline.
 
 ### Environment Setup
 
-Add these to your `.env` or `.env.local`:
+Add these to your `.env.local` (recommended) or your CI secrets:
 
 ```bash
-E2E_PLAYER_EMAIL=playrplayer93@gmail.com
-E2E_PLAYER_PASSWORD=Hola1234
-E2E_CLUB_EMAIL=clubplayr8@gmail.com
-E2E_CLUB_PASSWORD=Hola1234
-E2E_COACH_EMAIL=coachplayr@gmail.com
-E2E_COACH_PASSWORD=Hola1234
+E2E_PLAYER_EMAIL=yourname+e2e-player@gmail.com
+E2E_PLAYER_PASSWORD=your-strong-test-password
+E2E_CLUB_EMAIL=yourname+e2e-club@gmail.com
+E2E_CLUB_PASSWORD=your-strong-test-password
+E2E_COACH_EMAIL=yourname+e2e-coach@gmail.com
+E2E_COACH_PASSWORD=your-strong-test-password
 ```
 
 ---
@@ -78,17 +70,6 @@ The auth setup script (`auth.setup.ts`) automatically:
 3. Saves the session state for use in authenticated tests
 
 ### Required Environment Variables
-
-These are already configured in `.env` with the real Gmail test accounts:
-
-```bash
-E2E_PLAYER_EMAIL=playrplayer93@gmail.com
-E2E_PLAYER_PASSWORD=Hola1234
-E2E_CLUB_EMAIL=clubplayr8@gmail.com
-E2E_CLUB_PASSWORD=Hola1234
-E2E_COACH_EMAIL=coachplayr@gmail.com
-E2E_COACH_PASSWORD=Hola1234
-```
 
 If these are not set, E2E tests will fail with a clear error message.
 

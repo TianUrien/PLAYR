@@ -192,8 +192,8 @@ export default function MessagesPage() {
                 const result = await supabase.rpc('get_user_conversations', {
                   p_user_id: user.id,
                   p_limit: safeLimit,
-                  p_cursor_last_message_at: cursor?.lastMessageAt ?? null,
-                  p_cursor_conversation_id: cursor?.conversationId ?? null
+                  p_cursor_last_message_at: cursor?.lastMessageAt ?? undefined,
+                  p_cursor_conversation_id: cursor?.conversationId ?? undefined
                 })
 
                 if (result.error) throw result.error

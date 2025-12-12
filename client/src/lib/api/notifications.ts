@@ -90,7 +90,7 @@ export const fetchNotificationsPage = async (
   return await monitor.measure('notifications:get_page', async () => {
     const { data, error } = await supabase.rpc('get_notifications', {
       p_filter: filter,
-      p_kind: params.kind ?? null,
+      p_kind: params.kind ?? undefined,
       p_limit: limit,
       p_offset: offset,
     })
@@ -145,7 +145,7 @@ export const markNotificationRead = async (notificationId: string): Promise<bool
 export const markAllNotificationsRead = async (kind?: NotificationKind): Promise<number> => {
   return await monitor.measure('notifications:mark_all_read', async () => {
     const { data, error } = await supabase.rpc('mark_all_notifications_read', {
-      p_kind: kind ?? null,
+      p_kind: kind ?? undefined,
     })
 
     if (error) {
@@ -163,8 +163,8 @@ export const clearNotifications = async (params?: {
 }): Promise<number> => {
   return await monitor.measure('notifications:clear', async () => {
     const { data, error } = await supabase.rpc('clear_profile_notifications', {
-      p_notification_ids: params?.notificationIds ?? null,
-      p_kind: params?.kind ?? null,
+      p_notification_ids: params?.notificationIds ?? undefined,
+      p_kind: params?.kind ?? undefined,
     })
 
     if (error) {

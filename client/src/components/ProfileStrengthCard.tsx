@@ -1,17 +1,22 @@
 import { useState } from 'react'
 import { CheckCircle2, Circle, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react'
-import type { ProfileStrengthBucket } from '@/hooks/useProfileStrength'
 import { cn } from '@/lib/utils'
 
-interface ProfileStrengthCardProps {
+type BucketLike = {
+  id: string
+  label: string
+  completed: boolean
+}
+
+interface ProfileStrengthCardProps<TBucket extends BucketLike = BucketLike> {
   /** Completion percentage (0-100) */
   percentage: number
   /** List of completion buckets */
-  buckets: ProfileStrengthBucket[]
+  buckets: TBucket[]
   /** Whether data is loading */
   loading?: boolean
   /** Callback when a bucket action is clicked */
-  onBucketAction?: (bucket: ProfileStrengthBucket) => void
+  onBucketAction?: (bucket: TBucket) => void
 }
 
 /**
@@ -31,12 +36,12 @@ function getProgressColor(percentage: number): string {
  * Collapsed: Shows progress bar, percentage, and step count
  * Expanded: Shows clickable checklist of steps
  */
-export default function ProfileStrengthCard({
+export default function ProfileStrengthCard<TBucket extends BucketLike>({
   percentage,
   buckets,
   loading = false,
   onBucketAction,
-}: ProfileStrengthCardProps) {
+}: ProfileStrengthCardProps<TBucket>) {
   const [isExpanded, setIsExpanded] = useState(false)
   const completedCount = buckets.filter(b => b.completed).length
   const isComplete = percentage >= 100

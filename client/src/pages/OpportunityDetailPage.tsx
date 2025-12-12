@@ -109,7 +109,7 @@ export default function OpportunityDetailPage() {
     document.title = pageTitle
 
     // Build meta description
-    const location = [vacancy.location, vacancy.country].filter(Boolean).join(', ')
+    const location = [vacancy.location_city, vacancy.location_country].filter(Boolean).join(', ')
     const metaDescription = `${vacancy.title} opportunity at ${club.full_name || 'a club'}${location ? ` in ${location}` : ''}. ${vacancy.description?.slice(0, 120) || 'Apply now on PLAYR - the field hockey community platform.'}`
 
     // Update or create meta description

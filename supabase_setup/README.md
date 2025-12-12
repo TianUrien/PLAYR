@@ -65,8 +65,12 @@ Perform these steps inside the Supabase dashboard after the SQL finishes.
      supabase functions deploy delete-account --project-ref <new-project-ref>
      ```
    - In the function environment variables (Dashboard → Functions → delete-account → Settings) add:
-     - `SUPABASE_URL` – https://xtertgftujnebubxgqit.supabase.co
-     - `SUPABASE_SERVICE_ROLE_KEY` – eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0ZXJ0Z2Z0dWpuZWJ1YnhncWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwMzEwNTUsImV4cCI6MjA3ODYwNzA1NX0.hmJLa5nkS9EM3LIRLrrDhsnbZqqoL4RCsve84Qtk8Hw
+       - `SUPABASE_URL` – <your-supabase-project-url>
+       - `SUPABASE_SERVICE_ROLE_KEY` – <your-supabase-service-role-key>
+
+    Notes:
+    - Do not paste keys into this repo/docs. Store them in Supabase function env vars (or your secret manager).
+    - Use the **service role** key here (server-side only). Do not use the anon/public key for admin Edge Functions.
 
 8. **Authentication → Webhooks (Optional but recommended)**
    - If you plan to auto-create profiles when a user verifies email, configure a webhook pointing to a serverless worker (or reuse the existing automation) that calls `create_profile_for_new_user`.

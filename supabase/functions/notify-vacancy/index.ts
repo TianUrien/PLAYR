@@ -1,4 +1,12 @@
 // deno-lint-ignore-file no-explicit-any
+// NOTE: This file runs on Supabase Edge Functions (Deno runtime).
+// Some TS tooling in the workspace may not include Deno types, so we declare a minimal Deno shape.
+declare const Deno: {
+  env: { get(key: string): string | undefined }
+  serve: (handler: (req: Request) => Response | Promise<Response>) => void
+}
+
+// @ts-expect-error Deno URL imports are resolved at runtime in Supabase Edge Functions.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { corsHeaders } from '../_shared/cors.ts'
 import {
@@ -39,12 +47,13 @@ import {
  */
 
 // =============================================================================
-// BLOCKED RECIPIENTS - These should NEVER receive production emails
+// BLOCKED RECIPIENTS (via env) - These should NEVER receive production emails
 // =============================================================================
-const BLOCKED_TEST_RECIPIENTS = [
-  'playrplayer93@gmail.com',
-  'coachplayr@gmail.com',
-]
+// Example: BLOCKED_NOTIFICATION_RECIPIENTS="a@example.com,b@example.com"
+const BLOCKED_TEST_RECIPIENTS = (Deno.env.get('BLOCKED_NOTIFICATION_RECIPIENTS') ?? '')
+  .split(',')
+  .map((s: string) => s.trim().toLowerCase())
+  .filter(Boolean)
 
 interface ClubProfile {
   id: string

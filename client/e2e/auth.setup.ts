@@ -46,7 +46,7 @@ function getRequiredEnv(name: string): string {
 // Test user credentials - MUST use real email addresses
 const TEST_PLAYER = {
   get email() { return getRequiredEnv('E2E_PLAYER_EMAIL') },
-  password: process.env.E2E_PLAYER_PASSWORD || 'Hola1234',
+  get password() { return getRequiredEnv('E2E_PLAYER_PASSWORD') },
   profile: {
     role: 'player',
     full_name: 'E2E Test Player',
@@ -65,7 +65,7 @@ const TEST_PLAYER = {
 
 const TEST_CLUB = {
   get email() { return getRequiredEnv('E2E_CLUB_EMAIL') },
-  password: process.env.E2E_CLUB_PASSWORD || 'Hola1234',
+  get password() { return getRequiredEnv('E2E_CLUB_PASSWORD') },
   profile: {
     role: 'club',
     full_name: 'E2E Test FC',
@@ -83,7 +83,7 @@ const TEST_CLUB = {
 
 const TEST_COACH = {
   get email() { return getRequiredEnv('E2E_COACH_EMAIL') },
-  password: process.env.E2E_COACH_PASSWORD || 'Hola1234',
+  get password() { return getRequiredEnv('E2E_COACH_PASSWORD') },
   profile: {
     role: 'coach',
     full_name: 'E2E Test Coach',

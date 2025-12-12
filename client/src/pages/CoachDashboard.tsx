@@ -96,10 +96,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
   useEffect(() => {
     if (readOnly || strengthLoading) return
     if (prevPercentageRef.current !== null && percentage > prevPercentageRef.current) {
-      addToast({
-        type: 'success',
-        message: `Profile strength: ${percentage}%`,
-      })
+      addToast(`Profile strength: ${percentage}%`, 'success')
     }
     prevPercentageRef.current = percentage
   }, [percentage, readOnly, strengthLoading, addToast])
@@ -347,7 +344,10 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                     percentage={percentage}
                     buckets={buckets}
                     loading={strengthLoading}
-                    onBucketAction={(actionId) => {
+                    onBucketAction={(bucket) => {
+                      const actionId = bucket.actionId
+                      if (!actionId) return
+
                       if (actionId === 'edit-profile') {
                         setShowEditModal(true)
                       } else if (actionId === 'journey-tab') {

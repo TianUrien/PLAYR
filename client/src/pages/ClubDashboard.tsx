@@ -104,10 +104,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
   useEffect(() => {
     if (readOnly || strengthLoading) return
     if (prevPercentageRef.current !== null && percentage > prevPercentageRef.current) {
-      addToast({
-        type: 'success',
-        message: `Profile strength: ${percentage}%`,
-      })
+      addToast(`Profile strength: ${percentage}%`, 'success')
     }
     prevPercentageRef.current = percentage
   }, [percentage, readOnly, strengthLoading, addToast])

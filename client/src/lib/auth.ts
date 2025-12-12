@@ -24,6 +24,7 @@ interface AuthState {
   setHasCompletedOnboardingRedirect: (value: boolean) => void
   signOut: () => Promise<void>
   fetchProfile: (userId: string, options?: { force?: boolean }) => Promise<void>
+  refreshProfile: () => Promise<void>
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -62,6 +63,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     await clearLocalSession('manual-sign-out', { skipSupabaseSignOut: true })
+  },
+
+  refreshProfile: async () => {
+    const userId = get().user?.id
+    if (!userId) return
+    await get().fetchProfile(userId, { force: true })
   },
   
   fetchProfile: async (userId, options) => {

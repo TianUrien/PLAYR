@@ -232,7 +232,7 @@ export function useTrustedReferences(profileId: string) {
         const { error } = await supabase.rpc('request_reference', {
           p_reference_id: params.referenceId,
           p_relationship_type: params.relationshipType,
-          p_request_note: params.requestNote ?? null,
+          p_request_note: params.requestNote ?? undefined,
         })
 
         if (error) throw error
@@ -257,7 +257,7 @@ export function useTrustedReferences(profileId: string) {
         const { error } = await supabase.rpc('respond_reference', {
           p_reference_id: params.referenceId,
           p_accept: params.accept,
-          p_endorsement: params.endorsement ?? null,
+          p_endorsement: params.endorsement ?? undefined,
         })
 
         if (error) throw error

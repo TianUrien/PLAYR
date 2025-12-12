@@ -4,10 +4,10 @@
 -- ⚠️ THIS SCRIPT IS NO LONGER NEEDED
 -- 
 -- We now use real Gmail test accounts that were manually created:
---   Player: playrplayer93@gmail.com
---   Club:   clubplayr8@gmail.com  
---   Coach:  coachplayr@gmail.com
---   Password for all: Hola1234
+--   Player: yourname+e2e-player@gmail.com
+--   Club:   yourname+e2e-club@gmail.com
+--   Coach:  yourname+e2e-coach@gmail.com
+--   Password: set a strong test password (do not commit)
 --
 -- These accounts already exist in Supabase and should NOT be recreated.
 -- This script is kept for reference only.
@@ -23,16 +23,16 @@ DECLARE
   coach_id UUID;
   hashed_password TEXT;
 BEGIN
-  -- Generate the password hash for 'Hola1234'
+  -- Generate the password hash for a test password
   -- Supabase uses bcrypt for password hashing
-  hashed_password := crypt('Hola1234', gen_salt('bf'));
+  hashed_password := crypt('CHANGE_ME', gen_salt('bf'));
 
   -- =====================================================
   -- 1. E2E Test Player
   -- =====================================================
   
   -- Check if user already exists
-  SELECT id INTO player_id FROM auth.users WHERE email = 'playrplayer93@gmail.com';
+  SELECT id INTO player_id FROM auth.users WHERE email = 'yourname+e2e-player@gmail.com';
   
   IF player_id IS NULL THEN
     -- Generate new UUID
@@ -59,7 +59,7 @@ BEGIN
     ) VALUES (
       player_id,
       '00000000-0000-0000-0000-000000000000',
-      'playrplayer93@gmail.com',
+      'yourname+e2e-player@gmail.com',
       hashed_password,
       NOW(),
       NOW(),
@@ -105,7 +105,7 @@ BEGIN
     updated_at
   ) VALUES (
     player_id,
-    'playrplayer93@gmail.com',
+    'yourname+e2e-player@gmail.com',
     'player',
     'E2E Test Player',
     'e2e-test-player',
@@ -130,7 +130,7 @@ BEGIN
   -- 2. E2E Test Club
   -- =====================================================
   
-  SELECT id INTO club_id FROM auth.users WHERE email = 'clubplayr8@gmail.com';
+  SELECT id INTO club_id FROM auth.users WHERE email = 'yourname+e2e-club@gmail.com';
   
   IF club_id IS NULL THEN
     club_id := gen_random_uuid();
@@ -155,7 +155,7 @@ BEGIN
     ) VALUES (
       club_id,
       '00000000-0000-0000-0000-000000000000',
-      'clubplayr8@gmail.com',
+      'yourname+e2e-club@gmail.com',
       hashed_password,
       NOW(),
       NOW(),
@@ -198,7 +198,7 @@ BEGIN
     updated_at
   ) VALUES (
     club_id,
-    'clubplayr8@gmail.com',
+    'yourname+e2e-club@gmail.com',
     'club',
     'E2E Test FC',
     'e2e-test-fc',
@@ -206,7 +206,7 @@ BEGIN
     'United Kingdom',
     'E2E test club account for automated testing',
     'Division 1',
-    'clubplayr8@gmail.com',
+    'yourname+e2e-club@gmail.com',
     2020,
     TRUE,
     TRUE,
@@ -222,7 +222,7 @@ BEGIN
   -- 3. E2E Test Coach
   -- =====================================================
   
-  SELECT id INTO coach_id FROM auth.users WHERE email = 'coachplayr@gmail.com';
+  SELECT id INTO coach_id FROM auth.users WHERE email = 'yourname+e2e-coach@gmail.com';
   
   IF coach_id IS NULL THEN
     coach_id := gen_random_uuid();
@@ -247,7 +247,7 @@ BEGIN
     ) VALUES (
       coach_id,
       '00000000-0000-0000-0000-000000000000',
-      'coachplayr@gmail.com',
+      'yourname+e2e-coach@gmail.com',
       hashed_password,
       NOW(),
       NOW(),
@@ -288,7 +288,7 @@ BEGIN
     updated_at
   ) VALUES (
     coach_id,
-    'coachplayr@gmail.com',
+    'yourname+e2e-coach@gmail.com',
     'coach',
     'E2E Test Coach',
     'e2e-test-coach',
@@ -309,10 +309,10 @@ BEGIN
   RAISE NOTICE '=====================================================';
   RAISE NOTICE 'E2E Test Accounts Created/Updated Successfully!';
   RAISE NOTICE '=====================================================';
-  RAISE NOTICE 'Player: playrplayer93@gmail.com (ID: %)', player_id;
-  RAISE NOTICE 'Club: clubplayr8@gmail.com (ID: %)', club_id;
-  RAISE NOTICE 'Coach: coachplayr@gmail.com (ID: %)', coach_id;
-  RAISE NOTICE 'Password for all: Hola1234';
+  RAISE NOTICE 'Player: yourname+e2e-player@gmail.com (ID: %)', player_id;
+  RAISE NOTICE 'Club: yourname+e2e-club@gmail.com (ID: %)', club_id;
+  RAISE NOTICE 'Coach: yourname+e2e-coach@gmail.com (ID: %)', coach_id;
+  RAISE NOTICE 'Password: CHANGE_ME (update this script before running)';
   RAISE NOTICE '=====================================================';
 
 END $$;

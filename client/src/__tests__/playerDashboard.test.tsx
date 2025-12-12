@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { vi } from 'vitest'
-import PlayerDashboard from '@/pages/PlayerDashboard'
+import PlayerDashboard, { type PlayerProfileShape } from '@/pages/PlayerDashboard'
 
 type LocationObserverProps = {
   onChange: (value: string) => void
@@ -151,7 +151,7 @@ vi.mock('@/lib/supabase', () => {
   }
 })
 
-const baseProfile = {
+const baseProfile: PlayerProfileShape = {
   id: 'player-1',
   role: 'player',
   full_name: 'Jordan Hall',
@@ -159,6 +159,8 @@ const baseProfile = {
   base_location: 'London',
   bio: 'Midfielder',
   nationality: 'United Kingdom',
+  nationality_country_id: null,
+  nationality2_country_id: null,
   gender: 'Female',
   date_of_birth: '2000-01-01',
   position: 'Midfield',
@@ -169,12 +171,14 @@ const baseProfile = {
   contact_email_public: true,
   passport_1: null,
   passport_2: null,
-} as const
+  passport1_country_id: null,
+  passport2_country_id: null,
+}
 
 type RenderOptions = {
   initialPath?: string
   readOnly?: boolean
-  profileOverrides?: Partial<typeof baseProfile>
+  profileOverrides?: Partial<PlayerProfileShape>
 }
 
 const renderDashboard = (options?: RenderOptions) => {
