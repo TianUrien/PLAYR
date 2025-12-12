@@ -82,7 +82,9 @@ export class PlayrPage {
 
   // Toast helpers
   async expectToast(message: string | RegExp) {
-    await expect(this.page.locator('[role="status"]').filter({ hasText: message })).toBeVisible({
+    await expect(
+      this.page.locator('[role="status"], [role="alert"]').filter({ hasText: message })
+    ).toBeVisible({
       timeout: 10000,
     })
   }

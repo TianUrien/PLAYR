@@ -62,7 +62,7 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: /.*\.authenticated\.spec\.ts/,
+      testIgnore: /.*\.authenticated\.spec\.ts|.*\.player\.spec\.ts|.*\.club\.spec\.ts/,
     },
 
     // Authenticated as Player - for player-specific flows

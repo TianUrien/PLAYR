@@ -108,6 +108,20 @@ if (!fs.existsSync(authDir)) {
   fs.mkdirSync(authDir, { recursive: true })
 }
 
+// Shared data directory for cross-spec coordination (e.g. seeded vacancy ids)
+const dataDir = path.join(__dirname, '.data')
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true })
+}
+
+function writeJsonFileSafe(filePath: string, data: unknown) {
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8')
+  } catch (err) {
+    console.warn(`[Auth Setup] Failed writing ${filePath}:`, err)
+  }
+}
+
 /**
  * Authenticate a user via Supabase API and inject session into browser
  */
@@ -206,7 +220,90 @@ async function authenticateUser(
     } else {
       console.log(`[Auth Setup] Profile already complete for ${email}`)
     }
-  }
+
+    // Ensure a predictable, open vacancy exists for E2E flows.
+    // This allows vacancy-related tests to run deterministically.
+    const role = (profileData as { role?: string }).role
+    if (role === 'club') {
+      const title = 'E2E Vacancy - Automated Test'
+
+      const { data: existingVacancy, error: existingVacancyError } = await authSupabase
+        .from('vacancies')
+        .select('id, status, title')
+        .eq('club_id', data.user.id)
+        .eq('title', title)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (existingVacancyError) {
+        console.warn(`[Auth Setup] Error checking existing test vacancy: ${existingVacancyError.message}`)
+      }
+
+      let vacancyId: string | null = existingVacancy?.id ?? null
+
+      if (!existingVacancy) {
+        const { error: vacancyInsertError } = await authSupabase
+          .from('vacancies')
+          .insert({
+            club_id: data.user.id,
+            opportunity_type: 'player',
+            title,
+            position: 'midfielder',
+            gender: 'Men',
+            description: 'Automated E2E test vacancy. Safe to ignore.',
+            location_city: 'London',
+            location_country: 'United Kingdom',
+            duration_text: '1 season',
+            requirements: ['E2E'],
+            benefits: ['housing'],
+            priority: 'medium',
+            status: 'open',
+            published_at: new Date().toISOString(),
+          } as never)
+
+        if (vacancyInsertError) {
+          console.warn(`[Auth Setup] Error inserting test vacancy: ${vacancyInsertError.message}`)
+        } else {
+          console.log('[Auth Setup] Inserted E2E test vacancy')
+        }
+
+        const { data: insertedVacancy } = await authSupabase
+          .from('vacancies')
+          .select('id')
+          .eq('club_id', data.user.id)
+          .eq('title', title)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        vacancyId = insertedVacancy?.id ?? null
+      } else if (existingVacancy.status !== 'open') {
+        const { error: vacancyUpdateError } = await authSupabase
+          .from('vacancies')
+          .update({
+            status: 'open',
+            published_at: new Date().toISOString(),
+          } as never)
+          .eq('id', existingVacancy.id)
+
+        if (vacancyUpdateError) {
+          console.warn(`[Auth Setup] Error updating test vacancy status: ${vacancyUpdateError.message}`)
+        } else {
+          console.log('[Auth Setup] Updated E2E test vacancy to open')
+        }
+
+        vacancyId = existingVacancy.id
+      }
+
+      // Persist for cross-project/spec usage
+      writeJsonFileSafe(path.join(dataDir, 'vacancy.json'), {
+        id: vacancyId,
+        title,
+        clubId: data.user.id,
+      })
+      }
+      }
 
   // Navigate to the app to set up the browser context
   await page.goto('/')
