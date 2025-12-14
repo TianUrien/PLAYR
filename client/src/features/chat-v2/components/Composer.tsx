@@ -70,7 +70,7 @@ export function Composer({ value, sending, disabled, onChange, onSubmit, onFocus
             onFocus={onFocus}
             onKeyDown={handleKeyDown}
             onChange={event => onChange(event.target.value)}
-            className="w-full resize-none rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5 pr-16 text-[15px] leading-snug outline-none transition placeholder:text-gray-400 focus:border-purple-300 focus:bg-white focus:ring-2 focus:ring-purple-100"
+            className="chat-textarea w-full resize-none rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5 pr-16 text-[15px] leading-snug outline-none transition placeholder:text-gray-400 focus:border-purple-300 focus:bg-white focus:ring-2 focus:ring-purple-100"
           />
           <div className="pointer-events-none absolute bottom-2.5 right-4 text-[11px] font-medium text-gray-400">
             {value.length}/{maxLength}
