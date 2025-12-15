@@ -11,10 +11,16 @@ interface OpportunityNotificationState {
   count: number
   loading: boolean
   userId: string | null
+  /** Number of active subscribers - used for cleanup */
+  _subscriberCount: number
   initialize: (userId: string | null) => Promise<void>
   refresh: (options?: RefreshOptions) => Promise<number>
   markSeen: () => Promise<void>
   reset: () => void
+  /** Call when component mounts to track subscribers */
+  subscribe: () => void
+  /** Call when component unmounts to allow cleanup */
+  unsubscribe: () => void
 }
 
 let refreshInterval: ReturnType<typeof setInterval> | null = null
@@ -71,13 +77,30 @@ export const useOpportunityNotificationStore = create<OpportunityNotificationSta
   count: 0,
   loading: false,
   userId: null,
+  _subscriberCount: 0,
+
+  subscribe: () => {
+    set((state) => ({ _subscriberCount: state._subscriberCount + 1 }))
+  },
+
+  unsubscribe: () => {
+    const { _subscriberCount } = get()
+    const newCount = Math.max(0, _subscriberCount - 1)
+    set({ _subscriberCount: newCount })
+    
+    // If no more subscribers, clean up the interval
+    if (newCount === 0 && refreshInterval) {
+      clearInterval(refreshInterval)
+      refreshInterval = null
+    }
+  },
 
   reset: () => {
     if (refreshInterval) {
       clearInterval(refreshInterval)
       refreshInterval = null
     }
-    set({ count: 0, loading: false, userId: null })
+    set({ count: 0, loading: false, userId: null, _subscriberCount: 0 })
   },
 
   refresh: async (options?: RefreshOptions) => {
@@ -94,7 +117,7 @@ export const useOpportunityNotificationStore = create<OpportunityNotificationSta
   },
 
   initialize: async (userId: string | null) => {
-    const { userId: currentUserId, refresh } = get()
+    const { userId: currentUserId, refresh, _subscriberCount } = get()
 
     if (!userId) {
       get().reset()
@@ -108,7 +131,8 @@ export const useOpportunityNotificationStore = create<OpportunityNotificationSta
       await refresh({ bypassCache: true })
     }
 
-    if (!refreshInterval) {
+    // Only start interval if we have subscribers and no existing interval
+    if (_subscriberCount > 0 && !refreshInterval) {
       refreshInterval = setInterval(() => {
         void get().refresh({ bypassCache: true })
       }, 60000)

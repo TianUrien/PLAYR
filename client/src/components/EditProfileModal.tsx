@@ -628,9 +628,9 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
                   >
                     <option value="">Select gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
+                    <option value="Men">Men</option>
+                    <option value="Women">Women</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
 

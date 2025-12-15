@@ -1,6 +1,9 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders } from '../_shared/cors.ts'
+import { getCorsHeaders } from '../_shared/cors.ts'
+
+// UUID format validation
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 interface AdminActionRequest {
   action: 'delete_auth_user' | 'set_admin_status'
@@ -27,10 +30,14 @@ Deno.serve(async (req) => {
   const correlationId = crypto.randomUUID().slice(0, 8)
   const logger = createLogger(correlationId)
   const startTime = Date.now()
+  
+  // Get CORS headers with origin validation
+  const origin = req.headers.get('origin')
+  const headers = getCorsHeaders(origin)
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers })
   }
 
   try {
@@ -38,7 +45,7 @@ Deno.serve(async (req) => {
     if (req.method !== 'POST') {
       return new Response(
         JSON.stringify({ success: false, error: 'Method not allowed' }),
-        { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 405, headers: { ...headers, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -47,7 +54,7 @@ Deno.serve(async (req) => {
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
         JSON.stringify({ success: false, error: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -73,7 +80,7 @@ Deno.serve(async (req) => {
       logger.error('Authentication failed', { error: authError?.message })
       return new Response(
         JSON.stringify({ success: false, error: 'Authentication failed' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...headers, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -83,7 +90,7 @@ Deno.serve(async (req) => {
       logger.error('Admin check failed', { userId: user.id, isAdmin, error: adminCheckError?.message })
       return new Response(
         JSON.stringify({ success: false, error: 'Unauthorized: Admin access required' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 403, headers: { ...headers, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -96,7 +103,15 @@ Deno.serve(async (req) => {
     if (!action || !target_id) {
       return new Response(
         JSON.stringify({ success: false, error: 'Missing required fields: action, target_id' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Validate target_id is a valid UUID
+    if (!UUID_REGEX.test(target_id)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid target_id format' }),
+        { status: 400, headers: { ...headers, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -195,7 +210,7 @@ Deno.serve(async (req) => {
       JSON.stringify(result),
       { 
         status: result.success ? 200 : 400, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...headers, 'Content-Type': 'application/json' } 
       }
     )
 
@@ -204,8 +219,8 @@ Deno.serve(async (req) => {
     logger.error('Unhandled error', { error: errorMessage })
 
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: false, error: 'An unexpected error occurred' }),
+      { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
     )
   }
 })

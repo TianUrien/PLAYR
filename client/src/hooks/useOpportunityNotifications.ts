@@ -8,7 +8,18 @@ export function useOpportunityNotifications() {
   const initialize = useOpportunityNotificationStore(state => state.initialize)
   const markSeen = useOpportunityNotificationStore(state => state.markSeen)
   const refresh = useOpportunityNotificationStore(state => state.refresh)
+  const subscribe = useOpportunityNotificationStore(state => state.subscribe)
+  const unsubscribe = useOpportunityNotificationStore(state => state.unsubscribe)
 
+  // Track subscriber count for proper interval cleanup
+  useEffect(() => {
+    subscribe()
+    return () => {
+      unsubscribe()
+    }
+  }, [subscribe, unsubscribe])
+
+  // Initialize when userId changes
   useEffect(() => {
     void initialize(userId)
   }, [initialize, userId])

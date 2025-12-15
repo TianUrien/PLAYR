@@ -1,6 +1,29 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { corsHeaders } from '../_shared/cors.ts'
+import { getCorsHeaders } from '../_shared/cors.ts'
+
+// Rate limiting for delete-account endpoint
+// Key: userId, Value: { count, resetAt }
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000 // 1 hour
+const MAX_DELETE_ATTEMPTS = 3
+
+function checkRateLimit(userId: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now()
+  const entry = rateLimitStore.get(userId)
+
+  if (!entry || now > entry.resetAt) {
+    rateLimitStore.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+    return { allowed: true }
+  }
+
+  if (entry.count >= MAX_DELETE_ATTEMPTS) {
+    return { allowed: false, retryAfter: Math.ceil((entry.resetAt - now) / 1000) }
+  }
+
+  entry.count++
+  return { allowed: true }
+}
 
 interface DeleteAccountResponse {
   success: boolean
@@ -48,6 +71,20 @@ const createLogger = (correlationId: string) => ({
   warn: (message: string, meta?: LogMeta) => console.warn(`[DELETE_ACCOUNT][${correlationId}] ${message}`, meta ?? ''),
   error: (message: string, meta?: LogMeta) => console.error(`[DELETE_ACCOUNT][${correlationId}] ${message}`, meta ?? ''),
 })
+
+// Sanitize error messages for client - don't leak internal implementation details
+const sanitizeErrorMessage = (message?: string): string => {
+  const knownErrors: Record<string, string> = {
+    'Invalid or expired token': 'Session expired. Please log in again.',
+    'Missing authorization header': 'Authentication required.',
+    'Invalid authorization token': 'Authentication required.',
+    'Supabase credentials are not configured': 'Service temporarily unavailable. Please try again later.',
+    'Failed to delete profile data': 'Unable to complete deletion. Please try again.',
+    'Failed to delete auth user': 'Unable to complete deletion. Please try again.',
+  }
+
+  return knownErrors[message || ''] || 'An unexpected error occurred. Please try again.'
+}
 
 const sanitizeBearerToken = (authHeader: string | null): string => {
   if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
@@ -223,13 +260,16 @@ const enqueueStorageCleanupFallback = async (
 }
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin')
+  const headers = getCorsHeaders(origin)
+
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers })
   }
 
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', {
-      headers: corsHeaders,
+      headers,
       status: 405,
     })
   }
@@ -262,6 +302,21 @@ Deno.serve(async (req) => {
 
     if (authError || !user) {
       throw new Error('Invalid or expired token')
+    }
+
+    // Rate limiting check
+    const rateCheck = checkRateLimit(user.id)
+    if (!rateCheck.allowed) {
+      logger.warn('Rate limit exceeded for delete-account', { userId: user.id })
+      const response: DeleteAccountResponse = {
+        success: false,
+        error: 'Too many delete attempts. Please try again later.',
+        correlationId,
+      }
+      return new Response(JSON.stringify(response), {
+        headers: { ...headers, 'Content-Type': 'application/json', 'Retry-After': String(rateCheck.retryAfter) },
+        status: 429,
+      })
     }
 
     logger.info('Beginning account deletion', { userId: user.id })
@@ -337,20 +392,23 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Correlation-Id': correlationId },
+      headers: { ...headers, 'Content-Type': 'application/json', 'X-Correlation-Id': correlationId },
       status: 200,
     })
   } catch (error: any) {
     logger.error('Delete-account error', { error })
 
+    // Sanitize error messages for client - don't leak internal details
+    const sanitizedError = sanitizeErrorMessage(error?.message)
+
     const response: DeleteAccountResponse = {
       success: false,
-      error: error?.message || 'An unexpected error occurred',
+      error: sanitizedError,
       correlationId,
     }
 
     return new Response(JSON.stringify(response), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json', 'X-Correlation-Id': correlationId },
+      headers: { ...headers, 'Content-Type': 'application/json', 'X-Correlation-Id': correlationId },
       status: 400,
     })
   }
