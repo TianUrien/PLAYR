@@ -21,6 +21,7 @@ const DashboardRouter = lazy(() => import('@/pages/DashboardRouter'))
 const OpportunitiesPage = lazy(() => import('@/pages/OpportunitiesPage'))
 const OpportunityDetailPage = lazy(() => import('@/pages/OpportunityDetailPage'))
 const CommunityPage = lazy(() => import('@/pages/CommunityPage'))
+const QuestionDetailPage = lazy(() => import('@/pages/QuestionDetailPage'))
 const ApplicantsList = lazy(() => import('@/pages/ApplicantsList'))
 const PublicPlayerProfile = lazy(() => import('@/pages/PublicPlayerProfile'))
 const PublicClubProfile = lazy(() => import('@/pages/PublicClubProfile'))
@@ -95,6 +96,8 @@ function App() {
                 {/* Protected Routes (require authentication) - Lazy loaded */}
                 <Route path="/complete-profile" element={<CompleteProfile />} />
                 <Route path="/community" element={<CommunityPage />} />
+                <Route path="/community/questions" element={<CommunityPage />} />
+                <Route path="/community/questions/:questionId" element={<QuestionDetailPage />} />
                 <Route path="/opportunities" element={<OpportunitiesPage />} />
                 <Route path="/opportunities/:id" element={<OpportunityDetailPage />} />
                 <Route path="/messages" element={<MessagesPage />} />

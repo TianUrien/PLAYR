@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
   children: React.ReactNode
 }
 
-const PUBLIC_ROUTES = ['/', '/signup', '/verify-email', '/auth/callback', '/privacy-policy', '/terms', '/developers', '/offline', '/opportunities']
+const PUBLIC_ROUTES = ['/', '/signup', '/verify-email', '/auth/callback', '/privacy-policy', '/terms', '/developers', '/offline', '/opportunities', '/community']
 
 /**
  * ProtectedRoute - Centralized auth guard

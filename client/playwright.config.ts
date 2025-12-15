@@ -18,6 +18,7 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') })
 const authDir = path.join(__dirname, 'e2e/.auth')
 export const PLAYER_STORAGE_STATE = path.join(authDir, 'player.json')
 export const CLUB_STORAGE_STATE = path.join(authDir, 'club.json')
+export const COACH_STORAGE_STATE = path.join(authDir, 'coach.json')
 
 const includeWebkit = process.env.PLAYWRIGHT_WEBKIT === '1'
 
@@ -64,7 +65,7 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: /.*\.authenticated\.spec\.ts|.*\.player\.spec\.ts|.*\.club\.spec\.ts/,
+      testIgnore: /.*\.authenticated\.spec\.ts|.*\.player\.spec\.ts|.*\.club\.spec\.ts|.*\.coach\.spec\.ts/,
     },
 
     // Authenticated as Player - for player-specific flows
@@ -87,6 +88,17 @@ export default defineConfig({
       },
       dependencies: ['setup'],
       testMatch: /.*\.club\.spec\.ts/,
+    },
+
+    // Authenticated as Coach - for coach-specific flows  
+    {
+      name: 'chromium-coach',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: COACH_STORAGE_STATE,
+      },
+      dependencies: ['setup'],
+      testMatch: /.*\.coach\.spec\.ts/,
     },
 
     // Optional WebKit projects (iOS Safari proxy). Enable with PLAYWRIGHT_WEBKIT=1
