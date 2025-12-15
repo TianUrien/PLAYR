@@ -237,13 +237,47 @@ export default function CompleteProfile() {
     }
   }
 
+  // Client-side validation
+  const validateForm = (): string | null => {
+    if (userRole === 'player') {
+      if (!formData.fullName.trim()) return 'Full name is required.'
+      if (!formData.city.trim()) return 'Base location is required.'
+      if (!formData.nationalityCountryId) return 'Nationality is required.'
+      if (!formData.position) return 'Position is required.'
+      if (!formData.gender) return 'Gender is required.'
+      if (formData.secondaryPosition && formData.secondaryPosition === formData.position) {
+        return 'Primary and secondary positions must be different.'
+      }
+    } else if (userRole === 'coach') {
+      if (!formData.fullName.trim()) return 'Full name is required.'
+      if (!formData.city.trim()) return 'Base location is required.'
+      if (!formData.nationalityCountryId) return 'Nationality is required.'
+      if (!formData.gender) return 'Gender is required.'
+    } else if (userRole === 'club') {
+      if (!formData.clubName.trim()) return 'Club name is required.'
+      if (!formData.city.trim()) return 'City is required.'
+      if (!formData.country.trim()) return 'Country is required.'
+      if (!formData.contactEmail.trim()) return 'Contact email is required.'
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(formData.contactEmail)) {
+        return 'Please enter a valid email address.'
+      }
+    }
+    return null
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    if (userRole === 'player' && formData.secondaryPosition && formData.secondaryPosition === formData.position) {
-      setError('Primary and secondary positions must be different.')
+    
+    // Run client-side validation first
+    const validationError = validateForm()
+    if (validationError) {
+      setError(validationError)
       return
     }
+    
     setLoading(true)
     let lastUpdatedFields: string[] = []
 

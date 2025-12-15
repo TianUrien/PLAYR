@@ -191,3 +191,72 @@ export function TableRowSkeleton() {
     </tr>
   )
 }
+
+// Dashboard Skeleton (for Player/Coach/Club dashboards during loading)
+export function DashboardSkeleton() {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header placeholder */}
+      <div className="h-16 bg-white border-b border-gray-200" />
+      
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-12">
+        {/* Profile Header */}
+        <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm mb-6">
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* Avatar */}
+            <Skeleton variant="circular" width={128} height={128} />
+            
+            {/* Info */}
+            <div className="flex-1 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div className="space-y-3">
+                  <Skeleton width={200} height={32} />
+                  <div className="flex gap-2">
+                    <Skeleton width={80} height={24} className="rounded-full" />
+                    <Skeleton width={100} height={24} className="rounded-full" />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Skeleton width={100} height={40} className="rounded-lg" />
+                  <Skeleton width={100} height={40} className="rounded-lg" />
+                </div>
+              </div>
+              
+              {/* Details */}
+              <div className="flex flex-wrap gap-4">
+                <Skeleton width={120} height={20} />
+                <Skeleton width={100} height={20} />
+                <Skeleton width={140} height={20} />
+              </div>
+              
+              {/* Bio */}
+              <div className="space-y-2">
+                <Skeleton width="100%" height={16} />
+                <Skeleton width="80%" height={16} />
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Tabs */}
+        <div className="bg-white rounded-xl p-4 shadow-sm mb-6">
+          <div className="flex gap-4">
+            <Skeleton width={80} height={36} className="rounded-lg" />
+            <Skeleton width={80} height={36} className="rounded-lg" />
+            <Skeleton width={80} height={36} className="rounded-lg" />
+            <Skeleton width={80} height={36} className="rounded-lg" />
+          </div>
+        </div>
+        
+        {/* Content area */}
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <div className="space-y-4">
+            <Skeleton width="60%" height={24} />
+            <Skeleton width="100%" height={100} className="rounded-lg" />
+            <Skeleton width="100%" height={100} className="rounded-lg" />
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}

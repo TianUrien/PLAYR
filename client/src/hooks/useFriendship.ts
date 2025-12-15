@@ -46,7 +46,7 @@ export function useFriendship(profileId: string): FriendshipState {
   const isOutgoingRequest = Boolean(isPending && relationship?.requester_id === viewerId)
   const isIncomingRequest = Boolean(isPending && relationship?.requester_id !== viewerId)
 
-  const fetchRelationship = useCallback(async () => {
+  const fetchRelationship = useCallback(async (signal?: AbortSignal) => {
     if (!viewerId || isOwnProfile) {
       setRelationship(null)
       setLoading(false)
@@ -67,6 +67,9 @@ export function useFriendship(profileId: string): FriendshipState {
       .eq('friend_id', profileId)
       .maybeSingle()
 
+    // Don't update state if cancelled
+    if (signal?.aborted) return
+
     if (error) {
       console.error('Failed to fetch friendship state', error)
       reportSupabaseError('friends.fetch_state', error, { viewerId, profileId }, {
@@ -85,7 +88,13 @@ export function useFriendship(profileId: string): FriendshipState {
   useEffect(() => {
     setRelationship(null)
     if (!viewerId || isOwnProfile) return
-    void fetchRelationship()
+    
+    const abortController = new AbortController()
+    void fetchRelationship(abortController.signal)
+    
+    return () => {
+      abortController.abort()
+    }
   }, [fetchRelationship, viewerId, isOwnProfile])
 
   const sendRequest = useCallback(async () => {

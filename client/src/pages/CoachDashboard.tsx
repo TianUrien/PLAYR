@@ -5,6 +5,7 @@ import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, Frien
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import Button from '@/components/Button'
+import { DashboardSkeleton } from '@/components/Skeleton'
 import SocialLinksDisplay from '@/components/SocialLinksDisplay'
 import type { Profile } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
@@ -121,7 +122,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
     void clearCommentNotifications()
   }, [activeTab, claimCommentHighlights, clearCommentNotifications, commentHighlightVersion, highlightedComments, readOnly])
 
-  if (!profile) return null
+  if (!profile) return <DashboardSkeleton />
 
   const publicContact = derivePublicContactEmail(profile)
   const savedContactEmail = profile.contact_email?.trim() || ''
@@ -290,8 +291,17 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                       disabled={sendingMessage}
                       className="gap-2"
                     >
-                      <MessageCircle className="w-4 h-4" />
-                      {sendingMessage ? 'Loading...' : 'Send Message'}
+                      {sendingMessage ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <MessageCircle className="w-4 h-4" />
+                          Send Message
+                        </>
+                      )}
                     </Button>
                   </div>
                 )}

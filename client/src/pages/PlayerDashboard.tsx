@@ -286,8 +286,17 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                       disabled={sendingMessage}
                       className="gap-2"
                     >
-                      <MessageCircle className="w-4 h-4" />
-                      Message
+                      {sendingMessage ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <MessageCircle className="w-4 h-4" />
+                          Message
+                        </>
+                      )}
                     </Button>
                   </div>
                 ) : (

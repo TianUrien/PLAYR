@@ -146,7 +146,7 @@ export function useTrustedReferences(profileId: string) {
     setGivenReferences([])
   }, [])
 
-  const fetchReferences = useCallback(async () => {
+  const fetchReferences = useCallback(async (signal?: AbortSignal) => {
     if (!profileId) {
       resetState()
       setLoading(false)
@@ -162,6 +162,9 @@ export function useTrustedReferences(profileId: string) {
           supabase.rpc('get_references_i_gave')
         ])
 
+        // Don't update state if cancelled
+        if (signal?.aborted) return
+
         if (myRefsRes.error) throw myRefsRes.error
         if (incomingRes.error) throw incomingRes.error
         if (givenRes.error) throw givenRes.error
@@ -175,6 +178,9 @@ export function useTrustedReferences(profileId: string) {
           p_profile_id: profileId,
         })
 
+        // Don't update state if cancelled
+        if (signal?.aborted) return
+
         if (error) throw error
         setPublicReferences((data ?? []).map(mapPublicReference))
         setMyReferences([])
@@ -182,16 +188,25 @@ export function useTrustedReferences(profileId: string) {
         setGivenReferences([])
       }
     } catch (error) {
+      // Don't show error toast if cancelled
+      if (signal?.aborted) return
       console.error('Failed to load references', error)
       addToast('Unable to load references. Please try again.', 'error')
       resetState()
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) {
+        setLoading(false)
+      }
     }
   }, [profileId, isOwner, addToast, resetState])
 
   useEffect(() => {
-    void fetchReferences()
+    const abortController = new AbortController()
+    void fetchReferences(abortController.signal)
+    
+    return () => {
+      abortController.abort()
+    }
   }, [fetchReferences])
 
   const acceptedReferences = useMemo(() => {
