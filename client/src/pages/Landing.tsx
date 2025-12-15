@@ -5,6 +5,7 @@ import * as Sentry from '@sentry/react'
 import { Input, Button } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 export default function Landing() {
   const navigate = useNavigate()

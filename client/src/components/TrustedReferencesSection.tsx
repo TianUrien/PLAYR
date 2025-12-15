@@ -92,7 +92,7 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
     if (!targetId) return
     if (!user) {
       addToast('Sign in to message references.', 'info')
-      navigate('/sign-in')
+      navigate('/')
       return
     }
 
