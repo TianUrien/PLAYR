@@ -101,7 +101,7 @@ export default function CompleteProfile() {
   }, [fallbackRole, fallbackEmail])
 
   useEffect(() => {
-    console.log('[COMPLETE_PROFILE]', {
+    logger.debug('[COMPLETE_PROFILE]', {
       authLoading,
       hasUser: !!user,
       hasProfile: !!profile,
@@ -115,7 +115,7 @@ export default function CompleteProfile() {
 
     // No user → redirect to signup
     if (!user) {
-      console.log('[COMPLETE_PROFILE] No user, redirecting to signup')
+      logger.debug('[COMPLETE_PROFILE] No user, redirecting to signup')
       navigate('/signup', { replace: true })
     }
   }, [user, profile, authLoading, navigate, profileStatus])
@@ -497,7 +497,7 @@ export default function CompleteProfile() {
             <p className="text-gray-600 mb-6">Fill in your details below</p>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg" role="alert" aria-live="assertive">
                 <p className="text-sm text-red-600">{error}</p>
               </div>
             )}

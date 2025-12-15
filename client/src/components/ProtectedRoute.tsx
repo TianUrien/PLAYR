@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -28,7 +29,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const loading = useAuthStore(state => state.loading)
 
   useEffect(() => {
-    console.log('[PROTECTED_ROUTE]', {
+    logger.debug('[PROTECTED_ROUTE]', {
       path: location.pathname,
       loading,
       hasUser: !!user,

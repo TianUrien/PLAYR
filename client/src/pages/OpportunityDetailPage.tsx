@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
+import { logger } from '../lib/logger'
 import type { Vacancy } from '../lib/supabase'
 import Header from '../components/Header'
 import VacancyDetailView from '../components/VacancyDetailView'
@@ -53,7 +54,7 @@ export default function OpportunityDetailPage() {
       const vacancyWithClub = vacancyData as Vacancy & { club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean } }
       if (vacancyWithClub.club?.is_test_account && !isCurrentUserTestAccount) {
         // Real users cannot view test vacancies
-        console.log('Test vacancy not accessible to non-test user')
+        logger.debug('Test vacancy not accessible to non-test user')
         setNotFound(true)
         return
       }

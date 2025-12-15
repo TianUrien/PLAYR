@@ -245,7 +245,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
             <div className="flex-1">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
                     {profile.full_name}
                   </h1>
                   <div className="mb-3 flex flex-wrap items-center gap-3">

@@ -62,7 +62,7 @@ export default function Landing() {
         // Check if error is due to unverified email
         if (signInError.message.includes('Email not confirmed')) {
           // Redirect to verification page
-          console.log('[SIGN IN] Email not verified, redirecting to verification page')
+          logger.debug('[SIGN IN] Email not verified, redirecting to verification page')
           navigate(`/verify-email?email=${encodeURIComponent(email)}&reason=unverified_signin`)
           return
         }
@@ -73,7 +73,7 @@ export default function Landing() {
         throw new Error('No user data returned')
       }
 
-      console.log('[SIGN IN] Sign in successful, checking profile...')
+      logger.debug('[SIGN IN] Sign in successful, checking profile...')
 
       // Check if profile exists and is complete
       const { data: profileData, error: profileError } = await supabase
@@ -84,7 +84,7 @@ export default function Landing() {
 
       // Handle profile not found - redirect to complete profile
       if (profileError && profileError.code === 'PGRST116') {
-        console.log('[SIGN IN] Profile not found, redirecting to complete profile')
+        logger.debug('[SIGN IN] Profile not found, redirecting to complete profile')
         navigate('/complete-profile')
         return
       }
@@ -110,14 +110,14 @@ export default function Landing() {
 
       // Check if profile is incomplete (zombie account recovery!)
       if (!profileData.full_name) {
-        console.log('[SIGN IN] Profile incomplete (no full_name), redirecting to complete profile')
+        logger.debug('[SIGN IN] Profile incomplete (no full_name), redirecting to complete profile')
         navigate('/complete-profile')
         return
       }
 
       // Profile is complete - redirect to intended destination or dashboard
       const destination = redirectTo || '/dashboard/profile'
-      console.log('[SIGN IN] Profile complete, redirecting to:', destination)
+      logger.debug('[SIGN IN] Profile complete, redirecting to:', destination)
       navigate(destination)
 
     } catch (err) {

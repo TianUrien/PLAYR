@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 import PlayerDashboard from './PlayerDashboard'
 import CoachDashboard from './CoachDashboard'
 import ClubDashboard from './ClubDashboard'
@@ -23,7 +24,7 @@ export default function DashboardRouter() {
   const { user, profile, loading, hasCompletedOnboardingRedirect, setHasCompletedOnboardingRedirect, profileStatus } = useAuthStore()
 
   useEffect(() => {
-    console.log('[DASHBOARD_ROUTER]', {
+    logger.debug('[DASHBOARD_ROUTER]', {
       loading,
       hasUser: !!user,
       hasProfile: !!profile,
@@ -38,7 +39,7 @@ export default function DashboardRouter() {
 
     // No user → redirect to landing
     if (!user) {
-      console.log('[DASHBOARD_ROUTER] No user, redirecting to landing')
+      logger.debug('[DASHBOARD_ROUTER] No user, redirecting to landing')
       navigate('/', { replace: true })
       return
     }
@@ -46,13 +47,13 @@ export default function DashboardRouter() {
     // No profile yet
     if (!profile) {
       if (profileStatus === 'missing') {
-        console.log('[DASHBOARD_ROUTER] Profile missing, routing to /complete-profile')
+        logger.debug('[DASHBOARD_ROUTER] Profile missing, routing to /complete-profile')
         if (!hasCompletedOnboardingRedirect) {
           setHasCompletedOnboardingRedirect(true)
         }
         navigate('/complete-profile', { replace: true })
       } else {
-        console.log('[DASHBOARD_ROUTER] No profile yet, waiting...')
+        logger.debug('[DASHBOARD_ROUTER] No profile yet, waiting...')
       }
       return
     }
@@ -61,14 +62,14 @@ export default function DashboardRouter() {
     // Only attempt redirect once to prevent loops
     if (!profile.onboarding_completed && !hasCompletedOnboardingRedirect) {
       setHasCompletedOnboardingRedirect(true)
-      console.log('[DASHBOARD_ROUTER] Profile incomplete (onboarding_completed=false), routing to /complete-profile')
+      logger.debug('[DASHBOARD_ROUTER] Profile incomplete (onboarding_completed=false), routing to /complete-profile')
       navigate('/complete-profile', { replace: true })
       return
     }
 
     // Profile complete → continue to render dashboard below
     if (profile.onboarding_completed) {
-      console.log('[DASHBOARD_ROUTER] Profile complete, rendering dashboard')
+      logger.debug('[DASHBOARD_ROUTER] Profile complete, rendering dashboard')
       if (hasCompletedOnboardingRedirect) {
         setHasCompletedOnboardingRedirect(false)
       }
