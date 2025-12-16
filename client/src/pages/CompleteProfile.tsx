@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, MapPin, Globe, Calendar, Building2, Camera } from 'lucide-react'
+import { User, MapPin, Globe, Calendar, Building2, Camera, UserRound, Briefcase, Users } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { Input, Button, CountrySelect } from '@/components'
 import { supabase } from '@/lib/supabase'
@@ -33,13 +33,14 @@ export default function CompleteProfile() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const profilePrefilledRef = useRef(false)
   const contactPrefilledRef = useRef<string | null>(null)
-  const { user, profile, loading: authLoading, profileStatus } = useAuthStore()
+  const { user, profile, loading: authLoading, profileStatus, fetchProfile } = useAuthStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<string>(profile?.avatar_url || '')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [fallbackRole, setFallbackRole] = useState<UserRole | null>(null)
   const [fallbackEmail, setFallbackEmail] = useState<string>('')
+  const [creatingProfile, setCreatingProfile] = useState(false)
 
   // Form data states
   const [formData, setFormData] = useState({
@@ -85,6 +86,63 @@ export default function CompleteProfile() {
         sourceComponent,
       },
     })
+  }
+
+  /**
+   * Create profile for OAuth users who don't have a profile row yet.
+   * Uses the create_profile_for_new_user RPC function.
+   */
+  const handleRoleSelection = async (selectedRole: UserRole) => {
+    if (!user) {
+      setError('No user session found. Please sign in again.')
+      return
+    }
+
+    setCreatingProfile(true)
+    setError('')
+
+    try {
+      logger.debug('[COMPLETE_PROFILE] Creating profile for OAuth user', { userId: user.id, role: selectedRole })
+
+      const userEmail = user.email || ''
+
+      // Call the RPC function to create the profile row
+      const { data: newProfile, error: rpcError } = await supabase.rpc('create_profile_for_new_user', {
+        user_id: user.id,
+        user_email: userEmail,
+        user_role: selectedRole,
+      })
+
+      if (rpcError) {
+        captureOnboardingError(rpcError, {
+          role: selectedRole,
+          stage: 'createProfileForOAuth',
+        }, 'CompleteProfile.handleRoleSelection.rpc')
+        throw new Error(`Failed to create profile: ${rpcError.message}`)
+      }
+
+      logger.debug('[COMPLETE_PROFILE] Profile created successfully', { profileId: newProfile?.id })
+
+      // Store role in localStorage as backup
+      localStorage.setItem('pending_role', selectedRole)
+      localStorage.setItem('pending_email', userEmail)
+
+      // Update fallback role immediately for UI
+      setFallbackRole(selectedRole)
+
+      // Refresh the profile in auth store
+      await fetchProfile(user.id, { force: true })
+
+      logger.debug('[COMPLETE_PROFILE] Profile fetched after creation')
+    } catch (err) {
+      captureOnboardingError(err, {
+        stage: 'handleRoleSelectionCatch',
+      }, 'CompleteProfile.handleRoleSelection.catch')
+      logger.error('[COMPLETE_PROFILE] Error creating profile:', err)
+      setError(err instanceof Error ? err.message : 'Failed to create profile. Please try again.')
+    } finally {
+      setCreatingProfile(false)
+    }
   }
 
   useEffect(() => {
@@ -438,24 +496,108 @@ export default function CompleteProfile() {
   }
 
   if (!userRole) {
+    // Show role selection for OAuth users who don't have a role yet
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8 text-center">
-          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.054 0 1.62-1.14 1.054-2.054L13.054 4.946c-.527-.894-1.581-.894-2.108 0L4.928 16.946C4.362 17.86 4.928 19 5.982 19z" />
-            </svg>
+      <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
+        <div className="absolute inset-0">
+          <img 
+            src="/hero-desktop.webp"
+            alt="Field Hockey"
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-black/70" />
+        </div>
+
+        <div className="relative z-10 w-full max-w-2xl">
+          <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]">
+              <div className="flex items-center gap-3 mb-2">
+                <img
+                  src="/WhiteLogo.svg"
+                  alt="PLAYR"
+                  className="h-8"
+                />
+              </div>
+              <p className="text-white/90 text-sm">
+                Welcome to PLAYR! Let's get you set up.
+              </p>
+            </div>
+
+            <div className="p-8">
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Choose Your Role</h3>
+              <p className="text-gray-600 mb-6">How will you be using PLAYR?</p>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg" role="alert" aria-live="assertive">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                {/* Player Option */}
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelection('player')}
+                  disabled={creatingProfile}
+                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#6366f1] hover:bg-purple-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center group-hover:from-purple-200 group-hover:to-indigo-200 transition-colors">
+                      <UserRound className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">I'm a Player</h4>
+                      <p className="text-sm text-gray-500">Looking for opportunities and showcasing my skills</p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Coach Option */}
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelection('coach')}
+                  disabled={creatingProfile}
+                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#6366f1] hover:bg-purple-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center group-hover:from-purple-200 group-hover:to-indigo-200 transition-colors">
+                      <Briefcase className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">I'm a Coach</h4>
+                      <p className="text-sm text-gray-500">Seeking coaching positions and connecting with clubs</p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Club Option */}
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelection('club')}
+                  disabled={creatingProfile}
+                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#6366f1] hover:bg-purple-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center group-hover:from-purple-200 group-hover:to-indigo-200 transition-colors">
+                      <Users className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">I'm a Club</h4>
+                      <p className="text-sm text-gray-500">Recruiting players and coaches for my organization</p>
+                    </div>
+                  </div>
+                </button>
+              </div>
+
+              {creatingProfile && (
+                <div className="mt-6 text-center">
+                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[#6366f1] mb-2"></div>
+                  <p className="text-sm text-gray-500">Setting up your profile...</p>
+                </div>
+              )}
+            </div>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">We Need Your Role</h2>
-          <p className="text-gray-600 mb-6">
-            We could not determine your role from signup. Please return to the signup page and choose your role again.
-          </p>
-          <button
-            onClick={() => navigate('/signup')}
-            className="px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
-          >
-            Go to Sign Up
-          </button>
         </div>
       </div>
     )
