@@ -201,14 +201,21 @@ export default function CountrySelect({
 
           <div className="flex items-center gap-1">
             {selectedCountry && !disabled && !required && (
-              <button
-                type="button"
+              <span
+                role="button"
+                tabIndex={0}
                 onClick={handleClear}
-                className="p-1 hover:bg-gray-200 rounded transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    handleClear(e as unknown as React.MouseEvent)
+                  }
+                }}
+                className="p-1 hover:bg-gray-200 rounded transition-colors cursor-pointer"
                 aria-label="Clear selection"
               >
                 <X className="w-4 h-4 text-gray-400" />
-              </button>
+              </span>
             )}
             <ChevronDown
               className={cn(

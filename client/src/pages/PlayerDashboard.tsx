@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark } from 'lucide-react'
+import { MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, ProfileStrengthCard, DualNationalityDisplay, AvailabilityPill } from '@/components'
 import Header from '@/components/Header'
@@ -274,17 +274,12 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                 </h1>
                 {readOnly ? (
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
-                      <Eye className="w-4 h-4" />
-                      Network View
-                    </div>
                     <FriendshipButton profileId={profile.id} />
-                    <Button
-                      variant="primary"
-                      size="sm"
+                    <button
+                      type="button"
                       onClick={handleSendMessage}
                       disabled={sendingMessage}
-                      className="gap-2"
+                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-60"
                     >
                       {sendingMessage ? (
                         <>
@@ -297,7 +292,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                           Message
                         </>
                       )}
-                    </Button>
+                    </button>
                   </div>
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">
@@ -354,6 +349,23 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                   </>
                 )}
 
+                {/* Gender (if specified) */}
+                {profile.gender && (
+                  <>
+                    <span className="text-gray-400">•</span>
+                    <div className={`flex items-center gap-1.5 ${
+                      profile.gender === 'Women' 
+                        ? 'text-[#9f7aea]' 
+                        : profile.gender === 'Men' 
+                          ? 'text-[#5c6bc0]' 
+                          : 'text-gray-600'
+                    }`}>
+                      <span className="text-base">{profile.gender === 'Women' ? '♀' : profile.gender === 'Men' ? '♂' : ''}</span>
+                      <span>{profile.gender}</span>
+                    </div>
+                  </>
+                )}
+
                 {/* Position (if specified) */}
                 {positions.length > 0 && (
                   <>
@@ -373,6 +385,20 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                       <Landmark className="w-4 h-4 md:w-5 md:h-5" />
                       <span>{profile.current_club}</span>
                     </div>
+                  </>
+                )}
+
+                {/* Public contact email - visible when enabled */}
+                {publicContact.shouldShow && publicContact.displayEmail && (
+                  <>
+                    <span className="text-gray-400">•</span>
+                    <a
+                      href={`mailto:${publicContact.displayEmail}`}
+                      className="flex items-center gap-1.5 hover:text-[#6366f1] transition-colors"
+                    >
+                      <Mail className="w-4 h-4 md:w-5 md:h-5" />
+                      <span>{publicContact.displayEmail}</span>
+                    </a>
                   </>
                 )}
               </div>
@@ -416,18 +442,18 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                     onBucketAction={handleProfileStrengthAction}
                   />
                 )}
+                {/* Basic Information - Only shown in private view (not readOnly) to avoid duplication with header card */}
+                {!readOnly && (
                 <section className="space-y-6">
                   <div className="flex items-start justify-between gap-4">
                     <h2 className="text-2xl font-bold text-gray-900">Basic Information</h2>
-                    {!readOnly && (
-                      <button
-                        onClick={() => setShowEditModal(true)}
-                        className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-[#6366f1] text-white rounded-lg hover:bg-[#4f46e5] transition-colors text-sm font-medium"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                        Edit Profile
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setShowEditModal(true)}
+                      className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-[#6366f1] text-white rounded-lg hover:bg-[#4f46e5] transition-colors text-sm font-medium"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      Edit Profile
+                    </button>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -454,18 +480,16 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                       ) : (
                         <p className="text-gray-500 italic">Not shared with other PLAYR members</p>
                       )}
-                      {!readOnly && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          {profile.contact_email_public
-                            ? publicContact.source === 'contact'
-                              ? 'Other PLAYR members see your contact email.'
-                              : 'Add a contact email to be reachable.'
-                            : savedContactEmail
-                              ? 'Saved contact email is private.'
-                              : 'No contact email saved; only private channels apply.'}
-                        </p>
-                      )}
-                      {!readOnly && !profile.contact_email_public && savedContactEmail && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {profile.contact_email_public
+                          ? publicContact.source === 'contact'
+                            ? 'Other PLAYR members see your contact email.'
+                            : 'Add a contact email to be reachable.'
+                          : savedContactEmail
+                            ? 'Saved contact email is private.'
+                            : 'No contact email saved; only private channels apply.'}
+                      </p>
+                      {!profile.contact_email_public && savedContactEmail && (
                         <p className="text-xs text-gray-500 break-words">
                           Private contact email: <span className="text-gray-700 font-medium">{savedContactEmail}</span>
                         </p>
@@ -539,17 +563,16 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                     )}
                   </div>
 
-                  {!readOnly && (
-                    <div className="pt-6 border-t border-gray-200 md:hidden">
-                      <button
-                        onClick={() => setShowEditModal(true)}
-                        className="w-full px-6 py-3 bg-[#6366f1] text-white rounded-lg hover:bg-[#4f46e5] transition-colors font-medium"
-                      >
-                        Update Profile Information
-                      </button>
-                    </div>
-                  )}
+                  <div className="pt-6 border-t border-gray-200 md:hidden">
+                    <button
+                      onClick={() => setShowEditModal(true)}
+                      className="w-full px-6 py-3 bg-[#6366f1] text-white rounded-lg hover:bg-[#4f46e5] transition-colors font-medium"
+                    >
+                      Update Profile Information
+                    </button>
+                  </div>
                 </section>
+                )}
 
                 <section className="space-y-4">
                   <div className="flex items-start justify-between gap-4">

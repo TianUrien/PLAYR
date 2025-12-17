@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { MapPin, Calendar, Edit2, Eye, MessageCircle } from 'lucide-react'
+import { MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, DualNationalityDisplay, AvailabilityPill } from '@/components'
 import Header from '@/components/Header'
@@ -38,6 +38,7 @@ export type CoachProfileShape =
     | 'email'
     | 'contact_email'
     | 'contact_email_public'
+    | 'current_club'
   >
 
 interface CoachDashboardProps {
@@ -284,12 +285,11 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                 ) : (
                   <div className="flex flex-wrap items-center gap-2">
                     <FriendshipButton profileId={profile.id} />
-                    <Button
-                      variant="primary"
-                      size="sm"
+                    <button
+                      type="button"
                       onClick={handleSendMessage}
                       disabled={sendingMessage}
-                      className="gap-2"
+                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-60"
                     >
                       {sendingMessage ? (
                         <>
@@ -299,10 +299,10 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                       ) : (
                         <>
                           <MessageCircle className="w-4 h-4" />
-                          Send Message
+                          Message
                         </>
                       )}
-                    </Button>
+                    </button>
                   </div>
                 )}
               </div>
@@ -325,6 +325,36 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                     <Calendar className="w-5 h-5" />
                     <span>{age} years old</span>
                   </div>
+                )}
+                {/* Gender (if specified) */}
+                {profile.gender && (
+                  <div className={`flex items-center gap-2 ${
+                    profile.gender === 'Women' 
+                      ? 'text-[#9f7aea]' 
+                      : profile.gender === 'Men' 
+                        ? 'text-[#5c6bc0]' 
+                        : 'text-gray-600'
+                  }`}>
+                    <span className="text-lg">{profile.gender === 'Women' ? '♀' : profile.gender === 'Men' ? '♂' : ''}</span>
+                    <span>{profile.gender}</span>
+                  </div>
+                )}
+                {/* Current Club (if specified) */}
+                {profile.current_club && (
+                  <div className="flex items-center gap-2">
+                    <Landmark className="w-5 h-5" />
+                    <span>{profile.current_club}</span>
+                  </div>
+                )}
+                {/* Public contact email - visible when enabled */}
+                {publicContact.shouldShow && publicContact.displayEmail && (
+                  <a
+                    href={`mailto:${publicContact.displayEmail}`}
+                    className="flex items-center gap-2 hover:text-[#6366f1] transition-colors"
+                  >
+                    <Mail className="w-5 h-5" />
+                    <span>{publicContact.displayEmail}</span>
+                  </a>
                 )}
               </div>
             </div>
@@ -374,6 +404,8 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                   />
                 )}
 
+                {/* Basic Information - Only shown in private view (not readOnly) to avoid duplication with header card */}
+                {!readOnly && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -426,8 +458,10 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                     )}
                   </div>
                 </div>
+                )}
 
-                {/* Contact Information */}
+                {/* Contact Information - Only shown in private view */}
+                {!readOnly && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact</h3>
                   <div>
@@ -439,24 +473,23 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                       ) : (
                         <p className="text-gray-500 italic">Not shared with other PLAYR members</p>
                       )}
-                      {!readOnly && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          {profile.contact_email_public
-                            ? publicContact.source === 'contact'
-                              ? 'Other PLAYR members see your contact email.'
-                              : 'Add a contact email to be reachable.'
-                            : savedContactEmail
-                              ? 'Saved contact email is private.'
-                              : 'No contact email saved; only private channels apply.'}
-                        </p>
-                      )}
-                      {!readOnly && !profile.contact_email_public && savedContactEmail && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {profile.contact_email_public
+                          ? publicContact.source === 'contact'
+                            ? 'Other PLAYR members see your contact email.'
+                            : 'Add a contact email to be reachable.'
+                          : savedContactEmail
+                            ? 'Saved contact email is private.'
+                            : 'No contact email saved; only private channels apply.'}
+                      </p>
+                      {!profile.contact_email_public && savedContactEmail && (
                         <p className="text-xs text-gray-500 break-words">
                           Private contact email: <span className="text-gray-700 font-medium">{savedContactEmail}</span>
                         </p>
                       )}
                   </div>
                 </div>
+                )}
 
                 <section className="space-y-4">
                   <div className="flex items-start justify-between gap-4">

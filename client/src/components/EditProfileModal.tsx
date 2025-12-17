@@ -280,6 +280,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.nationality2_country_id = formData.nationality2_country_id
       optimisticUpdate.gender = formData.gender || null
       optimisticUpdate.date_of_birth = formData.date_of_birth || null
+      optimisticUpdate.current_club = formData.current_club || null
       optimisticUpdate.bio = formData.bio || null
       optimisticUpdate.open_to_coach = formData.open_to_coach
     } else if (role === 'club') {
@@ -639,6 +640,14 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   type="date"
                   value={formData.date_of_birth}
                   onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                />
+
+                <Input
+                  label="Current Club (Optional)"
+                  type="text"
+                  value={formData.current_club}
+                  onChange={(e) => setFormData({ ...formData, current_club: e.target.value })}
+                  placeholder="e.g., Holcombe Hockey Club"
                 />
 
                 <div>

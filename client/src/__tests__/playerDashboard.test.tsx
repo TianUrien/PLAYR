@@ -240,25 +240,12 @@ describe('PlayerDashboard', () => {
     })
   })
 
-  it('shows the contact email publicly when visibility is enabled', () => {
-    const publicEmail = 'reach@player.com'
-    renderDashboard({ readOnly: true, profileOverrides: { contact_email: publicEmail, contact_email_public: true } })
+  // Basic Information section is hidden in public view (readOnly mode)
+  // Contact email visibility tests now only apply to the owner's view
+  it('hides Basic Information section in public view', () => {
+    renderDashboard({ readOnly: true })
 
-    expect(screen.getByRole('link', { name: publicEmail })).toBeInTheDocument()
-  })
-
-  it('does not fall back to account email when contact email is blank (even if visibility is on)', () => {
-    renderDashboard({ readOnly: true, profileOverrides: { contact_email: '', contact_email_public: true } })
-
-    expect(screen.getByText(/Not shared with other PLAYR members/i)).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: baseProfile.email })).not.toBeInTheDocument()
-  })
-
-  it('hides the email when visibility is disabled', () => {
-    renderDashboard({ readOnly: true, profileOverrides: { contact_email_public: false } })
-
-    expect(screen.getByText(/Not shared with other PLAYR members/i)).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: baseProfile.email })).not.toBeInTheDocument()
+    expect(screen.queryByText('Basic Information')).not.toBeInTheDocument()
   })
 
   it('shows a private contact email note to the owner when hidden', () => {
