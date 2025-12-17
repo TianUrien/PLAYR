@@ -360,7 +360,6 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                           ? 'text-[#5c6bc0]' 
                           : 'text-gray-600'
                     }`}>
-                      <span className="text-base">{profile.gender === 'Women' ? '♀' : profile.gender === 'Men' ? '♂' : ''}</span>
                       <span>{profile.gender}</span>
                     </div>
                   </>

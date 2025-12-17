@@ -239,46 +239,50 @@ export function PeopleListView() {
         )}
       </div>
 
-      {/* Role Filter Chips */}
-      <div className="flex flex-wrap justify-center gap-2 mb-6">
-        {roleFilters.map((filter) => (
-          <button
-            key={filter.value}
-            onClick={() => setRoleFilter(filter.value)}
-            className={`px-6 py-2.5 min-h-[44px] rounded-full text-sm font-medium transition-all ${
-              roleFilter === filter.value
-                ? 'bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white shadow-md'
-                : 'bg-white text-gray-700 border border-gray-300 hover:border-purple-300'
-            }`}
-          >
-            {filter.label}
-          </button>
-        ))}
+      {/* Role Filter Chips - responsive single row */}
+      <div className="flex justify-center mb-6 px-4 sm:px-0">
+        <div className="flex gap-1.5 sm:gap-2 w-full max-w-md sm:w-auto">
+          {roleFilters.map((filter) => (
+            <button
+              key={filter.value}
+              onClick={() => setRoleFilter(filter.value)}
+              className={`flex-1 sm:flex-none px-3 sm:px-6 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] rounded-full text-xs sm:text-sm font-medium transition-all ${
+                roleFilter === filter.value
+                  ? 'bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white shadow-md'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:border-purple-300'
+              }`}
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Availability Filter */}
-      <div className="flex flex-wrap justify-center gap-2 mb-8">
-        <button
-          onClick={() => setAvailabilityFilter('all')}
-          className={`px-6 py-2.5 min-h-[44px] rounded-full text-sm font-medium transition-all ${
-            availabilityFilter === 'all'
-              ? 'bg-gradient-to-r from-gray-600 to-gray-700 text-white shadow-md'
-              : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400'
-          }`}
-        >
-          All Members
-        </button>
-        <button
-          onClick={() => setAvailabilityFilter('open')}
-          className={`px-6 py-2.5 min-h-[44px] rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
-            availabilityFilter === 'open'
-              ? 'bg-gradient-to-r from-emerald-400 to-green-500 text-white shadow-md'
-              : 'bg-white text-gray-700 border border-gray-300 hover:border-emerald-400'
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-current" />
-          Open to Opportunities
-        </button>
+      {/* Availability Filter - secondary pill toggles */}
+      <div className="flex justify-center mb-8 px-4 sm:px-0">
+        <div className="flex gap-2 sm:gap-2.5">
+          <button
+            onClick={() => setAvailabilityFilter('all')}
+            className={`px-4 sm:px-5 py-1.5 rounded-full text-xs font-medium transition-all ${
+              availabilityFilter === 'all'
+                ? 'bg-gray-700 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            All Members
+          </button>
+          <button
+            onClick={() => setAvailabilityFilter('open')}
+            className={`px-4 sm:px-5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+              availabilityFilter === 'open'
+                ? 'bg-emerald-500 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-current" />
+            Open to Opportunities
+          </button>
+        </div>
       </div>
 
       {/* New Members Section */}

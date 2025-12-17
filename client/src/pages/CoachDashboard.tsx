@@ -335,7 +335,6 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                         ? 'text-[#5c6bc0]' 
                         : 'text-gray-600'
                   }`}>
-                    <span className="text-lg">{profile.gender === 'Women' ? '♀' : profile.gender === 'Men' ? '♂' : ''}</span>
                     <span>{profile.gender}</span>
                   </div>
                 )}
