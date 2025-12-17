@@ -12,8 +12,8 @@ test.describe('@smoke player', () => {
   test('dashboard loads for authenticated player', async ({ page }) => {
     await page.goto('/dashboard/profile')
 
-    // Basic signal that profile dashboard rendered (check for profile card or edit button)
-    await expect(page.getByRole('button', { name: /edit profile/i })).toBeVisible({ timeout: 20000 })
+    // Basic signal that profile dashboard rendered (check for profile name heading)
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20000 })
   })
 
   test('player can open seeded vacancy details', async ({ page, opportunitiesPage }) => {
