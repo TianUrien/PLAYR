@@ -964,7 +964,7 @@ export default function MessagesPage() {
                   <p className="text-sm text-gray-500 mb-4">{error}</p>
                   <button
                     onClick={() => fetchConversations({ force: true })}
-                    className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+                    className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500"
                   >
                     Try again
                   </button>
@@ -980,7 +980,7 @@ export default function MessagesPage() {
                   </p>
                   <button
                     onClick={() => fetchConversations({ force: true })}
-                    className="text-sm font-medium text-purple-600 hover:text-purple-700"
+                    className="text-sm font-medium text-purple-600 hover:text-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500 rounded"
                   >
                     Refresh list
                   </button>
@@ -1001,7 +1001,7 @@ export default function MessagesPage() {
                         type="button"
                         onClick={handleLoadMoreConversations}
                         disabled={isFetchingMoreConversations}
-                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
+                        className="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500"
                       >
                         {isFetchingMoreConversations ? 'Loading...' : 'Load more'}
                       </button>
@@ -1031,7 +1031,7 @@ export default function MessagesPage() {
                 <p className="text-sm text-gray-500">Fetching messages</p>
                 <button
                   onClick={handleBackToList}
-                  className="mt-4 text-sm font-medium text-purple-600 hover:text-purple-700"
+                  className="mt-4 text-sm font-medium text-purple-600 hover:text-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500 rounded"
                 >
                   Back to conversations
                 </button>

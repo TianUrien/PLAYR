@@ -74,16 +74,13 @@ export default function ConversationList({
   }
 
   const virtualItems = rowVirtualizer.getVirtualItems()
-  const totalHeight = rowVirtualizer.getTotalSize()
-
-  const setSpacerRef = (element: HTMLDivElement | null) => {
-    if (!element) return
-    element.style.height = `${totalHeight}px`
-  }
 
   return (
     <div ref={parentRef} className="h-full overflow-y-auto">
-      <div className="relative w-full" ref={setSpacerRef}>
+      <div
+        className="relative w-full"
+        style={{ height: `${rowVirtualizer.getTotalSize()}px` }}
+      >
         {virtualItems.map(virtualRow => {
           const conversation = conversations[virtualRow.index]
           if (!conversation) {
@@ -95,7 +92,7 @@ export default function ConversationList({
           const isUnread = (conversation.unreadCount || 0) > 0
           const isSentByMe = conversation.lastMessage?.sender_id === currentUserId
           const otherParticipantLabel = conversation.otherParticipant?.full_name?.split(' ')[0] || conversation.otherParticipant?.username || 'Contact'
-          const buttonClasses = `w-full flex items-start gap-3 ${isCompact ? 'px-3 py-2.5' : 'px-4 py-3'} transition-colors ${
+          const buttonClasses = `w-full flex items-start gap-3 ${isCompact ? 'px-3 py-2.5' : 'px-4 py-3'} transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-purple-500 ${
             isSelected
               ? 'bg-gray-100'
               : 'hover:bg-gray-50'
@@ -109,13 +106,13 @@ export default function ConversationList({
           return (
             <div
               key={conversation.id}
-              ref={element => {
-                if (!element) return
-                rowVirtualizer.measureElement(element)
-                element.style.transform = `translateY(${virtualRow.start}px)`
-              }}
+              ref={rowVirtualizer.measureElement}
               data-index={virtualRow.index}
-              className="absolute left-0 w-full border-b border-gray-100"
+              className="absolute top-0 left-0 w-full border-b border-gray-100"
+              style={{
+                transform: `translateY(${virtualRow.start}px)`,
+                willChange: 'transform'
+              }}
             >
               <button
                 data-testid="conversation-item"

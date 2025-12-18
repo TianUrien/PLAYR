@@ -59,7 +59,7 @@ export function ChatHeader({ participant, onBack, profilePath, isMobile, immersi
       {isMobile && (
         <button
           onClick={onBack}
-          className="-ml-1 rounded-full p-2 transition-colors hover:bg-gray-100"
+          className="-ml-1 rounded-full p-2 transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500"
           aria-label="Back to conversations"
         >
           <ArrowLeft className="h-5 w-5 text-gray-700" />
