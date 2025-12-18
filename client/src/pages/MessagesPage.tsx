@@ -875,7 +875,7 @@ export default function MessagesPage() {
 
   const rootContainerClasses = isMobile
     ? 'flex flex-1 min-h-0 flex-col bg-white'
-    : 'flex h-screen flex-col bg-gray-100'
+    : 'flex min-h-screen flex-col bg-gray-100 pt-[var(--app-header-offset)]'
 
   const mainPaddingClasses = isMobile
     ? shouldHideGlobalHeader
