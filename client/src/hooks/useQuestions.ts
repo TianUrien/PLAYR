@@ -250,14 +250,15 @@ export function useQuestions(params: QuestionsQueryParams = {}) {
     }
   }, [addToast])
 
-  // Soft-delete question
+  // Delete question (hard delete - RLS ensures only author can delete)
   const deleteQuestion = useCallback(async (questionId: string): Promise<boolean> => {
     try {
       const { error: deleteError } = await supabase.from('community_questions')
-        .update({ deleted_at: new Date().toISOString() })
+        .delete()
         .eq('id', questionId)
 
       if (deleteError) {
+        console.error('[useQuestions] Delete error:', deleteError)
         addToast('Failed to delete question', 'error')
         throw deleteError
       }
@@ -517,16 +518,17 @@ export function useQuestionDetail(questionId: string | undefined) {
     }
   }, [questionId, addToast])
 
-  // Delete question
+  // Delete question (hard delete - RLS ensures only author can delete)
   const deleteQuestion = useCallback(async (): Promise<boolean> => {
     if (!questionId) return false
 
     try {
       const { error: deleteError } = await supabase.from('community_questions')
-        .update({ deleted_at: new Date().toISOString() })
+        .delete()
         .eq('id', questionId)
 
       if (deleteError) {
+        console.error('[useQuestionDetail] Delete question error:', deleteError)
         addToast('Failed to delete question', 'error')
         throw deleteError
       }
