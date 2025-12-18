@@ -125,7 +125,7 @@ export default function ConversationList({
                     src={avatarUrl}
                     alt={participantName}
                     initials={avatarInitials}
-                    className="w-12 h-12 text-base ring-2 ring-gray-100"
+                    className="w-12 h-12 text-base"
                     enablePreview
                     previewTitle={participantName}
                     previewInteraction="pointer"

@@ -61,7 +61,7 @@ export function MessageBubble({
               : isGroupedWithPrevious ? 'rounded-tl-md' : ''
           )}
         >
-          <p className="whitespace-pre-wrap break-words">{message.content}</p>
+          <p className="whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>{message.content}</p>
           <div className={cn(
             'mt-1 flex items-center gap-1.5 text-[11px]',
             isMine ? 'justify-end' : ''

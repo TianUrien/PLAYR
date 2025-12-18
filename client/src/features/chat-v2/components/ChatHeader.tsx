@@ -31,12 +31,12 @@ export function ChatHeader({ participant, onBack, profilePath, isMobile, immersi
         {profilePath ? (
           <Link
             to={profilePath}
-            className="truncate text-base font-semibold text-gray-900 transition hover:text-purple-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500"
+            className="max-w-[200px] truncate text-base font-semibold text-gray-900 transition hover:text-purple-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500 sm:max-w-[280px]"
           >
             {participantName}
           </Link>
         ) : (
-          <h2 className="truncate text-base font-semibold text-gray-900">{participantName}</h2>
+          <h2 className="max-w-[200px] truncate text-base font-semibold text-gray-900 sm:max-w-[280px]">{participantName}</h2>
         )}
         <RoleBadge role={participant?.role ?? 'member'} className="text-xs flex-shrink-0" />
       </div>
