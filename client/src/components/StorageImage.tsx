@@ -57,6 +57,7 @@ export default function StorageImage({
   }
 
   const handleError = () => {
+    console.error('[StorageImage] Failed to load image:', src)
     setImageLoaded(true)
     setImageError(true)
     onImageError?.()

@@ -201,6 +201,16 @@ export default function GalleryManager({
 
         if (uploadError) throw uploadError
 
+        // Verify the file was actually uploaded by checking it exists
+        const { data: fileExists, error: listError } = await supabase.storage
+          .from(config.bucket)
+          .list(targetEntityId, { search: fileName.split('/').pop() })
+
+        if (listError || !fileExists || fileExists.length === 0) {
+          console.error('File upload verification failed:', { fileName, listError, fileExists })
+          throw new Error('File upload could not be verified. Please try again.')
+        }
+
         const { data: urlData } = supabase.storage
           .from(config.bucket)
           .getPublicUrl(fileName)
