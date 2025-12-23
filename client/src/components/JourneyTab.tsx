@@ -27,6 +27,7 @@ import type { PlayingHistory } from '@/lib/supabase'
 import { deleteStorageObject, extractStoragePath } from '@/lib/storage'
 import Button from './Button'
 import Skeleton from './Skeleton'
+import StorageImage from './StorageImage'
 
 type EditableJourneyEntry = Omit<
   PlayingHistory,
@@ -899,13 +900,14 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
           <div className="md:col-span-2">
             <label className="text-sm font-medium text-gray-700">Logo / Image</label>
             <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start">
-              {entry.image_url ? (
-                <img src={entry.image_url} alt="Journey logo preview" className="h-20 w-20 rounded-xl object-cover" />
-              ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-gray-400">
-                  <ImageIcon className="h-6 w-6" />
-                </div>
-              )}
+              <StorageImage
+                src={entry.image_url}
+                alt="Journey logo preview"
+                className="h-full w-full object-cover"
+                containerClassName="h-20 w-20 rounded-xl"
+                fallbackClassName="h-20 w-20 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50"
+                fallback={<ImageIcon className="h-6 w-6" />}
+              />
 
               <div className="flex flex-col gap-2">
                 <label
@@ -1099,9 +1101,11 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
             )}
           </div>
         ) : (
-          <div className="relative pl-4 md:pl-8">
-            <div className="pointer-events-none absolute left-3 top-0 bottom-0 w-px bg-gradient-to-b from-indigo-100 via-gray-200 to-transparent md:left-4" />
-            <div className="space-y-10">
+          <div className="relative">
+            {/* Continuous vertical timeline line */}
+            <div className="pointer-events-none absolute left-5 top-5 bottom-5 w-0.5 bg-gradient-to-b from-indigo-200 via-gray-200 to-gray-100 md:left-6" />
+            
+            <div className="space-y-6">
               {ordered.map((entry, index) => {
                 const meta = entry.entry_type ? entryTypeMeta[entry.entry_type] : entryTypeMeta.club
                 const Icon = meta.icon
@@ -1114,114 +1118,113 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
                 const isEditingEntry = activeFormType === entry.id && Boolean(activeEntryDraft)
 
                 return (
-                  <div key={entry.id} className="flex gap-4 md:gap-6">
-                    <div className="-ml-2 flex w-10 flex-col items-center md:ml-0 md:w-14">
+                  <div key={entry.id} className="relative flex gap-4 md:gap-5">
+                    {/* Timeline anchor icon */}
+                    <div className="relative z-10 flex-shrink-0">
                       <div
-                        className={`relative flex h-10 w-10 items-center justify-center rounded-full border-4 border-white shadow-lg ring-2 ring-indigo-50 ${meta.dotClass} md:h-12 md:w-12`}
+                        className={`flex h-10 w-10 items-center justify-center rounded-full shadow-sm ring-4 ring-white ${meta.dotClass} md:h-12 md:w-12`}
                       >
                         <Icon className="h-4 w-4 md:h-5 md:w-5" />
                       </div>
-                      {index !== ordered.length - 1 && <div className="mt-2 hidden w-px flex-1 bg-gray-200 md:block" />}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5 md:p-6">
-                        {isEditingEntry && activeEntryDraft ? (
-                          renderEntryForm(activeEntryDraft, 'edit')
-                        ) : (
-                          <>
-                            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                              <div className="flex gap-3 sm:gap-4">
-                                {entry.image_url ? (
-                                  <img
-                                    src={entry.image_url}
-                                    alt="Journey logo"
-                                    className="h-14 w-14 rounded-2xl object-cover sm:h-16 sm:w-16"
-                                  />
-                                ) : (
-                                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 text-gray-500 sm:h-16 sm:w-16">
-                                    <ImageIcon className="h-5 w-5" />
-                                  </div>
-                                )}
-                                <div>
-                                  <p className="text-[11px] uppercase tracking-[0.2em] text-gray-400 md:text-xs">My Hockey Journey</p>
-                                  <h3 className="text-lg font-semibold text-gray-900 sm:text-xl">{entry.club_name}</h3>
-                                  <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-600">
-                                    {location && (
-                                      <span className="inline-flex items-center gap-1">
-                                        <MapPin className="h-3.5 w-3.5" />
-                                        {location}
-                                      </span>
-                                    )}
-                                    {(entry.position_role || entry.division_league) && <span className="text-gray-300">•</span>}
-                                    <span>{[entry.position_role, entry.division_league].filter(Boolean).join(' • ')}</span>
-                                  </div>
-                                </div>
+
+                    {/* Entry card */}
+                    <div className="flex-1 min-w-0 pb-2">
+                      {isEditingEntry && activeEntryDraft ? (
+                        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                          {renderEntryForm(activeEntryDraft, 'edit')}
+                        </div>
+                      ) : (
+                        <div className="group rounded-xl border border-gray-100 bg-white p-4 transition-shadow hover:shadow-md">
+                          {/* Header row: Logo + Title + Actions */}
+                          <div className="flex items-start gap-3">
+                            {/* Club/Event logo */}
+                            <StorageImage
+                              src={entry.image_url}
+                              alt="Journey logo"
+                              className="h-full w-full object-cover rounded-xl"
+                              containerClassName="h-12 w-12 min-w-[3rem] rounded-xl"
+                              fallbackClassName="h-12 w-12 rounded-xl bg-gray-50"
+                              fallback={<ImageIcon className="h-4 w-4 text-gray-300" />}
+                            />
+
+                            {/* Title & context */}
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-gray-900 leading-tight">{entry.club_name}</h3>
+                              {location && (
+                                <p className="mt-0.5 text-sm text-gray-500">{location}</p>
+                              )}
+                              {(entry.position_role || entry.division_league) && (
+                                <p className="text-sm text-gray-500">
+                                  {[entry.position_role, entry.division_league].filter(Boolean).join(' · ')}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Action icons - subtle, right-aligned */}
+                            {!readOnly && (
+                              <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                <button
+                                  type="button"
+                                  onClick={() => startEditEntry(entry)}
+                                  className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                                  title="Edit entry"
+                                >
+                                  <Edit2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteEntry(entry.id)}
+                                  className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                                  title="Delete entry"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
                               </div>
-                              <div className="flex flex-wrap items-center gap-3">
-                                <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold md:px-3 md:text-xs ${meta.badgeClass}`}>
-                                  {meta.label}
+                            )}
+                          </div>
+
+                          {/* Meta row: Badge + Dates + Duration */}
+                          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${meta.badgeClass}`}>
+                              {meta.label}
+                            </span>
+                            {(startLabel || entry.years) && (
+                              <>
+                                <span className="text-gray-300">·</span>
+                                <span className="inline-flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {startLabel || entry.years}
+                                  {startLabel && ` – ${endLabel}`}
                                 </span>
-                                {!readOnly && (
-                                  <div className="flex gap-2">
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      className="gap-2"
-                                      onClick={() => startEditEntry(entry)}
-                                    >
-                                      <Edit2 className="h-4 w-4" />
-                                      Edit
-                                    </Button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteEntry(entry.id)}
-                                      className="inline-flex items-center gap-2 rounded-lg border border-red-100 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                      Delete
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-gray-600">
-                              {(startLabel || endLabel) && (
-                                <div className="inline-flex items-center gap-2 text-gray-700">
-                                  <Calendar className="h-4 w-4" />
-                                  <span>
-                                    {startLabel || entry.years || 'Unknown'}
-                                    {startLabel && ' – '}
-                                    {startLabel ? endLabel : ''}
-                                  </span>
-                                </div>
-                              )}
-                              {durationLabel && (
-                                <div className="inline-flex items-center gap-2 text-gray-700">
-                                  <Clock className="h-4 w-4" />
-                                  <span>{durationLabel}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {entry.description?.trim() && (
-                              <p className="mt-4 leading-relaxed text-gray-700">{entry.description}</p>
+                              </>
                             )}
-
-                            {entry.highlights.length > 0 && (
-                              <ul className="mt-4 grid gap-2 text-gray-700">
-                                {entry.highlights.map((highlight, idx) => (
-                                  <li key={idx} className="flex items-start gap-2 text-sm" aria-label="Journey highlight">
-                                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-gray-400" />
-                                    <span>{highlight}</span>
-                                  </li>
-                                ))}
-                              </ul>
+                            {durationLabel && (
+                              <>
+                                <span className="text-gray-300">·</span>
+                                <span>{durationLabel}</span>
+                              </>
                             )}
-                          </>
-                        )}
-                      </div>
+                          </div>
+
+                          {/* Description */}
+                          {entry.description?.trim() && (
+                            <p className="mt-3 text-sm leading-relaxed text-gray-600">{entry.description}</p>
+                          )}
+
+                          {/* Highlights */}
+                          {entry.highlights.length > 0 && (
+                            <ul className="mt-3 space-y-1">
+                              {entry.highlights.map((highlight, idx) => (
+                                <li key={idx} className="flex items-start gap-2 text-sm text-gray-600">
+                                  <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-gray-300" />
+                                  <span>{highlight}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )

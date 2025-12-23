@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Upload, Trash2, GripVertical, Edit2, X, Check, ArrowUp, ArrowDown, Loader2 } from 'lucide-react'
+import { Upload, Trash2, GripVertical, Edit2, X, Check, ArrowUp, ArrowDown, Loader2, ImageIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
@@ -7,6 +7,7 @@ import type { ClubMedia, GalleryPhoto } from '@/lib/supabase'
 import ConfirmActionModal from './ConfirmActionModal'
 import MediaLightbox from './MediaLightbox'
 import Skeleton from './Skeleton'
+import StorageImage from './StorageImage'
 import { deleteStorageObject } from '@/lib/storage'
 import { optimizeImage, type OptimizeOptions, validateImage } from '@/lib/imageOptimization'
 
@@ -567,11 +568,14 @@ export default function GalleryManager({
                   }
                 }}
               >
-                <img
+                <StorageImage
                   src={item.url}
                   alt={item.altText || item.fileName}
                   className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  loading="lazy"
+                  containerClassName="h-full w-full"
+                  fallbackClassName="h-full w-full aspect-[3/4]"
+                  fallback={<ImageIcon className="h-8 w-8 text-gray-400" />}
+                  showLoading={true}
                 />
                 {!readOnly && (
                   <div className="pointer-events-none absolute left-2 top-2 rounded-lg bg-white/80 p-2 shadow-lg backdrop-blur">

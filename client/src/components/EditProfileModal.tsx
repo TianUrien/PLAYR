@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
-import { Button, Input, CountrySelect } from '@/components'
+import { Button, Input, CountrySelect, StorageImage } from '@/components'
 import { logger } from '@/lib/logger'
 import { optimizeAvatarImage, validateImage } from '@/lib/imageOptimization'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
@@ -414,7 +414,14 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center cursor-pointer hover:bg-gray-200 transition-colors overflow-hidden"
                 >
                   {formData.avatar_url ? (
-                    <img src={formData.avatar_url} alt="Preview" className="w-full h-full object-cover" />
+                    <StorageImage
+                      src={formData.avatar_url}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                      containerClassName="w-full h-full"
+                      fallbackClassName="w-full h-full"
+                      fallback={<Upload className="w-8 h-8 text-gray-400" />}
+                    />
                   ) : (
                     <Upload className="w-8 h-8 text-gray-400" />
                   )}

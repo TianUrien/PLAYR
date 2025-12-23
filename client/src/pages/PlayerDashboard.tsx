@@ -213,8 +213,8 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
 
   const tabs: { id: TabType; label: string }[] = [
     { id: 'profile', label: 'Profile' },
-    { id: 'friends', label: 'Friends' },
     { id: 'journey', label: 'Journey' },
+    { id: 'friends', label: 'Friends' },
     { id: 'comments', label: 'Comments' },
   ]
 
