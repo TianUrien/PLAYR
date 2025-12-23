@@ -7,6 +7,7 @@ import './globals.css'
 import App from './App.tsx'
 import { initWebVitals } from './lib/monitor'
 import { queryClient } from './lib/queryClient'
+import { logger } from './lib/logger'
 import UpdatePrompt from './components/UpdatePrompt'
 
 // Create a container for the update prompt (outside main React tree)
@@ -46,27 +47,27 @@ if ('serviceWorker' in navigator) {
   const updateSW = registerSW({
     immediate: true,
     onRegisteredSW(swScriptUrl, registration) {
-      console.log('[PWA] Service Worker registered:', swScriptUrl)
+      logger.debug('[PWA] Service Worker registered:', swScriptUrl)
       if (registration) {
         // Check for updates immediately on registration
-        registration.update().catch(console.error)
+        registration.update().catch((err) => logger.error('[PWA] Update check failed:', err))
         
         // Then check for updates every 15 minutes (more frequent for better UX)
         setInterval(() => {
-          console.log('[PWA] Checking for updates...')
-          registration.update().catch(console.error)
+          logger.debug('[PWA] Checking for updates...')
+          registration.update().catch((err) => logger.error('[PWA] Update check failed:', err))
         }, 15 * 60 * 1000)
       }
     },
     onOfflineReady() {
-      console.log('[PWA] App is ready for offline use')
+      logger.info('[PWA] App is ready for offline use')
     },
     onNeedRefresh() {
-      console.log('[PWA] New content available, showing update prompt')
+      logger.info('[PWA] New content available, showing update prompt')
       showUpdatePrompt(updateSW)
     },
     onRegisterError(error) {
-      console.error('[PWA] Service Worker registration failed:', error)
+      logger.error('[PWA] Service Worker registration failed:', error)
     },
   })
 }

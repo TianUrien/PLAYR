@@ -23,6 +23,7 @@ import { useToastStore } from '@/lib/toast'
 import { optimizeImage, validateImage } from '@/lib/imageOptimization'
 import type { PlayingHistory } from '@/lib/supabase'
 import { deleteStorageObject, extractStoragePath } from '@/lib/storage'
+import { logger } from '@/lib/logger'
 import Button from './Button'
 import Skeleton from './Skeleton'
 import StorageImage from './StorageImage'
@@ -183,7 +184,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
         window.localStorage.setItem(draftKey, JSON.stringify(draft))
         window.localStorage.setItem(getJourneyDraftContextKey(user.id), JSON.stringify(context))
       } catch (error) {
-        console.error('Failed to persist journey draft', error)
+        logger.error('Failed to persist journey draft', error)
       }
     },
     [user]
@@ -290,7 +291,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
 
       setJourney(normalized)
     } catch (error) {
-      console.error('Error fetching journey entries:', error)
+      logger.error('Error fetching journey entries:', error)
       addToast('Failed to load Journey timeline.', 'error')
     } finally {
       setIsLoading(false)
@@ -329,7 +330,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       journeyDraftRestoredRef.current = true
       addToast('Journey draft restored.', 'info')
     } catch (error) {
-      console.error('Failed to restore journey draft', error)
+      logger.error('Failed to restore journey draft', error)
       window.localStorage.removeItem(contextKey)
     }
   }, [activeEntryDraft, activeFormType, addToast, canManage, user])
@@ -394,7 +395,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
           nextDraft = JSON.parse(storedDraft) as EditableJourneyEntry
         }
       } catch (error) {
-        console.error('Failed to load saved journey draft', error)
+        logger.error('Failed to load saved journey draft', error)
       }
     }
 
@@ -531,7 +532,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
 
       addToast('Image uploaded successfully.', 'success')
     } catch (error) {
-      console.error('Error uploading journey image:', error)
+      logger.error('Error uploading journey image:', error)
       addToast('We couldn’t upload this image. Please use PNG or JPG up to 5MB.', 'error')
     } finally {
       setUploadingImageId(null)
@@ -557,7 +558,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       updateField('image_url', null as EditableJourneyEntry['image_url'])
       addToast('Image removed.', 'success')
     } catch (error) {
-      console.error('Error removing journey image:', error)
+      logger.error('Error removing journey image:', error)
       addToast('Failed to remove image. Please try again.', 'error')
     } finally {
       setUploadingImageId(null)
@@ -637,7 +638,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       resetFormState()
       addToast('Journey entry saved.', 'success')
     } catch (error) {
-      console.error('Error saving journey entry:', error)
+      logger.error('Error saving journey entry:', error)
       addToast('Failed to save journey. Please try again.', 'error')
     } finally {
       setSavingEntryId(null)
@@ -670,7 +671,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       resetFormState()
       addToast('Journey entry removed.', 'success')
     } catch (error) {
-      console.error('Error deleting journey entry:', error)
+      logger.error('Error deleting journey entry:', error)
       addToast('Failed to delete journey entry. Please try again.', 'error')
     } finally {
       setSavingEntryId(null)

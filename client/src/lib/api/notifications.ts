@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { monitor } from '@/lib/monitor'
+import { logger } from '@/lib/logger'
 import type { Database, Json } from '@/lib/database.types'
 
 export type NotificationKind = Database['public']['Enums']['profile_notification_kind']
@@ -96,7 +97,7 @@ export const fetchNotificationsPage = async (
     })
 
     if (error) {
-      console.error('[NOTIFICATIONS] Failed to fetch notifications', error)
+      logger.error('[NOTIFICATIONS] Failed to fetch notifications', error)
       throw error
     }
 
@@ -115,7 +116,7 @@ export const fetchNotificationCounts = async (): Promise<NotificationCounts> => 
     const { data, error } = await supabase.rpc('get_notification_counts')
 
     if (error) {
-      console.error('[NOTIFICATIONS] Failed to fetch notification counts', error)
+      logger.error('[NOTIFICATIONS] Failed to fetch notification counts', error)
       throw error
     }
 
@@ -134,7 +135,7 @@ export const markNotificationRead = async (notificationId: string): Promise<bool
     })
 
     if (error) {
-      console.error('[NOTIFICATIONS] Failed to mark notification read', error)
+      logger.error('[NOTIFICATIONS] Failed to mark notification read', error)
       throw error
     }
 
@@ -149,7 +150,7 @@ export const markAllNotificationsRead = async (kind?: NotificationKind): Promise
     })
 
     if (error) {
-      console.error('[NOTIFICATIONS] Failed to mark all notifications read', error)
+      logger.error('[NOTIFICATIONS] Failed to mark all notifications read', error)
       throw error
     }
 
@@ -168,7 +169,7 @@ export const clearNotifications = async (params?: {
     })
 
     if (error) {
-      console.error('[NOTIFICATIONS] Failed to clear notifications', error)
+      logger.error('[NOTIFICATIONS] Failed to clear notifications', error)
       throw error
     }
 

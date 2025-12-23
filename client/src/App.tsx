@@ -1,6 +1,7 @@
 import { useEffect, useRef, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { initializeAuth } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 import { ProtectedRoute, ErrorBoundary, Layout, SentryTestButton } from '@/components'
 import ToastContainer from '@/components/ToastContainer'
 import { ProfileImagePreviewProvider } from '@/components/ProfileImagePreviewProvider'
@@ -54,18 +55,18 @@ function App() {
   useEffect(() => {
     // Guard against React 18 Strict Mode double initialization
     if (initRef.current) {
-      console.log('[APP] Already initialized, skipping')
+      logger.debug('[APP] Already initialized, skipping')
       return
     }
     
     initRef.current = true
-    console.log('[APP] Initializing auth')
+    logger.debug('[APP] Initializing auth')
     
     // Initialize auth listener
     const subscription = initializeAuth()
     
     return () => {
-      console.log('[APP] Cleaning up auth')
+      logger.debug('[APP] Cleaning up auth')
       subscription.unsubscribe()
       // Reset on actual unmount (not Strict Mode)
       initRef.current = false

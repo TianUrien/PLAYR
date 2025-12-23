@@ -23,6 +23,7 @@ import {
   Pencil,
 } from 'lucide-react'
 import { DataTable, ConfirmDialog, EditUserModal } from '../components'
+import { logger } from '@/lib/logger'
 import type { Column, Action } from '../components'
 import type { AdminProfileListItem, AdminProfileDetails, ProfileSearchParams } from '../types'
 import {
@@ -83,7 +84,7 @@ export function AdminDirectory() {
       setProfiles(result.profiles)
       setTotalCount(result.totalCount)
     } catch (err) {
-      console.error('[AdminDirectory] Failed to fetch profiles:', err)
+      logger.error('[AdminDirectory] Failed to fetch profiles:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch profiles')
     } finally {
       setIsLoading(false)
@@ -107,7 +108,7 @@ export function AdminDirectory() {
       const details = await getProfileDetails(profile.id)
       setSelectedProfile(details)
     } catch (err) {
-      console.error('[AdminDirectory] Failed to fetch profile details:', err)
+      logger.error('[AdminDirectory] Failed to fetch profile details:', err)
     } finally {
       setIsLoadingProfile(false)
     }
@@ -139,7 +140,7 @@ export function AdminDirectory() {
       const details = await getProfileDetails(profile.id)
       setEditProfile(details)
     } catch (err) {
-      console.error('[AdminDirectory] Failed to fetch profile for editing:', err)
+      logger.error('[AdminDirectory] Failed to fetch profile for editing:', err)
     } finally {
       setIsLoadingEditProfile(false)
     }

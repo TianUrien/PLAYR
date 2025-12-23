@@ -5,6 +5,7 @@
  */
 
 import { useState, useCallback } from 'react'
+import { logger } from '@/lib/logger'
 import type { AuthOrphan, ProfileOrphan, BrokenReferences } from '../types'
 import { getAuthOrphans, getProfileOrphans, getBrokenReferences } from '../api/adminApi'
 
@@ -32,7 +33,7 @@ export function useDataIssues(): UseDataIssuesResult {
       const data = await getAuthOrphans()
       setAuthOrphans(data)
     } catch (err) {
-      console.error('[useDataIssues] Failed to fetch auth orphans:', err)
+      logger.error('[useDataIssues] Failed to fetch auth orphans:', err)
       throw err
     }
   }, [])
@@ -42,7 +43,7 @@ export function useDataIssues(): UseDataIssuesResult {
       const data = await getProfileOrphans()
       setProfileOrphans(data)
     } catch (err) {
-      console.error('[useDataIssues] Failed to fetch profile orphans:', err)
+      logger.error('[useDataIssues] Failed to fetch profile orphans:', err)
       throw err
     }
   }, [])
@@ -52,7 +53,7 @@ export function useDataIssues(): UseDataIssuesResult {
       const data = await getBrokenReferences()
       setBrokenReferences(data)
     } catch (err) {
-      console.error('[useDataIssues] Failed to fetch broken references:', err)
+      logger.error('[useDataIssues] Failed to fetch broken references:', err)
       throw err
     }
   }, [])

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, ProfileStrengthCard, DualNationalityDisplay, AvailabilityPill } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
@@ -204,7 +205,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
 
       navigate(`/messages?conversation=${newConv.id}`)
     } catch (error) {
-      console.error('Error creating conversation:', error)
+      logger.error('Error creating conversation:', error)
       addToast('Failed to start conversation. Please try again.', 'error')
     } finally {
       setSendingMessage(false)

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Lock, CheckCircle } from 'lucide-react'
 import { Input, Button } from '@/components'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 
 /**
  * ResetPassword - Set new password after clicking email link
@@ -70,7 +71,7 @@ export default function ResetPassword() {
         navigate('/dashboard/profile')
       }, 2000)
     } catch (err) {
-      console.error('[RESET_PASSWORD] Error:', err)
+      logger.error('[RESET_PASSWORD] Error:', err)
       setError(err instanceof Error ? err.message : 'Failed to reset password')
     } finally {
       setLoading(false)

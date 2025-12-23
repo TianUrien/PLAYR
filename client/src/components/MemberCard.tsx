@@ -4,6 +4,7 @@ import { MessageCircle, User } from 'lucide-react'
 import { Avatar, RoleBadge, NationalityCardDisplay, AvailabilityPill } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import { useToastStore } from '@/lib/toast'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -86,7 +87,7 @@ export default function MemberCard({
         navigate(`/messages?new=${id}`)
       }
     } catch (error) {
-      console.error('Error creating conversation:', error)
+      logger.error('Error creating conversation:', error)
       addToast('Failed to start conversation. Please try again.', 'error')
     } finally {
       setIsLoading(false)

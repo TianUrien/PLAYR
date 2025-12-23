@@ -469,7 +469,8 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
   }
 
   const canSend = newMessage.trim().length > 0
-  const isSendDisabled = !canSend || sending
+  const isOverLimit = newMessage.length > 1000
+  const isSendDisabled = !canSend || sending || isOverLimit
 
 
 
@@ -673,7 +674,9 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
             />
             <div
               id={textareaCharCountId}
-              className="pointer-events-none absolute bottom-2 right-3 text-xs font-medium text-gray-400 md:bottom-2.5 md:right-3"
+              className={`pointer-events-none absolute bottom-2 right-3 text-xs font-medium md:bottom-2.5 md:right-3 transition-colors ${
+                newMessage.length >= 1000 ? 'text-red-500 font-semibold' : newMessage.length >= 900 ? 'text-amber-500' : 'text-gray-400'
+              }`}
               aria-live="polite"
             >
               {newMessage.length}/1000

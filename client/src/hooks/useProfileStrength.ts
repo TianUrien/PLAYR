@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import type { Profile } from '@/lib/supabase'
 
 export type ProfileStrengthBucket = {
@@ -83,7 +84,7 @@ export function useProfileStrength(profile: Profile | null): ProfileStrengthResu
         .eq('user_id', profile.id)
 
       if (journeyError) {
-        console.error('Error fetching journey count:', journeyError)
+        logger.error('Error fetching journey count:', journeyError)
       } else {
         setJourneyCount(journeyCountResult ?? 0)
       }
@@ -95,12 +96,12 @@ export function useProfileStrength(profile: Profile | null): ProfileStrengthResu
         .eq('user_id', profile.id)
 
       if (galleryError) {
-        console.error('Error fetching gallery count:', galleryError)
+        logger.error('Error fetching gallery count:', galleryError)
       } else {
         setGalleryCount(galleryCountResult ?? 0)
       }
     } catch (error) {
-      console.error('Error fetching profile strength data:', error)
+      logger.error('Error fetching profile strength data:', error)
     } finally {
       setLoading(false)
     }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useMemo } from 'react'
 import { Send } from 'lucide-react'
 
 interface ComposerProps {
@@ -14,12 +14,30 @@ interface ComposerProps {
   immersiveMobile?: boolean
 }
 
+const WARNING_THRESHOLD = 0.9 // Show warning color at 90% of limit
+
 export function Composer({ value, sending, disabled, onChange, onSubmit, onFocus, maxLength = 1000, textareaId, isMobile = false, immersiveMobile = false }: ComposerProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   
   const composerPositionClass = isMobile && immersiveMobile
     ? 'chat-fixed-composer fixed bottom-0 left-0 right-0 z-40'
     : 'relative'
+
+  const characterCountState = useMemo(() => {
+    const count = value.length
+    const percentage = count / maxLength
+    if (count >= maxLength) return 'error'
+    if (percentage >= WARNING_THRESHOLD) return 'warning'
+    return 'normal'
+  }, [value.length, maxLength])
+
+  const counterColorClass = useMemo(() => {
+    switch (characterCountState) {
+      case 'error': return 'text-red-500 font-semibold'
+      case 'warning': return 'text-amber-500'
+      default: return 'text-gray-400'
+    }
+  }, [characterCountState])
 
   const syncHeight = useCallback(() => {
     const textarea = textareaRef.current
@@ -72,7 +90,7 @@ export function Composer({ value, sending, disabled, onChange, onSubmit, onFocus
             onChange={event => onChange(event.target.value)}
             className="chat-textarea w-full resize-none rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5 pr-16 text-[15px] leading-snug outline-none transition placeholder:text-gray-400 focus:border-purple-300 focus:bg-white focus:ring-2 focus:ring-purple-100"
           />
-          <div className="pointer-events-none absolute bottom-2.5 right-4 text-[11px] font-medium text-gray-400">
+          <div className={`pointer-events-none absolute bottom-2.5 right-4 text-[11px] font-medium transition-colors ${counterColorClass}`}>
             {value.length}/{maxLength}
           </div>
         </div>

@@ -97,14 +97,14 @@ export default function Landing() {
           stage: 'profileFetch',
           emailDomain: email.split('@')[1] ?? null,
         }, 'Landing.handleSignIn.profileFetch', data.user.id)
-        console.error('[SIGN IN] Error fetching profile:', profileError)
+        logger.error('[SIGN IN] Error fetching profile:', profileError)
         setError('Could not load your profile. Please try again or contact support if this persists.')
         setLoading(false)
         return
       }
 
       if (!profileData) {
-        console.error('[SIGN IN] Profile is null (unexpected)')
+        logger.error('[SIGN IN] Profile is null (unexpected)')
         setError('Profile not found. Please contact support.')
         setLoading(false)
         return
@@ -127,7 +127,7 @@ export default function Landing() {
         stage: 'Landing.handleSignIn.catch',
         emailDomain: email.split('@')[1] ?? null,
       }, 'Landing.handleSignIn.catch', null)
-      console.error('[SIGN IN] Sign in error:', err)
+      logger.error('[SIGN IN] Sign in error:', err)
       setError(err instanceof Error ? err.message : 'Sign in failed')
     } finally {
       setLoading(false)

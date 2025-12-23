@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { X } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import type { Vacancy } from '@/lib/supabase'
@@ -103,7 +104,7 @@ export default function ApplyToVacancyModal({
           addToast('Application confirmed!', 'success')
         } else if (insertError.code === '42501' || insertError.message?.includes('row-level security')) {
           // RLS policy blocked the insert - role mismatch
-          console.error('❌ Role mismatch - RLS policy blocked application:', insertError)
+          logger.error('Role mismatch - RLS policy blocked application:', insertError)
           reportSupabaseError('vacancies.apply_rls_block', insertError, {
             vacancyId: vacancy.id,
             viewerRole: profile?.role ?? null
@@ -123,7 +124,7 @@ export default function ApplyToVacancyModal({
           }
         } else {
           // Real error - revert optimistic update
-          console.error('❌ Error applying to vacancy:', insertError)
+          logger.error('Error applying to vacancy:', insertError)
           reportSupabaseError('vacancies.apply_error', insertError, {
             vacancyId: vacancy.id,
             viewerRole: profile?.role ?? null
@@ -143,7 +144,7 @@ export default function ApplyToVacancyModal({
       }
     } catch (err) {
       // Network error - UI already updated
-      console.error('❌ Unexpected error:', err)
+      logger.error('Unexpected error:', err)
       reportSupabaseError('vacancies.apply_exception', err, {
         vacancyId: vacancy.id
       }, {

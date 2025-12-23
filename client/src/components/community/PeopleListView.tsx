@@ -8,6 +8,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Search } from 'lucide-react'
 import { MemberCard } from '@/components'
+import { logger } from '@/lib/logger'
 import { ProfileCardSkeleton } from '@/components/Skeleton'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
@@ -90,7 +91,7 @@ export function PeopleListView() {
         setDisplayedMembers(members.slice(0, pageSize))
         setHasMore(members.length > pageSize)
       } catch (error) {
-        console.error('Error fetching members:', error)
+        logger.error('Error fetching members:', error)
       } finally {
         setIsLoading(false)
       }
@@ -145,7 +146,7 @@ export function PeopleListView() {
         setPage(1)
         setHasMore(members.length > pageSize)
       } catch (error) {
-        console.error('Error searching members:', error)
+        logger.error('Error searching members:', error)
       } finally {
         setIsSearching(false)
       }

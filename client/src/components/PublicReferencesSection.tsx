@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import TrustedReferenceCard from './TrustedReferenceCard'
 import { useTrustedReferences } from '@/hooks/useTrustedReferences'
 import { useAuthStore } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 import { useToastStore } from '@/lib/toast'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
@@ -70,7 +71,7 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
         navigate(`/messages?new=${targetId}`)
       }
     } catch (error) {
-      console.error('Failed to open messages', error)
+      logger.error('Failed to open messages', error)
       addToast('Unable to start conversation. Please try again.', 'error')
     } finally {
       setMessageTarget(null)

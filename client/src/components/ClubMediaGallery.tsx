@@ -1,6 +1,7 @@
 // TODO: legacy - no current imports (Nov 2025); candidate for removal after confirming new media tab covers this
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import type { ClubMedia } from '@/lib/supabase'
 
 interface ClubMediaGalleryProps {
@@ -29,7 +30,7 @@ export default function ClubMediaGallery({ clubId, itemsPerPage = 12 }: ClubMedi
         setMedia(data || [])
         setDisplayedMedia((data || []).slice(0, itemsPerPage))
       } catch (error) {
-        console.error('Error fetching club media:', error)
+        logger.error('Error fetching club media:', error)
       } finally {
         setIsLoading(false)
       }

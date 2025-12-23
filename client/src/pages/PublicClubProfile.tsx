@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { logger } from '../lib/logger'
 import type { Profile } from '../lib/supabase'
 import ClubDashboard from './ClubDashboard'
 import { useAuthStore } from '../lib/auth'
@@ -122,7 +123,7 @@ export default function PublicClubProfile() {
           return
         }
       } catch (err) {
-        console.error('Error fetching club profile:', err)
+        logger.error('Error fetching club profile:', err)
         setError('Failed to load club profile. Please try again.')
       } finally {
         setIsLoading(false)

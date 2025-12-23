@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { requestCache, generateCacheKey } from './requestCache'
+import { logger } from './logger'
 import {
   fetchNotificationsPage,
   markAllNotificationsRead as markAllNotificationsReadRpc,
@@ -129,7 +130,7 @@ const fetchNotifications = async (userId: string, options?: RefreshOptions): Pro
         offset: 0,
       })
     } catch (error) {
-      console.error('[NOTIFICATIONS] Failed to fetch notifications', error)
+      logger.error('[NOTIFICATIONS] Failed to fetch notifications', error)
       return []
     }
   }, 3000)
@@ -269,7 +270,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
         }
       })
       .catch((error) => {
-        console.error('[NOTIFICATIONS] Heartbeat failed', error)
+        logger.error('[NOTIFICATIONS] Heartbeat failed', error)
         scheduleReconnect()
       })
   }
@@ -484,7 +485,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
       try {
         await markAllNotificationsReadRpc()
       } catch (error) {
-        console.error('[NOTIFICATIONS] Failed to mark notifications read', error)
+        logger.error('[NOTIFICATIONS] Failed to mark notifications read', error)
         return
       }
 
@@ -508,7 +509,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
       try {
         await clearNotificationsRpc({ kind: 'profile_comment_created' })
       } catch (error) {
-        console.error('[NOTIFICATIONS] Failed to clear comment notifications', error)
+        logger.error('[NOTIFICATIONS] Failed to clear comment notifications', error)
         return
       }
 
@@ -550,7 +551,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
           .eq('id', friendshipId)
 
         if (error) {
-          console.error('[NOTIFICATIONS] Failed to update friend request', error)
+          logger.error('[NOTIFICATIONS] Failed to update friend request', error)
           return false
         }
 

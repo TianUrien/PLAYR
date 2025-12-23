@@ -7,6 +7,7 @@
 
 import { Navigate } from 'react-router-dom'
 import { useAdmin } from '../hooks/useAdmin'
+import { logger } from '@/lib/logger'
 
 interface AdminGuardProps {
   children: React.ReactNode
@@ -48,7 +49,7 @@ export function AdminGuard({ children }: AdminGuardProps) {
 
   // Redirect if not admin
   if (!isAdmin) {
-    console.warn('[AdminGuard] Access denied - user is not an admin')
+    logger.warn('[AdminGuard] Access denied - user is not an admin')
     return <Navigate to="/" replace />
   }
 

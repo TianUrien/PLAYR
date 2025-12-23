@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '@/components/Header'
 import { Avatar, Button, CountryDisplay, DashboardMenu, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
 import { useClubProfileStrength } from '@/hooks/useClubProfileStrength'
+import { logger } from '@/lib/logger'
 import VacanciesTab from '@/components/VacanciesTab'
 import ClubMediaTab from '@/components/ClubMediaTab'
 import Skeleton from '@/components/Skeleton'
@@ -195,7 +196,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
 
       navigate(`/messages?conversation=${newConv.id}`)
     } catch (error) {
-      console.error('Error creating conversation:', error)
+      logger.error('Error creating conversation:', error)
       addToast('Failed to start conversation. Please try again.', 'error')
     } finally {
       setSendingMessage(false)

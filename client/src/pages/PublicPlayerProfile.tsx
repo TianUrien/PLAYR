@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { logger } from '../lib/logger'
 import type { Profile } from '../lib/supabase'
 import PlayerDashboard, { type PlayerProfileShape } from './PlayerDashboard'
 import CoachDashboard from './CoachDashboard'
@@ -134,7 +135,7 @@ export default function PublicPlayerProfile() {
           return
         }
       } catch (err) {
-        console.error('Error fetching profile:', err)
+        logger.error('Error fetching profile:', err)
         setError('Failed to load profile. Please try again.')
       } finally {
         setIsLoading(false)

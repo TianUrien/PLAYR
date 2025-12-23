@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { X, AlertTriangle, Loader2 } from 'lucide-react'
 import { supabase, SUPABASE_URL } from '../lib/supabase'
+import { logger } from '../lib/logger'
 import { useAuthStore } from '../lib/auth'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { clearAllProfileDraftsForUser } from '@/lib/profileDrafts'
@@ -106,7 +107,7 @@ export default function DeleteAccountModal({ isOpen, onClose, userEmail }: Delet
       window.location.href = '/'
       
     } catch (err) {
-      console.error('Error deleting account:', err)
+      logger.error('Error deleting account:', err)
       setError(err instanceof Error ? err.message : 'Failed to delete account. Please try again.')
       setIsDeleting(false)
     }

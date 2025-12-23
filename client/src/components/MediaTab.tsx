@@ -1,6 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { Video, Upload, Trash2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
 import Button from './Button'
@@ -70,7 +71,7 @@ export default function MediaTab({ profileId, readOnly = false, renderHeader }: 
         if (error) throw error
         setTargetProfile(data)
       } catch (error) {
-        console.error('Error fetching target profile:', error)
+        logger.error('Error fetching target profile:', error)
         setTargetProfile(null)
       } finally {
         setIsLoadingProfile(false)
@@ -98,7 +99,7 @@ export default function MediaTab({ profileId, readOnly = false, renderHeader }: 
       addToast('Highlight video removed.', 'success')
       setShowVideoDeleteModal(false)
     } catch (error) {
-      console.error('Error deleting video:', error)
+      logger.error('Error deleting video:', error)
       addToast('Failed to remove video. Please try again.', 'error')
     } finally {
       setDeletingVideo(false)

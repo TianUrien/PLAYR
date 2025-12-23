@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { X, Plus, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, CreditCard, Trophy } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { logger } from '../lib/logger'
 import { useAuthStore } from '../lib/auth'
 import type { Vacancy, VacancyInsert } from '../lib/supabase'
 import Button from './Button'
@@ -127,7 +128,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
           addToast('Vacancy draft restored.', 'info')
           return
         } catch (error) {
-          console.error('Failed to restore vacancy draft', error)
+          logger.error('Failed to restore vacancy draft', error)
           window.localStorage.removeItem(draftKey)
         }
       }
@@ -192,7 +193,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
         }
         window.localStorage.setItem(getVacancyDraftKey(user.id), JSON.stringify(payload))
       } catch (error) {
-        console.error('Failed to persist vacancy draft', error)
+        logger.error('Failed to persist vacancy draft', error)
       } finally {
         vacancyDraftSaveTimeoutRef.current = null
       }
@@ -346,7 +347,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
       onSuccess()
       onClose()
     } catch (error) {
-      console.error('Error saving vacancy:', error)
+      logger.error('Error saving vacancy:', error)
       addToast('Failed to save opportunity. Please try again.', 'error')
     } finally {
       setIsLoading(false)

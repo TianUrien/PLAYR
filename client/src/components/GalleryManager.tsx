@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Upload, Trash2, GripVertical, Edit2, X, Check, ArrowUp, ArrowDown, Loader2, ImageIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import type { ClubMedia, GalleryPhoto } from '@/lib/supabase'
@@ -141,7 +142,7 @@ export default function GalleryManager({
       const normalized = (data || []).map((item) => normalizeMedia(item, mode))
       setMedia(normalized)
     } catch (error) {
-      console.error('Error fetching gallery media:', error)
+      logger.error('Error fetching gallery media:', error)
       addToast('Unable to load gallery items. Please try again.', 'error')
     } finally {
       setIsLoading(false)
@@ -207,7 +208,7 @@ export default function GalleryManager({
           .list(targetEntityId, { search: fileName.split('/').pop() })
 
         if (listError || !fileExists || fileExists.length === 0) {
-          console.error('File upload verification failed:', { fileName, listError, fileExists })
+          logger.error('File upload verification failed:', { fileName, listError, fileExists })
           throw new Error('File upload could not be verified. Please try again.')
         }
 
@@ -250,7 +251,7 @@ export default function GalleryManager({
           )
         )
       } catch (error) {
-        console.error('Error uploading file:', error)
+        logger.error('Error uploading file:', error)
         const message = error instanceof Error ? error.message : 'Upload failed. Please use PNG or JPG up to 10MB.'
         setUploadProgress((prev) =>
           prev.map((item, idx) =>
@@ -297,7 +298,7 @@ export default function GalleryManager({
       addToast('Photo removed from gallery.', 'success')
       setPendingDelete(null)
     } catch (error) {
-      console.error('Error deleting media:', error)
+      logger.error('Error deleting media:', error)
       addToast('Failed to delete photo. Please try again.', 'error')
     } finally {
       setDeletingId(null)
@@ -334,7 +335,7 @@ export default function GalleryManager({
         )
       )
     } catch (error) {
-      console.error('Error updating order:', error)
+      logger.error('Error updating order:', error)
       addToast('Failed to update order. Refresh and try again.', 'error')
       await fetchMedia()
     }
@@ -400,7 +401,7 @@ export default function GalleryManager({
       setEditingCaption(null)
       await fetchMedia()
     } catch (error) {
-      console.error('Error updating caption:', error)
+      logger.error('Error updating caption:', error)
       addToast('Failed to update caption. Please try again.', 'error')
     } finally {
       setSavingCaptionId(null)

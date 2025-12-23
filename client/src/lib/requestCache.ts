@@ -3,6 +3,8 @@
  * Prevents duplicate API calls for the same data within a short time window
  */
 
+import { logger } from './logger'
+
 interface InFlightRequest {
   promise: Promise<unknown>;
   timestamp: number;
@@ -33,19 +35,19 @@ class RequestCache {
     // Check cache first
     const cached = this.cache.get(key);
     if (cached && Date.now() - cached.timestamp < ttl) {
-      console.log(`[Cache] HIT: ${key}`);
+      logger.debug(`[Cache] HIT: ${key}`);
       return cached.data as T;
     }
 
     // Check if request is already in flight
     const existing = this.inFlight.get(key);
     if (existing && Date.now() - existing.timestamp < this.DEDUP_WINDOW) {
-      console.log(`[Dedupe] Request already in flight: ${key}`);
+      logger.debug(`[Dedupe] Request already in flight: ${key}`);
       return existing.promise as Promise<T>;
     }
 
     // Execute new request
-    console.log(`[Dedupe] New request: ${key}`);
+    logger.debug(`[Dedupe] New request: ${key}`);
     const promise = fn()
       .then((data) => {
         // Cache successful results

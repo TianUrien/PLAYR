@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuthStore } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 import { checkIsAdmin } from '../api/adminApi'
 
 interface UseAdminResult {
@@ -36,7 +37,7 @@ export function useAdmin(): UseAdminResult {
       const adminStatus = await checkIsAdmin()
       setIsAdmin(adminStatus)
     } catch (err) {
-      console.error('[useAdmin] Failed to check admin status:', err)
+      logger.error('[useAdmin] Failed to check admin status:', err)
       setError(err instanceof Error ? err.message : 'Failed to verify admin status')
       setIsAdmin(false)
     } finally {

@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { supabase } from './supabase'
 import { requestCache, generateCacheKey } from './requestCache'
 import { monitor } from './monitor'
+import { logger } from './logger'
 
 interface RefreshOptions {
   bypassCache?: boolean
@@ -41,7 +42,7 @@ const fetchOpportunityCount = async (userId: string, options?: RefreshOptions): 
             const { data, error } = await supabase.rpc('get_opportunity_alerts')
 
             if (error) {
-              console.error('[OPPORTUNITY_ALERTS] Failed to fetch unseen opportunities:', error)
+              logger.error('[OPPORTUNITY_ALERTS] Failed to fetch unseen opportunities:', error)
               return 0
             }
 
@@ -68,7 +69,7 @@ const fetchOpportunityCount = async (userId: string, options?: RefreshOptions): 
 
     return count
   } catch (error) {
-    console.error('[OPPORTUNITY_ALERTS] Unexpected error fetching unseen opportunities:', error)
+    logger.error('[OPPORTUNITY_ALERTS] Unexpected error fetching unseen opportunities:', error)
     return 0
   }
 }
@@ -148,7 +149,7 @@ export const useOpportunityNotificationStore = create<OpportunityNotificationSta
     const { error } = await supabase.rpc('mark_opportunities_seen')
 
     if (error) {
-      console.error('[OPPORTUNITY_ALERTS] Failed to mark opportunities as seen:', error)
+      logger.error('[OPPORTUNITY_ALERTS] Failed to mark opportunities as seen:', error)
       return
     }
 

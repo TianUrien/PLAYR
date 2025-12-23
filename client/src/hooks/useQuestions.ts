@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import { useToastStore } from '@/lib/toast'
 import type {
   Question,
@@ -137,7 +138,7 @@ export function useQuestions(params: QuestionsQueryParams = {}) {
       setTotalCount(count || 0)
       setHasMore(newQuestions.length === limit)
     } catch (err) {
-      console.error('[useQuestions] Fetch error:', err)
+      logger.error('[useQuestions] Fetch error:', err)
       setError(err instanceof Error ? err.message : 'Failed to load questions')
     } finally {
       setIsLoading(false)
@@ -212,7 +213,7 @@ export function useQuestions(params: QuestionsQueryParams = {}) {
       addToast('Question posted successfully!', 'success')
       return newQuestion
     } catch (err) {
-      console.error('[useQuestions] Create error:', err)
+      logger.error('[useQuestions] Create error:', err)
       return null
     }
   }, [addToast])
@@ -245,7 +246,7 @@ export function useQuestions(params: QuestionsQueryParams = {}) {
       addToast('Question updated', 'success')
       return true
     } catch (err) {
-      console.error('[useQuestions] Update error:', err)
+      logger.error('[useQuestions] Update error:', err)
       return false
     }
   }, [addToast])
@@ -258,7 +259,7 @@ export function useQuestions(params: QuestionsQueryParams = {}) {
         .eq('id', questionId)
 
       if (deleteError) {
-        console.error('[useQuestions] Delete error:', deleteError)
+        logger.error('[useQuestions] Delete error:', deleteError)
         addToast('Failed to delete question', 'error')
         throw deleteError
       }
@@ -270,7 +271,7 @@ export function useQuestions(params: QuestionsQueryParams = {}) {
       addToast('Question deleted', 'success')
       return true
     } catch (err) {
-      console.error('[useQuestions] Delete error:', err)
+      logger.error('[useQuestions] Delete error:', err)
       return false
     }
   }, [addToast])
@@ -362,7 +363,7 @@ export function useQuestionDetail(questionId: string | undefined) {
         answers: transformedAnswers,
       })
     } catch (err) {
-      console.error('[useQuestionDetail] Fetch error:', err)
+      logger.error('[useQuestionDetail] Fetch error:', err)
       setError(err instanceof Error ? err.message : 'Failed to load question')
     } finally {
       setIsLoading(false)
@@ -425,7 +426,7 @@ export function useQuestionDetail(questionId: string | undefined) {
       addToast('Answer posted!', 'success')
       return newAnswer
     } catch (err) {
-      console.error('[useQuestionDetail] Create answer error:', err)
+      logger.error('[useQuestionDetail] Create answer error:', err)
       return null
     }
   }, [addToast])
@@ -456,7 +457,7 @@ export function useQuestionDetail(questionId: string | undefined) {
       addToast('Answer updated', 'success')
       return true
     } catch (err) {
-      console.error('[useQuestionDetail] Update answer error:', err)
+      logger.error('[useQuestionDetail] Update answer error:', err)
       return false
     }
   }, [addToast])
@@ -483,7 +484,7 @@ export function useQuestionDetail(questionId: string | undefined) {
       addToast('Answer deleted', 'success')
       return true
     } catch (err) {
-      console.error('[useQuestionDetail] Delete answer error:', err)
+      logger.error('[useQuestionDetail] Delete answer error:', err)
       return false
     }
   }, [addToast])
@@ -513,7 +514,7 @@ export function useQuestionDetail(questionId: string | undefined) {
       addToast('Question updated', 'success')
       return true
     } catch (err) {
-      console.error('[useQuestionDetail] Update question error:', err)
+      logger.error('[useQuestionDetail] Update question error:', err)
       return false
     }
   }, [questionId, addToast])
@@ -528,7 +529,7 @@ export function useQuestionDetail(questionId: string | undefined) {
         .eq('id', questionId)
 
       if (deleteError) {
-        console.error('[useQuestionDetail] Delete question error:', deleteError)
+        logger.error('[useQuestionDetail] Delete question error:', deleteError)
         addToast('Failed to delete question', 'error')
         throw deleteError
       }
@@ -537,7 +538,7 @@ export function useQuestionDetail(questionId: string | undefined) {
       addToast('Question deleted', 'success')
       return true
     } catch (err) {
-      console.error('[useQuestionDetail] Delete question error:', err)
+      logger.error('[useQuestionDetail] Delete question error:', err)
       return false
     }
   }, [questionId, addToast])

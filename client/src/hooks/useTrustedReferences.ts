@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Json } from '@/lib/database.types'
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 
@@ -190,7 +191,7 @@ export function useTrustedReferences(profileId: string) {
     } catch (error) {
       // Don't show error toast if cancelled
       if (signal?.aborted) return
-      console.error('Failed to load references', error)
+      logger.error('Failed to load references', error)
       addToast('Unable to load references. Please try again.', 'error')
       resetState()
     } finally {
@@ -255,7 +256,7 @@ export function useTrustedReferences(profileId: string) {
         await fetchReferences()
         return true
       } catch (error) {
-        console.error('Failed to send reference request', error)
+        logger.error('Failed to send reference request', error)
         addToast('Unable to send reference request. Please try again.', 'error')
         return false
       } finally {
@@ -280,7 +281,7 @@ export function useTrustedReferences(profileId: string) {
         await fetchReferences()
         return true
       } catch (error) {
-        console.error('Failed to respond to reference request', error)
+        logger.error('Failed to respond to reference request', error)
         addToast('Unable to update reference request. Please try again.', 'error')
         return false
       } finally {
@@ -301,7 +302,7 @@ export function useTrustedReferences(profileId: string) {
         await fetchReferences()
         return true
       } catch (error) {
-        console.error('Failed to remove reference', error)
+        logger.error('Failed to remove reference', error)
         addToast('Unable to remove reference. Please try again.', 'error')
         return false
       } finally {
@@ -321,7 +322,7 @@ export function useTrustedReferences(profileId: string) {
         await fetchReferences()
         return true
       } catch (error) {
-        console.error('Failed to withdraw reference', error)
+        logger.error('Failed to withdraw reference', error)
         addToast('Unable to withdraw reference. Please try again.', 'error')
         return false
       } finally {

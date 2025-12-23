@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import type { AuditLogEntry, AuditLogSearchParams } from '../types'
 import { getAuditLogs } from '../api/adminApi'
+import { logger } from '@/lib/logger'
 
 const PAGE_SIZE = 25
 
@@ -75,7 +76,7 @@ export function AdminAuditLog() {
       setLogs(result.logs)
       setTotalCount(result.totalCount)
     } catch (err) {
-      console.error('[AdminAuditLog] Failed to fetch logs:', err)
+      logger.error('[AdminAuditLog] Failed to fetch logs:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch audit logs')
     } finally {
       setIsLoading(false)

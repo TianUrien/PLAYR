@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
+import { logger } from '@/lib/logger'
 import type { DashboardStats, SignupTrend, TopCountry } from '../types'
 import { getDashboardStats, getSignupTrends, getTopCountries } from '../api/adminApi'
 
@@ -39,7 +40,7 @@ export function useAdminStats(): UseAdminStatsResult {
       setSignupTrends(trendsData)
       setTopCountries(countriesData)
     } catch (err) {
-      console.error('[useAdminStats] Failed to fetch stats:', err)
+      logger.error('[useAdminStats] Failed to fetch stats:', err)
       setError(err instanceof Error ? err.message : 'Failed to fetch statistics')
     } finally {
       setIsLoading(false)

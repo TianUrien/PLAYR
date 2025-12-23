@@ -45,7 +45,7 @@ export default function OpportunityDetailPage() {
         .single()
 
       if (vacancyError || !vacancyData) {
-        console.error('Vacancy not found:', vacancyError)
+        logger.error('Vacancy not found:', vacancyError)
         setNotFound(true)
         return
       }
@@ -82,7 +82,7 @@ export default function OpportunityDetailPage() {
         setHasApplied(!!applicationData)
       }
     } catch (error) {
-      console.error('Error fetching vacancy details:', error)
+      logger.error('Error fetching vacancy details:', error)
       setNotFound(true)
     } finally {
       setIsLoading(false)

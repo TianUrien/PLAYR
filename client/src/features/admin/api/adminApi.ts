@@ -10,6 +10,7 @@
  */
 
 import { supabase, SUPABASE_URL } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import type {
   DashboardStats,
   SignupTrend,
@@ -34,7 +35,7 @@ const adminRpc = supabase.rpc.bind(supabase) as unknown as (fn: string, params?:
 export async function checkIsAdmin(): Promise<boolean> {
   const { data, error } = await supabase.rpc('is_platform_admin')
   if (error) {
-    console.error('[ADMIN_API] Failed to check admin status:', error)
+    logger.error('[ADMIN_API] Failed to check admin status:', error)
     return false
   }
   return data === true

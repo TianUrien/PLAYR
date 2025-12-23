@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import type { Database } from '@/lib/database.types'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
@@ -71,7 +72,7 @@ export function useFriendship(profileId: string): FriendshipState {
     if (signal?.aborted) return
 
     if (error) {
-      console.error('Failed to fetch friendship state', error)
+      logger.error('Failed to fetch friendship state', error)
       reportSupabaseError('friends.fetch_state', error, { viewerId, profileId }, {
         feature: 'friends',
         operation: 'fetch_friendship'
@@ -148,7 +149,7 @@ export function useFriendship(profileId: string): FriendshipState {
       addToast('Friend request sent.', 'success')
       await fetchRelationship()
     } catch (error) {
-      console.error('Failed to send friend request', error)
+      logger.error('Failed to send friend request', error)
       reportSupabaseError('friends.send_request', error, { viewerId, profileId }, {
         feature: 'friends',
         operation: 'send_request'
@@ -190,7 +191,7 @@ export function useFriendship(profileId: string): FriendshipState {
         dismissNotification('friend_request_received', friendshipId)
         await fetchRelationship()
       } catch (error) {
-        console.error('Failed to update friendship state', error)
+        logger.error('Failed to update friendship state', error)
         reportSupabaseError('friends.update_status', error, { friendshipId: relationship?.id, nextStatus }, {
           feature: 'friends',
           operation: 'update_friendship'

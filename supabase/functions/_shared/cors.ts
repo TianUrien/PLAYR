@@ -12,6 +12,8 @@ const ALLOWED_ORIGINS = [
 /**
  * Get CORS headers with origin validation.
  * Returns the request origin if allowed, otherwise defaults to primary production domain.
+ * 
+ * USE THIS FOR: Client-facing APIs that handle sensitive operations (auth, profile, account)
  */
 export function getCorsHeaders(requestOrigin?: string | null): Record<string, string> {
   const origin = requestOrigin && ALLOWED_ORIGINS.includes(requestOrigin)
@@ -27,8 +29,15 @@ export function getCorsHeaders(requestOrigin?: string | null): Record<string, st
 }
 
 /**
- * @deprecated Use getCorsHeaders(req.headers.get('origin')) instead for proper origin validation.
- * This is kept for backward compatibility but allows all origins.
+ * Open CORS headers that allow all origins.
+ * 
+ * USE THIS FOR:
+ * - Public APIs intended for external consumers (public-opportunities, sitemap)
+ * - Webhook handlers (notify-*) that are triggered by Supabase, not browsers
+ * 
+ * DO NOT USE FOR:
+ * - Client-facing APIs that handle authentication or sensitive data
+ * - User account operations (use getCorsHeaders instead)
  */
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

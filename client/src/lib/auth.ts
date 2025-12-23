@@ -399,7 +399,7 @@ export const resendVerificationEmail = async (email: string): Promise<{ success:
     })
 
     if (error) {
-      console.error('Error resending verification email:', error)
+      logger.error('Error resending verification email:', error)
       reportSupabaseError('auth_flow.resend_verification', error, { email }, {
         feature: 'auth_flow',
         operation: 'resend_verification'
@@ -419,7 +419,7 @@ export const resendVerificationEmail = async (email: string): Promise<{ success:
 
     return { success: true }
   } catch (err) {
-    console.error('Unexpected error resending verification:', err)
+    logger.error('Unexpected error resending verification:', err)
     reportSupabaseError('auth_flow.resend_verification_unexpected', err, { email }, {
       feature: 'auth_flow',
       operation: 'resend_verification'

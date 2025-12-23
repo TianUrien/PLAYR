@@ -4,6 +4,7 @@ import { Plus, Edit2, Copy, Archive, MapPin, Calendar, Users, Eye, Rocket, Trash
 import * as Sentry from '@sentry/react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { logger } from '../lib/logger'
 import { useAuthStore } from '../lib/auth'
 import { useToastStore } from '@/lib/toast'
 import type { Vacancy } from '../lib/supabase'
@@ -233,7 +234,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
         setApplicantCounts({})
       }
     } catch (error) {
-      console.error('Error fetching vacancies:', error)
+      logger.error('Error fetching vacancies:', error)
     } finally {
       setIsLoading(false)
     }
@@ -254,7 +255,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       const appliedVacancyIds = new Set(data?.map(app => app.vacancy_id) || [])
       setUserApplications(appliedVacancyIds)
     } catch (error) {
-      console.error('Error fetching user applications:', error)
+      logger.error('Error fetching user applications:', error)
     }
   }, [user, readOnly])
 
@@ -326,7 +327,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
         setClubLogo(clubData.avatar_url)
       }
     } catch (error) {
-      console.error('Error fetching club details:', error)
+      logger.error('Error fetching club details:', error)
       reportSupabaseError('vacancies.fetch_club_profile', error, {
         clubId: vacancy.club_id
       }, {
@@ -376,7 +377,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       await fetchVacancies()
       addToast('Vacancy duplicated as draft.', 'success')
     } catch (error) {
-      console.error('Error duplicating vacancy:', error)
+      logger.error('Error duplicating vacancy:', error)
       reportSupabaseError('vacancies.duplicate', error, {
         vacancyId: vacancy.id
       }, {
@@ -410,7 +411,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       await fetchVacancies()
       addToast('Vacancy closed.', 'success')
     } catch (error) {
-      console.error('Error closing vacancy:', error)
+      logger.error('Error closing vacancy:', error)
       reportSupabaseError('vacancies.close', error, {
         vacancyId
       }, {
@@ -453,7 +454,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       setVacancyToPublish(null)
       addToast('Vacancy published successfully!', 'success')
     } catch (error) {
-      console.error('Error publishing vacancy:', error)
+      logger.error('Error publishing vacancy:', error)
       reportSupabaseError('vacancies.publish', error, {
         vacancyId: vacancyToPublish.id
       }, {
@@ -498,7 +499,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       setVacancyToDelete(null)
       addToast('Vacancy deleted.', 'success')
     } catch (error) {
-      console.error('Error deleting vacancy:', error)
+      logger.error('Error deleting vacancy:', error)
       reportSupabaseError('vacancies.delete', error, {
         vacancyId: vacancyToDelete?.id
       }, {

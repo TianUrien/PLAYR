@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Menu, Settings, LogOut, X } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 import { useToastStore } from '@/lib/toast'
 import { useNotificationStore } from '@/lib/notifications'
 
@@ -112,7 +113,7 @@ export default function DashboardMenu() {
       await signOut()
       navigate('/')
     } catch (error) {
-      console.error('Failed to sign out', error)
+      logger.error('Failed to sign out', error)
       addToast('Could not sign out. Please try again.', 'error')
     }
   }

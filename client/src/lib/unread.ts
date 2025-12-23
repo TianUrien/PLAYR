@@ -3,6 +3,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { requestCache, generateCacheKey } from './requestCache'
 import { monitor } from './monitor'
+import { logger } from './logger'
 
 type RefreshOptions = {
   bypassCache?: boolean
@@ -35,7 +36,7 @@ const fetchUnreadCount = async (userId: string, options?: RefreshOptions): Promi
             .maybeSingle()
 
           if (error) {
-            console.error('[UNREAD] Failed to fetch unread count:', error)
+            logger.error('[UNREAD] Failed to fetch unread count:', error)
             return 0
           }
 
@@ -47,7 +48,7 @@ const fetchUnreadCount = async (userId: string, options?: RefreshOptions): Promi
 
     return count
   } catch (error) {
-    console.error('[UNREAD] Unexpected error fetching unread count:', error)
+    logger.error('[UNREAD] Unexpected error fetching unread count:', error)
     return 0
   }
 }

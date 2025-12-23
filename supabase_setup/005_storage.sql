@@ -291,6 +291,7 @@ ON storage.objects FOR INSERT
 WITH CHECK (
   bucket_id = 'avatars'
   AND auth.role() = 'authenticated'
+  AND split_part(name, '/', 1) = auth.uid()::TEXT
 );
 
 DROP POLICY IF EXISTS "Users update avatars" ON storage.objects;

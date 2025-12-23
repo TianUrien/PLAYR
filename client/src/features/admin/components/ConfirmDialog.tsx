@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
+import { logger } from '@/lib/logger'
 
 interface ConfirmDialogProps {
   isOpen: boolean
@@ -41,7 +42,7 @@ export function ConfirmDialog({
       await onConfirm()
       onClose()
     } catch (error) {
-      console.error('Confirm action failed:', error)
+      logger.error('Confirm action failed:', error)
     } finally {
       setIsSubmitting(false)
       setInputValue('')

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { ShieldCheck, Plus, Clock3, AlertTriangle } from 'lucide-react'
+import { logger } from '@/lib/logger'
 import Avatar from './Avatar'
 import RoleBadge from './RoleBadge'
 import TrustedReferenceCard from './TrustedReferenceCard'
@@ -114,7 +115,7 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
         navigate(`/messages?new=${targetId}`)
       }
     } catch (error) {
-      console.error('Failed to open messages', error)
+      logger.error('Failed to open messages', error)
       addToast('Unable to start conversation. Please try again.', 'error')
     } finally {
       setMessageTarget(null)

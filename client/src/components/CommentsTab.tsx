@@ -3,6 +3,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { MessageSquare, MessageSquarePlus, ShieldAlert, UserCheck } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import type { Database } from '@/lib/database.types'
 import type { Profile } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
@@ -109,7 +110,7 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error loading comments', error)
+      logger.error('Error loading comments', error)
       reportSupabaseError('comments.fetch_visible', error, { profileId }, {
         feature: 'comments',
         operation: 'fetch_comments'
@@ -136,7 +137,7 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
       .eq('status', 'accepted')
 
     if (error) {
-      console.error('Error loading friend relationships', error)
+      logger.error('Error loading friend relationships', error)
       reportSupabaseError('comments.fetch_friend_edges', error, { profileId }, {
         feature: 'friends',
         operation: 'fetch_friend_edges'
@@ -233,7 +234,7 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
       setComposerRating('')
       addToast('Thanks for sharing feedback!', 'success')
     } catch (error) {
-      console.error('Failed to post comment', error)
+      logger.error('Failed to post comment', error)
       reportSupabaseError('comments.insert', error, { profileId, authorId: authProfile?.id }, {
         feature: 'comments',
         operation: 'create_comment'
@@ -288,7 +289,7 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
       setIsEditing(false)
       addToast('Your comment was updated.', 'success')
     } catch (error) {
-      console.error('Failed to update comment', error)
+      logger.error('Failed to update comment', error)
       reportSupabaseError('comments.update', error, { commentId: existingComment?.id }, {
         feature: 'comments',
         operation: 'update_comment'
@@ -325,7 +326,7 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
       setDeleteModalOpen(false)
       addToast('Comment deleted.', 'success')
     } catch (error) {
-      console.error('Failed to delete comment', error)
+      logger.error('Failed to delete comment', error)
       reportSupabaseError('comments.delete', error, { commentId: existingComment?.id }, {
         feature: 'comments',
         operation: 'delete_comment'

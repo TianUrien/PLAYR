@@ -33,6 +33,8 @@ export default function CompleteProfile() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const profilePrefilledRef = useRef(false)
   const contactPrefilledRef = useRef<string | null>(null)
+  // Mutex ref to prevent concurrent profile creation attempts (race condition guard)
+  const profileCreationMutexRef = useRef(false)
   const { user, profile, loading: authLoading, profileStatus, fetchProfile } = useAuthStore()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -91,13 +93,24 @@ export default function CompleteProfile() {
   /**
    * Create profile for OAuth users who don't have a profile row yet.
    * Uses the create_profile_for_new_user RPC function.
+   * 
+   * IMPORTANT: Uses mutex ref to prevent race conditions where multiple
+   * clicks or re-renders could trigger concurrent profile creation attempts.
    */
   const handleRoleSelection = async (selectedRole: UserRole) => {
+    // Mutex check - prevent concurrent execution
+    if (profileCreationMutexRef.current) {
+      logger.debug('[COMPLETE_PROFILE] Profile creation already in progress, ignoring duplicate call')
+      return
+    }
+
     if (!user) {
       setError('No user session found. Please sign in again.')
       return
     }
 
+    // Acquire mutex BEFORE any async operation
+    profileCreationMutexRef.current = true
     setCreatingProfile(true)
     setError('')
 
@@ -140,8 +153,12 @@ export default function CompleteProfile() {
       }, 'CompleteProfile.handleRoleSelection.catch')
       logger.error('[COMPLETE_PROFILE] Error creating profile:', err)
       setError(err instanceof Error ? err.message : 'Failed to create profile. Please try again.')
+      // Release mutex on error so user can retry
+      profileCreationMutexRef.current = false
     } finally {
       setCreatingProfile(false)
+      // Note: We intentionally do NOT release the mutex on success
+      // because the profile was created and we don't want any further attempts
     }
   }
 

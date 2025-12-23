@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useId } from 'react'
 import { X, Link as LinkIcon, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import { useAuthStore } from '@/lib/auth'
 import Button from './Button'
 import Input from './Input'
@@ -118,7 +119,7 @@ export default function AddVideoLinkModal({ isOpen, onClose, currentVideoUrl }: 
       }
       onClose()
     } catch (err) {
-      console.error('Error saving video:', err)
+      logger.error('Error saving video:', err)
       setError('Failed to save video. Please try again.')
     } finally {
       setIsLoading(false)

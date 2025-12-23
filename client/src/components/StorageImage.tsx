@@ -1,6 +1,7 @@
 import { useState, useEffect, type ImgHTMLAttributes } from 'react'
 import { ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logger } from '@/lib/logger'
 
 interface StorageImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'onError' | 'onLoad' | 'src'> {
   /** The image source URL */
@@ -57,7 +58,7 @@ export default function StorageImage({
   }
 
   const handleError = () => {
-    console.error('[StorageImage] Failed to load image:', src)
+    logger.error('[StorageImage] Failed to load image:', src)
     setImageLoaded(true)
     setImageError(true)
     onImageError?.()

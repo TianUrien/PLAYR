@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Mail, CheckCircle } from 'lucide-react'
 import { Input, Button } from '@/components'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import { getSiteUrl } from '@/lib/siteUrl'
 
 /**
@@ -37,7 +38,7 @@ export default function ForgotPassword() {
 
       setSuccess(true)
     } catch (err) {
-      console.error('[FORGOT_PASSWORD] Error:', err)
+      logger.error('[FORGOT_PASSWORD] Error:', err)
       setError(err instanceof Error ? err.message : 'Failed to send reset email')
     } finally {
       setLoading(false)

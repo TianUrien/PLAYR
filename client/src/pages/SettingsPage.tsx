@@ -3,6 +3,7 @@ import { ArrowLeft, Mail, Lock, Trash2, CheckCircle, Bell, Loader2 } from 'lucid
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import Header from '@/components/Header'
 import DeleteAccountModal from '@/components/DeleteAccountModal'
 
@@ -57,7 +58,7 @@ export default function SettingsPage() {
       // Auto-hide success message after 3 seconds
       setTimeout(() => setNotificationSuccess(false), 3000)
     } catch (error) {
-      console.error('Failed to update notification preferences:', error)
+      logger.error('Failed to update notification preferences:', error)
       // Revert on error
       setNotifyOpportunities(!newValue)
     } finally {
@@ -89,7 +90,7 @@ export default function SettingsPage() {
       // Auto-hide success message after 3 seconds
       setTimeout(() => setNotificationSuccess(false), 3000)
     } catch (error) {
-      console.error('Failed to update notification preferences:', error)
+      logger.error('Failed to update notification preferences:', error)
       // Revert on error
       setNotifyApplications(!newValue)
     } finally {

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { Users, UserPlus, Check, X, Loader2, UserMinus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import type { Database } from '@/lib/database.types'
 import type { Profile } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
@@ -75,7 +76,7 @@ export default function FriendsTab({ profileId, readOnly = false, profileRole }:
 
       setConnections(enriched)
     } catch (error) {
-      console.error('Failed to load friends', error)
+      logger.error('Failed to load friends', error)
       addToast('Unable to load friends. Please try again.', 'error')
     } finally {
       setLoading(false)
@@ -136,7 +137,7 @@ export default function FriendsTab({ profileId, readOnly = false, profileRole }:
         addToast(successMessage, 'success')
         await fetchConnections()
       } catch (error) {
-        console.error('Failed to update friendship', error)
+        logger.error('Failed to update friendship', error)
         addToast('Unable to update friendship. Please try again.', 'error')
       } finally {
         setActionTarget(null)

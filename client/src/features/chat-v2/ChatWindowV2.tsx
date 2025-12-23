@@ -266,7 +266,7 @@ export default function ChatWindowV2({
       <Composer
         value={newMessage}
         sending={sending}
-        disabled={!newMessage.trim() || sending}
+        disabled={!newMessage.trim() || sending || newMessage.length > 1000}
         onChange={setNewMessage}
         onSubmit={handleSendMessage}
         onFocus={handleComposerFocus}
