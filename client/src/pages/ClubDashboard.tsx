@@ -326,24 +326,26 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => navigate(`/clubs/id/${profile.id}`)}
-                      className="gap-2"
+                      className="gap-1.5 whitespace-nowrap text-xs sm:text-sm px-2.5 sm:px-4"
                     >
-                      <Eye className="w-4 h-4" />
-                      Network View
+                      <Eye className="w-4 h-4 flex-shrink-0" />
+                      <span className="hidden xs:inline">Network View</span>
+                      <span className="xs:hidden">View</span>
                     </Button>
                     <Button
                       variant="primary"
                       size="sm"
                       onClick={() => setShowEditModal(true)}
-                      className="gap-2"
+                      className="gap-1.5 whitespace-nowrap text-xs sm:text-sm px-2.5 sm:px-4"
                     >
-                      <Edit className="w-4 h-4" />
-                      Edit Profile
+                      <Edit className="w-4 h-4 flex-shrink-0" />
+                      <span className="hidden xs:inline">Edit Profile</span>
+                      <span className="xs:hidden">Edit</span>
                     </Button>
                     <DashboardMenu />
                   </div>
