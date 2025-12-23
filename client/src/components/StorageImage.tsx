@@ -1,4 +1,4 @@
-import { useState, type ImgHTMLAttributes } from 'react'
+import { useState, useEffect, type ImgHTMLAttributes } from 'react'
 import { ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -43,6 +43,12 @@ export default function StorageImage({
 }: StorageImageProps) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
+
+  // Reset loading/error states when src changes
+  useEffect(() => {
+    setImageLoaded(false)
+    setImageError(false)
+  }, [src])
 
   const handleLoad = () => {
     setImageLoaded(true)

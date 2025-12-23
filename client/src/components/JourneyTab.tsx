@@ -2,14 +2,12 @@ import { useState, useEffect, useCallback, useRef, type ComponentType } from 're
 import {
   Building2,
   Calendar,
-  Clock,
   Edit2,
   Flag,
   Globe2,
   GraduationCap,
   Image as ImageIcon,
   Loader2,
-  MapPin,
   Plus,
   Sparkles,
   Star,
@@ -1106,7 +1104,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
             <div className="pointer-events-none absolute left-5 top-5 bottom-5 w-0.5 bg-gradient-to-b from-indigo-200 via-gray-200 to-gray-100 md:left-6" />
             
             <div className="space-y-6">
-              {ordered.map((entry, index) => {
+              {ordered.map((entry) => {
                 const meta = entry.entry_type ? entryTypeMeta[entry.entry_type] : entryTypeMeta.club
                 const Icon = meta.icon
                 const startLabel = formatMonthLabel(entry.start_date)
