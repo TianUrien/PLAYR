@@ -21,6 +21,7 @@ type ClubProfile = Pick<
   Profile,
   | 'id'
   | 'nationality'
+  | 'nationality_country_id'
   | 'base_location'
   | 'year_founded'
   | 'website'
@@ -86,9 +87,10 @@ export function useClubProfileStrength({ profile }: UseClubProfileStrengthOption
    */
   const isBasicInfoComplete = useCallback(() => {
     if (!profile) return false
-    const { nationality, base_location, year_founded, website, contact_email } = profile
+    const { nationality, nationality_country_id, base_location, year_founded, website, contact_email } = profile
 
-    const hasCountry = Boolean(nationality?.trim())
+    // Accept either new country_id field OR legacy nationality text field
+    const hasCountry = Boolean(nationality_country_id || nationality?.trim())
     const hasCity = Boolean(base_location?.trim())
     const hasYearFounded = Boolean(year_founded)
     const hasContactMethod = Boolean(website?.trim() || contact_email?.trim())
