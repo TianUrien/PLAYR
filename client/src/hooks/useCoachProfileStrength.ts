@@ -72,10 +72,12 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
   // Check if all basic info fields are filled
   const isBasicInfoComplete = useCallback(() => {
     if (!profile) return false
-    const { full_name, nationality, base_location, date_of_birth, gender } = profile
+    const { full_name, nationality, nationality_country_id, base_location, date_of_birth, gender } = profile
+    // Accept either new country_id field OR legacy nationality text field
+    const hasNationality = Boolean(nationality_country_id || nationality?.trim())
     return Boolean(
       full_name?.trim() &&
-        nationality?.trim() &&
+        hasNationality &&
         base_location?.trim() &&
         date_of_birth?.trim() &&
         gender?.trim()

@@ -31,10 +31,11 @@ export type ProfileStrengthResult = {
 
 /**
  * Checks if the basic info bucket is complete for a player.
- * Requires: nationality, base_location, and at least one position.
+ * Requires: nationality (or nationality_country_id), base_location, and at least one position.
  */
 function isBasicInfoComplete(profile: Profile): boolean {
-  const hasNationality = Boolean(profile.nationality?.trim())
+  // Accept either new country_id field OR legacy nationality text field
+  const hasNationality = Boolean(profile.nationality_country_id || profile.nationality?.trim())
   const hasLocation = Boolean(profile.base_location?.trim())
   const hasPosition = Boolean(profile.position?.trim())
   return hasNationality && hasLocation && hasPosition
