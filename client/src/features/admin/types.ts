@@ -221,3 +221,194 @@ export type AdminAction =
   | 'unmark_test_account'
   | 'grant_admin'
   | 'revoke_admin'
+
+// ============================================================================
+// VACANCY ANALYTICS TYPES
+// ============================================================================
+
+export interface VacancyListItem {
+  id: string
+  title: string
+  club_id: string
+  club_name: string | null
+  club_avatar_url: string | null
+  status: 'draft' | 'open' | 'closed'
+  opportunity_type: 'player' | 'coach'
+  position: string | null
+  location_city: string | null
+  location_country: string | null
+  application_count: number
+  pending_count: number
+  shortlisted_count: number
+  first_application_at: string | null
+  time_to_first_app_minutes: number | null
+  created_at: string
+  published_at: string | null
+  application_deadline: string | null
+  total_count: number
+}
+
+export interface VacancyApplicant {
+  application_id: string
+  player_id: string
+  player_name: string | null
+  player_email: string
+  nationality: string | null
+  position: string | null
+  avatar_url: string | null
+  highlight_video_url: string | null
+  status: ApplicationStatus
+  applied_at: string
+  cover_letter: string | null
+  onboarding_completed: boolean
+  total_count: number
+}
+
+export type ApplicationStatus = 
+  | 'pending'
+  | 'reviewed'
+  | 'shortlisted'
+  | 'interview'
+  | 'accepted'
+  | 'rejected'
+  | 'withdrawn'
+
+export interface VacancyDetail {
+  vacancy: {
+    id: string
+    club_id: string
+    opportunity_type: 'player' | 'coach'
+    title: string
+    position: string | null
+    gender: string | null
+    description: string | null
+    location_city: string
+    location_country: string
+    start_date: string | null
+    duration_text: string | null
+    requirements: string[]
+    benefits: string[]
+    custom_benefits: string[]
+    priority: 'low' | 'medium' | 'high'
+    status: 'draft' | 'open' | 'closed'
+    application_deadline: string | null
+    contact_email: string | null
+    contact_phone: string | null
+    published_at: string | null
+    closed_at: string | null
+    created_at: string
+    updated_at: string
+  }
+  club: {
+    id: string
+    full_name: string | null
+    email: string
+    avatar_url: string | null
+    base_location: string | null
+  }
+  stats: {
+    total_applications: number
+    pending: number
+    reviewed: number
+    shortlisted: number
+    interview: number
+    accepted: number
+    rejected: number
+    withdrawn: number
+    first_application_at: string | null
+    last_application_at: string | null
+    avg_apps_per_day: number | null
+  }
+}
+
+export interface VacancySearchParams {
+  status?: 'draft' | 'open' | 'closed'
+  club_id?: string
+  days?: number
+  limit?: number
+  offset?: number
+}
+
+// ============================================================================
+// CLUB ANALYTICS TYPES
+// ============================================================================
+
+export interface ClubActivity {
+  club_id: string
+  club_name: string | null
+  avatar_url: string | null
+  base_location: string | null
+  vacancy_count: number
+  open_vacancy_count: number
+  total_applications: number
+  avg_apps_per_vacancy: number | null
+  last_posted_at: string | null
+  onboarding_completed: boolean
+  total_count: number
+}
+
+export interface ClubSummary {
+  total_clubs: number
+  clubs_with_vacancies: number
+  active_clubs_7d: number
+  active_clubs_30d: number
+  active_clubs_90d: number
+  clubs_onboarded: number
+  avg_vacancies_per_active_club: number | null
+}
+
+// ============================================================================
+// PLAYER ANALYTICS TYPES
+// ============================================================================
+
+export interface PlayerFunnel {
+  signed_up: number
+  onboarding_completed: number
+  has_avatar: number
+  has_video: number
+  has_journey_entry: number
+  has_gallery_photo: number
+  applied_to_vacancy: number
+  open_to_opportunities: number
+}
+
+export interface ProfileCompletenessDistribution {
+  bucket: string
+  count: number
+  percentage: number
+}
+
+// ============================================================================
+// EXTENDED DASHBOARD TYPES
+// ============================================================================
+
+export interface ExtendedDashboardStats {
+  // Vacancy performance
+  vacancies_7d: number
+  vacancies_30d: number
+  avg_apps_per_vacancy: number | null
+  active_clubs_7d: number
+  active_clubs_30d: number
+  vacancy_fill_rate: number | null
+  
+  // Player insights
+  players_with_video: number
+  players_with_video_pct: number | null
+  players_applied_ever: number
+  players_applied_7d: number
+  avg_profile_score: number | null
+  onboarding_rate: number | null
+  
+  // Application status breakdown
+  application_status_breakdown: {
+    pending: number
+    reviewed: number
+    shortlisted: number
+    interview: number
+    accepted: number
+    rejected: number
+    withdrawn: number
+  }
+  
+  generated_at: string
+}

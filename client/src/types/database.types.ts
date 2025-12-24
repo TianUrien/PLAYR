@@ -407,6 +407,138 @@ export type Database = {
           },
         ]
       }
+      error_logs: {
+        Row: {
+          correlation_id: string | null
+          created_at: string
+          error_code: string | null
+          error_message: string
+          error_type: string
+          function_name: string | null
+          id: string
+          metadata: Json | null
+          request_body: Json | null
+          request_method: string | null
+          request_path: string | null
+          severity: string
+          source: string
+          stack_trace: string | null
+          user_id: string | null
+        }
+        Insert: {
+          correlation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message: string
+          error_type: string
+          function_name?: string | null
+          id?: string
+          metadata?: Json | null
+          request_body?: Json | null
+          request_method?: string | null
+          request_path?: string | null
+          severity?: string
+          source: string
+          stack_trace?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          correlation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string
+          error_type?: string
+          function_name?: string | null
+          id?: string
+          metadata?: Json | null
+          request_body?: Json | null
+          request_method?: string | null
+          request_path?: string | null
+          severity?: string
+          source?: string
+          stack_trace?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "error_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "error_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          error_code: string | null
+          error_message: string | null
+          event_name: string
+          id: string
+          ip_hash: string | null
+          properties: Json | null
+          role: string | null
+          session_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          event_name: string
+          id?: string
+          ip_hash?: string | null
+          properties?: Json | null
+          role?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          event_name?: string
+          id?: string
+          ip_hash?: string | null
+          properties?: Json | null
+          role?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gallery_photos: {
         Row: {
           alt_text: string | null
@@ -941,6 +1073,7 @@ export type Database = {
           id: string
           is_blocked: boolean
           is_test_account: boolean
+          last_active_at: string | null
           league_division: string | null
           mens_league_division: string | null
           nationality: string | null
@@ -949,7 +1082,10 @@ export type Database = {
           notify_applications: boolean
           notify_opportunities: boolean
           onboarding_completed: boolean
+          onboarding_completed_at: string | null
+          onboarding_started_at: string | null
           open_to_coach: boolean
+          open_to_opportunities: boolean
           open_to_play: boolean
           passport_1: string | null
           passport_2: string | null
@@ -988,6 +1124,7 @@ export type Database = {
           id: string
           is_blocked?: boolean
           is_test_account?: boolean
+          last_active_at?: string | null
           league_division?: string | null
           mens_league_division?: string | null
           nationality?: string | null
@@ -996,7 +1133,10 @@ export type Database = {
           notify_applications?: boolean
           notify_opportunities?: boolean
           onboarding_completed?: boolean
+          onboarding_completed_at?: string | null
+          onboarding_started_at?: string | null
           open_to_coach?: boolean
+          open_to_opportunities?: boolean
           open_to_play?: boolean
           passport_1?: string | null
           passport_2?: string | null
@@ -1035,6 +1175,7 @@ export type Database = {
           id?: string
           is_blocked?: boolean
           is_test_account?: boolean
+          last_active_at?: string | null
           league_division?: string | null
           mens_league_division?: string | null
           nationality?: string | null
@@ -1043,7 +1184,10 @@ export type Database = {
           notify_applications?: boolean
           notify_opportunities?: boolean
           onboarding_completed?: boolean
+          onboarding_completed_at?: string | null
+          onboarding_started_at?: string | null
           open_to_coach?: boolean
+          open_to_opportunities?: boolean
           open_to_play?: boolean
           passport_1?: string | null
           passport_2?: string | null
@@ -1592,7 +1736,34 @@ export type Database = {
         }[]
       }
       admin_get_broken_references: { Args: never; Returns: Json }
+      admin_get_club_activity: {
+        Args: { p_days?: number; p_limit?: number; p_offset?: number }
+        Returns: {
+          avatar_url: string
+          avg_apps_per_vacancy: number
+          base_location: string
+          club_id: string
+          club_name: string
+          last_posted_at: string
+          onboarding_completed: boolean
+          open_vacancy_count: number
+          total_applications: number
+          total_count: number
+          vacancy_count: number
+        }[]
+      }
+      admin_get_club_summary: { Args: never; Returns: Json }
       admin_get_dashboard_stats: { Args: never; Returns: Json }
+      admin_get_extended_dashboard_stats: { Args: never; Returns: Json }
+      admin_get_player_funnel: { Args: { p_days?: number }; Returns: Json }
+      admin_get_profile_completeness_distribution: {
+        Args: { p_role?: string }
+        Returns: {
+          bucket: string
+          count: number
+          percentage: number
+        }[]
+      }
       admin_get_profile_details: {
         Args: { p_profile_id: string }
         Returns: Json
@@ -1623,6 +1794,63 @@ export type Database = {
           country: string
           user_count: number
         }[]
+      }
+      admin_get_vacancies: {
+        Args: {
+          p_club_id?: string
+          p_days?: number
+          p_limit?: number
+          p_offset?: number
+          p_status?: Database["public"]["Enums"]["vacancy_status"]
+        }
+        Returns: {
+          application_count: number
+          application_deadline: string
+          club_avatar_url: string
+          club_id: string
+          club_name: string
+          created_at: string
+          first_application_at: string
+          id: string
+          location_city: string
+          location_country: string
+          opportunity_type: Database["public"]["Enums"]["opportunity_type"]
+          pending_count: number
+          position: Database["public"]["Enums"]["vacancy_position"]
+          published_at: string
+          shortlisted_count: number
+          status: Database["public"]["Enums"]["vacancy_status"]
+          time_to_first_app_minutes: number
+          title: string
+          total_count: number
+        }[]
+      }
+      admin_get_vacancy_applicants: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_status?: Database["public"]["Enums"]["application_status"]
+          p_vacancy_id: string
+        }
+        Returns: {
+          application_id: string
+          applied_at: string
+          avatar_url: string
+          cover_letter: string
+          highlight_video_url: string
+          nationality: string
+          onboarding_completed: boolean
+          player_email: string
+          player_id: string
+          player_name: string
+          position: string
+          status: Database["public"]["Enums"]["application_status"]
+          total_count: number
+        }[]
+      }
+      admin_get_vacancy_detail: {
+        Args: { p_vacancy_id: string }
+        Returns: Json
       }
       admin_log_action: {
         Args: {
@@ -1733,6 +1961,7 @@ export type Database = {
           id: string
           is_blocked: boolean
           is_test_account: boolean
+          last_active_at: string | null
           league_division: string | null
           mens_league_division: string | null
           nationality: string | null
@@ -1741,7 +1970,10 @@ export type Database = {
           notify_applications: boolean
           notify_opportunities: boolean
           onboarding_completed: boolean
+          onboarding_completed_at: string | null
+          onboarding_started_at: string | null
           open_to_coach: boolean
+          open_to_opportunities: boolean
           open_to_play: boolean
           passport_1: string | null
           passport_2: string | null
@@ -1789,6 +2021,7 @@ export type Database = {
           id: string
           is_blocked: boolean
           is_test_account: boolean
+          last_active_at: string | null
           league_division: string | null
           mens_league_division: string | null
           nationality: string | null
@@ -1797,7 +2030,10 @@ export type Database = {
           notify_applications: boolean
           notify_opportunities: boolean
           onboarding_completed: boolean
+          onboarding_completed_at: string | null
+          onboarding_started_at: string | null
           open_to_coach: boolean
+          open_to_opportunities: boolean
           open_to_play: boolean
           passport_1: string | null
           passport_2: string | null
@@ -2017,6 +2253,20 @@ export type Database = {
       is_current_user_test_account: { Args: never; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
       is_test_vacancy: { Args: { vacancy_club_id: string }; Returns: boolean }
+      log_error: {
+        Args: {
+          p_correlation_id?: string
+          p_error_code?: string
+          p_error_message: string
+          p_error_type: string
+          p_function_name?: string
+          p_metadata?: Json
+          p_severity?: string
+          p_source: string
+          p_stack_trace?: string
+        }
+        Returns: string
+      }
       mark_all_notifications_read: {
         Args: {
           p_kind?: Database["public"]["Enums"]["profile_notification_kind"]
@@ -2167,6 +2417,17 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      track_event: {
+        Args: {
+          p_entity_id?: string
+          p_entity_type?: string
+          p_error_code?: string
+          p_error_message?: string
+          p_event_name: string
+          p_properties?: Json
+        }
+        Returns: string
+      }
       try_parse_years_component: {
         Args: { component: string; years: string }
         Returns: string

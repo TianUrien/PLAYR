@@ -179,10 +179,10 @@ export default function Terms() {
               <p className="flex items-center gap-2">
                 <span>📧</span>
                 <a
-                  href="mailto:tianurien@gmail.com"
+                  href="mailto:team@oplayr.com"
                   className="text-[#6366f1] hover:text-[#8b5cf6] transition-colors"
                 >
-                  tianurien@gmail.com
+                  team@oplayr.com
                 </a>
               </p>
             </div>

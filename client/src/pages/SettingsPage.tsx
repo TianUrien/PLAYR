@@ -1,16 +1,36 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Mail, Lock, Trash2, CheckCircle, Bell, Loader2 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { 
+  ArrowLeft, 
+  Mail, 
+  Lock, 
+  Trash2, 
+  CheckCircle, 
+  Bell, 
+  Loader2,
+  ChevronRight,
+  Shield,
+  FileText,
+  HelpCircle,
+  Info,
+  Code,
+  LogOut,
+  ExternalLink
+} from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import Header from '@/components/Header'
 import DeleteAccountModal from '@/components/DeleteAccountModal'
 
+// App version - could be pulled from package.json in the future
+const APP_VERSION = '1.0.0'
+
 export default function SettingsPage() {
   const navigate = useNavigate()
-  const { user, profile, refreshProfile } = useAuthStore()
+  const { user, profile, refreshProfile, signOut } = useAuthStore()
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [expandedSection, setExpandedSection] = useState<string | null>('account')
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -25,6 +45,9 @@ export default function SettingsPage() {
   const [notifyApplications, setNotifyApplications] = useState(true)
   const [notificationLoading, setNotificationLoading] = useState(false)
   const [notificationSuccess, setNotificationSuccess] = useState(false)
+
+  // Sign out loading state
+  const [signOutLoading, setSignOutLoading] = useState(false)
 
   // Load notification preferences from profile
   useEffect(() => {
@@ -52,14 +75,10 @@ export default function SettingsPage() {
       setNotifyOpportunities(newValue)
       setNotificationSuccess(true)
       
-      // Refresh profile to sync state
       await refreshProfile()
-
-      // Auto-hide success message after 3 seconds
       setTimeout(() => setNotificationSuccess(false), 3000)
     } catch (error) {
       logger.error('Failed to update notification preferences:', error)
-      // Revert on error
       setNotifyOpportunities(!newValue)
     } finally {
       setNotificationLoading(false)
@@ -84,14 +103,10 @@ export default function SettingsPage() {
       setNotifyApplications(newValue)
       setNotificationSuccess(true)
       
-      // Refresh profile to sync state
       await refreshProfile()
-
-      // Auto-hide success message after 3 seconds
       setTimeout(() => setNotificationSuccess(false), 3000)
     } catch (error) {
       logger.error('Failed to update notification preferences:', error)
-      // Revert on error
       setNotifyApplications(!newValue)
     } finally {
       setNotificationLoading(false)
@@ -103,7 +118,6 @@ export default function SettingsPage() {
     setPasswordError('')
     setPasswordSuccess(false)
 
-    // Validation
     if (passwordForm.newPassword.length < 8) {
       setPasswordError('Password must be at least 8 characters')
       return
@@ -117,7 +131,6 @@ export default function SettingsPage() {
     setPasswordLoading(true)
 
     try {
-      // Update password
       const { error } = await supabase.auth.updateUser({
         password: passwordForm.newPassword,
       })
@@ -131,7 +144,6 @@ export default function SettingsPage() {
         confirmPassword: '',
       })
 
-      // Auto-hide success message after 3 seconds
       setTimeout(() => setPasswordSuccess(false), 3000)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update password'
@@ -141,15 +153,104 @@ export default function SettingsPage() {
     }
   }
 
+  const handleSignOut = async () => {
+    setSignOutLoading(true)
+    try {
+      await signOut()
+      navigate('/')
+    } catch (error) {
+      logger.error('Failed to sign out:', error)
+    } finally {
+      setSignOutLoading(false)
+    }
+  }
+
+  const toggleSection = (section: string) => {
+    setExpandedSection(expandedSection === section ? null : section)
+  }
+
   if (!user || !profile) {
     return null
+  }
+
+  // Section header component
+  const SectionHeader = ({ 
+    id, 
+    icon: Icon, 
+    title, 
+    iconBg 
+  }: { 
+    id: string
+    icon: React.ElementType
+    title: string
+    iconBg: string 
+  }) => (
+    <button
+      onClick={() => toggleSection(id)}
+      className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors rounded-xl"
+    >
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 ${iconBg} rounded-lg flex items-center justify-center`}>
+          <Icon className="w-5 h-5" />
+        </div>
+        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+      </div>
+      <ChevronRight 
+        className={`w-5 h-5 text-gray-400 transition-transform ${
+          expandedSection === id ? 'rotate-90' : ''
+        }`} 
+      />
+    </button>
+  )
+
+  // Link row component for navigation items
+  const LinkRow = ({ 
+    to, 
+    icon: Icon, 
+    label, 
+    external = false 
+  }: { 
+    to: string
+    icon: React.ElementType
+    label: string
+    external?: boolean 
+  }) => {
+    if (external) {
+      return (
+        <a
+          href={to}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors rounded-lg group"
+        >
+          <div className="flex items-center gap-3">
+            <Icon className="w-5 h-5 text-gray-500" />
+            <span className="text-gray-700">{label}</span>
+          </div>
+          <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+        </a>
+      )
+    }
+
+    return (
+      <Link
+        to={to}
+        className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors rounded-lg group"
+      >
+        <div className="flex items-center gap-3">
+          <Icon className="w-5 h-5 text-gray-500" />
+          <span className="text-gray-700">{label}</span>
+        </div>
+        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+      </Link>
+    )
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
 
-      <main className="max-w-4xl mx-auto px-4 md:px-6 pt-24 pb-12">
+      <main className="max-w-2xl mx-auto px-4 md:px-6 pt-24 pb-32">
         {/* Back Button */}
         <button
           onClick={() => navigate('/dashboard/profile')}
@@ -164,7 +265,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-              <p className="text-gray-600 mt-1">Manage your account preferences</p>
+              <p className="text-gray-600 mt-1">Manage your account and preferences</p>
             </div>
             <span className="px-3 py-1 rounded-full text-sm font-medium capitalize bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white">
               {profile.role}
@@ -173,275 +274,263 @@ export default function SettingsPage() {
         </div>
 
         {/* Settings Sections */}
-        <div className="space-y-6">
-          {/* Login Email Section */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                <Mail className="w-5 h-5 text-blue-600" />
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900">Login Email</h2>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <span className="text-gray-900 font-medium">{user.email}</span>
-                <span className="flex items-center gap-2 text-sm text-blue-600">
-                  <CheckCircle className="w-4 h-4" />
-                  Verified
-                </span>
-              </div>
-              <p className="text-sm text-gray-600">
-                Contact{' '}
-                <a
-                  href="mailto:tianurien@gmail.com"
-                  className="text-[#6366f1] hover:text-[#8b5cf6] transition-colors"
-                >
-                  support
-                </a>{' '}
-                to change your email
-              </p>
-            </div>
-          </div>
-
-          {/* Notification Preferences Section - Only for players and coaches */}
-          {(profile.role === 'player' || profile.role === 'coach') && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
-                  <Bell className="w-5 h-5 text-indigo-600" />
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900">Notification Preferences</h2>
-              </div>
-
-              <div className="space-y-4">
-                {/* Opportunity Notifications Toggle */}
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex-1 pr-4">
-                    <p className="text-gray-900 font-medium">Opportunity Notifications</p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Receive email notifications when clubs publish new opportunities matching your role.
-                    </p>
+        <div className="space-y-4">
+          
+          {/* ACCOUNT SECTION */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <SectionHeader 
+              id="account" 
+              icon={Mail} 
+              title="Account" 
+              iconBg="bg-blue-50 text-blue-600" 
+            />
+            
+            {expandedSection === 'account' && (
+              <div className="px-4 pb-4 space-y-4">
+                {/* Login Email */}
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-600">Login Email</span>
+                    <span className="flex items-center gap-1 text-xs text-green-600">
+                      <CheckCircle className="w-3 h-3" />
+                      Verified
+                    </span>
                   </div>
-                  <button
-                    onClick={handleNotificationToggle}
-                    disabled={notificationLoading}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                      notifyOpportunities ? 'bg-indigo-600' : 'bg-gray-300'
-                    } ${notificationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {notificationLoading ? (
-                      <span className="absolute inset-0 flex items-center justify-center">
-                        <Loader2 className="w-4 h-4 text-white animate-spin" />
-                      </span>
-                    ) : (
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          notifyOpportunities ? 'translate-x-6' : 'translate-x-1'
-                        }`}
+                  <p className="text-gray-900 font-medium">{user.email}</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Contact <a href="mailto:team@oplayr.com" className="text-[#6366f1]">support</a> to change your email
+                  </p>
+                </div>
+
+                {/* Change Password */}
+                <div className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Lock className="w-4 h-4 text-gray-600" />
+                    <span className="text-sm font-medium text-gray-600">Change Password</span>
+                  </div>
+                  
+                  <form onSubmit={handlePasswordChange} className="space-y-3">
+                    <input
+                      type="password"
+                      value={passwordForm.currentPassword}
+                      onChange={(e) =>
+                        setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
+                      }
+                      placeholder="Current password"
+                      className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        type="password"
+                        value={passwordForm.newPassword}
+                        onChange={(e) =>
+                          setPasswordForm({ ...passwordForm, newPassword: e.target.value })
+                        }
+                        placeholder="New password"
+                        className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
                       />
-                    )}
-                  </button>
-                </div>
-
-                {/* Success Message */}
-                {notificationSuccess && (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4" />
-                    Notification preferences updated
-                  </div>
-                )}
-
-                <p className="text-sm text-gray-500">
-                  You can change these preferences at any time.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Notification Preferences Section - Only for clubs */}
-          {profile.role === 'club' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center">
-                  <Bell className="w-5 h-5 text-indigo-600" />
-                </div>
-                <h2 className="text-xl font-semibold text-gray-900">Notification Preferences</h2>
-              </div>
-
-              <div className="space-y-4">
-                {/* Application Notifications Toggle */}
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex-1 pr-4">
-                    <p className="text-gray-900 font-medium">Application Notifications</p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Receive email notifications when players apply to your opportunities.
-                    </p>
-                  </div>
-                  <button
-                    onClick={handleApplicationNotificationToggle}
-                    disabled={notificationLoading}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                      notifyApplications ? 'bg-indigo-600' : 'bg-gray-300'
-                    } ${notificationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    {notificationLoading ? (
-                      <span className="absolute inset-0 flex items-center justify-center">
-                        <Loader2 className="w-4 h-4 text-white animate-spin" />
-                      </span>
-                    ) : (
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          notifyApplications ? 'translate-x-6' : 'translate-x-1'
-                        }`}
+                      <input
+                        type="password"
+                        value={passwordForm.confirmPassword}
+                        onChange={(e) =>
+                          setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
+                        }
+                        placeholder="Confirm"
+                        className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
                       />
+                    </div>
+
+                    {passwordError && (
+                      <p className="text-xs text-red-600">{passwordError}</p>
                     )}
-                  </button>
+                    {passwordSuccess && (
+                      <p className="text-xs text-green-600 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        Password updated successfully
+                      </p>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={passwordLoading}
+                      className="w-full px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+                    >
+                      {passwordLoading ? 'Updating...' : 'Update Password'}
+                    </button>
+                  </form>
                 </div>
 
-                {/* Success Message */}
-                {notificationSuccess && (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4" />
-                    Notification preferences updated
-                  </div>
-                )}
-
-                <p className="text-sm text-gray-500">
-                  You can change these preferences at any time.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Change Password Section */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center">
-                <Lock className="w-5 h-5 text-purple-600" />
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900">Change Password</h2>
-            </div>
-
-            <form onSubmit={handlePasswordChange} className="space-y-4">
-              {/* Current Password */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Current Password
-                </label>
-                <input
-                  type="password"
-                  value={passwordForm.currentPassword}
-                  onChange={(e) =>
-                    setPasswordForm({ ...passwordForm, currentPassword: e.target.value })
-                  }
-                  placeholder="Enter current password"
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6366f1] focus:border-transparent transition-all"
-                />
-              </div>
-
-              {/* New Password and Confirm */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={passwordForm.newPassword}
-                    onChange={(e) =>
-                      setPasswordForm({ ...passwordForm, newPassword: e.target.value })
-                    }
-                    placeholder="New password"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6366f1] focus:border-transparent transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Confirm Password
-                  </label>
-                  <input
-                    type="password"
-                    value={passwordForm.confirmPassword}
-                    onChange={(e) =>
-                      setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })
-                    }
-                    placeholder="Confirm password"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6366f1] focus:border-transparent transition-all"
-                  />
-                </div>
-              </div>
-
-              <p className="text-sm text-gray-600">Password must be at least 8 characters</p>
-
-              {/* Error Message */}
-              {passwordError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                  {passwordError}
-                </div>
-              )}
-
-              {/* Success Message */}
-              {passwordSuccess && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  Password updated successfully
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <div className="flex justify-end">
+                {/* Delete Account */}
                 <button
-                  type="submit"
-                  disabled={passwordLoading}
-                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:opacity-90 transition-opacity font-medium disabled:opacity-50"
+                  onClick={() => setDeleteModalOpen(true)}
+                  className="w-full flex items-center justify-between p-4 bg-red-50 hover:bg-red-100 rounded-lg transition-colors group"
                 >
-                  {passwordLoading ? 'Updating...' : 'Update Password'}
+                  <div className="flex items-center gap-3">
+                    <Trash2 className="w-5 h-5 text-red-600" />
+                    <span className="text-red-700 font-medium">Delete Account</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-red-400 group-hover:text-red-600" />
                 </button>
               </div>
-            </form>
+            )}
           </div>
 
-          {/* Delete Account Section */}
-          <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center">
-                <Trash2 className="w-5 h-5 text-red-600" />
-              </div>
-              <h2 className="text-xl font-semibold text-red-900">Delete Account</h2>
-            </div>
+          {/* NOTIFICATIONS SECTION */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <SectionHeader 
+              id="notifications" 
+              icon={Bell} 
+              title="Notifications" 
+              iconBg="bg-indigo-50 text-indigo-600" 
+            />
+            
+            {expandedSection === 'notifications' && (
+              <div className="px-4 pb-4 space-y-3">
+                {/* Players/Coaches: Opportunity Notifications */}
+                {(profile.role === 'player' || profile.role === 'coach') && (
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex-1 pr-4">
+                      <p className="text-gray-900 font-medium text-sm">Opportunity Notifications</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Email when clubs publish new opportunities
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleNotificationToggle}
+                      disabled={notificationLoading}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                        notifyOpportunities ? 'bg-indigo-600' : 'bg-gray-300'
+                      } ${notificationLoading ? 'opacity-50' : ''}`}
+                    >
+                      {notificationLoading ? (
+                        <Loader2 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-white animate-spin" />
+                      ) : (
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            notifyOpportunities ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      )}
+                    </button>
+                  </div>
+                )}
 
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <div className="flex items-start gap-3">
-                <div className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5">⚠️</div>
-                <div className="text-sm text-red-800">
-                  <p className="font-semibold mb-1">This action is permanent and cannot be undone.</p>
-                  <p>All your data, messages, and connections will be permanently deleted.</p>
+                {/* Clubs: Application Notifications */}
+                {profile.role === 'club' && (
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex-1 pr-4">
+                      <p className="text-gray-900 font-medium text-sm">Application Notifications</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Email when players apply to your opportunities
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleApplicationNotificationToggle}
+                      disabled={notificationLoading}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                        notifyApplications ? 'bg-indigo-600' : 'bg-gray-300'
+                      } ${notificationLoading ? 'opacity-50' : ''}`}
+                    >
+                      {notificationLoading ? (
+                        <Loader2 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-white animate-spin" />
+                      ) : (
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            notifyApplications ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {notificationSuccess && (
+                  <p className="text-xs text-green-600 flex items-center gap-1 px-4">
+                    <CheckCircle className="w-3 h-3" />
+                    Preferences updated
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* SUPPORT SECTION */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <SectionHeader 
+              id="support" 
+              icon={HelpCircle} 
+              title="Support" 
+              iconBg="bg-green-50 text-green-600" 
+            />
+            
+            {expandedSection === 'support' && (
+              <div className="px-4 pb-4">
+                <LinkRow 
+                  to="mailto:team@oplayr.com" 
+                  icon={Mail} 
+                  label="Contact Support" 
+                  external 
+                />
+              </div>
+            )}
+          </div>
+
+          {/* LEGAL SECTION */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <SectionHeader 
+              id="legal" 
+              icon={Shield} 
+              title="Legal" 
+              iconBg="bg-purple-50 text-purple-600" 
+            />
+            
+            {expandedSection === 'legal' && (
+              <div className="px-4 pb-4 space-y-1">
+                <LinkRow to="/privacy-policy" icon={Shield} label="Privacy Policy" />
+                <LinkRow to="/terms" icon={FileText} label="Terms of Service" />
+              </div>
+            )}
+          </div>
+
+          {/* ABOUT SECTION */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <SectionHeader 
+              id="about" 
+              icon={Info} 
+              title="About" 
+              iconBg="bg-gray-100 text-gray-600" 
+            />
+            
+            {expandedSection === 'about' && (
+              <div className="px-4 pb-4 space-y-1">
+                {/* Version */}
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Info className="w-5 h-5 text-gray-500" />
+                    <span className="text-gray-700">Version</span>
+                  </div>
+                  <span className="text-gray-500 text-sm">{APP_VERSION}</span>
                 </div>
+                
+                <LinkRow to="/developers" icon={Code} label="For Developers" />
               </div>
-            </div>
-
-            <button
-              onClick={() => setDeleteModalOpen(true)}
-              className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete My Account
-            </button>
+            )}
           </div>
 
-          {/* Contact Support */}
-          <div className="text-center py-4">
-            <p className="text-gray-600">
-              Need help?{' '}
-              <a
-                href="mailto:tianurien@gmail.com"
-                className="text-[#6366f1] hover:text-[#8b5cf6] transition-colors font-medium"
-              >
-                Contact Support
-              </a>
-            </p>
-          </div>
+          {/* SIGN OUT BUTTON */}
+          <button
+            onClick={handleSignOut}
+            disabled={signOutLoading}
+            className="w-full flex items-center justify-center gap-2 p-4 bg-white rounded-2xl shadow-sm border border-gray-200 hover:bg-red-50 hover:border-red-200 transition-colors text-red-600 font-medium disabled:opacity-50"
+          >
+            {signOutLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <LogOut className="w-5 h-5" />
+            )}
+            <span>{signOutLoading ? 'Signing out...' : 'Sign Out'}</span>
+          </button>
+
         </div>
       </main>
 

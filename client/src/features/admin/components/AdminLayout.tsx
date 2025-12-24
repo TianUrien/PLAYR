@@ -11,11 +11,17 @@ import {
   AlertTriangle, 
   ScrollText,
   Settings,
-  ArrowLeft
+  ArrowLeft,
+  Briefcase,
+  Building2,
+  UserCheck,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
   { path: '/admin/overview', icon: LayoutDashboard, label: 'Overview', exact: true },
+  { path: '/admin/vacancies', icon: Briefcase, label: 'Vacancies' },
+  { path: '/admin/clubs', icon: Building2, label: 'Club Analytics' },
+  { path: '/admin/players', icon: UserCheck, label: 'Player Analytics' },
   { path: '/admin/directory', icon: Users, label: 'Directory' },
   { path: '/admin/data-issues', icon: AlertTriangle, label: 'Data Issues' },
   { path: '/admin/audit-log', icon: ScrollText, label: 'Audit Log' },

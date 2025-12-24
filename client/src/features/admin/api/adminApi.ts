@@ -265,3 +265,156 @@ export async function setAdminStatus(userId: string, isAdmin: boolean, reason?: 
     throw new Error(result.error || 'Failed to set admin status')
   }
 }
+
+// ============================================================================
+// VACANCY ANALYTICS
+// ============================================================================
+
+import type {
+  VacancyListItem,
+  VacancyApplicant,
+  VacancyDetail,
+  ClubActivity,
+  ClubSummary,
+  PlayerFunnel,
+  ProfileCompletenessDistribution,
+  ExtendedDashboardStats,
+  VacancySearchParams,
+} from '../types'
+
+/**
+ * Get paginated vacancy list with application statistics
+ */
+export async function getVacancies(params: VacancySearchParams = {}): Promise<{
+  vacancies: VacancyListItem[]
+  totalCount: number
+}> {
+  const { data, error } = await adminRpc('admin_get_vacancies', {
+    p_status: params.status || null,
+    p_club_id: params.club_id || null,
+    p_days: params.days || null,
+    p_limit: params.limit || 50,
+    p_offset: params.offset || 0,
+  })
+  if (error) throw new Error(`Failed to get vacancies: ${error.message}`)
+  
+  const vacancies = data as VacancyListItem[]
+  const totalCount = vacancies.length > 0 ? vacancies[0].total_count : 0
+  
+  return { vacancies, totalCount }
+}
+
+/**
+ * Get applicants for a specific vacancy
+ */
+export async function getVacancyApplicants(
+  vacancyId: string,
+  status?: string,
+  limit = 100,
+  offset = 0
+): Promise<{
+  applicants: VacancyApplicant[]
+  totalCount: number
+}> {
+  const { data, error } = await adminRpc('admin_get_vacancy_applicants', {
+    p_vacancy_id: vacancyId,
+    p_status: status || null,
+    p_limit: limit,
+    p_offset: offset,
+  })
+  if (error) throw new Error(`Failed to get vacancy applicants: ${error.message}`)
+  
+  const applicants = data as VacancyApplicant[]
+  const totalCount = applicants.length > 0 ? applicants[0].total_count : 0
+  
+  return { applicants, totalCount }
+}
+
+/**
+ * Get full vacancy details with club info and application stats
+ */
+export async function getVacancyDetail(vacancyId: string): Promise<VacancyDetail> {
+  const { data, error } = await adminRpc('admin_get_vacancy_detail', {
+    p_vacancy_id: vacancyId,
+  })
+  if (error) throw new Error(`Failed to get vacancy detail: ${error.message}`)
+  return data as VacancyDetail
+}
+
+// ============================================================================
+// CLUB ANALYTICS
+// ============================================================================
+
+/**
+ * Get club posting activity with vacancy and application stats
+ */
+export async function getClubActivity(
+  days = 30,
+  limit = 20,
+  offset = 0
+): Promise<{
+  clubs: ClubActivity[]
+  totalCount: number
+}> {
+  const { data, error } = await adminRpc('admin_get_club_activity', {
+    p_days: days,
+    p_limit: limit,
+    p_offset: offset,
+  })
+  if (error) throw new Error(`Failed to get club activity: ${error.message}`)
+  
+  const clubs = data as ClubActivity[]
+  const totalCount = clubs.length > 0 ? clubs[0].total_count : 0
+  
+  return { clubs, totalCount }
+}
+
+/**
+ * Get club summary statistics
+ */
+export async function getClubSummary(): Promise<ClubSummary> {
+  const { data, error } = await adminRpc('admin_get_club_summary')
+  if (error) throw new Error(`Failed to get club summary: ${error.message}`)
+  return data as ClubSummary
+}
+
+// ============================================================================
+// PLAYER ANALYTICS
+// ============================================================================
+
+/**
+ * Get player journey funnel metrics
+ */
+export async function getPlayerFunnel(days?: number): Promise<PlayerFunnel> {
+  const { data, error } = await adminRpc('admin_get_player_funnel', {
+    p_days: days || null,
+  })
+  if (error) throw new Error(`Failed to get player funnel: ${error.message}`)
+  return data as PlayerFunnel
+}
+
+/**
+ * Get profile completeness distribution by role
+ */
+export async function getProfileCompletenessDistribution(
+  role = 'player'
+): Promise<ProfileCompletenessDistribution[]> {
+  const { data, error } = await adminRpc('admin_get_profile_completeness_distribution', {
+    p_role: role,
+  })
+  if (error) throw new Error(`Failed to get profile completeness: ${error.message}`)
+  return data as ProfileCompletenessDistribution[]
+}
+
+// ============================================================================
+// EXTENDED DASHBOARD
+// ============================================================================
+
+/**
+ * Get extended dashboard statistics with vacancy and player insights
+ */
+export async function getExtendedDashboardStats(): Promise<ExtendedDashboardStats> {
+  const { data, error } = await adminRpc('admin_get_extended_dashboard_stats')
+  if (error) throw new Error(`Failed to get extended stats: ${error.message}`)
+  return data as ExtendedDashboardStats
+}

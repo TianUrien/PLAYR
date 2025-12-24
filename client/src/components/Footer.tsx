@@ -49,7 +49,7 @@ export default function Footer() {
             <span className="text-gray-400 dark:text-gray-600" aria-hidden="true">•</span>
 
             <a
-              href="mailto:tianurien@gmail.com"
+              href="mailto:team@oplayr.com"
               className="hover:text-purple-600 dark:hover:text-purple-400 transition-colors underline-offset-4 hover:underline"
               aria-label="Contact support via email"
             >

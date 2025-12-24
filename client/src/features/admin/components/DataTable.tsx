@@ -4,7 +4,8 @@
  * Reusable table component with sorting and actions.
  */
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react'
 
 export interface Column<T> {
@@ -47,6 +48,40 @@ export function DataTable<T extends object>({
   pagination,
 }: DataTableProps<T>) {
   const [openActionMenu, setOpenActionMenu] = useState<string | null>(null)
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null)
+  const buttonRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+
+  // Close menu on scroll or resize
+  useEffect(() => {
+    const handleScroll = () => setOpenActionMenu(null)
+    const handleResize = () => setOpenActionMenu(null)
+    
+    window.addEventListener('scroll', handleScroll, true)
+    window.addEventListener('resize', handleResize)
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  const openMenu = (rowKey: string) => {
+    if (openActionMenu === rowKey) {
+      setOpenActionMenu(null)
+      setMenuPosition(null)
+      return
+    }
+    
+    const button = buttonRefs.current.get(rowKey)
+    if (button) {
+      const rect = button.getBoundingClientRect()
+      setMenuPosition({
+        top: rect.bottom + 4,
+        left: rect.right - 140, // 140px is min-width of menu
+      })
+      setOpenActionMenu(rowKey)
+    }
+  }
 
   if (loading) {
     return (
@@ -134,30 +169,38 @@ export function DataTable<T extends object>({
                     )
                   })}
                   {actions && actions.length > 0 && (
-                    <td className="px-4 py-3 text-right relative">
+                    <td className="px-4 py-3 text-right">
                       <button
-                        onClick={() =>
-                          setOpenActionMenu(openActionMenu === rowKey ? null : rowKey)
-                        }
+                        ref={(el) => {
+                          if (el) buttonRefs.current.set(rowKey, el)
+                        }}
+                        onClick={() => openMenu(rowKey)}
                         className="p-1 rounded hover:bg-gray-100 transition-colors"
                         aria-label="Open actions menu"
                         title="Actions"
                       >
                         <MoreVertical className="w-4 h-4 text-gray-500" />
                       </button>
-                      {openActionMenu === rowKey && (
+                      {openActionMenu === rowKey && menuPosition && createPortal(
                         <>
                           <div
-                            className="fixed inset-0 z-10"
-                            onClick={() => setOpenActionMenu(null)}
+                            className="fixed inset-0 z-[100]"
+                            onClick={() => {
+                              setOpenActionMenu(null)
+                              setMenuPosition(null)
+                            }}
                           />
-                          <div className="absolute right-4 top-10 z-20 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[140px]">
+                          <div 
+                            className="fixed z-[101] bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[140px]"
+                            style={{ top: menuPosition.top, left: menuPosition.left }}
+                          >
                             {actions.map((action, i) => (
                               <button
                                 key={i}
                                 onClick={() => {
                                   action.onClick(row)
                                   setOpenActionMenu(null)
+                                  setMenuPosition(null)
                                 }}
                                 disabled={action.disabled?.(row)}
                                 className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors ${
@@ -175,7 +218,8 @@ export function DataTable<T extends object>({
                               </button>
                             ))}
                           </div>
-                        </>
+                        </>,
+                        document.body
                       )}
                     </td>
                   )}

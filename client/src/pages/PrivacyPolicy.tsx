@@ -126,7 +126,7 @@ export default function PrivacyPolicy() {
               <ul className="list-none space-y-3 ml-4">
                 <li>• Access, edit, or delete your profile data anytime from Settings.</li>
                 <li>• Request permanent account deletion.</li>
-                <li>• Contact us for any privacy concerns at tianurien@gmail.com.</li>
+                <li>• Contact us for any privacy concerns at team@oplayr.com.</li>
               </ul>
             </div>
           </section>
@@ -180,10 +180,10 @@ export default function PrivacyPolicy() {
               <p className="flex items-center gap-2">
                 <span>📧</span>
                 <a
-                  href="mailto:tianurien@gmail.com"
+                  href="mailto:team@oplayr.com"
                   className="text-[#6366f1] hover:text-[#8b5cf6] transition-colors"
                 >
-                  tianurien@gmail.com
+                  team@oplayr.com
                 </a>
               </p>
             </div>
