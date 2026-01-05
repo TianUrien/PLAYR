@@ -6,6 +6,7 @@ import { ProtectedRoute, ErrorBoundary, Layout, SentryTestButton } from '@/compo
 import ToastContainer from '@/components/ToastContainer'
 import { ProfileImagePreviewProvider } from '@/components/ProfileImagePreviewProvider'
 import InstallPrompt from '@/components/InstallPrompt'
+import { useEngagementTracking } from '@/hooks/useEngagementTracking'
 import Landing from '@/pages/Landing'
 import SignUp from '@/pages/SignUp'
 import AuthCallback from '@/pages/AuthCallback'
@@ -42,6 +43,7 @@ const AdminVacancies = lazy(() => import('@/features/admin/pages/AdminVacancies'
 const AdminVacancyDetail = lazy(() => import('@/features/admin/pages/AdminVacancyDetail').then(m => ({ default: m.AdminVacancyDetail })))
 const AdminClubs = lazy(() => import('@/features/admin/pages/AdminClubs').then(m => ({ default: m.AdminClubs })))
 const AdminPlayers = lazy(() => import('@/features/admin/pages/AdminPlayers').then(m => ({ default: m.AdminPlayers })))
+const AdminEngagement = lazy(() => import('@/features/admin/pages/AdminEngagement').then(m => ({ default: m.AdminEngagement })))
 
 // Loading fallback component
 const PageLoader = () => (
@@ -52,6 +54,12 @@ const PageLoader = () => (
     </div>
   </div>
 )
+
+// Engagement tracking wrapper - tracks time in app via heartbeats
+function EngagementTracker() {
+  useEngagementTracking()
+  return null
+}
 
 function App() {
   const initRef = useRef(false)
@@ -85,6 +93,7 @@ function App() {
         <ProfileImagePreviewProvider>
           <ToastContainer />
           <InstallPrompt />
+          <EngagementTracker />
           {!isProduction && <SentryTestButton />}
           <ProtectedRoute>
             <Layout>
@@ -132,6 +141,7 @@ function App() {
                   <Route path="vacancies/:id" element={<AdminVacancyDetail />} />
                   <Route path="clubs" element={<AdminClubs />} />
                   <Route path="players" element={<AdminPlayers />} />
+                  <Route path="engagement" element={<AdminEngagement />} />
                   <Route path="data-issues" element={<AdminDataIssues />} />
                   <Route path="directory" element={<AdminDirectory />} />
                   <Route path="audit-log" element={<AdminAuditLog />} />

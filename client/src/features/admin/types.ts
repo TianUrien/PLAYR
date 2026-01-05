@@ -412,3 +412,72 @@ export interface ExtendedDashboardStats {
   
   generated_at: string
 }
+
+// ============================================================================
+// ENGAGEMENT TRACKING TYPES
+// ============================================================================
+
+export interface EngagementSummary {
+  total_active_users_7d: number
+  total_active_users_30d: number
+  total_time_minutes_7d: number
+  total_time_minutes_30d: number
+  total_sessions_7d: number
+  total_sessions_30d: number
+  avg_session_minutes: number
+  avg_daily_active_users: number
+  generated_at: string
+}
+
+export interface UserEngagementItem {
+  user_id: string
+  display_name: string
+  email: string
+  role: string
+  avatar_url: string | null
+  total_time_minutes: number
+  active_days: number
+  total_sessions: number
+  last_active_at: string | null
+  avg_session_minutes: number
+  total_count: number
+}
+
+export interface EngagementTrend {
+  date: string
+  active_users: number
+  total_minutes: number
+  total_sessions: number
+}
+
+export interface UserEngagementDetail {
+  user_id: string
+  summary: {
+    total_time_minutes: number
+    active_days: number
+    total_sessions: number
+    first_active: string | null
+    last_active: string | null
+    avg_daily_minutes: number
+  }
+  daily_breakdown: Array<{
+    date: string
+    minutes: number
+    sessions: number
+  }>
+  recent_sessions: Array<{
+    session_id: string
+    started_at: string
+    last_heartbeat: string
+    duration_minutes: number
+    heartbeat_count: number
+  }>
+}
+
+export interface UserEngagementSearchParams {
+  limit?: number
+  offset?: number
+  sort_by?: 'total_time' | 'active_days' | 'sessions' | 'last_active'
+  sort_dir?: 'asc' | 'desc'
+  days?: number
+}

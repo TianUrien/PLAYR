@@ -23,6 +23,11 @@ import type {
   AuditLogEntry,
   ProfileSearchParams,
   AuditLogSearchParams,
+  EngagementSummary,
+  UserEngagementItem,
+  EngagementTrend,
+  UserEngagementDetail,
+  UserEngagementSearchParams,
 } from '../types'
 
 // Helper to call RPC functions that aren't in generated types yet
@@ -417,4 +422,64 @@ export async function getExtendedDashboardStats(): Promise<ExtendedDashboardStat
   const { data, error } = await adminRpc('admin_get_extended_dashboard_stats')
   if (error) throw new Error(`Failed to get extended stats: ${error.message}`)
   return data as ExtendedDashboardStats
+}
+
+// ============================================================================
+// ENGAGEMENT TRACKING
+// ============================================================================
+
+/**
+ * Get engagement summary statistics
+ */
+export async function getEngagementSummary(): Promise<EngagementSummary> {
+  const { data, error } = await adminRpc('admin_get_engagement_summary')
+  if (error) throw new Error(`Failed to get engagement summary: ${error.message}`)
+  return data as EngagementSummary
+}
+
+/**
+ * Get per-user engagement metrics
+ */
+export async function getUserEngagement(
+  params: UserEngagementSearchParams = {}
+): Promise<{ users: UserEngagementItem[]; totalCount: number }> {
+  const { data, error } = await adminRpc('admin_get_user_engagement', {
+    p_limit: params.limit || 50,
+    p_offset: params.offset || 0,
+    p_sort_by: params.sort_by || 'total_time',
+    p_sort_dir: params.sort_dir || 'desc',
+    p_days: params.days || 30,
+  })
+  if (error) throw new Error(`Failed to get user engagement: ${error.message}`)
+  
+  const users = data as UserEngagementItem[]
+  const totalCount = users.length > 0 ? users[0].total_count : 0
+  
+  return { users, totalCount }
+}
+
+/**
+ * Get engagement trends over time (for charts)
+ */
+export async function getEngagementTrends(days = 30): Promise<EngagementTrend[]> {
+  const { data, error } = await adminRpc('admin_get_engagement_trends', {
+    p_days: days,
+  })
+  if (error) throw new Error(`Failed to get engagement trends: ${error.message}`)
+  return data as EngagementTrend[]
+}
+
+/**
+ * Get detailed engagement data for a specific user
+ */
+export async function getUserEngagementDetail(
+  userId: string,
+  days = 90
+): Promise<UserEngagementDetail> {
+  const { data, error } = await adminRpc('admin_get_user_engagement_detail', {
+    p_user_id: userId,
+    p_days: days,
+  })
+  if (error) throw new Error(`Failed to get user engagement detail: ${error.message}`)
+  return data as UserEngagementDetail
 }
