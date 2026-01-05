@@ -43,7 +43,7 @@ BEGIN
   END IF;
 
   normalized := regexp_replace(p_url, '^https?://[^/]+', '');
-  normalized := regexp_replace(normalized, '\\?.*$', '');
+  normalized := regexp_replace(normalized, '\?.*$', '');
 
   marker := '/storage/v1/object/public/' || p_bucket || '/';
   idx := POSITION(marker IN normalized);
