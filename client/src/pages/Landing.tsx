@@ -165,10 +165,6 @@ export default function Landing() {
               Raise the sport together.
             </p>
 
-            <p className="text-sm sm:text-base text-gray-300/90 mt-2 lg:mt-4">
-              An independent project by <span className="font-medium text-white">Cristian Urien</span>
-            </p>
-
             {/* Primary CTA - Mobile only */}
             <div className="lg:hidden mt-8">
               <button
