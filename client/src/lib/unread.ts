@@ -14,6 +14,8 @@ interface UnreadState {
   loading: boolean
   userId: string | null
   channel: RealtimeChannel | null
+  /** Tracks if initialization is in progress to prevent duplicate calls */
+  initializing: boolean
   initialize: (userId: string | null) => Promise<void>
   refresh: (options?: RefreshOptions) => Promise<number>
   reset: () => void
@@ -58,13 +60,14 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
   loading: false,
   userId: null,
   channel: null,
+  initializing: false,
 
   reset: () => {
     const { channel } = get()
     if (channel) {
       supabase.removeChannel(channel)
     }
-    set({ count: 0, loading: false, userId: null, channel: null })
+    set({ count: 0, loading: false, userId: null, channel: null, initializing: false })
   },
 
   refresh: async (options?: RefreshOptions) => {
@@ -81,12 +84,24 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
   },
 
   initialize: async (userId: string | null) => {
-    const { userId: currentUserId, channel: existingChannel, refresh } = get()
+    const { userId: currentUserId, channel: existingChannel, refresh, initializing } = get()
 
     if (!userId) {
       get().reset()
       return
     }
+
+    // Skip if already initializing for the same user (prevents duplicate calls from multiple components)
+    if (initializing && currentUserId === userId) {
+      return
+    }
+
+    // Skip if already initialized for this user with an active channel
+    if (currentUserId === userId && existingChannel) {
+      return
+    }
+
+    set({ initializing: true })
 
     const shouldResubscribe = currentUserId !== userId || !existingChannel
 
@@ -124,6 +139,6 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
       )
       .subscribe()
 
-    set({ channel })
+    set({ channel, initializing: false })
   }
 }))

@@ -576,6 +576,26 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                 </section>
                 )}
 
+                {/* Highlight Video - placed early for immediate visual context */}
+                <section className="space-y-3">
+                  <MediaTab
+                    profileId={profile.id}
+                    readOnly={readOnly}
+                    showVideo={true}
+                    showGallery={false}
+                    renderHeader={({ canManageVideo, openManageModal }) => (
+                      <div className="flex items-center justify-between gap-3">
+                        <h2 className="text-2xl font-bold text-gray-900">Highlight Video</h2>
+                        {canManageVideo && (
+                          <Button variant="outline" size="sm" onClick={openManageModal}>
+                            Manage
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  />
+                </section>
+
                 <section className="space-y-4">
                   <div className="flex items-start justify-between gap-4">
                     <h2 className="text-2xl font-bold text-gray-900">About Me</h2>
@@ -612,20 +632,13 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                   <PublicReferencesSection profileId={profile.id} profileName={profile.full_name ?? profile.username ?? null} />
                 )}
 
+                {/* Photo Gallery - placed after About Me for visual balance */}
                 <section className="space-y-3">
                   <MediaTab
                     profileId={profile.id}
                     readOnly={readOnly}
-                    renderHeader={({ canManageVideo, openManageModal }) => (
-                      <div className="flex items-center justify-between gap-3">
-                        <h2 className="text-2xl font-bold text-gray-900">Highlight Video</h2>
-                        {canManageVideo && (
-                          <Button variant="outline" size="sm" onClick={openManageModal}>
-                            Manage
-                          </Button>
-                        )}
-                      </div>
-                    )}
+                    showVideo={false}
+                    showGallery={true}
                   />
                 </section>
               </div>

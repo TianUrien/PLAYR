@@ -21,9 +21,12 @@ interface MediaTabProps {
   profileId?: string
   readOnly?: boolean
   renderHeader?: (props: MediaTabHeaderRenderProps) => ReactNode
+  /** Control which sections to show. Defaults to true for both. */
+  showVideo?: boolean
+  showGallery?: boolean
 }
 
-export default function MediaTab({ profileId, readOnly = false, renderHeader }: MediaTabProps) {
+export default function MediaTab({ profileId, readOnly = false, renderHeader, showVideo = true, showGallery = true }: MediaTabProps) {
   const { user, profile: authProfile } = useAuthStore()
   const targetUserId = profileId || user?.id
   const { addToast } = useToastStore()
@@ -111,8 +114,8 @@ export default function MediaTab({ profileId, readOnly = false, renderHeader }: 
 
   return (
     <div className="space-y-8">
-      {/* Highlight Video Section - Only show for players */}
-      {isLoadingProfile || isPlayerProfile ? (
+      {/* Highlight Video Section - Only show for players when showVideo is true */}
+      {showVideo && (isLoadingProfile || isPlayerProfile) ? (
         <div>
           {(() => {
             const headerContent = renderHeader
@@ -180,15 +183,17 @@ export default function MediaTab({ profileId, readOnly = false, renderHeader }: 
         </div>
       ) : null}
 
-      <GalleryManager
-        mode="profile"
-        entityId={targetUserId}
-        readOnly={!canManageGallery}
-        title="Gallery"
-        description="Share your best field hockey moments in Instagram-style"
-        emptyStateDescription={galleryEmptyCopy}
-        addButtonLabel="Add Photo"
-      />
+      {showGallery && (
+        <GalleryManager
+          mode="profile"
+          entityId={targetUserId}
+          readOnly={!canManageGallery}
+          title="Gallery"
+          description="Share your best field hockey moments in Instagram-style"
+          emptyStateDescription={galleryEmptyCopy}
+          addButtonLabel="Add Photo"
+        />
+      )}
 
       {/* Add Video Link Modal */}
       <AddVideoLinkModal
@@ -216,6 +221,8 @@ export default function MediaTab({ profileId, readOnly = false, renderHeader }: 
 
 // Video Embed Component
 function VideoEmbed({ url }: { url: string }) {
+  const isGoogleDrive = url.includes('drive.google.com')
+  
   const getEmbedUrl = (url: string) => {
     // YouTube
     if (url.includes('youtube.com') || url.includes('youtu.be')) {
@@ -242,21 +249,42 @@ function VideoEmbed({ url }: { url: string }) {
     return url
   }
 
+  const getDirectUrl = (url: string) => {
+    // For Google Drive, return the direct view link
+    if (url.includes('drive.google.com')) {
+      const fileId = url.includes('/file/d/')
+        ? url.split('/file/d/')[1]?.split('/')[0]
+        : new URLSearchParams(url.split('?')[1]).get('id')
+      return `https://drive.google.com/file/d/${fileId}/view`
+    }
+    return url
+  }
+
   const embedUrl = getEmbedUrl(url)
   const platform = url.includes('youtube') || url.includes('youtu.be')
     ? 'YouTube'
     : url.includes('vimeo')
     ? 'Vimeo'
-    : url.includes('drive.google')
+    : isGoogleDrive
     ? 'Google Drive'
     : 'Video'
 
   return (
     <div className="relative w-full rounded-xl overflow-hidden bg-black aspect-video">
-      <div className="absolute top-4 left-4 z-10">
+      <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
         <span className="px-3 py-1 bg-red-600 text-white text-xs font-semibold rounded">
           {platform}
         </span>
+        {isGoogleDrive && (
+          <a
+            href={getDirectUrl(url)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1 bg-white/90 text-gray-800 text-xs font-semibold rounded hover:bg-white transition-colors"
+          >
+            Open in Drive ↗
+          </a>
+        )}
       </div>
       <iframe
         src={embedUrl}
