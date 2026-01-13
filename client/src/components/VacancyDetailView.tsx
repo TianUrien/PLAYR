@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import type { Vacancy } from '../lib/supabase'
 import { Avatar } from './index'
 import Button from './Button'
+import { getCountryColor, formatCountryBanner } from '@/lib/countryColors'
 
 interface VacancyDetailViewProps {
   vacancy: Vacancy
@@ -98,10 +99,24 @@ export default function VacancyDetailView({
     }
   }, [])
 
+  // Get country color for banner
+  const countryColor = getCountryColor(vacancy.location_country)
+  const countryBannerText = formatCountryBanner(vacancy.location_country)
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
       <div className="min-h-screen px-4 py-8 flex items-center justify-center">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full relative">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full relative overflow-hidden">
+          {/* Country Banner */}
+          {countryBannerText && (
+            <div
+              className="w-full py-3 px-4 text-center text-sm font-semibold tracking-wide"
+              style={{ backgroundColor: countryColor.bg, color: countryColor.text }}
+            >
+              {countryBannerText}
+            </div>
+          )}
+
           {/* Close Button */}
           <button
             onClick={onClose}
@@ -176,7 +191,7 @@ export default function VacancyDetailView({
                 <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                   <div className="flex items-center gap-2">
                     <MapPin className="w-4 h-4" />
-                    <span>{vacancy.location_city}, {vacancy.location_country}</span>
+                    <span>{vacancy.location_city}</span>
                   </div>
                   {vacancy.start_date && (
                     <div className="flex items-center gap-2">

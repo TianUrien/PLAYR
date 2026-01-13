@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { Vacancy } from '../lib/supabase'
 import { Avatar } from './index'
 import Button from './Button'
+import { getCountryColor, formatCountryBanner } from '@/lib/countryColors'
 
 interface VacancyCardProps {
   vacancy: Vacancy
@@ -93,8 +94,24 @@ export default function VacancyCard({
   const visibleBenefits = vacancy.benefits?.slice(0, 4) || []
   const additionalBenefitsCount = Math.max(0, (vacancy.benefits?.length || 0) - 4)
 
+  // Get country color for banner
+  const countryColor = getCountryColor(vacancy.location_country)
+  const countryBannerText = formatCountryBanner(vacancy.location_country)
+
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 hover:shadow-lg transition-shadow relative group">
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow relative group">
+      {/* Country Banner */}
+      {countryBannerText && (
+        <div
+          className="w-full py-2 px-4 text-center text-sm font-semibold tracking-wide"
+          style={{ backgroundColor: countryColor.bg, color: countryColor.text }}
+        >
+          {countryBannerText}
+        </div>
+      )}
+
+      {/* Card Content */}
+      <div className="p-5 sm:p-6">
       {/* Club Header */}
       <div className="flex items-start justify-between mb-4">
         <button
@@ -154,7 +171,7 @@ export default function VacancyCard({
       <div className="space-y-2 mb-4">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <MapPin className="w-4 h-4 flex-shrink-0" />
-          <span>{vacancy.location_city}, {vacancy.location_country}</span>
+          <span>{vacancy.location_city}</span>
         </div>
         {vacancy.description && (
           <div className="flex items-start gap-2 text-sm text-gray-600">
@@ -250,6 +267,7 @@ export default function VacancyCard({
       {/* Timestamp */}
       <div className="mt-3 text-xs text-gray-500 text-right">
         {getTimeAgo(vacancy.created_at || new Date().toISOString())}
+      </div>
       </div>
     </div>
   )

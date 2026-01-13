@@ -5,6 +5,7 @@ import { logger } from '../lib/logger'
 import { useAuthStore } from '../lib/auth'
 import type { Vacancy, VacancyInsert } from '../lib/supabase'
 import Button from './Button'
+import CountryNameSelect from './CountryNameSelect'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { useToastStore } from '@/lib/toast'
 
@@ -76,7 +77,6 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
   const opportunityTitleFieldId = useId()
   const descriptionFieldId = useId()
   const locationCityFieldId = useId()
-  const locationCountryFieldId = useId()
   const startDateFieldId = useId()
   const durationFieldId = useId()
   const applicationDeadlineFieldId = useId()
@@ -577,21 +577,12 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
                     inputMode="text"
                     {...locationAccessibilityProps}
                   />
-                  <label htmlFor={locationCountryFieldId} className="sr-only">
-                    Country
-                  </label>
-                  <input
-                    id={locationCountryFieldId}
-                    type="text"
-                    value={formData.location_country}
-                    onChange={(e) => handleInputChange('location_country', e.target.value)}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#10b981] focus:border-transparent ${
-                      errors.location_country ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="Country"
-                    autoCapitalize="words"
-                    inputMode="text"
-                    {...locationAccessibilityProps}
+                  <CountryNameSelect
+                    value={formData.location_country || null}
+                    onChange={(countryName) => handleInputChange('location_country', countryName || '')}
+                    placeholder="Select country"
+                    required
+                    error={errors.location_country}
                   />
                 </div>
                 {(errors.location_city || errors.location_country) && (
