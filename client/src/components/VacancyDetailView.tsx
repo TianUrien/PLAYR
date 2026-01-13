@@ -107,7 +107,7 @@ export default function VacancyDetailView({
     <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
       <div className="min-h-screen px-4 py-8 flex items-center justify-center">
         <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full relative overflow-hidden">
-          {/* Country Banner */}
+          {/* Country Banner - Context only, no buttons */}
           {countryBannerText && (
             <div
               className="w-full py-3 px-4 text-center text-sm font-semibold tracking-wide"
@@ -117,22 +117,13 @@ export default function VacancyDetailView({
             </div>
           )}
 
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 min-w-[44px] min-h-[44px] hover:bg-gray-100 rounded-full transition-colors z-10 flex items-center justify-center"
-            aria-label="Close"
-          >
-            <X className="w-6 h-6 text-gray-600" />
-          </button>
-
           {/* Content */}
           <div className="p-6 sm:p-8">
-            {/* Header Section */}
-            <div className="flex items-start gap-4 mb-6">
+            {/* Header Section with Close Button */}
+            <div className="flex items-start gap-4 mb-4">
               <button
                 onClick={handleClubClick}
-                className="hover:opacity-80 transition-opacity"
+                className="hover:opacity-80 transition-opacity flex-shrink-0"
                 aria-label={`View ${clubName} profile`}
               >
                 <Avatar
@@ -142,46 +133,63 @@ export default function VacancyDetailView({
                 />
               </button>
 
-              <div className="flex-1">
-                <button
-                  onClick={handleClubClick}
-                  className="text-sm text-gray-600 hover:text-gray-900 mb-1 block"
-                >
-                  {clubName}
-                </button>
-                <h1 className="text-3xl font-bold text-gray-900 mb-3">
+              <div className="flex-1 min-w-0">
+                {/* Club Name Row with Close Button */}
+                <div className="flex items-start justify-between gap-2">
+                  <button
+                    onClick={handleClubClick}
+                    className="text-sm text-gray-600 hover:text-gray-900 block"
+                  >
+                    {clubName}
+                  </button>
+                  {/* Close Button - Subtle, inside white area */}
+                  <button
+                    onClick={onClose}
+                    className="p-2 min-w-[36px] min-h-[36px] hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center flex-shrink-0 -mt-1 -mr-2"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5 text-gray-400" />
+                  </button>
+                </div>
+
+                {/* Title */}
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 mb-3">
                   {vacancy.title}
                 </h1>
 
-                {/* Badges */}
+                {/* Position Pill - Primary, prominent */}
+                {vacancy.opportunity_type === 'player' && vacancy.position && (
+                  <div className="mb-3">
+                    <span className="inline-flex h-9 items-center rounded-lg px-4 text-sm font-semibold capitalize bg-[#F4A640] text-white">
+                      {vacancy.position}
+                    </span>
+                  </div>
+                )}
+
+                {/* Secondary Tags Row - Role, Gender, Priority */}
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <span className={`inline-flex h-9 items-center rounded-full px-3 text-sm font-medium ${
-                    vacancy.opportunity_type === 'player' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                  <span className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-medium ${
+                    vacancy.opportunity_type === 'player' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
                   }`}>
                     {vacancy.opportunity_type === 'player' ? '👤 Player' : '🎓 Coach'}
                   </span>
                   {vacancy.opportunity_type === 'player' && vacancy.gender && (
                     <span
-                      className={`inline-flex h-9 items-center rounded-full px-3 text-sm font-medium ${
-                        vacancy.gender === 'Men' ? 'bg-blue-50 text-blue-700' : 'bg-pink-100 text-pink-700'
+                      className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-medium ${
+                        vacancy.gender === 'Men' ? 'bg-gray-100 text-gray-600' : 'bg-pink-50 text-pink-600'
                       }`}
                     >
                       <span className="leading-none">{formatGender(vacancy.gender)}</span>
                     </span>
                   )}
-                  {vacancy.opportunity_type === 'player' && vacancy.position && (
-                    <span className="inline-flex h-9 items-center rounded-full px-3 text-sm font-medium capitalize bg-gray-100 text-gray-700">
-                      {vacancy.position}
-                    </span>
-                  )}
-                  {vacancy.priority && (
-                    <span className={`inline-flex h-9 items-center rounded-full px-3 text-sm font-medium ${getPriorityColor(vacancy.priority)}`}>
+                  {vacancy.priority && vacancy.priority !== 'low' && (
+                    <span className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-medium ${getPriorityColor(vacancy.priority)}`}>
                       {vacancy.priority === 'high' ? <span className="mr-1">🔥</span> : null} {getPriorityLabel(vacancy.priority)}
                     </span>
                   )}
                   {hasApplied && (
-                    <span className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-sm font-semibold border border-[#e3d6ff] bg-gradient-to-r from-[#ede8ff] via-[#f6edff] to-[#fbf2ff] text-[#7c3aed] shadow-[0_12px_30px_rgba(124,58,237,0.18)]">
-                      <CheckCircle className="w-4 h-4" />
+                    <span className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold border border-[#e3d6ff] bg-gradient-to-r from-[#ede8ff] via-[#f6edff] to-[#fbf2ff] text-[#7c3aed]">
+                      <CheckCircle className="w-3.5 h-3.5" />
                       <span className="leading-none">Applied</span>
                     </span>
                   )}
