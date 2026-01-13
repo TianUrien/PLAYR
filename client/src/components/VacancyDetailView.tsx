@@ -160,7 +160,7 @@ export default function VacancyDetailView({
                 {/* Position Pill - Primary, prominent */}
                 {vacancy.opportunity_type === 'player' && vacancy.position && (
                   <div className="mb-3">
-                    <span className="inline-flex h-9 items-center rounded-lg px-4 text-sm font-semibold capitalize bg-[#F4A640] text-white">
+                    <span className="inline-flex h-9 items-center rounded-lg px-4 text-sm font-semibold capitalize bg-[#2F855A] text-white">
                       {vacancy.position}
                     </span>
                   </div>

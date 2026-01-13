@@ -161,24 +161,16 @@ export default function VacancyCard({
       {/* Position - Only show for player opportunities */}
       {vacancy.opportunity_type === 'player' && vacancy.position && (
         <div className="mb-4">
-          <span className="inline-block px-3 py-1 bg-[#F4A640] text-white rounded-lg text-sm font-medium">
+          <span className="inline-block px-3 py-1 bg-[#2F855A] text-white rounded-lg text-sm font-medium">
             {vacancy.position.charAt(0).toUpperCase() + vacancy.position.slice(1)}
           </span>
         </div>
       )}
 
-      {/* Location & League */}
-      <div className="space-y-2 mb-4">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <MapPin className="w-4 h-4 flex-shrink-0" />
-          <span>{vacancy.location_city}</span>
-        </div>
-        {vacancy.description && (
-          <div className="flex items-start gap-2 text-sm text-gray-600">
-            <Trophy className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <span className="line-clamp-1">{vacancy.description.split('\n')[0]}</span>
-          </div>
-        )}
+      {/* Location */}
+      <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
+        <MapPin className="w-4 h-4 flex-shrink-0" />
+        <span>{vacancy.location_city}</span>
       </div>
 
       {/* Timeline */}
@@ -270,13 +262,5 @@ export default function VacancyCard({
       </div>
       </div>
     </div>
-  )
-}
-
-function Trophy({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-    </svg>
   )
 }
