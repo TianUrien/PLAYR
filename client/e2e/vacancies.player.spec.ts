@@ -17,7 +17,9 @@ test.describe('Vacancy Application Flow - Player', () => {
     const card = await getE2EVacancyCard(page)
     await expect(card).toBeVisible({ timeout: 20000 })
     await expect(card.getByRole('heading', { level: 2, name: E2E_VACANCY_TITLE })).toBeVisible()
-    await expect(card.getByText(/London, United Kingdom/i)).toBeVisible()
+    // Location city is shown in the card body, country is in the banner
+    await expect(card.getByText('London')).toBeVisible()
+    await expect(card.getByText(/UNITED KINGDOM/i)).toBeVisible()
   })
 
   test('filters can narrow results deterministically', async ({ page, opportunitiesPage }) => {
