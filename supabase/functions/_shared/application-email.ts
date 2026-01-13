@@ -127,7 +127,7 @@ export function generateEmailHtml(
   
   <!-- Header -->
   <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 32px 24px; border-radius: 16px 16px 0 0; text-align: center;">
-    <img src="https://xtertgftujnebubxgqit.supabase.co/storage/v1/object/public/email-assets/playr-logo-white.png" alt="PLAYR" style="height: 36px; width: auto;" />
+    <img src="https://www.oplayr.com/playr-logo-white.png" alt="PLAYR" width="120" height="29" style="height: 29px; width: 120px;" />
   </div>
   
   <!-- Main Content -->
