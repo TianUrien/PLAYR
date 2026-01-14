@@ -172,20 +172,24 @@ test.describe('Sign In Flow', () => {
   test('has password visibility toggle', async ({ page }) => {
     await page.goto('/')
     
+    // Find the password input - it's the first one with type="password" 
     const passwordInput = page.locator('input[type="password"]').first()
     await passwordInput.fill('testpassword')
     
-    // Should have show/hide password button - it's the button with Eye/EyeOff icon
-    const toggleButton = page.locator('button').filter({ has: page.locator('svg') }).last()
+    // The toggle button has class "absolute" and contains an SVG (Eye icon)
+    // It's specifically positioned at right-3 top-1/2
+    const toggleButton = page.locator('button.absolute').filter({ has: page.locator('svg') }).first()
     
     // Password should be hidden by default
     await expect(passwordInput).toHaveAttribute('type', 'password')
     
-    // Click toggle
+    // Click toggle to show password
     await toggleButton.click()
     
-    // Password should now be visible - check using the same locator but now looking for text type
-    await expect(page.locator('input[type="text"]').first()).toHaveValue('testpassword')
+    // After clicking, the type changes from "password" to "text"
+    // The original locator won't work, so we need to find the same input differently
+    // The input with value "testpassword" should now have type="text"
+    await expect(page.locator('input[value="testpassword"]')).toHaveAttribute('type', 'text')
   })
 })
 
