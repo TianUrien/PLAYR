@@ -8,18 +8,24 @@ SET search_path = public;
 -- GENERIC UPDATED_AT HANDLER
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
   NEW.updated_at = timezone('utc', now());
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- ============================================================================
 -- VACANCY STATUS TIMESTAMPS
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.set_vacancy_status_timestamps()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
   IF NEW.status = 'open' AND (OLD.status IS DISTINCT FROM 'open') AND NEW.published_at IS NULL THEN
     NEW.published_at = timezone('utc', now());
@@ -31,13 +37,16 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- ============================================================================
 -- CONVERSATION TIMESTAMP MAINTENANCE
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.update_conversation_timestamp()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
   UPDATE public.conversations
   SET
@@ -47,24 +56,30 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- ============================================================================
 -- OPTIMISTIC LOCKING
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.increment_version()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
   NEW.version = OLD.version + 1;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- ============================================================================
 -- CONVERSATION NORMALIZATION
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.normalize_conversation_participants()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 DECLARE
   tmp UUID;
 BEGIN
@@ -76,37 +91,46 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- ============================================================================
 -- PROFILE UPDATE SAFETY
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.check_concurrent_profile_update()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
   IF NEW.avatar_url IS DISTINCT FROM OLD.avatar_url THEN
     PERFORM pg_sleep(0.05); -- discourage rapid conflicting uploads
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- ============================================================================
 -- ADVISORY LOCK HELPERS
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.acquire_profile_lock(profile_id UUID)
-RETURNS BOOLEAN AS $$
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
   RETURN pg_try_advisory_lock(hashtext(profile_id::TEXT));
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 CREATE OR REPLACE FUNCTION public.release_profile_lock(profile_id UUID)
-RETURNS BOOLEAN AS $$
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
   RETURN pg_advisory_unlock(hashtext(profile_id::TEXT));
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- =========================================================================
 -- PLATFORM ADMIN HELPER
@@ -115,6 +139,7 @@ CREATE OR REPLACE FUNCTION public.is_platform_admin()
 RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
+SET search_path = public
 AS $$
   SELECT COALESCE(
     (auth.jwt() -> 'app_metadata' ->> 'is_admin')::BOOLEAN,
@@ -128,7 +153,10 @@ COMMENT ON FUNCTION public.is_platform_admin IS 'Evaluates current JWT claims to
 -- PROFILE COMMENT RATE LIMITING
 -- =========================================================================
 CREATE OR REPLACE FUNCTION public.enforce_profile_comment_rate_limit()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 DECLARE
   limit_per_day CONSTANT INTEGER := 5;
   window_start TIMESTAMPTZ := timezone('utc', now()) - interval '1 day';
@@ -137,6 +165,9 @@ BEGIN
   IF NEW.author_profile_id IS NULL THEN
     RETURN NEW;
   END IF;
+
+  -- Use advisory lock to prevent race conditions
+  PERFORM pg_advisory_xact_lock(hashtext('comment_rate:' || NEW.author_profile_id::TEXT));
 
   SELECT COUNT(*)
   INTO recent_total
@@ -152,9 +183,9 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
-COMMENT ON FUNCTION public.enforce_profile_comment_rate_limit IS 'Prevents users from posting more than 5 comments in a rolling 24h period.';
+COMMENT ON FUNCTION public.enforce_profile_comment_rate_limit IS 'Prevents users from posting more than 5 comments in a rolling 24h period. Uses advisory lock to prevent race conditions.';
 
 -- =========================================================================
 -- PROFILE COMMENT MODERATION RPC
