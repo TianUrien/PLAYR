@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { User, MapPin, Globe, Calendar, Building2, Camera, UserRound, Briefcase, Users } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { Input, Button, CountrySelect } from '@/components'
+import ClubClaimStep, { type ClubClaimResult } from '@/components/ClubClaimStep'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
@@ -43,6 +44,9 @@ export default function CompleteProfile() {
   const [fallbackRole, setFallbackRole] = useState<UserRole | null>(null)
   const [fallbackEmail, setFallbackEmail] = useState<string>('')
   const [creatingProfile, setCreatingProfile] = useState(false)
+  
+  // Club claim step state (for clubs only)
+  const [showClubClaimStep, setShowClubClaimStep] = useState(true)
 
   // Form data states
   const [formData, setFormData] = useState({
@@ -252,6 +256,27 @@ export default function CompleteProfile() {
       setAvatarUrl(profile.avatar_url)
     }
   }, [profile])
+
+  // Handle club claim step completion
+  const handleClubClaimComplete = (result: ClubClaimResult) => {
+    logger.debug('[CompleteProfile] Club claim completed:', result)
+    setShowClubClaimStep(false)
+    
+    // Pre-fill form with claim data
+    setFormData(prev => ({
+      ...prev,
+      clubName: result.clubName,
+      womensLeagueDivision: result.womenLeagueName || '',
+      mensLeagueDivision: result.menLeagueName || '',
+    }))
+  }
+
+  // Handle club claim step skip
+  const handleClubClaimSkip = () => {
+    logger.debug('[CompleteProfile] Club claim skipped')
+    setShowClubClaimStep(false)
+  }
+
 
   // Handle avatar upload
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -647,6 +672,19 @@ export default function CompleteProfile() {
             </p>
           </div>
 
+          {/* Club Claim Step (shown first for clubs) */}
+          {userRole === 'club' && showClubClaimStep && user && (
+            <div className="p-8">
+              <ClubClaimStep 
+                profileId={user.id}
+                onComplete={handleClubClaimComplete}
+                onSkip={handleClubClaimSkip}
+              />
+            </div>
+          )}
+
+          {/* Main Profile Form (shown after claim step for clubs, or immediately for others) */}
+          {(userRole !== 'club' || !showClubClaimStep) && (
           <form onSubmit={handleSubmit} className="p-8 max-h-[80vh] overflow-y-auto">
             <h3 className="text-2xl font-bold text-gray-900 mb-2">
               {userRole === 'player' && 'Complete Player Profile'}
@@ -964,6 +1002,7 @@ export default function CompleteProfile() {
               {loading ? 'Saving Profile...' : 'Complete Profile'}
             </Button>
           </form>
+          )}
         </div>
       </div>
     </div>

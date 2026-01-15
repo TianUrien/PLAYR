@@ -1,0 +1,238 @@
+/**
+ * WorldPage - Global clubs directory landing page
+ * 
+ * Shows countries with clubs directory support
+ * Uses world_countries_with_directory view as source of truth
+ * Navigation: /world → /world/:countrySlug → /world/:countrySlug/:regionSlug (or direct to leagues)
+ */
+
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Search, Globe, Building2, MapPin, Trophy } from 'lucide-react'
+import { Header } from '@/components'
+import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
+
+interface CountryWithStats {
+  country_id: number
+  country_code: string
+  country_name: string
+  flag_emoji: string
+  region: string
+  has_regions: boolean
+  total_clubs: number
+  league_count: number
+}
+
+export default function WorldPage() {
+  const navigate = useNavigate()
+  const [countries, setCountries] = useState<CountryWithStats[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+
+  useEffect(() => {
+    document.title = 'World | PLAYR'
+    fetchCountries()
+  }, [])
+
+  const fetchCountries = async () => {
+    try {
+      // Fetch from the unified view that lists all countries with World directory support
+      const { data, error } = await supabase
+        .from('world_countries_with_directory')
+        .select('*')
+        .order('country_name')
+      
+      if (error) throw error
+
+      // Transform and enrich with club counts
+      const enrichedCountries: CountryWithStats[] = []
+      
+      for (const row of data || []) {
+        if (!row.country_id) continue
+        
+        // Get club count for this country
+        const { count: clubCount } = await supabase
+          .from('world_clubs')
+          .select('*', { count: 'exact', head: true })
+          .eq('country_id', row.country_id)
+
+        // Get league count for this country
+        const { count: leagueCount } = await supabase
+          .from('world_leagues')
+          .select('*', { count: 'exact', head: true })
+          .eq('country_id', row.country_id)
+        
+        enrichedCountries.push({
+          country_id: row.country_id ?? 0,
+          country_code: row.country_code ?? '',
+          country_name: row.country_name ?? '',
+          flag_emoji: row.flag_emoji ?? '🏳️',
+          region: row.region ?? '',
+          has_regions: row.has_regions ?? false,
+          total_clubs: clubCount ?? 0,
+          league_count: leagueCount ?? 0,
+        })
+      }
+
+      setCountries(enrichedCountries)
+    } catch (err) {
+      logger.error('[WorldPage] Failed to fetch countries:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredCountries = countries.filter(country =>
+    country.country_name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
+  const getRegionColor = (region: string) => {
+    const colors: Record<string, string> = {
+      'South America': 'bg-blue-100 text-blue-700',
+      'Europe': 'bg-purple-100 text-purple-700',
+      'Oceania': 'bg-cyan-100 text-cyan-700',
+      'North America': 'bg-green-100 text-green-700',
+      'Asia': 'bg-amber-100 text-amber-700',
+      'Africa': 'bg-orange-100 text-orange-700',
+    }
+    return colors[region] || 'bg-gray-100 text-gray-700'
+  }
+
+  // Get the correct flag URL based on country code
+  const getFlagUrl = (countryCode: string) => {
+    // England uses XE code but needs gb-eng for flagcdn
+    if (countryCode === 'XE') {
+      return 'https://flagcdn.com/w160/gb-eng.png'
+    }
+    return `https://flagcdn.com/w160/${countryCode.toLowerCase()}.png`
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+
+      <main className="mx-auto max-w-7xl px-4 pt-24 pb-12 md:px-6">
+        {/* Page Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl mb-4">
+            <Globe className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">World Hockey Directory</h1>
+          <p className="text-gray-600 max-w-2xl mx-auto">
+            Explore clubs and members from hockey communities around the world
+          </p>
+        </div>
+
+        {/* Search */}
+        <div className="max-w-xl mx-auto mb-8">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search countries..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+            />
+          </div>
+        </div>
+
+        {/* Countries Grid */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-2xl border border-gray-200 p-6 animate-pulse">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-14 h-14 bg-gray-200 rounded-full" />
+                  <div className="flex-1">
+                    <div className="h-5 bg-gray-200 rounded w-24 mb-2" />
+                    <div className="h-4 bg-gray-100 rounded w-32" />
+                  </div>
+                </div>
+                <div className="h-10 bg-gray-100 rounded-lg" />
+              </div>
+            ))}
+          </div>
+        ) : filteredCountries.length === 0 ? (
+          <div className="text-center py-12">
+            <Globe className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">
+              {searchQuery ? 'No countries found matching your search' : 'No countries available yet'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCountries.map((country) => (
+              <div
+                key={country.country_id}
+                className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer group"
+                onClick={() => navigate(`/world/${country.country_code.toLowerCase()}`)}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full overflow-hidden shadow-sm border border-gray-200">
+                      <img
+                        src={getFlagUrl(country.country_code)}
+                        alt={`${country.country_name} flag`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Fallback to emoji if image fails
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          target.parentElement!.innerHTML = `<span class="text-3xl">${country.flag_emoji || '🏳️'}</span>`;
+                          target.parentElement!.className = 'w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center';
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-lg">{country.country_name}</h3>
+                      <p className="text-sm text-gray-500">Explore clubs & members</p>
+                    </div>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+                    <MapPin className="w-4 h-4 text-blue-500" />
+                  </div>
+                </div>
+
+                {/* Region Badge */}
+                <div className="mb-4 flex items-center gap-2">
+                  <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getRegionColor(country.region)}`}>
+                    {country.region}
+                  </span>
+                  {!country.has_regions && (
+                    <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                      National
+                    </span>
+                  )}
+                </div>
+
+                {/* Stats */}
+                <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+                  <div className="flex items-center gap-1">
+                    <Building2 className="w-4 h-4" />
+                    <span className="text-gray-900 font-semibold">{country.total_clubs}</span>
+                    <span>clubs</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Trophy className="w-4 h-4" />
+                    <span className="text-gray-900 font-semibold">{country.league_count}</span>
+                    <span>leagues</span>
+                  </div>
+                </div>
+
+                {/* CTA Button */}
+                <button
+                  className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-medium flex items-center justify-center gap-2 group-hover:from-blue-600 group-hover:to-cyan-600 transition-all"
+                >
+                  View Country
+                  <span className="text-lg">→</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}

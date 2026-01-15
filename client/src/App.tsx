@@ -31,6 +31,12 @@ const PublicPlayerProfile = lazy(() => import('@/pages/PublicPlayerProfile'))
 const PublicClubProfile = lazy(() => import('@/pages/PublicClubProfile'))
 const MessagesPage = lazy(() => import('@/pages/MessagesPage'))
 
+// World directory pages
+const WorldPage = lazy(() => import('@/pages/WorldPage'))
+const WorldCountryPage = lazy(() => import('@/pages/WorldCountryPage'))
+const WorldProvincePage = lazy(() => import('@/pages/WorldProvincePage'))
+const WorldLeagueClubsPage = lazy(() => import('@/pages/WorldLeagueClubsPage'))
+
 // Lazy load admin components (code splitting)
 const AdminGuard = lazy(() => import('@/features/admin/components/AdminGuard').then(m => ({ default: m.AdminGuard })))
 const AdminLayout = lazy(() => import('@/features/admin/components/AdminLayout').then(m => ({ default: m.AdminLayout })))
@@ -110,6 +116,12 @@ function App() {
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/developers" element={<DevelopersPage />} />
                 <Route path="/offline" element={<OfflinePage />} />
+                
+                {/* World Directory (public) */}
+                <Route path="/world" element={<WorldPage />} />
+                <Route path="/world/:countrySlug" element={<WorldCountryPage />} />
+                <Route path="/world/:countrySlug/:provinceSlug" element={<WorldProvincePage />} />
+                <Route path="/world/:countrySlug/:provinceSlug/:leagueSlug" element={<WorldLeagueClubsPage />} />
                 
                 {/* Protected Routes (require authentication) - Lazy loaded */}
                 <Route path="/complete-profile" element={<CompleteProfile />} />

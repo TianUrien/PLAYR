@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import { X, Upload, Loader2 } from 'lucide-react'
+import { X, Upload, Loader2, Trophy, MapPin } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
@@ -36,6 +36,9 @@ type ProfileFormData = {
   year_founded: string
   womens_league_division: string
   mens_league_division: string
+  womens_league_id: number | null
+  mens_league_id: number | null
+  world_region_id: number | null
   website: string
   contact_email: string
   contact_email_public: boolean
@@ -46,6 +49,25 @@ type ProfileFormData = {
   social_links: SocialLinks
   open_to_play: boolean
   open_to_coach: boolean
+}
+
+interface WorldRegion {
+  id: number
+  name: string
+  slug: string
+}
+
+interface WorldLeague {
+  id: number
+  name: string
+  province_id: number
+  tier: number | null
+}
+
+interface WorldClubClaim {
+  id: string
+  province_id: number | null
+  country_id: number
 }
 
 const getInitialContactEmail = (profile?: Profile | null): string => profile?.contact_email || ''
@@ -64,6 +86,9 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   year_founded: profile?.year_founded?.toString() || '',
   womens_league_division: (profile as unknown as { womens_league_division?: string | null })?.womens_league_division || '',
   mens_league_division: (profile as unknown as { mens_league_division?: string | null })?.mens_league_division || '',
+  womens_league_id: (profile as unknown as { womens_league_id?: number | null })?.womens_league_id ?? null,
+  mens_league_id: (profile as unknown as { mens_league_id?: number | null })?.mens_league_id ?? null,
+  world_region_id: (profile as unknown as { world_region_id?: number | null })?.world_region_id ?? null,
   website: profile?.website || '',
   contact_email: getInitialContactEmail(profile),
   contact_email_public: Boolean(profile?.contact_email_public),
@@ -90,6 +115,88 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
   const activeProfileId = profile?.id ?? null
 
   const [formData, setFormData] = useState<ProfileFormData>(() => buildInitialFormData(profile))
+
+  // World directory state for claimed clubs
+  const [worldClaim, setWorldClaim] = useState<WorldClubClaim | null>(null)
+  const [worldRegions, setWorldRegions] = useState<WorldRegion[]>([])
+  const [worldLeagues, setWorldLeagues] = useState<WorldLeague[]>([])
+  const [loadingWorld, setLoadingWorld] = useState(false)
+  const [countryHasRegions, setCountryHasRegions] = useState(false)
+
+  // Fetch world claim data for clubs
+  useEffect(() => {
+    if (!isOpen || role !== 'club' || !profile?.id) return
+
+    const fetchWorldClaim = async () => {
+      setLoadingWorld(true)
+      try {
+        // Check if this club is claimed in world_clubs
+        const { data: claimData } = await supabase
+          .from('world_clubs')
+          .select('id, province_id, country_id')
+          .eq('claimed_profile_id', profile.id)
+          .eq('is_claimed', true)
+          .single()
+
+        if (claimData) {
+          setWorldClaim(claimData)
+
+          // Check if country has regions using the view
+          const { data: countryInfo } = await supabase
+            .from('world_countries_with_directory')
+            .select('has_regions')
+            .eq('country_id', claimData.country_id)
+            .single()
+
+          const hasRegions = countryInfo?.has_regions ?? false
+          setCountryHasRegions(hasRegions)
+
+          if (hasRegions) {
+            // Fetch regions for this country
+            const { data: regions } = await supabase
+              .from('world_provinces')
+              .select('id, name, slug')
+              .eq('country_id', claimData.country_id)
+              .order('display_order')
+
+            setWorldRegions(regions || [])
+          }
+
+          // Fetch leagues using the RPC function (works for both region-based and country-only)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: leagues } = await (supabase.rpc as any)('get_leagues_for_location', {
+            p_country_id: claimData.country_id,
+            p_region_id: claimData.province_id ?? undefined
+          }) as { data: { id: number; name: string; tier: number | null; logical_id: string | null }[] | null; error: Error | null }
+
+          // Map to the expected format
+          setWorldLeagues((leagues || []).map(l => ({
+            id: l.id,
+            name: l.name,
+            province_id: claimData.province_id ?? 0,
+            tier: l.tier
+          })))
+        } else {
+          setWorldClaim(null)
+          setWorldRegions([])
+          setWorldLeagues([])
+          setCountryHasRegions(false)
+        }
+      } catch (err) {
+        logger.error('[EditProfileModal] Failed to fetch world claim:', err)
+      } finally {
+        setLoadingWorld(false)
+      }
+    }
+
+    fetchWorldClaim()
+  }, [isOpen, role, profile?.id])
+
+  // For countries with regions, filter leagues by selected region
+  // For countries without regions, show all leagues (already filtered by country)
+  const filteredLeagues = countryHasRegions
+    ? worldLeagues.filter(l => l.province_id === formData.world_region_id)
+    : worldLeagues
 
   // Handler to update both nationality_country_id and the legacy nationality string
   const handleNationalityChange = useCallback((countryId: number | null) => {
@@ -288,11 +395,26 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.nationality_country_id = formData.nationality_country_id
       optimisticUpdate.nationality2_country_id = null
       optimisticUpdate.year_founded = formData.year_founded ? parseInt(formData.year_founded) : null
-      optimisticUpdate.womens_league_division = formData.womens_league_division || null
-      optimisticUpdate.mens_league_division = formData.mens_league_division || null
       optimisticUpdate.website = formData.website || null
       optimisticUpdate.club_bio = formData.club_bio || null
       optimisticUpdate.club_history = formData.club_history || null
+
+      // For claimed clubs with World directory support, use league IDs
+      // The trigger will sync to world_clubs and update text fields
+      if (worldClaim) {
+        optimisticUpdate.mens_league_id = formData.mens_league_id
+        optimisticUpdate.womens_league_id = formData.womens_league_id
+        optimisticUpdate.world_region_id = countryHasRegions ? formData.world_region_id : null
+        // Text fields will be set by the DB trigger, but set optimistically here
+        const menLeague = worldLeagues.find(l => l.id === formData.mens_league_id)
+        const womenLeague = worldLeagues.find(l => l.id === formData.womens_league_id)
+        optimisticUpdate.mens_league_division = menLeague?.name || null
+        optimisticUpdate.womens_league_division = womenLeague?.name || null
+      } else {
+        // Non-claimed clubs: use free text fields
+        optimisticUpdate.womens_league_division = formData.womens_league_division || null
+        optimisticUpdate.mens_league_division = formData.mens_league_division || null
+      }
     }
 
     const previousProfile = profile
@@ -700,19 +822,114 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   onChange={(e) => setFormData({ ...formData, year_founded: e.target.value })}
                 />
 
-                <Input
-                  label="Women’s League / Division (Optional)"
-                  placeholder="e.g. Serie A1"
-                  value={formData.womens_league_division}
-                  onChange={(e) => setFormData({ ...formData, womens_league_division: e.target.value })}
-                />
+                {/* League fields: Dropdowns for claimed clubs, free text otherwise */}
+                {worldClaim ? (
+                  <>
+                    {/* Region dropdown - only show for countries with regions */}
+                    {countryHasRegions && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <MapPin className="w-4 h-4 inline mr-1" />
+                          Region
+                        </label>
+                        <select
+                          aria-label="Region"
+                          value={formData.world_region_id ?? ''}
+                          onChange={(e) => {
+                            const regionId = e.target.value ? parseInt(e.target.value) : null
+                            setFormData({
+                              ...formData,
+                              world_region_id: regionId,
+                              mens_league_id: null,
+                              womens_league_id: null,
+                            })
+                          }}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                          disabled={loadingWorld}
+                        >
+                          <option value="">Select region...</option>
+                          {worldRegions.map(region => (
+                            <option key={region.id} value={region.id}>{region.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
-                <Input
-                  label="Men’s League / Division (Optional)"
-                  placeholder="e.g. Elite Division"
-                  value={formData.mens_league_division}
-                  onChange={(e) => setFormData({ ...formData, mens_league_division: e.target.value })}
-                />
+                    {/* Women's League dropdown */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <Trophy className="w-4 h-4 inline mr-1" />
+                        Women's League
+                      </label>
+                      <select
+                        aria-label="Women's League"
+                        value={formData.womens_league_id ?? ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          womens_league_id: e.target.value ? parseInt(e.target.value) : null,
+                        })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                        disabled={(countryHasRegions && !formData.world_region_id) || loadingWorld}
+                      >
+                        <option value="">None / Not applicable</option>
+                        {filteredLeagues.map(league => (
+                          <option key={league.id} value={league.id}>
+                            {league.name}
+                            {league.tier && ` (Tier ${league.tier})`}
+                          </option>
+                        ))}
+                      </select>
+                      {countryHasRegions && !formData.world_region_id && (
+                        <p className="text-xs text-gray-500 mt-1">Select a region first</p>
+                      )}
+                    </div>
+
+                    {/* Men's League dropdown */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <Trophy className="w-4 h-4 inline mr-1" />
+                        Men's League
+                      </label>
+                      <select
+                        aria-label="Men's League"
+                        value={formData.mens_league_id ?? ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          mens_league_id: e.target.value ? parseInt(e.target.value) : null,
+                        })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                        disabled={(countryHasRegions && !formData.world_region_id) || loadingWorld}
+                      >
+                        <option value="">None / Not applicable</option>
+                        {filteredLeagues.map(league => (
+                          <option key={league.id} value={league.id}>
+                            {league.name}
+                            {league.tier && ` (Tier ${league.tier})`}
+                          </option>
+                        ))}
+                      </select>
+                      {countryHasRegions && !formData.world_region_id && (
+                        <p className="text-xs text-gray-500 mt-1">Select a region first</p>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Input
+                      label="Women's League / Division (Optional)"
+                      placeholder="e.g. Serie A1"
+                      value={formData.womens_league_division}
+                      onChange={(e) => setFormData({ ...formData, womens_league_division: e.target.value })}
+                    />
+
+                    <Input
+                      label="Men's League / Division (Optional)"
+                      placeholder="e.g. Elite Division"
+                      value={formData.mens_league_division}
+                      onChange={(e) => setFormData({ ...formData, mens_league_division: e.target.value })}
+                    />
+                  </>
+                )}
 
                 <Input
                   label="Website (Optional)"

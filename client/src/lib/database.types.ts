@@ -405,6 +405,13 @@ export type Database = {
             referencedRelation: "countries"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "country_text_aliases_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
         ]
       }
       error_logs: {
@@ -1076,6 +1083,7 @@ export type Database = {
           last_active_at: string | null
           league_division: string | null
           mens_league_division: string | null
+          mens_league_id: number | null
           nationality: string | null
           nationality_country_id: number | null
           nationality2_country_id: number | null
@@ -1100,6 +1108,8 @@ export type Database = {
           version: number
           website: string | null
           womens_league_division: string | null
+          womens_league_id: number | null
+          world_region_id: number | null
           year_founded: number | null
         }
         Insert: {
@@ -1127,6 +1137,7 @@ export type Database = {
           last_active_at?: string | null
           league_division?: string | null
           mens_league_division?: string | null
+          mens_league_id?: number | null
           nationality?: string | null
           nationality_country_id?: number | null
           nationality2_country_id?: number | null
@@ -1151,6 +1162,8 @@ export type Database = {
           version?: number
           website?: string | null
           womens_league_division?: string | null
+          womens_league_id?: number | null
+          world_region_id?: number | null
           year_founded?: number | null
         }
         Update: {
@@ -1178,6 +1191,7 @@ export type Database = {
           last_active_at?: string | null
           league_division?: string | null
           mens_league_division?: string | null
+          mens_league_id?: number | null
           nationality?: string | null
           nationality_country_id?: number | null
           nationality2_country_id?: number | null
@@ -1202,6 +1216,8 @@ export type Database = {
           version?: number
           website?: string | null
           womens_league_division?: string | null
+          womens_league_id?: number | null
+          world_region_id?: number | null
           year_founded?: number | null
         }
         Relationships: [
@@ -1213,11 +1229,32 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "profiles_base_country_id_fkey"
+            columns: ["base_country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
+            foreignKeyName: "profiles_mens_league_id_fkey"
+            columns: ["mens_league_id"]
+            isOneToOne: false
+            referencedRelation: "world_leagues"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "profiles_nationality_country_id_fkey"
             columns: ["nationality_country_id"]
             isOneToOne: false
             referencedRelation: "countries"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_nationality_country_id_fkey"
+            columns: ["nationality_country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
           },
           {
             foreignKeyName: "profiles_nationality2_country_id_fkey"
@@ -1227,8 +1264,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "profiles_nationality2_country_id_fkey"
+            columns: ["nationality2_country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
             foreignKeyName: "profiles_passport1_country_id_fkey"
             columns: ["passport1_country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_passport1_country_id_fkey"
+            columns: ["passport1_country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
+            foreignKeyName: "profiles_passport2_country_id_fkey"
+            columns: ["passport2_country_id"]
             isOneToOne: false
             referencedRelation: "countries"
             referencedColumns: ["id"]
@@ -1237,7 +1295,28 @@ export type Database = {
             foreignKeyName: "profiles_passport2_country_id_fkey"
             columns: ["passport2_country_id"]
             isOneToOne: false
-            referencedRelation: "countries"
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
+            foreignKeyName: "profiles_womens_league_id_fkey"
+            columns: ["womens_league_id"]
+            isOneToOne: false
+            referencedRelation: "world_leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_world_region_id_fkey"
+            columns: ["world_region_id"]
+            isOneToOne: false
+            referencedRelation: "world_province_stats"
+            referencedColumns: ["province_id"]
+          },
+          {
+            foreignKeyName: "profiles_world_region_id_fkey"
+            columns: ["world_region_id"]
+            isOneToOne: false
+            referencedRelation: "world_provinces"
             referencedColumns: ["id"]
           },
         ]
@@ -1606,6 +1685,233 @@ export type Database = {
           },
         ]
       }
+      world_clubs: {
+        Row: {
+          claimed_at: string | null
+          claimed_profile_id: string | null
+          club_id: string
+          club_name: string
+          club_name_normalized: string
+          country_id: number
+          created_at: string
+          created_from: string
+          id: string
+          is_claimed: boolean
+          men_league_id: number | null
+          province_id: number | null
+          updated_at: string
+          women_league_id: number | null
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_profile_id?: string | null
+          club_id: string
+          club_name: string
+          club_name_normalized: string
+          country_id: number
+          created_at?: string
+          created_from?: string
+          id?: string
+          is_claimed?: boolean
+          men_league_id?: number | null
+          province_id?: number | null
+          updated_at?: string
+          women_league_id?: number | null
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_profile_id?: string | null
+          club_id?: string
+          club_name?: string
+          club_name_normalized?: string
+          country_id?: number
+          created_at?: string
+          created_from?: string
+          id?: string
+          is_claimed?: boolean
+          men_league_id?: number | null
+          province_id?: number | null
+          updated_at?: string
+          women_league_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_clubs_claimed_profile_id_fkey"
+            columns: ["claimed_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_clubs_claimed_profile_id_fkey"
+            columns: ["claimed_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_clubs_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_clubs_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
+            foreignKeyName: "world_clubs_men_league_id_fkey"
+            columns: ["men_league_id"]
+            isOneToOne: false
+            referencedRelation: "world_leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_clubs_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "world_province_stats"
+            referencedColumns: ["province_id"]
+          },
+          {
+            foreignKeyName: "world_clubs_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "world_provinces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_clubs_women_league_id_fkey"
+            columns: ["women_league_id"]
+            isOneToOne: false
+            referencedRelation: "world_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_leagues: {
+        Row: {
+          country_id: number | null
+          created_at: string
+          display_order: number | null
+          id: number
+          logical_id: string | null
+          name: string
+          province_id: number | null
+          slug: string | null
+          tier: number | null
+          updated_at: string
+        }
+        Insert: {
+          country_id?: number | null
+          created_at?: string
+          display_order?: number | null
+          id?: number
+          logical_id?: string | null
+          name: string
+          province_id?: number | null
+          slug?: string | null
+          tier?: number | null
+          updated_at?: string
+        }
+        Update: {
+          country_id?: number | null
+          created_at?: string
+          display_order?: number | null
+          id?: number
+          logical_id?: string | null
+          name?: string
+          province_id?: number | null
+          slug?: string | null
+          tier?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_leagues_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_leagues_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
+            foreignKeyName: "world_leagues_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "world_province_stats"
+            referencedColumns: ["province_id"]
+          },
+          {
+            foreignKeyName: "world_leagues_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "world_provinces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_provinces: {
+        Row: {
+          country_id: number
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: number
+          logical_id: string | null
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          country_id: number
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: number
+          logical_id?: string | null
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          country_id?: number
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: number
+          logical_id?: string | null
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_provinces_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_provinces_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+        ]
+      }
     }
     Views: {
       country_migration_stats: {
@@ -1668,8 +1974,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "profiles_nationality_country_id_fkey"
+            columns: ["nationality_country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
             foreignKeyName: "profiles_passport1_country_id_fkey"
             columns: ["passport1_country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_passport1_country_id_fkey"
+            columns: ["passport1_country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
+            foreignKeyName: "profiles_passport2_country_id_fkey"
+            columns: ["passport2_country_id"]
             isOneToOne: false
             referencedRelation: "countries"
             referencedColumns: ["id"]
@@ -1678,8 +2005,8 @@ export type Database = {
             foreignKeyName: "profiles_passport2_country_id_fkey"
             columns: ["passport2_country_id"]
             isOneToOne: false
-            referencedRelation: "countries"
-            referencedColumns: ["id"]
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
           },
         ]
       }
@@ -1774,6 +2101,51 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "profiles_pending_country_review"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_countries_with_directory: {
+        Row: {
+          country_code: string | null
+          country_id: number | null
+          country_name: string | null
+          flag_emoji: string | null
+          has_regions: boolean | null
+          region: string | null
+          total_clubs: number | null
+          total_leagues: number | null
+        }
+        Relationships: []
+      }
+      world_province_stats: {
+        Row: {
+          claimed_clubs: number | null
+          country_code: string | null
+          country_id: number | null
+          country_name: string | null
+          description: string | null
+          display_order: number | null
+          logical_id: string | null
+          province_id: number | null
+          province_name: string | null
+          slug: string | null
+          total_clubs: number | null
+          total_leagues: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_provinces_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_provinces_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
           },
         ]
       }
@@ -2031,6 +2403,15 @@ export type Database = {
         Args: { p_batch?: number; p_retention_days?: number }
         Returns: number
       }
+      claim_world_club: {
+        Args: {
+          p_men_league_id?: number
+          p_profile_id: string
+          p_women_league_id?: number
+          p_world_club_id: string
+        }
+        Returns: Json
+      }
       cleanup_stale_locks: { Args: never; Returns: undefined }
       clear_profile_notifications: {
         Args: {
@@ -2087,6 +2468,7 @@ export type Database = {
           last_active_at: string | null
           league_division: string | null
           mens_league_division: string | null
+          mens_league_id: number | null
           nationality: string | null
           nationality_country_id: number | null
           nationality2_country_id: number | null
@@ -2111,6 +2493,8 @@ export type Database = {
           version: number
           website: string | null
           womens_league_division: string | null
+          womens_league_id: number | null
+          world_region_id: number | null
           year_founded: number | null
         }
         SetofOptions: {
@@ -2119,6 +2503,17 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      create_and_claim_world_club: {
+        Args: {
+          p_club_name: string
+          p_country_id: number
+          p_men_league_id?: number
+          p_profile_id: string
+          p_province_id: number
+          p_women_league_id?: number
+        }
+        Returns: Json
       }
       create_profile_for_new_user: {
         Args: { user_email: string; user_id: string; user_role?: string }
@@ -2147,6 +2542,7 @@ export type Database = {
           last_active_at: string | null
           league_division: string | null
           mens_league_division: string | null
+          mens_league_id: number | null
           nationality: string | null
           nationality_country_id: number | null
           nationality2_country_id: number | null
@@ -2171,6 +2567,8 @@ export type Database = {
           version: number
           website: string | null
           womens_league_division: string | null
+          womens_league_id: number | null
+          world_region_id: number | null
           year_founded: number | null
         }
         SetofOptions: {
@@ -2258,6 +2656,15 @@ export type Database = {
           profile_complete: boolean
           profile_exists: boolean
           user_id: string
+        }[]
+      }
+      get_leagues_for_location: {
+        Args: { p_country_id: number; p_region_id?: number }
+        Returns: {
+          id: number
+          logical_id: string
+          name: string
+          tier: number
         }[]
       }
       get_message_recipient: {

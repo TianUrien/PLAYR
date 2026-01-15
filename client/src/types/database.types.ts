@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -1278,6 +1273,93 @@ export type Database = {
         }
         Relationships: []
       }
+      user_engagement_daily: {
+        Row: {
+          created_at: string
+          date: string
+          first_heartbeat_at: string | null
+          heartbeat_count: number
+          last_heartbeat_at: string | null
+          session_count: number
+          total_seconds: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          first_heartbeat_at?: string | null
+          heartbeat_count?: number
+          last_heartbeat_at?: string | null
+          session_count?: number
+          total_seconds?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          first_heartbeat_at?: string | null
+          heartbeat_count?: number
+          last_heartbeat_at?: string | null
+          session_count?: number
+          total_seconds?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_engagement_daily_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_engagement_daily_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_engagement_heartbeats: {
+        Row: {
+          created_at: string
+          id: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_engagement_heartbeats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_engagement_heartbeats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_unread_counters: {
         Row: {
           unread_count: number
@@ -1519,6 +1601,193 @@ export type Database = {
           },
         ]
       }
+      world_clubs: {
+        Row: {
+          claimed_at: string | null
+          claimed_profile_id: string | null
+          club_id: string
+          club_name: string
+          club_name_normalized: string
+          country_id: number
+          created_at: string
+          created_from: string
+          id: string
+          is_claimed: boolean
+          men_league_id: number | null
+          province_id: number | null
+          updated_at: string
+          women_league_id: number | null
+        }
+        Insert: {
+          claimed_at?: string | null
+          claimed_profile_id?: string | null
+          club_id: string
+          club_name: string
+          club_name_normalized: string
+          country_id: number
+          created_at?: string
+          created_from?: string
+          id?: string
+          is_claimed?: boolean
+          men_league_id?: number | null
+          province_id?: number | null
+          updated_at?: string
+          women_league_id?: number | null
+        }
+        Update: {
+          claimed_at?: string | null
+          claimed_profile_id?: string | null
+          club_id?: string
+          club_name?: string
+          club_name_normalized?: string
+          country_id?: number
+          created_at?: string
+          created_from?: string
+          id?: string
+          is_claimed?: boolean
+          men_league_id?: number | null
+          province_id?: number | null
+          updated_at?: string
+          women_league_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_clubs_claimed_profile_id_fkey"
+            columns: ["claimed_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_clubs_claimed_profile_id_fkey"
+            columns: ["claimed_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_clubs_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_clubs_men_league_id_fkey"
+            columns: ["men_league_id"]
+            isOneToOne: false
+            referencedRelation: "world_leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_clubs_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "world_province_stats"
+            referencedColumns: ["province_id"]
+          },
+          {
+            foreignKeyName: "world_clubs_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "world_provinces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_clubs_women_league_id_fkey"
+            columns: ["women_league_id"]
+            isOneToOne: false
+            referencedRelation: "world_leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_leagues: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          id: number
+          name: string
+          province_id: number
+          tier: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          id?: number
+          name: string
+          province_id: number
+          tier?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          id?: number
+          name?: string
+          province_id?: number
+          tier?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_leagues_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "world_province_stats"
+            referencedColumns: ["province_id"]
+          },
+          {
+            foreignKeyName: "world_leagues_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "world_provinces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_provinces: {
+        Row: {
+          country_id: number
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: number
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          country_id: number
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: number
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          country_id?: number
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: number
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_provinces_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       country_migration_stats: {
@@ -1690,6 +1959,30 @@ export type Database = {
           },
         ]
       }
+      world_province_stats: {
+        Row: {
+          claimed_clubs: number | null
+          country_code: string | null
+          country_id: number | null
+          country_name: string | null
+          description: string | null
+          display_order: number | null
+          province_id: number | null
+          province_name: string | null
+          slug: string | null
+          total_clubs: number | null
+          total_leagues: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_provinces_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       acquire_profile_lock: { Args: { profile_id: string }; Returns: boolean }
@@ -1754,6 +2047,16 @@ export type Database = {
       }
       admin_get_club_summary: { Args: never; Returns: Json }
       admin_get_dashboard_stats: { Args: never; Returns: Json }
+      admin_get_engagement_summary: { Args: never; Returns: Json }
+      admin_get_engagement_trends: {
+        Args: { p_days?: number }
+        Returns: {
+          active_users: number
+          date: string
+          total_minutes: number
+          total_sessions: number
+        }[]
+      }
       admin_get_extended_dashboard_stats: { Args: never; Returns: Json }
       admin_get_player_funnel: { Args: { p_days?: number }; Returns: Json }
       admin_get_profile_completeness_distribution: {
@@ -1794,6 +2097,32 @@ export type Database = {
           country: string
           user_count: number
         }[]
+      }
+      admin_get_user_engagement: {
+        Args: {
+          p_days?: number
+          p_limit?: number
+          p_offset?: number
+          p_sort_by?: string
+          p_sort_dir?: string
+        }
+        Returns: {
+          active_days: number
+          avatar_url: string
+          avg_session_minutes: number
+          display_name: string
+          email: string
+          last_active_at: string
+          role: string
+          total_count: number
+          total_sessions: number
+          total_time_minutes: number
+          user_id: string
+        }[]
+      }
+      admin_get_user_engagement_detail: {
+        Args: { p_days?: number; p_user_id: string }
+        Returns: Json
       }
       admin_get_vacancies: {
         Args: {
@@ -1908,6 +2237,15 @@ export type Database = {
         Args: { p_batch?: number; p_retention_days?: number }
         Returns: number
       }
+      claim_world_club: {
+        Args: {
+          p_men_league_id?: number
+          p_profile_id: string
+          p_women_league_id?: number
+          p_world_club_id: string
+        }
+        Returns: Json
+      }
       cleanup_stale_locks: { Args: never; Returns: undefined }
       clear_profile_notifications: {
         Args: {
@@ -1916,86 +2254,180 @@ export type Database = {
         }
         Returns: number
       }
-      complete_user_profile: {
+      complete_user_profile:
+        | {
+            Args: {
+              p_base_location: string
+              p_bio?: string
+              p_club_bio?: string
+              p_club_history?: string
+              p_contact_email?: string
+              p_contact_email_public?: boolean
+              p_current_club?: string
+              p_date_of_birth?: string
+              p_full_name: string
+              p_gender?: string
+              p_highlight_video_url?: string
+              p_league_division?: string
+              p_nationality: string
+              p_passport_1?: string
+              p_passport_2?: string
+              p_position?: string
+              p_role: string
+              p_secondary_position?: string
+              p_user_id: string
+              p_website?: string
+              p_year_founded?: number
+            }
+            Returns: {
+              avatar_url: string | null
+              base_country_id: number | null
+              base_location: string | null
+              bio: string | null
+              blocked_at: string | null
+              blocked_by: string | null
+              blocked_reason: string | null
+              club_bio: string | null
+              club_history: string | null
+              contact_email: string | null
+              contact_email_public: boolean
+              created_at: string
+              current_club: string | null
+              date_of_birth: string | null
+              email: string
+              full_name: string | null
+              gender: string | null
+              highlight_video_url: string | null
+              id: string
+              is_blocked: boolean
+              is_test_account: boolean
+              last_active_at: string | null
+              league_division: string | null
+              mens_league_division: string | null
+              nationality: string | null
+              nationality_country_id: number | null
+              nationality2_country_id: number | null
+              notify_applications: boolean
+              notify_opportunities: boolean
+              onboarding_completed: boolean
+              onboarding_completed_at: string | null
+              onboarding_started_at: string | null
+              open_to_coach: boolean
+              open_to_opportunities: boolean
+              open_to_play: boolean
+              passport_1: string | null
+              passport_2: string | null
+              passport1_country_id: number | null
+              passport2_country_id: number | null
+              position: string | null
+              role: string
+              secondary_position: string | null
+              social_links: Json | null
+              updated_at: string
+              username: string | null
+              version: number
+              website: string | null
+              womens_league_division: string | null
+              year_founded: number | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "profiles"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_base_location: string
+              p_bio?: string
+              p_club_bio?: string
+              p_club_history?: string
+              p_contact_email?: string
+              p_current_club?: string
+              p_date_of_birth?: string
+              p_full_name: string
+              p_gender?: string
+              p_highlight_video_url?: string
+              p_league_division?: string
+              p_nationality: string
+              p_passport_1?: string
+              p_passport_2?: string
+              p_position?: string
+              p_role: string
+              p_secondary_position?: string
+              p_user_id: string
+              p_website?: string
+              p_year_founded?: number
+            }
+            Returns: {
+              avatar_url: string | null
+              base_country_id: number | null
+              base_location: string | null
+              bio: string | null
+              blocked_at: string | null
+              blocked_by: string | null
+              blocked_reason: string | null
+              club_bio: string | null
+              club_history: string | null
+              contact_email: string | null
+              contact_email_public: boolean
+              created_at: string
+              current_club: string | null
+              date_of_birth: string | null
+              email: string
+              full_name: string | null
+              gender: string | null
+              highlight_video_url: string | null
+              id: string
+              is_blocked: boolean
+              is_test_account: boolean
+              last_active_at: string | null
+              league_division: string | null
+              mens_league_division: string | null
+              nationality: string | null
+              nationality_country_id: number | null
+              nationality2_country_id: number | null
+              notify_applications: boolean
+              notify_opportunities: boolean
+              onboarding_completed: boolean
+              onboarding_completed_at: string | null
+              onboarding_started_at: string | null
+              open_to_coach: boolean
+              open_to_opportunities: boolean
+              open_to_play: boolean
+              passport_1: string | null
+              passport_2: string | null
+              passport1_country_id: number | null
+              passport2_country_id: number | null
+              position: string | null
+              role: string
+              secondary_position: string | null
+              social_links: Json | null
+              updated_at: string
+              username: string | null
+              version: number
+              website: string | null
+              womens_league_division: string | null
+              year_founded: number | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "profiles"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      create_and_claim_world_club: {
         Args: {
-          p_base_location: string
-          p_bio?: string
-          p_club_bio?: string
-          p_club_history?: string
-          p_contact_email?: string
-          p_current_club?: string
-          p_date_of_birth?: string
-          p_full_name: string
-          p_gender?: string
-          p_highlight_video_url?: string
-          p_league_division?: string
-          p_nationality: string
-          p_passport_1?: string
-          p_passport_2?: string
-          p_position?: string
-          p_role: string
-          p_secondary_position?: string
-          p_user_id: string
-          p_website?: string
-          p_year_founded?: number
+          p_club_name: string
+          p_country_id: number
+          p_men_league_id?: number
+          p_profile_id: string
+          p_province_id: number
+          p_women_league_id?: number
         }
-        Returns: {
-          avatar_url: string | null
-          base_country_id: number | null
-          base_location: string | null
-          bio: string | null
-          blocked_at: string | null
-          blocked_by: string | null
-          blocked_reason: string | null
-          club_bio: string | null
-          club_history: string | null
-          contact_email: string | null
-          contact_email_public: boolean
-          created_at: string
-          current_club: string | null
-          date_of_birth: string | null
-          email: string
-          full_name: string | null
-          gender: string | null
-          highlight_video_url: string | null
-          id: string
-          is_blocked: boolean
-          is_test_account: boolean
-          last_active_at: string | null
-          league_division: string | null
-          mens_league_division: string | null
-          nationality: string | null
-          nationality_country_id: number | null
-          nationality2_country_id: number | null
-          notify_applications: boolean
-          notify_opportunities: boolean
-          onboarding_completed: boolean
-          onboarding_completed_at: string | null
-          onboarding_started_at: string | null
-          open_to_coach: boolean
-          open_to_opportunities: boolean
-          open_to_play: boolean
-          passport_1: string | null
-          passport_2: string | null
-          passport1_country_id: number | null
-          passport2_country_id: number | null
-          position: string | null
-          role: string
-          secondary_position: string | null
-          social_links: Json | null
-          updated_at: string
-          username: string | null
-          version: number
-          website: string | null
-          womens_league_division: string | null
-          year_founded: number | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "profiles"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+        Returns: Json
       }
       create_profile_for_new_user: {
         Args: { user_email: string; user_id: string; user_role?: string }
@@ -2067,6 +2499,7 @@ export type Database = {
         }
         Returns: number
       }
+      engagement_heartbeat_interval_seconds: { Args: never; Returns: number }
       enqueue_notification: {
         Args: {
           p_actor_profile_id: string
@@ -2294,7 +2727,11 @@ export type Database = {
         }[]
       }
       process_storage_cleanup_queue: {
-        Args: { p_batch?: number }
+        Args: { p_batch?: number; p_grace_period?: unknown }
+        Returns: number
+      }
+      prune_old_heartbeats: {
+        Args: { p_days_to_keep?: number }
         Returns: number
       }
       prune_profile_notifications: {
@@ -2304,6 +2741,10 @@ export type Database = {
           p_visible_days?: number
         }
         Returns: number
+      }
+      record_engagement_heartbeat: {
+        Args: { p_session_id: string }
+        Returns: Json
       }
       recover_zombie_accounts: {
         Args: never
@@ -2713,3 +3154,4 @@ export const Constants = {
     },
   },
 } as const
+

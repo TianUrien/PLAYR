@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MessageCircle, Users, Briefcase, Bell } from 'lucide-react'
+import { MessageCircle, Users, Briefcase, Bell, Globe } from 'lucide-react'
 import { Avatar, NotificationBadge } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
@@ -93,10 +93,33 @@ export default function Header() {
             </span>
           </div>
 
+          {/* Mobile Navigation - Notifications only (rest in bottom nav) */}
+          {user && profile && (
+            <div className="flex md:hidden items-center">
+              <button
+                onClick={() => toggleNotificationDrawer()}
+                className="relative p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                aria-label="Notifications"
+              >
+                <Bell className="w-5 h-5" />
+                <NotificationBadge count={notificationCount} className="-right-0.5 -top-0.5" />
+              </button>
+            </div>
+          )}
+
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-4">
             {user && profile ? (
               <>
+                <button
+                  onClick={() => handleNavigate('/world')}
+                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-5 h-5" />
+                    <span>World</span>
+                  </div>
+                </button>
                 <button
                   onClick={() => handleNavigate('/community')}
                   className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
@@ -152,6 +175,15 @@ export default function Header() {
               </>
             ) : (
               <>
+                <button
+                  onClick={() => handleNavigate('/world')}
+                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-5 h-5" />
+                    <span>World</span>
+                  </div>
+                </button>
                 <button
                   onClick={() => handleNavigate('/community')}
                   className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"

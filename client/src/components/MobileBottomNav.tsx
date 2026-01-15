@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Users, Briefcase, MessageCircle, Bell } from 'lucide-react'
+import { Users, Briefcase, MessageCircle, Globe } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { Avatar, NotificationBadge } from '@/components'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
@@ -20,7 +20,6 @@ export default function MobileBottomNav() {
   const { profile, user } = useAuthStore()
   const { count: unreadCount } = useUnreadMessages()
   const { count: opportunityCount } = useOpportunityNotifications()
-  const notificationCount = useNotificationStore((state) => state.unreadCount)
   const toggleNotificationDrawer = useNotificationStore((state) => state.toggleDrawer)
   const closeNotificationsDrawer = () => toggleNotificationDrawer(false)
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false)
@@ -32,6 +31,12 @@ export default function MobileBottomNav() {
 
   // Navigation items
   const navItems: NavItem[] = [
+    {
+      id: 'world',
+      label: 'World',
+      path: '/world',
+      icon: Globe,
+    },
     {
       id: 'community',
       label: 'Community',
@@ -168,18 +173,6 @@ export default function MobileBottomNav() {
               </button>
             )
           })}
-
-          <button
-            onClick={() => toggleNotificationDrawer()}
-            className="flex flex-col items-center justify-center min-w-[48px] min-h-[44px] py-1 px-2 rounded-xl text-gray-600 transition-all duration-200 active:bg-gray-100"
-            aria-label="Notifications"
-          >
-            <div className="relative flex items-center justify-center w-7 h-7 mb-0.5">
-              <Bell className="w-6 h-6" />
-              <NotificationBadge count={notificationCount} />
-            </div>
-            <span className="text-[10px] font-medium opacity-0">Alerts</span>
-          </button>
 
           {/* Profile Avatar - Direct Dashboard Navigation */}
           <button
