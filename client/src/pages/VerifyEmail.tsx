@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AlertTriangle, Mail } from 'lucide-react'
 import ResendVerificationButton from '@/components/ResendVerificationButton'
+import { detectInAppBrowser, getExternalBrowserInstructions } from '@/lib/inAppBrowser'
 
 /**
  * VerifyEmail - Handles all email verification states
@@ -16,6 +17,7 @@ export default function VerifyEmail() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [email, setEmail] = useState<string | null>(null)
+  const [browserInfo] = useState(() => detectInAppBrowser())
 
   const error = searchParams.get('error')
   const emailParam = searchParams.get('email')
@@ -125,6 +127,21 @@ export default function VerifyEmail() {
             <p className="text-gray-600 mb-6">
               Click the link in the email to verify your account and complete your profile.
             </p>
+            
+            {/* In-app browser warning */}
+            {browserInfo.isInAppBrowser && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 text-left">
+                <p className="text-sm font-medium text-amber-800 mb-2">
+                  ⚠️ Important: You're using {browserInfo.browserName}'s browser
+                </p>
+                <p className="text-sm text-amber-700 mb-2">
+                  When you click the verification link in your email, make sure to open it in Safari or Chrome for it to work properly.
+                </p>
+                <p className="text-sm text-amber-700 bg-amber-100 rounded p-2">
+                  💡 {getExternalBrowserInstructions(browserInfo.browserName)}
+                </p>
+              </div>
+            )}
           </>
         )
     }

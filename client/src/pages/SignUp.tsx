@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Building2, Briefcase } from 'lucide-react'
 import * as Sentry from '@sentry/react'
-import { Input, Button } from '@/components'
+import { Input, Button, InAppBrowserWarning } from '@/components'
 import { supabase } from '@/lib/supabase'
 import { getAuthRedirectUrl } from '@/lib/siteUrl'
 import { logger } from '@/lib/logger'
+import { supportsReliableOAuth } from '@/lib/inAppBrowser'
 
 type UserRole = 'player' | 'coach' | 'club'
 type SignUpResponse = Awaited<ReturnType<typeof supabase.auth.signUp>>
@@ -122,26 +123,30 @@ export default function SignUp() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden flex items-center justify-center p-4">
-      <div className="absolute inset-0" aria-hidden="true">
-        <div className="h-full w-full bg-[url('/hero-desktop.webp')] bg-cover bg-center" />
-        <div className="absolute inset-0 bg-black/70" />
-      </div>
+    <div className="min-h-screen relative overflow-hidden flex flex-col">
+      {/* In-App Browser Warning */}
+      <InAppBrowserWarning context="signup" />
+      
+      <div className="flex-1 flex items-center justify-center p-4">
+        <div className="absolute inset-0" aria-hidden="true">
+          <div className="h-full w-full bg-[url('/hero-desktop.webp')] bg-cover bg-center" />
+          <div className="absolute inset-0 bg-black/70" />
+        </div>
 
-      <div className="relative z-10 w-full max-w-2xl">
-        <div className="bg-white rounded-2xl shadow-2xl animate-scale-in overflow-hidden">
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]">
-            <div className="flex items-center gap-3 mb-2">
-              <img
-                src="/WhiteLogo.svg"
-                alt="PLAYR"
-                className="h-8"
-              />
+        <div className="relative z-10 w-full max-w-2xl">
+          <div className="bg-white rounded-2xl shadow-2xl animate-scale-in overflow-hidden">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]">
+              <div className="flex items-center gap-3 mb-2">
+                <img
+                  src="/WhiteLogo.svg"
+                  alt="PLAYR"
+                  className="h-8"
+                />
+              </div>
+              <p className="text-white/90 text-sm">
+                Create your account and start your field hockey journey
+              </p>
             </div>
-            <p className="text-white/90 text-sm">
-              Create your account and start your field hockey journey
-            </p>
-          </div>
 
           {/* Role Selection */}
           {!selectedRole && (
@@ -213,7 +218,14 @@ export default function SignUp() {
                 {/* Google Sign-In Button */}
                 <button
                   type="button"
-                  onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: getAuthRedirectUrl() } })}
+                  onClick={() => {
+                    if (!supportsReliableOAuth()) {
+                      // Show warning - OAuth may not work in in-app browsers
+                      alert('Google Sign-In may not work in this browser. Please use email/password signup, or open PLAYR in Safari or Chrome.')
+                      return
+                    }
+                    supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: getAuthRedirectUrl() } })
+                  }}
                   className="mt-4 w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -305,6 +317,7 @@ export default function SignUp() {
               </p>
             </form>
           )}
+        </div>
         </div>
       </div>
     </div>

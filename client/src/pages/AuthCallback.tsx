@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { useAuthStore } from '@/lib/auth'
 import { reportSupabaseError } from '@/lib/sentryHelpers'
+import { detectInAppBrowser, getExternalBrowserInstructions } from '@/lib/inAppBrowser'
 
 /**
  * AuthCallback - Handles email verification redirect from Supabase
@@ -417,6 +418,10 @@ export default function AuthCallback() {
     }
   }, [navigate])
 
+  // Check for in-app browser issues
+  const browserInfo = detectInAppBrowser()
+  const isInAppBrowserIssue = browserInfo.isInAppBrowser && error
+
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -427,13 +432,42 @@ export default function AuthCallback() {
             </svg>
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Verification Error</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button
-            onClick={() => navigate('/')}
-            className="px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
-          >
-            Back to Sign In
-          </button>
+          <p className="text-gray-600 mb-4">{error}</p>
+          
+          {/* Show in-app browser specific guidance */}
+          {isInAppBrowserIssue && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-left">
+              <p className="text-sm font-medium text-amber-800 mb-2">
+                💡 You're using {browserInfo.browserName}'s browser
+              </p>
+              <p className="text-sm text-amber-700 mb-2">
+                Email verification links often don't work properly in app browsers. Try this:
+              </p>
+              <p className="text-sm text-amber-700 bg-amber-100 rounded p-2">
+                {getExternalBrowserInstructions(browserInfo.browserName)}
+              </p>
+            </div>
+          )}
+          
+          <div className="space-y-3">
+            <button
+              onClick={() => navigate('/')}
+              className="w-full px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+            >
+              Back to Sign In
+            </button>
+            <button
+              onClick={() => {
+                // Copy the verification link for user to paste in real browser
+                navigator.clipboard.writeText(window.location.href)
+                  .then(() => alert('Link copied! Paste it in Safari or Chrome.'))
+                  .catch(() => alert('Please copy this link manually: ' + window.location.href))
+              }}
+              className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+            >
+              Copy Verification Link
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -444,6 +478,13 @@ export default function AuthCallback() {
       <div className="text-center">
         <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#6366f1] mb-4"></div>
         <p className="text-gray-600">{status}</p>
+        
+        {/* Show hint if in-app browser detected */}
+        {browserInfo.isInAppBrowser && (
+          <p className="text-sm text-amber-600 mt-4 max-w-xs mx-auto">
+            If this takes too long, try opening PLAYR in Safari or Chrome
+          </p>
+        )}
       </div>
     </div>
   )

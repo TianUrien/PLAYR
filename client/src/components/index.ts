@@ -36,6 +36,8 @@ export { default as SocialLinksInput } from './SocialLinksInput'
 export { default as SocialLinksDisplay } from './SocialLinksDisplay'
 export { default as ProfileStrengthCard } from './ProfileStrengthCard'
 export { default as InstallPrompt } from './InstallPrompt'
+export { default as InAppBrowserWarning } from './InAppBrowserWarning'
+export { default as PublicNav } from './PublicNav'
 export { default as VacancyJsonLd, OpportunitiesListJsonLd } from './VacancyJsonLd'
 export { ErrorBoundary } from './ErrorBoundary'
 

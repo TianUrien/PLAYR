@@ -1,0 +1,38 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": [],
+        "paths": [
+          "/auth/callback",
+          "/auth/callback/*",
+          "/verify-email",
+          "/verify-email/*",
+          "/reset-password",
+          "/reset-password/*"
+        ],
+        "components": [
+          {
+            "/": "/auth/callback*",
+            "comment": "Email verification callback - open in Safari"
+          },
+          {
+            "/": "/verify-email*",
+            "comment": "Email verification page"
+          },
+          {
+            "/": "/reset-password*",
+            "comment": "Password reset page"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": []
+  },
+  "activitycontinuation": {
+    "apps": []
+  }
+}

@@ -15,8 +15,29 @@ const PUBLIC_ROUTES = ['/', '/signup', '/verify-email', '/auth/callback', '/forg
  * Uses global auth store (useAuthStore) instead of local state
  * to prevent duplicate auth listeners and state management conflicts.
  * 
- * Public routes (allowlist): /, /signup, /verify-email, /auth/callback
- * Protected routes: Everything else requires authentication
+ * PUBLIC ROUTES (no auth required):
+ * - /                    Landing page with sign-in form
+ * - /signup              Account creation
+ * - /verify-email        Email verification instructions
+ * - /auth/callback       OAuth/email verification handler
+ * - /forgot-password     Password reset request
+ * - /reset-password      Password reset form
+ * - /privacy-policy      Legal page
+ * - /terms               Legal page  
+ * - /developers          API documentation
+ * - /offline             PWA offline fallback
+ * - /opportunities/*     Public vacancy listings (read-only)
+ * - /community/*         Public Q&A (read-only)
+ * - /world/*             Country/league/club directory (read-only)
+ * 
+ * PROTECTED ROUTES (require authentication):
+ * - /dashboard/*         User dashboard & profile
+ * - /messages/*          Messaging
+ * - /settings            User settings
+ * - /complete-profile    Onboarding
+ * - /members/*           Network profiles (for logged-in users)
+ * - /clubs/*             Club profiles (for logged-in users)
+ * - /admin/*             Admin portal
  * 
  * IMPORTANT: Never redirect from /auth/callback or /verify-email
  * before auth processing completes

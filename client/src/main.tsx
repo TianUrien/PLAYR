@@ -8,6 +8,7 @@ import App from './App.tsx'
 import { initWebVitals } from './lib/monitor'
 import { queryClient } from './lib/queryClient'
 import { logger } from './lib/logger'
+import { initSentryInAppBrowserContext } from './lib/sentryHelpers'
 import UpdatePrompt from './components/UpdatePrompt'
 
 // Create a container for the update prompt (outside main React tree)
@@ -86,6 +87,10 @@ Sentry.init({
   replaysSessionSampleRate: sentryEnvironment === 'production' ? 0.05 : 1.0,
   replaysOnErrorSampleRate: 1.0,
 })
+
+// Set up in-app browser context for all Sentry events
+// This helps track issues specific to Instagram, WhatsApp, etc. WebViews
+initSentryInAppBrowserContext()
 
 const RootErrorFallback = () => (
   <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50 text-center">
