@@ -149,11 +149,11 @@ export default function Landing() {
       </div>
 
       {/* ===== MOBILE LAYOUT (< lg) ===== */}
-      <div className="lg:hidden relative z-10 flex flex-col min-h-[100dvh] pt-[env(safe-area-inset-top)]">
+      <div className="lg:hidden absolute inset-0 z-10 flex flex-col pt-6">
         <PublicNav transparent />
 
-        {/* Hero Zone */}
-        <div className="flex-none flex flex-col justify-start px-6 pt-4 pb-4">
+        {/* Hero Zone - spacing from nav to title */}
+        <div className="flex-none flex flex-col justify-start px-6 pt-8 pb-2">
           <h1 className="text-center text-[1.85rem] xs:text-[2.05rem] font-bold text-white leading-tight tracking-tight">
             Built for<br />Field Hockey.
           </h1>
@@ -163,7 +163,7 @@ export default function Landing() {
         </div>
 
         {/* Sign In Card */}
-        <div className="flex-shrink-0 px-6 pb-[env(safe-area-inset-bottom)] mt-3">
+        <div className="flex-shrink-0 px-6 pb-[env(safe-area-inset-bottom)] mt-4">
           <div 
             data-signin-card
             className="rounded-2xl px-5 py-5 bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl"
