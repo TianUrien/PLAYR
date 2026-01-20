@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MessageCircle, User } from 'lucide-react'
 import { Avatar, RoleBadge, NationalityCardDisplay, AvailabilityPill } from '@/components'
+import SignInPromptModal from '@/components/SignInPromptModal'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
@@ -45,6 +46,8 @@ export default function MemberCard({
   const { user } = useAuthStore()
   const { addToast } = useToastStore()
   const [isLoading, setIsLoading] = useState(false)
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false)
+  const [signInAction, setSignInAction] = useState<'message' | 'view'>('message')
   const positions = [position, secondary_position].filter((value, index, self): value is string => {
     if (!value) return false
     return self.findIndex((item) => item === value) === index
@@ -59,8 +62,8 @@ export default function MemberCard({
   // Handle Message button
   const handleMessage = async () => {
     if (!user) {
-      addToast('Please sign in to start a conversation.', 'info')
-      navigate('/')
+      setSignInAction('message')
+      setShowSignInPrompt(true)
       return
     }
 
@@ -96,6 +99,11 @@ export default function MemberCard({
 
   // Handle View Profile
   const handleViewProfile = () => {
+    if (!user) {
+      setSignInAction('view')
+      setShowSignInPrompt(true)
+      return
+    }
     // Navigate to correct public profile based on role
     if (role === 'club') {
       navigate(`/clubs/id/${id}`)
@@ -187,6 +195,17 @@ export default function MemberCard({
           <span>View</span>
         </button>
       </div>
+
+      {/* Sign In Prompt Modal */}
+      <SignInPromptModal
+        isOpen={showSignInPrompt}
+        onClose={() => setShowSignInPrompt(false)}
+        title={signInAction === 'message' ? 'Sign in to message' : 'Sign in to view profile'}
+        message={signInAction === 'message' 
+          ? 'Sign in or create a free PLAYR account to connect with this member.'
+          : 'Sign in or create a free PLAYR account to view member profiles.'
+        }
+      />
     </div>
   )
 }

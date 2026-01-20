@@ -9,6 +9,7 @@ import JourneyTab from '@/components/JourneyTab'
 import CommentsTab from '@/components/CommentsTab'
 import AddVideoLinkModal from '@/components/AddVideoLinkModal'
 import Button from '@/components/Button'
+import SignInPromptModal from '@/components/SignInPromptModal'
 import SocialLinksDisplay from '@/components/SocialLinksDisplay'
 import type { Profile } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
@@ -65,6 +66,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
   })
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAddVideoModal, setShowAddVideoModal] = useState(false)
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false)
   const [sendingMessage, setSendingMessage] = useState(false)
   const claimCommentHighlights = useNotificationStore((state) => state.claimCommentHighlights)
   
@@ -151,7 +153,11 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
   if (!profile) return null
 
   const handleSendMessage = async () => {
-    if (!user || !profileData) return
+    if (!user) {
+      setShowSignInPrompt(true)
+      return
+    }
+    if (!profileData) return
 
     setSendingMessage(true)
     try {
@@ -681,6 +687,14 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
           void profileStrength.refresh()
         }}
         currentVideoUrl={(profile as Profile)?.highlight_video_url || ''}
+      />
+
+      {/* Sign In Prompt Modal */}
+      <SignInPromptModal
+        isOpen={showSignInPrompt}
+        onClose={() => setShowSignInPrompt(false)}
+        title="Sign in to message"
+        message="Sign in or create a free PLAYR account to connect with this player."
       />
     </div>
   )

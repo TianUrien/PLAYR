@@ -9,7 +9,9 @@ import { useState, useCallback } from 'react'
 import { Plus, ChevronDown } from 'lucide-react'
 import { QuestionCard } from './QuestionCard'
 import { AskQuestionModal } from './AskQuestionModal'
+import SignInPromptModal from '@/components/SignInPromptModal'
 import { useQuestions } from '@/hooks/useQuestions'
+import { useAuthStore } from '@/lib/auth'
 import {
   QUESTION_CATEGORIES,
   CATEGORY_LABELS,
@@ -18,10 +20,12 @@ import {
 import type { QuestionCategory, QuestionSortOption, CreateQuestionInput } from '@/types/questions'
 
 export function QuestionsListView() {
+  const { user } = useAuthStore()
   const [selectedCategory, setSelectedCategory] = useState<QuestionCategory | null>(null)
   const [sortBy, setSortBy] = useState<QuestionSortOption>('latest')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false)
 
   const {
     questions,
@@ -41,6 +45,14 @@ export function QuestionsListView() {
     return result !== null
   }, [createQuestion])
 
+  const handleAskQuestionClick = () => {
+    if (!user) {
+      setShowSignInPrompt(true)
+    } else {
+      setIsModalOpen(true)
+    }
+  }
+
   return (
     <div>
       {/* Header */}
@@ -50,7 +62,7 @@ export function QuestionsListView() {
           <p className="text-gray-600">Ask the field hockey world.</p>
         </div>
         <button
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleAskQuestionClick}
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white font-medium hover:opacity-90 transition-opacity shadow-md whitespace-nowrap"
         >
           <Plus className="w-5 h-5" />
@@ -130,7 +142,7 @@ export function QuestionsListView() {
                 : 'Start the conversation by asking the first question.'}
             </p>
             <button
-              onClick={() => setIsModalOpen(true)}
+              onClick={handleAskQuestionClick}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white font-medium hover:opacity-90 transition-opacity"
             >
               <Plus className="w-5 h-5" />
@@ -167,6 +179,14 @@ export function QuestionsListView() {
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleCreateQuestion}
         isSubmitting={isSubmitting}
+      />
+
+      {/* Sign In Prompt Modal */}
+      <SignInPromptModal
+        isOpen={showSignInPrompt}
+        onClose={() => setShowSignInPrompt(false)}
+        title="Sign in to ask a question"
+        message="Sign in or create a free PLAYR account to ask questions to the field hockey community."
       />
     </div>
   )

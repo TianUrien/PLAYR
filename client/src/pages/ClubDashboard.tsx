@@ -8,6 +8,7 @@ import { logger } from '@/lib/logger'
 import VacanciesTab from '@/components/VacanciesTab'
 import ClubMediaTab from '@/components/ClubMediaTab'
 import Skeleton from '@/components/Skeleton'
+import SignInPromptModal from '@/components/SignInPromptModal'
 import SocialLinksDisplay from '@/components/SocialLinksDisplay'
 import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
@@ -65,6 +66,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
     return param && allowedTabs.includes(param) ? param : 'overview'
   })
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false)
   const [sendingMessage, setSendingMessage] = useState(false)
   const [triggerCreateVacancy, setTriggerCreateVacancy] = useState(false)
   const claimCommentHighlights = useNotificationStore((state) => state.claimCommentHighlights)
@@ -142,7 +144,11 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
   }
 
   const handleSendMessage = async () => {
-    if (!user || !profileData) return
+    if (!user) {
+      setShowSignInPrompt(true)
+      return
+    }
+    if (!profileData) return
 
     setSendingMessage(true)
     try {
@@ -591,6 +597,14 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
       </main>
 
       <EditProfileModal isOpen={showEditModal} onClose={() => setShowEditModal(false)} role="club" />
+
+      {/* Sign In Prompt Modal */}
+      <SignInPromptModal
+        isOpen={showSignInPrompt}
+        onClose={() => setShowSignInPrompt(false)}
+        title="Sign in to message"
+        message="Sign in or create a free PLAYR account to connect with this club."
+      />
     </div>
   )
 }

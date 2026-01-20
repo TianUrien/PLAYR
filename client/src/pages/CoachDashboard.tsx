@@ -7,6 +7,7 @@ import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import Button from '@/components/Button'
 import { DashboardSkeleton } from '@/components/Skeleton'
+import SignInPromptModal from '@/components/SignInPromptModal'
 import SocialLinksDisplay from '@/components/SocialLinksDisplay'
 import type { Profile } from '@/lib/supabase'
 import { supabase } from '@/lib/supabase'
@@ -59,6 +60,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
     return param && ['profile', 'journey', 'friends', 'comments'].includes(param) ? param : 'profile'
   })
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false)
   const [sendingMessage, setSendingMessage] = useState(false)
   const { addToast } = useToastStore()
   const claimCommentHighlights = useNotificationStore((state) => state.claimCommentHighlights)
@@ -130,7 +132,11 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
   const savedContactEmail = profile.contact_email?.trim() || ''
 
   const handleSendMessage = async () => {
-    if (!user || !profileData) return
+    if (!user) {
+      setShowSignInPrompt(true)
+      return
+    }
+    if (!profileData) return
 
     setSendingMessage(true)
     try {
@@ -573,6 +579,14 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         role={profile.role as 'coach'}
+      />
+
+      {/* Sign In Prompt Modal */}
+      <SignInPromptModal
+        isOpen={showSignInPrompt}
+        onClose={() => setShowSignInPrompt(false)}
+        title="Sign in to message"
+        message="Sign in or create a free PLAYR account to connect with this coach."
       />
     </div>
   )

@@ -22,9 +22,9 @@ export default function PublicNav({ transparent = true }: PublicNavProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const navLinks = [
-    { href: '/community', label: 'Community', icon: Users },
-    { href: '/opportunities', label: 'Opportunities', icon: Briefcase },
     { href: '/world', label: 'Hockey World', icon: Globe },
+    { href: '/opportunities', label: 'Opportunities', icon: Briefcase },
+    { href: '/community', label: 'Community', icon: Users },
   ]
 
   return (

@@ -7,8 +7,9 @@
 
 import { useState, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, MessageCircle, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, MessageCircle, MoreVertical, Pencil, Trash2, LogIn } from 'lucide-react'
 import { Header, Avatar, RoleBadge } from '@/components'
+import SignInPromptModal from '@/components/SignInPromptModal'
 import { useQuestionDetail } from '@/hooks/useQuestions'
 import { useAuthStore } from '@/lib/auth'
 import { CATEGORY_LABELS, CATEGORY_COLORS } from '@/types/questions'
@@ -25,6 +26,7 @@ export default function QuestionDetailPage() {
   const [editAnswerText, setEditAnswerText] = useState('')
   const [showQuestionMenu, setShowQuestionMenu] = useState(false)
   const [answerMenuId, setAnswerMenuId] = useState<string | null>(null)
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false)
 
   const {
     question,
@@ -340,37 +342,58 @@ export default function QuestionDetailPage() {
         {/* Answer form */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Answer</h3>
-          <form onSubmit={handleSubmitAnswer}>
-            <textarea
-              value={answerText}
-              onChange={(e) => setAnswerText(e.target.value)}
-              placeholder="Share your knowledge or experience..."
-              rows={5}
-              maxLength={1500}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-purple-500 focus:outline-none focus:ring-2 focus:ring-opacity-50 resize-none"
-            />
-            <div className="flex items-center justify-between mt-3">
-              <span className="text-xs text-gray-400">
-                {answerText.length}/1,500
-              </span>
+          {user ? (
+            <form onSubmit={handleSubmitAnswer}>
+              <textarea
+                value={answerText}
+                onChange={(e) => setAnswerText(e.target.value)}
+                placeholder="Share your knowledge or experience..."
+                rows={5}
+                maxLength={1500}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-purple-500 focus:outline-none focus:ring-2 focus:ring-opacity-50 resize-none"
+              />
+              <div className="flex items-center justify-between mt-3">
+                <span className="text-xs text-gray-400">
+                  {answerText.length}/1,500
+                </span>
+                <button
+                  type="submit"
+                  disabled={!answerText.trim() || isSubmittingAnswer}
+                  className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isSubmittingAnswer ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Posting...
+                    </>
+                  ) : (
+                    'Post Answer'
+                  )}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="text-center py-6">
+              <p className="text-gray-600 mb-4">Sign in to share your answer with the community.</p>
               <button
-                type="submit"
-                disabled={!answerText.trim() || isSubmittingAnswer}
-                className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                onClick={() => setShowSignInPrompt(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white font-medium hover:opacity-90 transition-opacity"
               >
-                {isSubmittingAnswer ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Posting...
-                  </>
-                ) : (
-                  'Post Answer'
-                )}
+                <LogIn className="w-4 h-4" />
+                Sign in to Answer
               </button>
             </div>
-          </form>
+          )}
         </div>
       </main>
+
+      {/* Sign In Prompt Modal */}
+      <SignInPromptModal
+        isOpen={showSignInPrompt}
+        onClose={() => setShowSignInPrompt(false)}
+        title="Sign in to answer"
+        message="Sign in or create a free PLAYR account to share your knowledge with the field hockey community."
+      />
     </div>
   )
 }

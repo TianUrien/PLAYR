@@ -10,6 +10,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Globe, Building2, MapPin, Trophy } from 'lucide-react'
 import { Header } from '@/components'
+import SignInPromptModal from '@/components/SignInPromptModal'
+import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 
@@ -26,9 +28,11 @@ interface CountryWithStats {
 
 export default function WorldPage() {
   const navigate = useNavigate()
+  const { user } = useAuthStore()
   const [countries, setCountries] = useState<CountryWithStats[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false)
 
   useEffect(() => {
     document.title = 'World | PLAYR'
@@ -108,6 +112,15 @@ export default function WorldPage() {
     return `https://flagcdn.com/w160/${countryCode.toLowerCase()}.png`
   }
 
+  // Handle country card click - requires auth
+  const handleCountryClick = (countryCode: string) => {
+    if (!user) {
+      setShowSignInPrompt(true)
+      return
+    }
+    navigate(`/world/${countryCode.toLowerCase()}`)
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
@@ -167,7 +180,7 @@ export default function WorldPage() {
               <div
                 key={country.country_id}
                 className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer group"
-                onClick={() => navigate(`/world/${country.country_code.toLowerCase()}`)}
+                onClick={() => handleCountryClick(country.country_code)}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-4">
@@ -233,6 +246,14 @@ export default function WorldPage() {
           </div>
         )}
       </main>
+
+      {/* Sign In Prompt Modal */}
+      <SignInPromptModal
+        isOpen={showSignInPrompt}
+        onClose={() => setShowSignInPrompt(false)}
+        title="Sign in to explore"
+        message="Sign in or create a free PLAYR account to explore the World Hockey Directory."
+      />
     </div>
   )
 }
