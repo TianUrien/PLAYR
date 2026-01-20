@@ -36,17 +36,17 @@ export default function PublicNav({ transparent = true }: PublicNavProps) {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14 lg:h-20">
-          {/* Logo */}
-          <Link to="/" className="flex-shrink-0">
+        <div className="flex items-center justify-between h-14 lg:h-20 lg:justify-center lg:relative">
+          {/* Logo - Mobile only (desktop shows hero logo instead) */}
+          <Link to="/" className="flex-shrink-0 lg:hidden">
             <img 
               src={transparent ? '/WhiteLogo.svg' : '/New-LogoBlack.svg'} 
               alt="PLAYR" 
-              className="h-8 lg:h-10"
+              className="h-8"
             />
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation - centered */}
           <div className="hidden lg:flex items-center gap-1">
             {navLinks.map((link) => {
               const Icon = link.icon
@@ -67,8 +67,8 @@ export default function PublicNav({ transparent = true }: PublicNavProps) {
             })}
           </div>
 
-          {/* Desktop Auth Buttons */}
-          <div className="hidden lg:flex items-center gap-3">
+          {/* Desktop Auth Buttons - positioned right */}
+          <div className="hidden lg:flex lg:absolute lg:right-0 items-center gap-3">
             <button
               onClick={() => {
                 // Scroll to sign-in form on landing page
