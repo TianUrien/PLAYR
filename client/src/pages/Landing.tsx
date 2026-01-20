@@ -138,9 +138,12 @@ export default function Landing() {
       {/* In-App Browser Warning */}
       <InAppBrowserWarning context="login" />
       
-      {/* Background Image with Overlay */}
+      {/* Background Image with Overlay - Responsive Art Direction */}
       <div className="absolute inset-0" aria-hidden="true">
-        <div className="h-full w-full bg-[url('/hero-desktop.webp')] bg-cover bg-center" />
+        {/* Mobile: Portrait-optimized image */}
+        <div className="lg:hidden h-full w-full bg-[url('/hero-mobile.webp')] bg-cover bg-center" />
+        {/* Desktop: Landscape-optimized image */}
+        <div className="hidden lg:block h-full w-full bg-[url('/hero-desktop.webp')] bg-cover bg-center" />
         {/* Multi-stop gradient: dark top for logo, clear middle for hero visibility, dark bottom for form */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/25 via-50% to-black/75" />
       </div>
