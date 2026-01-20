@@ -51,6 +51,20 @@ export function detectInAppBrowser(): InAppBrowserInfo {
     }
   }
 
+  // PWA standalone mode is NOT an in-app browser - it's a trusted environment
+  const isStandalonePWA = 
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+
+  if (isStandalonePWA) {
+    return {
+      isInAppBrowser: false,
+      browserName: null,
+      canOpenInExternalBrowser: false,
+      suggestedAction: null,
+    }
+  }
+
   const ua = navigator.userAgent
 
   for (const { pattern, name } of IN_APP_BROWSER_PATTERNS) {
