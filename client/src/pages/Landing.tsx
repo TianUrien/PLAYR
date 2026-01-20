@@ -157,6 +157,9 @@ export default function Landing() {
           <h1 className="text-center text-[1.85rem] xs:text-[2.05rem] font-bold text-white leading-tight tracking-tight">
             Built for<br />Field Hockey.
           </h1>
+          <p className="text-center text-white/80 text-sm mt-2">
+            Connect players, coaches, and clubs.
+          </p>
         </div>
 
         {/* Sign In Card */}
