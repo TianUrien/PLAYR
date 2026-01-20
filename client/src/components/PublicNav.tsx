@@ -36,7 +36,7 @@ export default function PublicNav({ transparent = true }: PublicNavProps) {
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14 lg:h-20 lg:justify-center lg:relative">
+        <div className="flex items-center justify-between h-11 lg:h-20 lg:justify-center lg:relative">
           {/* Logo - Mobile only (desktop shows hero logo instead) */}
           <Link to="/" className="flex-shrink-0 lg:hidden">
             <img 
