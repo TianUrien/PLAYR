@@ -10,6 +10,7 @@ import { monitor } from './monitor'
 import { logger } from './logger'
 import { useUnreadStore } from './unread'
 import { reportSupabaseError } from './sentryHelpers'
+import { setUserProperties, clearUserProperties } from './analytics'
 
 interface AuthState {
   user: User | null
@@ -166,6 +167,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (data) {
         logger.debug('[AUTH_STORE] Profile fetched', { userId, duration })
         set({ profile: data, profileStatus: 'loaded', profileFetchedAt: resolvedAt })
+        // Set GA4 user properties for analytics tracking
+        setUserProperties(userId, data.role)
       } else {
         logger.warn('[AUTH_STORE] Profile missing after fetch', { userId, duration })
         set({ profile: null, profileStatus: 'missing', profileFetchedAt: resolvedAt })
@@ -228,6 +231,9 @@ const clearLocalSession = async (reason: string, options?: ClearSessionOptions) 
     profileStatus: 'idle',
     profileFetchedAt: null
   })
+
+  // Clear GA4 user properties
+  clearUserProperties()
 
   Sentry.setUser(null)
 }

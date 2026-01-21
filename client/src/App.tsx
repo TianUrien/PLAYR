@@ -1,7 +1,8 @@
 import { useEffect, useRef, lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { initializeAuth } from '@/lib/auth'
 import { logger } from '@/lib/logger'
+import { initGA, trackPageView } from '@/lib/analytics'
 import { ProtectedRoute, ErrorBoundary, Layout, SentryTestButton } from '@/components'
 import ToastContainer from '@/components/ToastContainer'
 import { ProfileImagePreviewProvider } from '@/components/ProfileImagePreviewProvider'
@@ -67,8 +68,30 @@ function EngagementTracker() {
   return null
 }
 
+// Google Analytics page view tracker
+function AnalyticsTracker() {
+  const location = useLocation()
+  const isFirstRender = useRef(true)
+
+  useEffect(() => {
+    // Skip the initial render (GA handles it via initGA)
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    trackPageView(location.pathname + location.search)
+  }, [location])
+
+  return null
+}
+
 function App() {
   const initRef = useRef(false)
+
+  useEffect(() => {
+    // Initialize Google Analytics
+    initGA()
+  }, [])
 
   useEffect(() => {
     // Guard against React 18 Strict Mode double initialization
@@ -100,6 +123,7 @@ function App() {
           <ToastContainer />
           <InstallPrompt />
           <EngagementTracker />
+          <AnalyticsTracker />
           {!isProduction && <SentryTestButton />}
           <ProtectedRoute>
             <Layout>
