@@ -205,6 +205,237 @@ If staging and production have diverged:
 supabase db diff --linked
 ```
 
+## Staging → Production Promotion Process
+
+This section describes how to safely promote changes from staging to production.
+
+### Automated Promotion Scripts
+
+Two scripts automate the deployment process:
+
+```bash
+# Deploy to staging (for testing)
+./scripts/deploy-to-staging.sh
+
+# Promote to production (after staging validation)
+./scripts/promote-to-production.sh
+```
+
+**Script options:**
+```bash
+# Staging deployment
+./scripts/deploy-to-staging.sh              # Full deployment
+./scripts/deploy-to-staging.sh --db-only    # Only migrations
+./scripts/deploy-to-staging.sh --functions-only  # Only edge functions
+
+# Production promotion
+./scripts/promote-to-production.sh          # Interactive full promotion
+./scripts/promote-to-production.sh --dry-run  # Preview without changes
+./scripts/promote-to-production.sh --skip-confirmation  # Non-interactive (CI/CD)
+./scripts/promote-to-production.sh --db-only  # Only migrations
+./scripts/promote-to-production.sh --functions-only  # Only edge functions
+```
+
+### Promotion Criteria
+
+Before promoting to production, ALL of the following must be true:
+
+- [ ] **CI passes** — All GitHub Actions checks green on `main` branch
+- [ ] **E2E tests pass** — Smoke tests run successfully against staging
+- [ ] **Manual QA complete** — Tested on Preview deployment (`playr-staging.vercel.app`)
+- [ ] **No regressions** — Core flows work: signup, login, vacancy creation, messaging
+- [ ] **Migrations validated** — Schema changes applied to staging without errors
+
+### Promotion Workflow
+
+#### Step 1: Validate Staging
+
+```bash
+# Ensure you're on main and up to date
+git checkout main && git pull
+
+# Verify CI passed
+# Check: https://github.com/<org>/PLAYR/actions
+
+# Run E2E tests locally against staging (optional extra validation)
+cd client
+E2E_ALLOW_WRITES=1 \
+E2E_ALLOWED_SUPABASE_URL=https://ivjkdaylalhsteyyclvl.supabase.co \
+npm run test:e2e:smoke
+```
+
+#### Step 2: Promote Database Migrations
+
+```bash
+# 1. Check current link (should be production for normal work)
+cat supabase/.temp/project-ref
+
+# 2. Verify migrations are ready
+supabase db diff --linked  # Should show no drift from local migrations
+
+# 3. Push migrations to production
+supabase link --project-ref xtertgftujnebubxgqit
+supabase db push
+
+# 4. Verify success in Supabase Dashboard
+# https://supabase.com/dashboard/project/xtertgftujnebubxgqit/database/migrations
+```
+
+#### Step 3: Deploy Edge Functions
+
+```bash
+# Deploy all functions to production
+supabase link --project-ref xtertgftujnebubxgqit
+supabase functions deploy
+
+# Verify deployment
+supabase functions list
+```
+
+#### Step 4: Frontend Deployment
+
+Frontend deploys automatically via Vercel when you merge to `main`:
+
+```bash
+# Merge your PR to main
+git checkout main
+git merge feature/your-feature
+git push origin main
+
+# Vercel will:
+# 1. Build with production env vars
+# 2. Deploy to oplayr.com
+# 3. Show deployment status in GitHub PR
+```
+
+### Rollback Procedures
+
+#### Frontend Rollback (Vercel)
+
+1. Go to Vercel Dashboard → Deployments
+2. Find the last known good deployment
+3. Click "..." → "Promote to Production"
+
+Or via CLI:
+```bash
+vercel rollback --prod
+```
+
+#### Database Rollback
+
+⚠️ **Database rollbacks are complex.** Supabase doesn't auto-rollback migrations.
+
+**Option A: Forward-fix (Preferred)**
+```bash
+# Create a new migration that reverses the problematic change
+touch supabase/migrations/YYYYMMDDHHMM_revert_bad_change.sql
+# Write the reversal SQL, then push
+supabase db push
+```
+
+**Option B: Point-in-Time Recovery (Emergency)**
+1. Go to Supabase Dashboard → Database → Backups
+2. Restore to a point before the bad migration
+3. ⚠️ This loses all data since that point!
+
+#### Edge Function Rollback
+
+```bash
+# Redeploy previous version from git history
+git checkout <previous-commit> -- supabase/functions/<function-name>
+supabase functions deploy <function-name>
+git checkout HEAD -- supabase/functions/<function-name>
+```
+
+### Promotion Checklist
+
+Copy this checklist for each promotion:
+
+```markdown
+## Production Promotion - [DATE]
+
+### Pre-Promotion
+- [ ] PR merged to `main`
+- [ ] CI checks passing
+- [ ] E2E tests passing in CI
+- [ ] Manual testing on Preview deployment
+- [ ] Database backup verified (Supabase Dashboard)
+
+### Database
+- [ ] `supabase link --project-ref xtertgftujnebubxgqit`
+- [ ] `supabase db push` — migrations applied
+- [ ] Verified in Dashboard: no migration errors
+
+### Edge Functions
+- [ ] `supabase functions deploy` — all functions deployed
+- [ ] `supabase functions list` — all showing ACTIVE
+
+### Frontend
+- [ ] Vercel deployment triggered (automatic on merge)
+- [ ] Deployment successful (check Vercel Dashboard)
+- [ ] Production site accessible: https://oplayr.com
+
+### Post-Promotion Validation
+- [ ] Sign up flow works
+- [ ] Login flow works (email + Google OAuth)
+- [ ] Dashboard loads correctly
+- [ ] Create vacancy (as club) works
+- [ ] Apply to vacancy (as player) works
+- [ ] Messaging works
+- [ ] No new Sentry errors
+```
+
+### Automated vs Manual Deployments
+
+| Component | Automated? | Trigger |
+|-----------|------------|---------|
+| Frontend (Vercel) | ✅ Yes | Merge to `main` |
+| Database Migrations | ❌ No | Manual `supabase db push` |
+| Edge Functions | ❌ No | Manual `supabase functions deploy` |
+
+> **Why manual for Supabase?**
+> Database migrations and edge functions require careful validation. Automatic deployments could push untested schema changes to production. The manual step ensures a human verifies staging before promoting.
+
+### Emergency Hotfix Process
+
+For critical production bugs that need immediate fixing:
+
+```bash
+# 1. Create hotfix branch from main
+git checkout main && git pull
+git checkout -b hotfix/critical-fix
+
+# 2. Make minimal fix
+# ... edit files ...
+
+# 3. Test locally
+npm run dev  # Quick smoke test
+
+# 4. Push and create PR
+git push -u origin hotfix/critical-fix
+# Create PR, get quick review
+
+# 5. Merge to main (triggers Vercel deploy)
+# Or deploy directly via Vercel CLI:
+cd client && vercel --prod
+
+# 6. If database fix needed:
+supabase link --project-ref xtertgftujnebubxgqit
+supabase db push
+
+# 7. If edge function fix needed:
+supabase functions deploy <function-name>
+```
+
+### Monitoring After Promotion
+
+After promoting to production, monitor for 15-30 minutes:
+
+1. **Sentry** — Watch for new errors
+2. **Supabase Dashboard** — Check database connections, query performance
+3. **Vercel Analytics** — Check for increased error rates
+4. **Manual spot check** — Quick walkthrough of main flows
+
 ## Quick Reference
 
 | Task | Command |
@@ -216,6 +447,10 @@ supabase db diff --linked
 | Link to production | `supabase link --project-ref xtertgftujnebubxgqit` |
 | Push migrations | `supabase db push` |
 | Deploy functions | `supabase functions deploy` |
+| Deploy single function | `supabase functions deploy <name>` |
 | View function logs | `supabase functions logs <function-name>` |
 | List secrets | `supabase secrets list` |
 | Set secret | `supabase secrets set KEY=value` |
+| Check current project | `cat supabase/.temp/project-ref` |
+| Vercel production deploy | `cd client && vercel --prod` |
+| Vercel rollback | `cd client && vercel rollback --prod` |
