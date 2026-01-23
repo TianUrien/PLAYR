@@ -11,7 +11,7 @@ import { supportsReliableOAuth } from '@/lib/inAppBrowser'
 export default function Landing() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, profile } = useAuthStore()
+  const { user, profile, profileStatus } = useAuthStore()
   
   // Check if user was redirected from a protected route (e.g., /settings from email link)
   const redirectTo = (location.state as { from?: string } | null)?.from
@@ -38,16 +38,23 @@ export default function Landing() {
 
   // Redirect if already logged in
   useEffect(() => {
+    logger.debug('[LANDING] Auth state check', { 
+      hasUser: !!user, 
+      hasProfile: !!profile, 
+      profileStatus 
+    })
+    
     if (user && profile) {
       const destination = redirectTo || '/dashboard/profile'
+      logger.debug('[LANDING] User has profile, redirecting to', destination)
       navigate(destination)
-    } else if (user && !profile) {
-      // User authenticated but no profile (e.g., new Google OAuth user)
+    } else if (user && profileStatus === 'missing') {
+      // User authenticated but profile confirmed missing (e.g., new Google OAuth user)
       // Redirect to complete profile / onboarding
-      logger.debug('[LANDING] User authenticated but no profile, redirecting to complete-profile')
+      logger.debug('[LANDING] User authenticated, profile missing, redirecting to complete-profile')
       navigate('/complete-profile')
     }
-  }, [user, profile, navigate, redirectTo])
+  }, [user, profile, profileStatus, navigate, redirectTo])
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
