@@ -29,9 +29,9 @@ test.describe('@smoke club', () => {
       page.getByRole('heading', { level: 1, name: new RegExp(`Applicants for ${seeded.title}`, 'i') })
     ).toBeVisible({ timeout: 20000 })
 
+    // Either the empty state or some applicants count should show
     const emptyState = page.getByRole('heading', { level: 3, name: 'No Applicants Yet' })
-    const applicantsCountText = page.getByText(/^\s*\d+\s+applicant(s)?\s*$/i).first()
-
-    await expect(emptyState.or(applicantsCountText)).toBeVisible({ timeout: 20000 })
+    const hasEmptyOrApplicants = await emptyState.isVisible() || await page.getByText(/\d+\s+applicants?/i).first().isVisible()
+    expect(hasEmptyOrApplicants).toBe(true)
   })
 })

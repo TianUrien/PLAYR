@@ -12,6 +12,36 @@ test.describe('@smoke player', () => {
   test('dashboard loads for authenticated player', async ({ page }) => {
     await page.goto('/dashboard/profile')
 
+    // Debug: Check localStorage after navigation (must be on a real page, not about:blank)
+    const authData = await page.evaluate(() => {
+      const raw = localStorage.getItem('playr-auth')
+      if (!raw) return { error: 'No playr-auth in localStorage' }
+      try {
+        const parsed = JSON.parse(raw)
+        return {
+          hasAccessToken: !!parsed.access_token,
+          hasRefreshToken: !!parsed.refresh_token,
+          expiresAt: parsed.expires_at,
+          userId: parsed.user?.id,
+          userEmail: parsed.user?.email,
+        }
+      } catch (e) {
+        return { error: 'Failed to parse', raw: raw.slice(0, 100) }
+      }
+    })
+    console.log('[E2E Debug] Auth data in localStorage:', JSON.stringify(authData, null, 2))
+
+    // Wait a bit for the app to initialize
+    await page.waitForTimeout(2000)
+
+    // Debug: Check what the app shows
+    const pageContent = await page.content()
+    if (pageContent.includes('No profile found')) {
+      console.log('[E2E Debug] Page shows "No profile found" - auth may not be working')
+      // Take screenshot
+      await page.screenshot({ path: 'e2e-debug-no-profile.png' })
+    }
+
     // Basic signal that profile dashboard rendered (check for profile name heading)
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20000 })
   })
