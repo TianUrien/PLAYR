@@ -41,6 +41,11 @@ export default function Landing() {
     if (user && profile) {
       const destination = redirectTo || '/dashboard/profile'
       navigate(destination)
+    } else if (user && !profile) {
+      // User authenticated but no profile (e.g., new Google OAuth user)
+      // Redirect to complete profile / onboarding
+      logger.debug('[LANDING] User authenticated but no profile, redirecting to complete-profile')
+      navigate('/complete-profile')
     }
   }, [user, profile, navigate, redirectTo])
 
