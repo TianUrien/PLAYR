@@ -10,7 +10,6 @@
   "rewrites": [
     { "source": "/robots.txt", "destination": "/robots.txt" },
     { "source": "/manifest.json", "destination": "/manifest.json" },
-    { "source": "/api/sitemap.xml", "destination": "https://xtertgftujnebubxgqit.supabase.co/functions/v1/sitemap" },
     { "source": "/:path*", "destination": "/index.html" }
   ]
 }

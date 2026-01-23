@@ -16,6 +16,7 @@ import {
   Building2,
   UserCheck,
   Activity,
+  Globe2,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { path: '/admin/clubs', icon: Building2, label: 'Club Analytics' },
   { path: '/admin/players', icon: UserCheck, label: 'Player Analytics' },
   { path: '/admin/engagement', icon: Activity, label: 'User Engagement' },
+  { path: '/admin/world', icon: Globe2, label: 'Hockey World' },
   { path: '/admin/directory', icon: Users, label: 'Directory' },
   { path: '/admin/data-issues', icon: AlertTriangle, label: 'Data Issues' },
   { path: '/admin/audit-log', icon: ScrollText, label: 'Audit Log' },

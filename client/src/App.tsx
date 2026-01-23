@@ -51,6 +51,7 @@ const AdminVacancyDetail = lazy(() => import('@/features/admin/pages/AdminVacanc
 const AdminClubs = lazy(() => import('@/features/admin/pages/AdminClubs').then(m => ({ default: m.AdminClubs })))
 const AdminPlayers = lazy(() => import('@/features/admin/pages/AdminPlayers').then(m => ({ default: m.AdminPlayers })))
 const AdminEngagement = lazy(() => import('@/features/admin/pages/AdminEngagement').then(m => ({ default: m.AdminEngagement })))
+const AdminWorld = lazy(() => import('@/features/admin/pages/AdminWorld'))
 
 // Loading fallback component
 const PageLoader = () => (
@@ -178,6 +179,7 @@ function App() {
                   <Route path="clubs" element={<AdminClubs />} />
                   <Route path="players" element={<AdminPlayers />} />
                   <Route path="engagement" element={<AdminEngagement />} />
+                  <Route path="world" element={<AdminWorld />} />
                   <Route path="data-issues" element={<AdminDataIssues />} />
                   <Route path="directory" element={<AdminDirectory />} />
                   <Route path="audit-log" element={<AdminAuditLog />} />

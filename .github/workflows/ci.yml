@@ -131,10 +131,11 @@ jobs:
       - name: Create env file for E2E tests
         working-directory: ./client
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          # E2E tests run against STAGING (never production!)
+          VITE_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
           E2E_ALLOW_WRITES: '1'
-          E2E_ALLOWED_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          E2E_ALLOWED_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
           E2E_PLAYER_EMAIL: ${{ secrets.E2E_PLAYER_EMAIL }}
           E2E_PLAYER_PASSWORD: ${{ secrets.E2E_PLAYER_PASSWORD }}
           E2E_CLUB_EMAIL: ${{ secrets.E2E_CLUB_EMAIL }}
@@ -157,6 +158,7 @@ jobs:
           echo "SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}" >> ../.env.local
           # Debug: show env file was created (without secrets)
           echo "Created .env with $(wc -l < .env) lines"
+          echo "⚠️  E2E tests running against STAGING: ${VITE_SUPABASE_URL}"
 
       - name: Run E2E tests
         working-directory: ./client

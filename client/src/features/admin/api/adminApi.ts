@@ -483,3 +483,267 @@ export async function getUserEngagementDetail(
   if (error) throw new Error(`Failed to get user engagement detail: ${error.message}`)
   return data as UserEngagementDetail
 }
+
+// ============================================================================
+// Hockey World API Functions
+// ============================================================================
+
+import type {
+  WorldClub,
+  WorldClubStats,
+  WorldClubFilters,
+  WorldCountry,
+  WorldProvince,
+  WorldLeague,
+  WorldClubCreatePayload,
+  WorldClubUpdatePayload,
+} from '../types'
+
+/**
+ * Get world clubs with filters and pagination
+ */
+export async function getWorldClubs(
+  filters: WorldClubFilters = {},
+  limit = 50,
+  offset = 0
+): Promise<{ clubs: WorldClub[]; totalCount: number }> {
+  let query = supabase
+    .from('world_clubs')
+    .select(`
+      *,
+      country:countries!world_clubs_country_id_fkey(id, code, name),
+      province:world_provinces!world_clubs_province_id_fkey(id, name),
+      men_league:world_leagues!world_clubs_men_league_id_fkey(id, name),
+      women_league:world_leagues!world_clubs_women_league_id_fkey(id, name),
+      claimed_profile:profiles!world_clubs_claimed_profile_id_fkey(id, full_name)
+    `, { count: 'exact' })
+
+  // Apply filters
+  if (filters.country_id) {
+    query = query.eq('country_id', filters.country_id)
+  }
+  if (filters.province_id) {
+    query = query.eq('province_id', filters.province_id)
+  }
+  if (filters.league_id) {
+    query = query.or(`men_league_id.eq.${filters.league_id},women_league_id.eq.${filters.league_id}`)
+  }
+  if (filters.is_claimed !== undefined) {
+    query = query.eq('is_claimed', filters.is_claimed)
+  }
+  if (filters.created_from) {
+    query = query.eq('created_from', filters.created_from)
+  }
+  if (filters.search) {
+    query = query.ilike('club_name', `%${filters.search}%`)
+  }
+
+  query = query.order('club_name').range(offset, offset + limit - 1)
+
+  const { data, error, count } = await query
+
+  if (error) throw new Error(`Failed to get world clubs: ${error.message}`)
+
+  // Transform data to flatten nested objects
+  const clubs: WorldClub[] = (data || []).map((row) => ({
+    id: row.id,
+    club_id: row.club_id,
+    club_name: row.club_name,
+    club_name_normalized: row.club_name_normalized,
+    country_id: row.country_id,
+    country_name: row.country?.name ?? undefined,
+    country_code: row.country?.code ?? undefined,
+    province_id: row.province_id,
+    province_name: row.province?.name ?? null,
+    men_league_id: row.men_league_id,
+    men_league_name: row.men_league?.name ?? null,
+    women_league_id: row.women_league_id,
+    women_league_name: row.women_league?.name ?? null,
+    is_claimed: row.is_claimed,
+    claimed_profile_id: row.claimed_profile_id,
+    claimed_profile_name: row.claimed_profile?.full_name ?? null,
+    claimed_at: row.claimed_at,
+    created_from: row.created_from,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }))
+
+  return { clubs, totalCount: count ?? 0 }
+}
+
+/**
+ * Get world club statistics
+ */
+export async function getWorldClubStats(): Promise<WorldClubStats> {
+  const { count: total, error: totalError } = await supabase
+    .from('world_clubs')
+    .select('*', { count: 'exact', head: true })
+
+  if (totalError) throw new Error(`Failed to get world club stats: ${totalError.message}`)
+
+  const { count: claimed, error: claimedError } = await supabase
+    .from('world_clubs')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_claimed', true)
+
+  if (claimedError) throw new Error(`Failed to get claimed count: ${claimedError.message}`)
+
+  return {
+    total_clubs: total ?? 0,
+    claimed_clubs: claimed ?? 0,
+    unclaimed_clubs: (total ?? 0) - (claimed ?? 0),
+  }
+}
+
+/**
+ * Get countries that have world directory support
+ */
+export async function getWorldCountries(): Promise<WorldCountry[]> {
+  const { data, error } = await supabase
+    .from('world_countries_with_directory')
+    .select('country_id, country_code, country_name, flag_emoji')
+    .order('country_name')
+
+  if (error) throw new Error(`Failed to get world countries: ${error.message}`)
+
+  return (data || []).map((row) => ({
+    id: row.country_id,
+    code: row.country_code,
+    name: row.country_name,
+    flag_emoji: row.flag_emoji,
+  }))
+}
+
+/**
+ * Get provinces/regions for a country
+ */
+export async function getWorldProvinces(countryId: number): Promise<WorldProvince[]> {
+  const { data, error } = await supabase
+    .from('world_provinces')
+    .select('id, country_id, name, slug')
+    .eq('country_id', countryId)
+    .order('display_order')
+
+  if (error) throw new Error(`Failed to get world provinces: ${error.message}`)
+  return data || []
+}
+
+/**
+ * Get leagues for a location (country + optional region)
+ */
+export async function getWorldLeagues(
+  countryId: number,
+  provinceId?: number | null
+): Promise<WorldLeague[]> {
+  let query = supabase
+    .from('world_leagues')
+    .select('id, name, tier, province_id, country_id')
+
+  if (provinceId) {
+    // Get leagues for specific province
+    query = query.eq('province_id', provinceId)
+  } else {
+    // Get leagues directly under country (no province)
+    query = query.eq('country_id', countryId).is('province_id', null)
+  }
+
+  const { data, error } = await query.order('tier').order('name')
+
+  if (error) throw new Error(`Failed to get world leagues: ${error.message}`)
+  return data || []
+}
+
+/**
+ * Create a new world club (admin only)
+ */
+export async function createWorldClub(payload: WorldClubCreatePayload): Promise<WorldClub> {
+  const normalized = payload.club_name.toLowerCase().trim()
+  const clubId = `${normalized.replace(/\s+/g, '_')}_${payload.country_id}_${Date.now()}`
+
+  const { data, error } = await supabase
+    .from('world_clubs')
+    .insert({
+      club_id: clubId,
+      club_name: payload.club_name.trim(),
+      club_name_normalized: normalized,
+      country_id: payload.country_id,
+      province_id: payload.province_id ?? null,
+      men_league_id: payload.men_league_id ?? null,
+      women_league_id: payload.women_league_id ?? null,
+      is_claimed: false,
+      created_from: 'admin',
+    })
+    .select()
+    .single()
+
+  if (error) throw new Error(`Failed to create world club: ${error.message}`)
+  
+  // Refetch with joins to get full data
+  const { clubs } = await getWorldClubs({ search: payload.club_name }, 1, 0)
+  return clubs[0] || data
+}
+
+/**
+ * Update a world club (admin only)
+ */
+export async function updateWorldClub(
+  clubId: string,
+  payload: WorldClubUpdatePayload
+): Promise<void> {
+  const updates: Record<string, unknown> = {}
+
+  if (payload.club_name !== undefined) {
+    updates.club_name = payload.club_name.trim()
+    updates.club_name_normalized = payload.club_name.toLowerCase().trim()
+  }
+  if (payload.country_id !== undefined) {
+    updates.country_id = payload.country_id
+  }
+  if (payload.province_id !== undefined) {
+    updates.province_id = payload.province_id
+  }
+  if (payload.men_league_id !== undefined) {
+    updates.men_league_id = payload.men_league_id
+  }
+  if (payload.women_league_id !== undefined) {
+    updates.women_league_id = payload.women_league_id
+  }
+  if (payload.is_claimed !== undefined) {
+    updates.is_claimed = payload.is_claimed
+    if (!payload.is_claimed) {
+      // Unclaiming - also clear profile link
+      updates.claimed_profile_id = null
+      updates.claimed_at = null
+    }
+  }
+  if (payload.claimed_profile_id !== undefined) {
+    updates.claimed_profile_id = payload.claimed_profile_id
+    if (payload.claimed_profile_id === null) {
+      updates.claimed_at = null
+    }
+  }
+
+  const { error } = await supabase
+    .from('world_clubs')
+    .update(updates)
+    .eq('id', clubId)
+
+  if (error) throw new Error(`Failed to update world club: ${error.message}`)
+}
+
+/**
+ * Unclaim a world club (admin safety valve)
+ */
+export async function unclaimWorldClub(clubId: string): Promise<void> {
+  const { error } = await supabase
+    .from('world_clubs')
+    .update({
+      is_claimed: false,
+      claimed_profile_id: null,
+      claimed_at: null,
+    })
+    .eq('id', clubId)
+
+  if (error) throw new Error(`Failed to unclaim world club: ${error.message}`)
+}
+

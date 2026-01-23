@@ -481,3 +481,87 @@ export interface UserEngagementSearchParams {
   sort_dir?: 'asc' | 'desc'
   days?: number
 }
+
+// ============================================================================
+// Hockey World Types
+// ============================================================================
+
+export interface WorldClub {
+  id: string
+  club_id: string
+  club_name: string
+  club_name_normalized: string
+  country_id: number
+  country_name?: string
+  country_code?: string
+  country_flag_emoji?: string | null
+  province_id: number | null
+  province_name?: string | null
+  men_league_id: number | null
+  men_league_name?: string | null
+  women_league_id: number | null
+  women_league_name?: string | null
+  is_claimed: boolean
+  claimed_profile_id: string | null
+  claimed_profile_name?: string | null
+  claimed_at: string | null
+  created_from: 'seed' | 'user' | 'admin'
+  created_at: string
+  updated_at: string
+}
+
+export interface WorldClubStats {
+  total_clubs: number
+  claimed_clubs: number
+  unclaimed_clubs: number
+}
+
+export interface WorldClubFilters {
+  country_id?: number
+  province_id?: number
+  league_id?: number // matches either men or women league
+  is_claimed?: boolean
+  created_from?: 'seed' | 'user' | 'admin'
+  search?: string
+}
+
+export interface WorldCountry {
+  id: number
+  code: string
+  name: string
+  flag_emoji: string | null
+}
+
+export interface WorldProvince {
+  id: number
+  country_id: number
+  name: string
+  slug: string
+}
+
+export interface WorldLeague {
+  id: number
+  name: string
+  tier: number | null
+  province_id: number | null
+  country_id: number | null
+}
+
+export interface WorldClubCreatePayload {
+  club_name: string
+  country_id: number
+  province_id?: number | null
+  men_league_id?: number | null
+  women_league_id?: number | null
+}
+
+export interface WorldClubUpdatePayload {
+  club_name?: string
+  country_id?: number
+  province_id?: number | null
+  men_league_id?: number | null
+  women_league_id?: number | null
+  is_claimed?: boolean
+  claimed_profile_id?: string | null
+}
+

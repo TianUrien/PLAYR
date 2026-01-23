@@ -50,7 +50,7 @@ function getOrCreateSessionId(): string {
  * Call this once at the app root level.
  */
 export function useEngagementTracking(): void {
-  const { user } = useAuthStore()
+  const { user, profile } = useAuthStore()
   const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastActivityRef = useRef<number>(Date.now())
   const isIdleRef = useRef<boolean>(false)
@@ -59,7 +59,8 @@ export function useEngagementTracking(): void {
 
   // Send heartbeat to server
   const sendHeartbeat = useCallback(async () => {
-    if (!user?.id || !sessionIdRef.current) return
+    // Skip if no user, no profile (FK constraint), or no session
+    if (!user?.id || !profile?.id || !sessionIdRef.current) return
 
     // Skip if tab is hidden or user is idle
     if (!isVisibleRef.current || isIdleRef.current) {
@@ -81,7 +82,7 @@ export function useEngagementTracking(): void {
     } catch (err) {
       logger.warn('[Engagement] Heartbeat error:', err)
     }
-  }, [user?.id])
+  }, [user?.id, profile?.id])
 
   // Handle visibility change
   const handleVisibilityChange = useCallback(() => {
@@ -125,8 +126,9 @@ export function useEngagementTracking(): void {
 
   // Main effect - setup and cleanup
   useEffect(() => {
-    // Only track for authenticated users
-    if (!user?.id) {
+    // Only track for authenticated users with a profile
+    // Profile is required because user_engagement_heartbeats has FK to profiles
+    if (!user?.id || !profile?.id) {
       return
     }
 
@@ -166,7 +168,7 @@ export function useEngagementTracking(): void {
         document.removeEventListener(event, handleUserActivity)
       })
     }
-  }, [user?.id, sendHeartbeat, handleVisibilityChange, handleUserActivity, checkIdleState])
+  }, [user?.id, profile?.id, sendHeartbeat, handleVisibilityChange, handleUserActivity, checkIdleState])
 }
 
 export default useEngagementTracking
