@@ -46,9 +46,9 @@ const conversationRoute = (notification: NotificationRecord) => {
   return conversationId ? `/messages/${conversationId}` : '/messages'
 }
 
-const vacancyApplicantsRoute = (notification: NotificationRecord) => {
-  const vacancyId = getMetadataString(notification, 'vacancy_id')
-  return vacancyId ? `/dashboard/club/vacancies/${vacancyId}/applicants` : '/dashboard/club/vacancies'
+const opportunityApplicantsRoute = (notification: NotificationRecord) => {
+  const opportunityId = getMetadataString(notification, 'opportunity_id')
+  return opportunityId ? `/dashboard/club/opportunities/${opportunityId}/applicants` : '/dashboard/club/opportunities'
 }
 
 const defaultConfig: NotificationRenderConfig = {
@@ -165,10 +165,10 @@ const notificationConfigs: Partial<Record<NotificationKind, NotificationRenderCo
     accentClassName: 'bg-purple-50 text-purple-600',
     getTitle: (notification) => {
       const vacancyTitle = getMetadataString(notification, 'vacancy_title')
-      return vacancyTitle ? `New applicant for ${vacancyTitle}` : 'New vacancy applicant'
+      return vacancyTitle ? `New applicant for ${vacancyTitle}` : 'New opportunity applicant'
     },
     getDescription: (notification) => getMetadataString(notification, 'applicant_name'),
-    getRoute: vacancyApplicantsRoute,
+    getRoute: opportunityApplicantsRoute,
   },
   vacancy_application_status: {
     icon: ClipboardCheck,
@@ -179,7 +179,7 @@ const notificationConfigs: Partial<Record<NotificationKind, NotificationRenderCo
       return status ? `Application ${status}` : 'Application updated'
     },
     getDescription: (notification) => getMetadataString(notification, 'vacancy_title'),
-    getRoute: vacancyApplicantsRoute,
+    getRoute: opportunityApplicantsRoute,
   },
   profile_completed: {
     icon: CheckCircle2,

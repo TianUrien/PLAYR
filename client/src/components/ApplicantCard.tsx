@@ -1,16 +1,16 @@
 import { MapPin } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import type { VacancyApplicationWithPlayer } from '@/lib/supabase'
+import type { OpportunityApplicationWithApplicant } from '@/lib/supabase'
 
 interface ApplicantCardProps {
-  application: VacancyApplicationWithPlayer
+  application: OpportunityApplicationWithApplicant
 }
 
 export default function ApplicantCard({ application }: ApplicantCardProps) {
   const navigate = useNavigate()
-  const { player } = application
-  const displayName = player.full_name?.trim() || player.username?.trim() || 'Player'
-  const positions = [player.position, player.secondary_position].filter((value, index, self): value is string => {
+  const { applicant } = application
+  const displayName = applicant.full_name?.trim() || applicant.username?.trim() || 'Applicant'
+  const positions = [applicant.position, applicant.secondary_position].filter((value, index, self): value is string => {
     if (!value) return false
     return self.findIndex((item) => item === value) === index
   })
@@ -30,24 +30,24 @@ export default function ApplicantCard({ application }: ApplicantCardProps) {
   }
 
   const handleViewProfile = () => {
-    if (player.username) {
-      navigate(`/players/${player.username}`)
+    if (applicant.username) {
+      navigate(`/players/${applicant.username}`)
     } else {
-      navigate(`/players/id/${player.id}`)
+      navigate(`/players/id/${applicant.id}`)
     }
   }
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-        {/* Player Photo */}
+        {/* Applicant Photo */}
         <button
           onClick={handleViewProfile}
           className="group flex-shrink-0 cursor-pointer"
         >
-          {player.avatar_url ? (
+          {applicant.avatar_url ? (
             <img
-              src={player.avatar_url}
+              src={applicant.avatar_url}
               alt={displayName}
               className="h-14 w-14 rounded-full object-cover ring-2 ring-gray-200 transition-all group-hover:ring-blue-500 sm:h-16 sm:w-16"
             />
@@ -60,7 +60,7 @@ export default function ApplicantCard({ application }: ApplicantCardProps) {
           )}
         </button>
 
-        {/* Player Info */}
+        {/* Applicant Info */}
         <div className="min-w-0 flex-1">
           <button
             onClick={handleViewProfile}
@@ -70,14 +70,14 @@ export default function ApplicantCard({ application }: ApplicantCardProps) {
               {displayName}
             </h3>
           </button>
-          
+
           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-600 sm:text-sm">
             {positions.length > 0 ? <span className="font-medium">{positions.join(' • ')}</span> : null}
-            {positions.length > 0 && player.base_location ? <span>•</span> : null}
-            {player.base_location ? (
+            {positions.length > 0 && applicant.base_location ? <span>•</span> : null}
+            {applicant.base_location ? (
               <div className="flex items-center gap-1">
                 <MapPin className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                <span>{player.base_location}</span>
+                <span>{applicant.base_location}</span>
               </div>
             ) : null}
           </div>

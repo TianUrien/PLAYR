@@ -21,7 +21,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import { optimizeImage, validateImage } from '@/lib/imageOptimization'
-import type { PlayingHistory } from '@/lib/supabase'
+import type { CareerHistory } from '@/lib/supabase'
 import { deleteStorageObject, extractStoragePath } from '@/lib/storage'
 import { logger } from '@/lib/logger'
 import Button from './Button'
@@ -29,7 +29,7 @@ import Skeleton from './Skeleton'
 import StorageImage from './StorageImage'
 
 type EditableJourneyEntry = Omit<
-  PlayingHistory,
+  CareerHistory,
   'highlights' | 'start_date' | 'end_date' | 'entry_type' | 'badge_label'
 > & {
   highlights: string[]
@@ -43,7 +43,7 @@ type EditableJourneyEntry = Omit<
   endYearDraft?: string
 }
 
-type JourneyType = PlayingHistory['entry_type']
+type JourneyType = CareerHistory['entry_type']
 
 type EntryTypeMeta = {
   label: string
@@ -261,7 +261,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
     setIsLoading(true)
     try {
       const { data, error } = await supabase
-        .from('playing_history')
+        .from('career_history')
         .select('*')
         .eq('user_id', targetUserId)
         .order('start_date', { ascending: false, nullsFirst: false })
@@ -624,11 +624,11 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
 
     try {
       if (isCreating) {
-        const { error } = await supabase.from('playing_history').insert(payload)
+        const { error } = await supabase.from('career_history').insert(payload)
         if (error) throw error
       } else {
         const { error } = await supabase
-          .from('playing_history')
+          .from('career_history')
           .update(payload)
           .eq('id', activeEntryDraft.id)
         if (error) throw error
@@ -659,7 +659,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
 
     setSavingEntryId(entryId)
     try {
-      const { error } = await supabase.from('playing_history').delete().eq('id', entryId)
+      const { error } = await supabase.from('career_history').delete().eq('id', entryId)
       if (error) throw error
 
       if (entryImagePath) {

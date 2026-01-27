@@ -125,7 +125,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
           setNewRequirement(parsed.newRequirement ?? '')
           setNewCustomBenefit(parsed.newCustomBenefit ?? '')
           vacancyDraftRestoringRef.current = true
-          addToast('Vacancy draft restored.', 'info')
+          addToast('Opportunity draft restored.', 'info')
           return
         } catch (error) {
           logger.error('Failed to restore vacancy draft', error)
@@ -325,18 +325,18 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
       }
 
       if (editingVacancy) {
-        // Update existing vacancy
+        // Update existing opportunity
         const { error } = await supabase
-          .from('vacancies')
+          .from('opportunities')
           .update(vacancyData as never)
           .eq('id', editingVacancy.id)
 
         if (error) throw error
         addToast('Opportunity updated successfully.', 'success')
       } else {
-        // Create new vacancy
+        // Create new opportunity
         const { error } = await supabase
-          .from('vacancies')
+          .from('opportunities')
           .insert(vacancyData as never)
 
         if (error) throw error

@@ -291,7 +291,7 @@ async function authenticateUser(
       const title = 'E2E Vacancy - Automated Test'
 
       const { data: existingVacancy, error: existingVacancyError } = await authSupabase
-        .from('vacancies')
+        .from('opportunities')
         .select('id, status, title')
         .eq('club_id', data.user.id)
         .eq('title', title)
@@ -307,7 +307,7 @@ async function authenticateUser(
 
       if (!existingVacancy) {
         const { error: vacancyInsertError } = await authSupabase
-          .from('vacancies')
+          .from('opportunities')
           .insert({
             club_id: data.user.id,
             opportunity_type: 'player',
@@ -332,7 +332,7 @@ async function authenticateUser(
         }
 
         const { data: insertedVacancy } = await authSupabase
-          .from('vacancies')
+          .from('opportunities')
           .select('id')
           .eq('club_id', data.user.id)
           .eq('title', title)
@@ -343,7 +343,7 @@ async function authenticateUser(
         vacancyId = insertedVacancy?.id ?? null
       } else if (existingVacancy.status !== 'open') {
         const { error: vacancyUpdateError } = await authSupabase
-          .from('vacancies')
+          .from('opportunities')
           .update({
             status: 'open',
             published_at: new Date().toISOString(),

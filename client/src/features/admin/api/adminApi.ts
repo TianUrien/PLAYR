@@ -294,14 +294,14 @@ export async function getVacancies(params: VacancySearchParams = {}): Promise<{
   vacancies: VacancyListItem[]
   totalCount: number
 }> {
-  const { data, error } = await adminRpc('admin_get_vacancies', {
+  const { data, error } = await adminRpc('admin_get_opportunities', {
     p_status: params.status || null,
     p_club_id: params.club_id || null,
     p_days: params.days || null,
     p_limit: params.limit || 50,
     p_offset: params.offset || 0,
   })
-  if (error) throw new Error(`Failed to get vacancies: ${error.message}`)
+  if (error) throw new Error(`Failed to get opportunities: ${error.message}`)
   
   const vacancies = data as VacancyListItem[]
   const totalCount = vacancies.length > 0 ? vacancies[0].total_count : 0
@@ -321,13 +321,13 @@ export async function getVacancyApplicants(
   applicants: VacancyApplicant[]
   totalCount: number
 }> {
-  const { data, error } = await adminRpc('admin_get_vacancy_applicants', {
-    p_vacancy_id: vacancyId,
+  const { data, error } = await adminRpc('admin_get_opportunity_applicants', {
+    p_opportunity_id: vacancyId,
     p_status: status || null,
     p_limit: limit,
     p_offset: offset,
   })
-  if (error) throw new Error(`Failed to get vacancy applicants: ${error.message}`)
+  if (error) throw new Error(`Failed to get opportunity applicants: ${error.message}`)
   
   const applicants = data as VacancyApplicant[]
   const totalCount = applicants.length > 0 ? applicants[0].total_count : 0
@@ -339,10 +339,10 @@ export async function getVacancyApplicants(
  * Get full vacancy details with club info and application stats
  */
 export async function getVacancyDetail(vacancyId: string): Promise<VacancyDetail> {
-  const { data, error } = await adminRpc('admin_get_vacancy_detail', {
-    p_vacancy_id: vacancyId,
+  const { data, error } = await adminRpc('admin_get_opportunity_detail', {
+    p_opportunity_id: vacancyId,
   })
-  if (error) throw new Error(`Failed to get vacancy detail: ${error.message}`)
+  if (error) throw new Error(`Failed to get opportunity detail: ${error.message}`)
   return data as VacancyDetail
 }
 

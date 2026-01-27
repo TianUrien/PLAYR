@@ -2,15 +2,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { Grid, List, ChevronDown, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
+// Vacancy is a legacy alias for Opportunity - keeping for compatibility during migration
 import type { Vacancy } from '../lib/supabase'
 import Header from '../components/Header'
-import VacancyCard from '../components/VacancyCard'
-import VacancyDetailView from '../components/VacancyDetailView'
-import ApplyToVacancyModal from '../components/ApplyToVacancyModal'
+import OpportunityCard from '../components/OpportunityCard'
+import OpportunityDetailView from '../components/OpportunityDetailView'
+import ApplyToOpportunityModal from '../components/ApplyToOpportunityModal'
 import SignInPromptModal from '../components/SignInPromptModal'
 import Button from '../components/Button'
-import { VacancyCardSkeleton } from '../components/Skeleton'
-import { OpportunitiesListJsonLd } from '../components/VacancyJsonLd'
+import { OpportunityCardSkeleton } from '../components/Skeleton'
+import { OpportunitiesListJsonLd } from '../components/OpportunityJsonLd'
 import { requestCache } from '@/lib/requestCache'
 import { monitor } from '@/lib/monitor'
 import { logger } from '@/lib/logger'
@@ -47,8 +48,15 @@ export default function OpportunitiesPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [isSyncingNewVacancies, setIsSyncingNewVacancies] = useState(false)
   
+  // Smart default: Set opportunity type filter based on user's role
+  const getDefaultOpportunityType = (): 'all' | 'player' | 'coach' => {
+    if (profile?.role === 'player') return 'player'
+    if (profile?.role === 'coach') return 'coach'
+    return 'all'
+  }
+
   const [filters, setFilters] = useState<FiltersState>({
-    opportunityType: 'all',
+    opportunityType: getDefaultOpportunityType(),
     position: [],
     gender: 'all',
     location: '',
@@ -57,6 +65,16 @@ export default function OpportunitiesPage() {
     priority: 'all',
   })
   const { count: opportunityCount, markSeen, refresh: refreshOpportunityNotifications } = useOpportunityNotifications()
+
+  // Update default filter when profile becomes available
+  useEffect(() => {
+    if (profile?.role === 'player' || profile?.role === 'coach') {
+      setFilters(prev => ({
+        ...prev,
+        opportunityType: profile.role as 'player' | 'coach'
+      }))
+    }
+  }, [profile?.role])
 
   const fetchVacancies = useCallback(async (options?: { skipCache?: boolean; silent?: boolean }) => {
     if (!options?.silent) {
@@ -78,10 +96,10 @@ export default function OpportunitiesPage() {
             // Fetch vacancies with club data in a single query using JOIN
             // Include is_test_account to filter test vacancies
             const { data: vacanciesData, error: vacanciesError } = await supabase
-              .from('vacancies')
+              .from('opportunities')
               .select(`
                 *,
-                club:profiles!vacancies_club_id_fkey(
+                club:profiles!opportunities_club_id_fkey(
                   id,
                   full_name,
                   avatar_url,
@@ -90,7 +108,7 @@ export default function OpportunitiesPage() {
               `)
               .eq('status', 'open')
               .order('created_at', { ascending: false })
-              .limit(100) // Limit to 100 most recent vacancies
+              .limit(100) // Limit to 100 most recent opportunities
 
             if (vacanciesError) throw vacanciesError
 
@@ -155,13 +173,13 @@ export default function OpportunitiesPage() {
           cacheKey,
           async () => {
             const { data, error } = await supabase
-              .from('vacancy_applications')
-              .select('vacancy_id')
-              .eq('player_id', user.id)
+              .from('opportunity_applications')
+              .select('opportunity_id')
+              .eq('applicant_id', user.id)
 
             if (error) throw error
 
-            return (data as { vacancy_id: string }[])?.map(app => app.vacancy_id) || []
+            return (data as { opportunity_id: string }[])?.map(app => app.opportunity_id) || []
           },
           shouldSkipCache ? 0 : 30000 // disable cache when explicitly requested
         )
@@ -239,11 +257,19 @@ export default function OpportunitiesPage() {
   }
 
   // Check if user can see apply button for a vacancy
-  const canShowApplyButton = (vacancyId: string) => {
-    const isApplied = userApplications.includes(vacancyId)
+  const canShowApplyButton = (vacancy: Vacancy) => {
+    const isApplied = userApplications.includes(vacancy.id)
     if (isApplied) return false
-    // Show for unauthenticated or player/coach roles
-    return !user || profile?.role === 'player' || profile?.role === 'coach'
+
+    // For unauthenticated users, show button (triggers sign-in prompt)
+    if (!user) return true
+
+    // For authenticated users, only show if their role matches the opportunity type
+    // Players can only apply to player opportunities, coaches to coach opportunities
+    if (profile?.role === 'player' && vacancy.opportunity_type === 'player') return true
+    if (profile?.role === 'coach' && vacancy.opportunity_type === 'coach') return true
+
+    return false
   }
 
   // Apply filters
@@ -392,7 +418,7 @@ export default function OpportunitiesPage() {
               <div>
                 <p className="font-semibold">{opportunityCount === 1 ? 'New opportunity available' : `${opportunityCount} new opportunities available`}</p>
                 <p className="text-sm text-blue-900/80">
-                  {opportunityCount === 1 ? 'A new vacancy was just published.' : 'Fresh vacancies were published since you opened this page.'}
+                  {opportunityCount === 1 ? 'A new opportunity was just published.' : 'Fresh opportunities were published since you opened this page.'}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -627,7 +653,7 @@ export default function OpportunitiesPage() {
             {isLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {[1, 2, 3, 4, 5, 6].map(i => (
-                  <VacancyCardSkeleton key={i} />
+                  <OpportunityCardSkeleton key={i} />
                 ))}
               </div>
             ) : filteredVacancies.length === 0 ? (
@@ -655,7 +681,7 @@ export default function OpportunitiesPage() {
                   const club = clubs[vacancy.club_id]
                   const isApplied = userApplications.includes(vacancy.id)
                   return (
-                    <VacancyCard
+                    <OpportunityCard
                       key={vacancy.id}
                       vacancy={vacancy}
                       clubName={club?.full_name || 'Unknown Club'}
@@ -665,7 +691,7 @@ export default function OpportunitiesPage() {
                         setSelectedVacancy(vacancy)
                         setShowDetailView(true)
                       }}
-                      onApply={canShowApplyButton(vacancy.id) ? () => handleApplyClick(vacancy) : undefined}
+                      onApply={canShowApplyButton(vacancy) ? () => handleApplyClick(vacancy) : undefined}
                       hasApplied={isApplied}
                     />
                   )
@@ -678,7 +704,7 @@ export default function OpportunitiesPage() {
 
       {/* Vacancy Detail View */}
       {selectedVacancy && showDetailView && (
-        <VacancyDetailView
+        <OpportunityDetailView
           vacancy={selectedVacancy}
           clubName={clubs[selectedVacancy.club_id]?.full_name || 'Unknown Club'}
           clubLogo={clubs[selectedVacancy.club_id]?.avatar_url || null}
@@ -688,7 +714,7 @@ export default function OpportunitiesPage() {
             setSelectedVacancy(null)
           }}
           onApply={
-            canShowApplyButton(selectedVacancy.id)
+            canShowApplyButton(selectedVacancy)
               ? () => {
                   if (!user) {
                     setShowSignInPrompt(true)
@@ -713,7 +739,7 @@ export default function OpportunitiesPage() {
 
       {/* Apply Modal */}
       {selectedVacancy && (
-        <ApplyToVacancyModal
+        <ApplyToOpportunityModal
           isOpen={showApplyModal}
           onClose={() => {
             setShowApplyModal(false)

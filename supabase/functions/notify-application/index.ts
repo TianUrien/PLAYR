@@ -32,7 +32,7 @@ import {
  * 
  * Webhook configuration:
  * - Create a webhook pointing to this function
- * - Trigger on: INSERT on vacancy_applications table
+ * - Trigger on: INSERT on opportunity_applications table
  * - This function will filter out test accounts
  * 
  * The TEST mode function (notify-test-application) handles test traffic.
@@ -82,8 +82,8 @@ Deno.serve(async (req: Request) => {
       playerId: payload.record?.player_id,
     })
 
-    // Validate this is a vacancy_applications INSERT event
-    if (payload.table !== 'vacancy_applications') {
+    // Validate this is an opportunity_applications INSERT event
+    if (payload.table !== 'opportunity_applications') {
       logger.info('Ignoring non-application event')
       return new Response(
         JSON.stringify({ message: 'Ignored - not an application event' }),
@@ -110,9 +110,9 @@ Deno.serve(async (req: Request) => {
     // Create Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Fetch the vacancy details
+    // Fetch the opportunity details
     const { data: vacancy, error: vacancyError } = await supabase
-      .from('vacancies')
+      .from('opportunities')
       .select('id, title, club_id')
       .eq('id', application.vacancy_id)
       .single()

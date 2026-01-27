@@ -50,7 +50,7 @@ export interface ClubData {
 
 export interface ApplicationPayload {
   type: 'INSERT' | 'UPDATE' | 'DELETE'
-  table: 'vacancy_applications'
+  table: 'opportunity_applications'
   schema: 'public'
   record: ApplicationRecord
   old_record: ApplicationRecord | null

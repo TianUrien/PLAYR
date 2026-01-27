@@ -212,7 +212,7 @@ const main = async () => {
     if (error) throw error
 
     const journeyUrl = `${apiUrl}/storage/v1/object/public/journey/${victimPlayerId}/delete-account-e2e-${runId}.txt`
-    const { error: phError } = await service.from('playing_history').insert({
+    const { error: phError } = await service.from('career_history').insert({
       user_id: victimPlayerId,
       club_name: 'E2E Club',
       position_role: 'Midfielder',
@@ -251,7 +251,7 @@ const main = async () => {
   const playerDbCounts = {
     profiles: await countRows(service, 'profiles', (q) => q.eq('id', victimPlayerId)),
     gallery_photos: await countRows(service, 'gallery_photos', (q) => q.eq('user_id', victimPlayerId)),
-    playing_history: await countRows(service, 'playing_history', (q) => q.eq('user_id', victimPlayerId)),
+    career_history: await countRows(service, 'career_history', (q) => q.eq('user_id', victimPlayerId)),
     profile_comments_as_author: await countRows(service, 'profile_comments', (q) => q.eq('author_profile_id', victimPlayerId)),
     profile_comments_on_profile: await countRows(service, 'profile_comments', (q) => q.eq('profile_id', victimPlayerId)),
     profile_friendships: await countRows(service, 'profile_friendships', (q) => q.or(`user_one.eq.${victimPlayerId},user_two.eq.${victimPlayerId}`)),
@@ -295,7 +295,7 @@ const main = async () => {
   let vacancyId
   {
     const { data, error } = await service
-      .from('vacancies')
+      .from('opportunities')
       .insert({
         club_id: victimClubId,
         title: 'E2E Vacancy',
@@ -309,9 +309,9 @@ const main = async () => {
     if (error) throw error
     vacancyId = data.id
 
-    const { error: appError } = await service.from('vacancy_applications').insert({
-      vacancy_id: vacancyId,
-      player_id: applicantId,
+    const { error: appError } = await service.from('opportunity_applications').insert({
+      opportunity_id: vacancyId,
+      applicant_id: applicantId,
       cover_letter: 'Excited to apply.',
       status: 'pending',
     })
@@ -329,8 +329,8 @@ const main = async () => {
 
   const clubDbCounts = {
     profiles: await countRows(service, 'profiles', (q) => q.eq('id', victimClubId)),
-    vacancies: await countRows(service, 'vacancies', (q) => q.eq('club_id', victimClubId)),
-    vacancy_applications: await countRows(service, 'vacancy_applications', (q) => q.eq('vacancy_id', vacancyId)),
+    opportunities: await countRows(service, 'opportunities', (q) => q.eq('club_id', victimClubId)),
+    opportunity_applications: await countRows(service, 'opportunity_applications', (q) => q.eq('opportunity_id', vacancyId)),
     club_media: await countRows(service, 'club_media', (q) => q.eq('club_id', victimClubId)),
   }
 

@@ -93,14 +93,14 @@ export default function DeleteVacancyModal({
               ⚠️ Warning: This will permanently delete:
             </p>
             <ul className="mt-2 text-sm text-red-700 space-y-1 ml-4 list-disc">
-              <li>The vacancy "<strong>{vacancyTitle}</strong>"</li>
-              <li>All applications submitted to this vacancy</li>
+              <li>The opportunity "<strong>{vacancyTitle}</strong>"</li>
+              <li>All applications submitted to this opportunity</li>
               <li>Any related media or attachments</li>
             </ul>
           </div>
 
           <p className="text-sm text-gray-600">
-            Are you sure you want to permanently delete this vacancy? This action cannot be undone.
+            Are you sure you want to permanently delete this opportunity? This action cannot be undone.
           </p>
         </div>
 

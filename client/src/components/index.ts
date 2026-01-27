@@ -38,11 +38,13 @@ export { default as ProfileStrengthCard } from './ProfileStrengthCard'
 export { default as InstallPrompt } from './InstallPrompt'
 export { default as InAppBrowserWarning } from './InAppBrowserWarning'
 export { default as PublicNav } from './PublicNav'
-export { default as VacancyJsonLd, OpportunitiesListJsonLd } from './VacancyJsonLd'
+export { default as OpportunityJsonLd, OpportunitiesListJsonLd } from './OpportunityJsonLd'
+/** @deprecated Use OpportunityJsonLd instead */
+export { default as VacancyJsonLd } from './OpportunityJsonLd'
 export { ErrorBoundary } from './ErrorBoundary'
 
 // Loading States
-export { default as Skeleton, ConversationSkeleton, VacancyCardSkeleton, ProfileCardSkeleton, MessageSkeleton, ChatWindowSkeleton, TableRowSkeleton } from './Skeleton'
+export { default as Skeleton, ConversationSkeleton, OpportunityCardSkeleton, VacancyCardSkeleton, ProfileCardSkeleton, MessageSkeleton, ChatWindowSkeleton, TableRowSkeleton } from './Skeleton'
 
 // Auth & Routing
 export { default as ProtectedRoute } from './ProtectedRoute'

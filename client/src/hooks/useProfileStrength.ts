@@ -80,7 +80,7 @@ export function useProfileStrength(profile: Profile | null): ProfileStrengthResu
     try {
       // Fetch journey entries count
       const { count: journeyCountResult, error: journeyError } = await supabase
-        .from('playing_history')
+        .from('career_history')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', profile.id)
 

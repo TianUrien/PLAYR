@@ -83,12 +83,12 @@ Deno.serve(async (req: Request) => {
     // - club has onboarding_completed = true
     // - club is not a test account
     const { data: opportunities, error } = await supabase
-      .from('vacancies')
+      .from('opportunities')
       .select(`
         id,
         updated_at,
         created_at,
-        club:profiles!vacancies_club_id_fkey(
+        club:profiles!opportunities_club_id_fkey(
           onboarding_completed,
           is_test_account
         )

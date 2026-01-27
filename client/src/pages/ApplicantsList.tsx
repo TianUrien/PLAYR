@@ -3,51 +3,51 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Users } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
-import type { VacancyApplicationWithPlayer, Vacancy, Json } from '@/lib/supabase'
+import type { OpportunityApplicationWithApplicant, Opportunity, Json } from '@/lib/supabase'
 import ApplicantCard from '@/components/ApplicantCard'
 
 export default function ApplicantsList() {
-  const { vacancyId } = useParams<{ vacancyId: string }>()
+  const { opportunityId } = useParams<{ opportunityId: string }>()
   const navigate = useNavigate()
   const { user } = useAuthStore()
-  const [vacancy, setVacancy] = useState<Vacancy | null>(null)
-  const [applications, setApplications] = useState<VacancyApplicationWithPlayer[]>([])
+  const [opportunity, setOpportunity] = useState<Opportunity | null>(null)
+  const [applications, setApplications] = useState<OpportunityApplicationWithApplicant[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!vacancyId || !user) return
+      if (!opportunityId || !user) return
 
       setIsLoading(true)
       setError(null)
 
       try {
-        // Fetch vacancy details
-        const { data: vacancyData, error: vacancyError } = await supabase
-          .from('vacancies')
+        // Fetch opportunity details
+        const { data: opportunityData, error: opportunityError } = await supabase
+          .from('opportunities')
           .select('*')
-          .eq('id', vacancyId)
-          .eq('club_id', user.id) // Ensure club owns this vacancy
+          .eq('id', opportunityId)
+          .eq('club_id', user.id) // Ensure club owns this opportunity
           .single()
 
-        if (vacancyError) {
-          if (vacancyError.code === 'PGRST116') {
-            setError('Vacancy not found or you do not have permission to view it.')
+        if (opportunityError) {
+          if (opportunityError.code === 'PGRST116') {
+            setError('Opportunity not found or you do not have permission to view it.')
           } else {
-            throw vacancyError
+            throw opportunityError
           }
           return
         }
 
-        setVacancy(vacancyData)
+        setOpportunity(opportunityData)
 
-        // Fetch applications with player profiles
+        // Fetch applications with applicant profiles
         const { data: applicationsData, error: applicationsError } = await supabase
-          .from('vacancy_applications')
+          .from('opportunity_applications')
           .select(`
             *,
-            player:player_id (
+            applicant:applicant_id (
               id,
               full_name,
               avatar_url,
@@ -58,7 +58,7 @@ export default function ApplicantsList() {
               username
             )
           `)
-          .eq('vacancy_id', vacancyId)
+          .eq('opportunity_id', opportunityId)
           .order('applied_at', { ascending: false })
 
         if (applicationsError) {
@@ -68,14 +68,14 @@ export default function ApplicantsList() {
         // Transform the data to match our type
         interface ApplicationWithProfile {
           id: string
-          vacancy_id: string
-          player_id: string
+          opportunity_id: string
+          applicant_id: string
           cover_letter: string | null
           status: string
           applied_at: string
           updated_at: string
           metadata: Json
-          player: {
+          applicant: {
             id: string
             full_name: string
             avatar_url: string | null
@@ -87,24 +87,24 @@ export default function ApplicantsList() {
           }
         }
 
-        const transformedApplications: VacancyApplicationWithPlayer[] = (applicationsData as ApplicationWithProfile[] || []).map((app) => ({
+        const transformedApplications: OpportunityApplicationWithApplicant[] = (applicationsData as ApplicationWithProfile[] || []).map((app) => ({
           id: app.id,
-          vacancy_id: app.vacancy_id,
-          player_id: app.player_id,
+          opportunity_id: app.opportunity_id,
+          applicant_id: app.applicant_id,
           cover_letter: app.cover_letter,
-          status: app.status as VacancyApplicationWithPlayer['status'],
+          status: app.status as OpportunityApplicationWithApplicant['status'],
           applied_at: app.applied_at,
           updated_at: app.updated_at,
           metadata: app.metadata as Json,
-          player: {
-            id: app.player.id,
-            full_name: app.player.full_name,
-            avatar_url: app.player.avatar_url,
-            position: app.player.position,
-            secondary_position: app.player.secondary_position,
-            base_location: app.player.base_location,
-            nationality: app.player.nationality,
-            username: app.player.username,
+          applicant: {
+            id: app.applicant.id,
+            full_name: app.applicant.full_name,
+            avatar_url: app.applicant.avatar_url,
+            position: app.applicant.position,
+            secondary_position: app.applicant.secondary_position,
+            base_location: app.applicant.base_location,
+            nationality: app.applicant.nationality,
+            username: app.applicant.username,
           },
         }))
 
@@ -117,7 +117,7 @@ export default function ApplicantsList() {
     }
 
     fetchData()
-  }, [vacancyId, user])
+  }, [opportunityId, user])
 
   if (isLoading) {
     return (
@@ -130,13 +130,13 @@ export default function ApplicantsList() {
     )
   }
 
-  if (error || !vacancy) {
+  if (error || !opportunity) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
           <div className="text-6xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{error || 'Vacancy not found.'}</p>
+          <p className="text-gray-600 mb-6">{error || 'Opportunity not found.'}</p>
           <button
             onClick={() => navigate('/dashboard/profile')}
             className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -159,12 +159,12 @@ export default function ApplicantsList() {
             className="inline-flex w-fit items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Vacancies
+            Back to Opportunities
           </button>
 
           <div>
             <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
-              Applicants for {vacancy.title}
+              Applicants for {opportunity.title}
             </h1>
             <p className="mt-2 flex items-center gap-2 text-sm text-gray-600">
               <Users className="h-4 w-4" />

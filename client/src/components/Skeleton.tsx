@@ -64,8 +64,8 @@ export function ConversationSkeleton() {
   )
 }
 
-// Vacancy Card Skeleton
-export function VacancyCardSkeleton() {
+// Opportunity Card Skeleton (formerly VacancyCardSkeleton)
+export function OpportunityCardSkeleton() {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
       {/* Header */}
@@ -260,3 +260,6 @@ export function DashboardSkeleton() {
     </div>
   )
 }
+
+/** @deprecated Use OpportunityCardSkeleton instead */
+export const VacancyCardSkeleton = OpportunityCardSkeleton

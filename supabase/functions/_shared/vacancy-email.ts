@@ -26,7 +26,7 @@ export interface VacancyRecord {
 
 export interface VacancyPayload {
   type: 'INSERT' | 'UPDATE'
-  table: 'vacancies'
+  table: 'opportunities'
   schema: 'public'
   record: VacancyRecord
   old_record: VacancyRecord | null

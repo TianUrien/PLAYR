@@ -50,7 +50,7 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
     try {
       const [journeyRes, galleryRes] = await Promise.all([
         supabase
-          .from('playing_history')
+          .from('career_history')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', profileId),
         supabase
