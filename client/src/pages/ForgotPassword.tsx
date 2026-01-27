@@ -5,6 +5,7 @@ import { Input, Button } from '@/components'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { getSiteUrl } from '@/lib/siteUrl'
+import { checkPasswordResetRateLimit, formatRateLimitError } from '@/lib/rateLimit'
 
 /**
  * ForgotPassword - Request password reset email
@@ -28,6 +29,14 @@ export default function ForgotPassword() {
     setLoading(true)
 
     try {
+      // Check rate limit before sending password reset email
+      const rateLimit = await checkPasswordResetRateLimit(email)
+      if (rateLimit && !rateLimit.allowed) {
+        setError(formatRateLimitError(rateLimit))
+        setLoading(false)
+        return
+      }
+
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${getSiteUrl()}/reset-password`,
       })

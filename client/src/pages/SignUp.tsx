@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { getAuthRedirectUrl } from '@/lib/siteUrl'
 import { logger } from '@/lib/logger'
 import { supportsReliableOAuth } from '@/lib/inAppBrowser'
+import { checkSignupRateLimit, formatRateLimitError } from '@/lib/rateLimit'
 
 type UserRole = 'player' | 'coach' | 'club'
 type SignUpResponse = Awaited<ReturnType<typeof supabase.auth.signUp>>
@@ -47,6 +48,14 @@ export default function SignUp() {
 
       if (formData.password.length < 8) {
         throw new Error('Password must be at least 8 characters long')
+      }
+
+      // Check rate limit before attempting signup
+      const rateLimit = await checkSignupRateLimit()
+      if (rateLimit && !rateLimit.allowed) {
+        setError(formatRateLimitError(rateLimit))
+        setLoading(false)
+        return
       }
 
       logger.debug('Creating auth account with role:', selectedRole)

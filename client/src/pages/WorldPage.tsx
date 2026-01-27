@@ -10,8 +10,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Globe, Building2, MapPin, Trophy } from 'lucide-react'
 import { Header } from '@/components'
-import SignInPromptModal from '@/components/SignInPromptModal'
-import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 
@@ -28,11 +26,9 @@ interface CountryWithStats {
 
 export default function WorldPage() {
   const navigate = useNavigate()
-  const { user } = useAuthStore()
   const [countries, setCountries] = useState<CountryWithStats[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
-  const [showSignInPrompt, setShowSignInPrompt] = useState(false)
 
   useEffect(() => {
     document.title = 'World | PLAYR'
@@ -112,12 +108,8 @@ export default function WorldPage() {
     return `https://flagcdn.com/w160/${countryCode.toLowerCase()}.png`
   }
 
-  // Handle country card click - requires auth
+  // Handle country card click - open to public for discovery
   const handleCountryClick = (countryCode: string) => {
-    if (!user) {
-      setShowSignInPrompt(true)
-      return
-    }
     navigate(`/world/${countryCode.toLowerCase()}`)
   }
 
@@ -246,14 +238,6 @@ export default function WorldPage() {
           </div>
         )}
       </main>
-
-      {/* Sign In Prompt Modal */}
-      <SignInPromptModal
-        isOpen={showSignInPrompt}
-        onClose={() => setShowSignInPrompt(false)}
-        title="Sign in to explore"
-        message="Sign in or create a free PLAYR account to explore the World Hockey Directory."
-      />
     </div>
   )
 }

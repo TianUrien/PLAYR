@@ -17,14 +17,14 @@ export const PLAYR_BASE_URL = 'https://oplayr.com'
 
 export interface ApplicationRecord {
   id: string
-  vacancy_id: string
-  player_id: string
+  opportunity_id: string
+  applicant_id: string
   cover_letter: string | null
   status: string
   applied_at: string
 }
 
-export interface VacancyData {
+export interface OpportunityData {
   id: string
   title: string
   club_id: string
@@ -71,7 +71,7 @@ function getInitials(name: string): string {
 
 export function generateEmailHtml(
   applicant: ApplicantData,
-  vacancy: VacancyData,
+  opportunity: OpportunityData,
 ): string {
   const displayName = applicant.full_name?.trim() || 'Player'
   
@@ -139,7 +139,7 @@ export function generateEmailHtml(
     <!-- Opportunity Card -->
     <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px;">
       <p style="color: #6b7280; margin: 0 0 4px 0; font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Opportunity</p>
-      <h2 style="color: #1f2937; margin: 0; font-size: 18px; font-weight: 600;">${vacancy.title}</h2>
+      <h2 style="color: #1f2937; margin: 0; font-size: 18px; font-weight: 600;">${opportunity.title}</h2>
     </div>
     
     <!-- Applicant Card -->
@@ -188,7 +188,7 @@ export function generateEmailHtml(
 
 export function generateEmailText(
   applicant: ApplicantData,
-  vacancy: VacancyData,
+  opportunity: OpportunityData,
 ): string {
   const displayName = applicant.full_name?.trim() || 'Player'
   
@@ -216,7 +216,7 @@ export function generateEmailText(
     'You have a new application for one of your opportunities.',
     '',
     'OPPORTUNITY:',
-    vacancy.title,
+    opportunity.title,
     '',
     'APPLICANT:',
     displayName,

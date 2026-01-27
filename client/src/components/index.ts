@@ -38,6 +38,7 @@ export { default as ProfileStrengthCard } from './ProfileStrengthCard'
 export { default as InstallPrompt } from './InstallPrompt'
 export { default as InAppBrowserWarning } from './InAppBrowserWarning'
 export { default as PublicNav } from './PublicNav'
+export { default as NewMessageModal } from './NewMessageModal'
 export { default as OpportunityJsonLd, OpportunitiesListJsonLd } from './OpportunityJsonLd'
 /** @deprecated Use OpportunityJsonLd instead */
 export { default as VacancyJsonLd } from './OpportunityJsonLd'

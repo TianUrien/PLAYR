@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { getAuthRedirectUrl } from '@/lib/siteUrl'
 import { supportsReliableOAuth } from '@/lib/inAppBrowser'
+import { checkLoginRateLimit, formatRateLimitError } from '@/lib/rateLimit'
 
 export default function Landing() {
   const navigate = useNavigate()
@@ -66,6 +67,14 @@ export default function Landing() {
     setLoading(true)
 
     try {
+      // Check rate limit before attempting login
+      const rateLimit = await checkLoginRateLimit()
+      if (rateLimit && !rateLimit.allowed) {
+        setError(formatRateLimitError(rateLimit))
+        setLoading(false)
+        return
+      }
+
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password

@@ -137,6 +137,10 @@ export default function SettingsPage() {
 
       if (error) throw error
 
+      // Security: Sign out all OTHER sessions (keep current session valid)
+      // This ensures any potentially compromised sessions are invalidated
+      await supabase.auth.signOut({ scope: 'others' })
+
       setPasswordSuccess(true)
       setPasswordForm({
         currentPassword: '',
@@ -346,7 +350,7 @@ export default function SettingsPage() {
                     {passwordSuccess && (
                       <p className="text-xs text-green-600 flex items-center gap-1">
                         <CheckCircle className="w-3 h-3" />
-                        Password updated successfully
+                        Password updated. All other sessions have been signed out.
                       </p>
                     )}
 

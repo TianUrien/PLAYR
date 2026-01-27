@@ -4,7 +4,7 @@ import { corsHeaders } from '../_shared/cors.ts'
 import {
   ApplicationPayload,
   ApplicantData,
-  VacancyData,
+  OpportunityData,
   ClubData,
   createLogger,
   generateEmailHtml,
@@ -73,12 +73,12 @@ Deno.serve(async (req: Request) => {
 
     // Parse the webhook payload
     const payload: ApplicationPayload = await req.json()
-    logger.info('Parsed payload', { 
-      type: payload.type, 
+    logger.info('Parsed payload', {
+      type: payload.type,
       table: payload.table,
       applicationId: payload.record?.id,
-      vacancyId: payload.record?.vacancy_id,
-      playerId: payload.record?.player_id,
+      opportunityId: payload.record?.opportunity_id,
+      applicantId: payload.record?.applicant_id,
     })
 
     // Validate this is an opportunity_applications INSERT event
@@ -102,35 +102,35 @@ Deno.serve(async (req: Request) => {
     const application = payload.record
     logger.info('New application detected', {
       applicationId: application.id,
-      vacancyId: application.vacancy_id,
-      playerId: application.player_id,
+      opportunityId: application.opportunity_id,
+      applicantId: application.applicant_id,
     })
 
     // Create Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     // Fetch the opportunity details
-    const { data: vacancy, error: vacancyError } = await supabase
+    const { data: opportunity, error: opportunityError } = await supabase
       .from('opportunities')
       .select('id, title, club_id')
-      .eq('id', application.vacancy_id)
+      .eq('id', application.opportunity_id)
       .single()
 
-    if (vacancyError || !vacancy) {
-      logger.error('Failed to fetch vacancy', { error: vacancyError?.message })
+    if (opportunityError || !opportunity) {
+      logger.error('Failed to fetch opportunity', { error: opportunityError?.message })
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch vacancy' }),
+        JSON.stringify({ error: 'Failed to fetch opportunity' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    logger.info('Fetched vacancy', { vacancyId: vacancy.id, title: vacancy.title, clubId: vacancy.club_id })
+    logger.info('Fetched opportunity', { opportunityId: opportunity.id, title: opportunity.title, clubId: opportunity.club_id })
 
     // Fetch the applicant profile
     const { data: applicant, error: applicantError } = await supabase
       .from('profiles')
       .select('id, username, full_name, position, secondary_position, base_location, avatar_url, is_test_account')
-      .eq('id', application.player_id)
+      .eq('id', application.applicant_id)
       .single()
 
     if (applicantError || !applicant) {
@@ -151,7 +151,7 @@ Deno.serve(async (req: Request) => {
     const { data: club, error: clubError } = await supabase
       .from('profiles')
       .select('id, email, full_name, is_test_account')
-      .eq('id', vacancy.club_id)
+      .eq('id', opportunity.club_id)
       .single()
 
     if (clubError || !club) {
@@ -198,9 +198,9 @@ Deno.serve(async (req: Request) => {
     logger.info('Both applicant and club are TEST accounts - proceeding with email')
 
     // Generate email content
-    const emailHtml = generateEmailHtml(applicant as ApplicantData, vacancy as VacancyData)
-    const emailText = generateEmailText(applicant as ApplicantData, vacancy as VacancyData)
-    const subject = `New application for "${vacancy.title}"`
+    const emailHtml = generateEmailHtml(applicant as ApplicantData, opportunity as OpportunityData)
+    const emailText = generateEmailText(applicant as ApplicantData, opportunity as OpportunityData)
+    const subject = `New application for "${opportunity.title}"`
 
     // Send email to the club
     const result = await sendEmail(
@@ -224,7 +224,7 @@ Deno.serve(async (req: Request) => {
       recipient: club.email,
       subject,
       applicantName: applicant.full_name,
-      vacancyTitle: vacancy.title,
+      opportunityTitle: opportunity.title,
     })
 
     return new Response(
