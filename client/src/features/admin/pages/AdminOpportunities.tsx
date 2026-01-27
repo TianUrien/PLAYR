@@ -158,7 +158,7 @@ export function AdminVacancies() {
       label: '',
       render: (_, row) => (
         <Link
-          to={`/admin/vacancies/${row.id}`}
+          to={`/admin/opportunities/${row.id}`}
           className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors inline-flex"
         >
           <ChevronRight className="w-4 h-4 text-gray-400" />

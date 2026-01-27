@@ -174,8 +174,8 @@ function App() {
                 <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
                   <Route index element={<Navigate to="/admin/overview" replace />} />
                   <Route path="overview" element={<AdminOverview />} />
-                  <Route path="vacancies" element={<AdminOpportunities />} />
-                  <Route path="vacancies/:id" element={<AdminOpportunityDetail />} />
+                  <Route path="opportunities" element={<AdminOpportunities />} />
+                  <Route path="opportunities/:id" element={<AdminOpportunityDetail />} />
                   <Route path="clubs" element={<AdminClubs />} />
                   <Route path="players" element={<AdminPlayers />} />
                   <Route path="engagement" element={<AdminEngagement />} />
