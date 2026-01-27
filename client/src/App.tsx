@@ -51,7 +51,11 @@ const AdminOpportunityDetail = lazy(() => import('@/features/admin/pages/AdminOp
 const AdminClubs = lazy(() => import('@/features/admin/pages/AdminClubs').then(m => ({ default: m.AdminClubs })))
 const AdminPlayers = lazy(() => import('@/features/admin/pages/AdminPlayers').then(m => ({ default: m.AdminPlayers })))
 const AdminEngagement = lazy(() => import('@/features/admin/pages/AdminEngagement').then(m => ({ default: m.AdminEngagement })))
+const AdminInvestorDashboard = lazy(() => import('@/features/admin/pages/AdminInvestorDashboard').then(m => ({ default: m.AdminInvestorDashboard })))
 const AdminWorld = lazy(() => import('@/features/admin/pages/AdminWorld'))
+
+// Public investor dashboard (no auth required)
+const PublicInvestorDashboard = lazy(() => import('@/pages/PublicInvestorDashboard'))
 
 // Loading fallback component
 const PageLoader = () => (
@@ -147,6 +151,9 @@ function App() {
                 <Route path="/world/:countrySlug" element={<WorldCountryPage />} />
                 <Route path="/world/:countrySlug/:provinceSlug" element={<WorldProvincePage />} />
                 <Route path="/world/:countrySlug/:provinceSlug/:leagueSlug" element={<WorldLeagueClubsPage />} />
+
+                {/* Public Investor Dashboard (shareable link) */}
+                <Route path="/investors/:token" element={<PublicInvestorDashboard />} />
                 
                 {/* Protected Routes (require authentication) - Lazy loaded */}
                 <Route path="/complete-profile" element={<CompleteProfile />} />
@@ -179,6 +186,7 @@ function App() {
                   <Route path="clubs" element={<AdminClubs />} />
                   <Route path="players" element={<AdminPlayers />} />
                   <Route path="engagement" element={<AdminEngagement />} />
+                  <Route path="investors" element={<AdminInvestorDashboard />} />
                   <Route path="world" element={<AdminWorld />} />
                   <Route path="data-issues" element={<AdminDataIssues />} />
                   <Route path="directory" element={<AdminDirectory />} />

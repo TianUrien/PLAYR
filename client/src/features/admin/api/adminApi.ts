@@ -497,6 +497,9 @@ import type {
   WorldLeague,
   WorldClubCreatePayload,
   WorldClubUpdatePayload,
+  InvestorMetrics,
+  InvestorSignupTrend,
+  InvestorShareToken,
 } from '../types'
 
 /**
@@ -745,5 +748,96 @@ export async function unclaimWorldClub(clubId: string): Promise<void> {
     .eq('id', clubId)
 
   if (error) throw new Error(`Failed to unclaim world club: ${error.message}`)
+}
+
+// ============================================================================
+// INVESTOR DASHBOARD
+// ============================================================================
+
+/**
+ * Get investor metrics (admin only)
+ */
+export async function getInvestorMetrics(days = 90): Promise<InvestorMetrics> {
+  const { data, error } = await adminRpc('admin_get_investor_metrics', {
+    p_days: days,
+  })
+  if (error) throw new Error(`Failed to get investor metrics: ${error.message}`)
+  return data as InvestorMetrics
+}
+
+/**
+ * Get investor signup trends for charts (admin only)
+ */
+export async function getInvestorSignupTrends(days = 90): Promise<InvestorSignupTrend[]> {
+  const { data, error } = await adminRpc('admin_get_investor_signup_trends', {
+    p_days: days,
+  })
+  if (error) throw new Error(`Failed to get investor signup trends: ${error.message}`)
+  return data as InvestorSignupTrend[]
+}
+
+/**
+ * Create a shareable investor token (admin only)
+ */
+export async function createInvestorToken(
+  name: string,
+  expiresInDays?: number
+): Promise<InvestorShareToken> {
+  const { data, error } = await adminRpc('admin_create_investor_token', {
+    p_name: name,
+    p_expires_in_days: expiresInDays ?? null,
+  })
+  if (error) throw new Error(`Failed to create investor token: ${error.message}`)
+  return data as InvestorShareToken
+}
+
+/**
+ * Revoke an investor token (admin only)
+ */
+export async function revokeInvestorToken(tokenId: string): Promise<boolean> {
+  const { data, error } = await adminRpc('admin_revoke_investor_token', {
+    p_token_id: tokenId,
+  })
+  if (error) throw new Error(`Failed to revoke investor token: ${error.message}`)
+  return data as boolean
+}
+
+/**
+ * List all investor tokens (admin only)
+ */
+export async function listInvestorTokens(): Promise<InvestorShareToken[]> {
+  const { data, error } = await adminRpc('admin_list_investor_tokens')
+  if (error) throw new Error(`Failed to list investor tokens: ${error.message}`)
+  return data as InvestorShareToken[]
+}
+
+/**
+ * Get investor metrics via public token (no auth required)
+ */
+export async function getPublicInvestorMetrics(
+  token: string,
+  days = 90
+): Promise<InvestorMetrics> {
+  const { data, error } = await supabase.rpc('public_get_investor_metrics', {
+    p_token: token,
+    p_days: days,
+  })
+  if (error) throw new Error(`Invalid or expired token`)
+  return data as unknown as InvestorMetrics
+}
+
+/**
+ * Get investor signup trends via public token (no auth required)
+ */
+export async function getPublicInvestorSignupTrends(
+  token: string,
+  days = 90
+): Promise<InvestorSignupTrend[]> {
+  const { data, error } = await supabase.rpc('public_get_investor_signup_trends', {
+    p_token: token,
+    p_days: days,
+  })
+  if (error) throw new Error(`Invalid or expired token`)
+  return data as unknown as InvestorSignupTrend[]
 }
 

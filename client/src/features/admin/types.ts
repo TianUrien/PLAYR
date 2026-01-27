@@ -565,3 +565,61 @@ export interface WorldClubUpdatePayload {
   claimed_profile_id?: string | null
 }
 
+// ============================================================================
+// INVESTOR DASHBOARD TYPES
+// ============================================================================
+
+export interface InvestorMetrics {
+  // User totals
+  total_users: number
+  total_players: number
+  total_coaches: number
+  total_clubs: number
+
+  // Signups by period
+  signups_7d: number
+  signups_30d: number
+  signups_90d: number
+
+  // Growth rates (percentage vs previous period)
+  growth_rate_7d: number
+  growth_rate_30d: number
+
+  // Geographic distribution
+  top_countries: Array<{
+    country: string
+    user_count: number
+  }>
+
+  // Engagement signals
+  dau_7d_avg: number
+  total_messages_30d: number
+  total_applications_30d: number
+  total_opportunities: number
+
+  // Metadata
+  period_days: number
+  generated_at: string
+}
+
+export interface InvestorSignupTrend {
+  date: string
+  total_signups: number
+  cumulative_total: number
+  players: number
+  coaches: number
+  clubs: number
+}
+
+export interface InvestorShareToken {
+  id: string
+  token: string
+  name: string
+  created_at: string
+  expires_at: string | null
+  revoked_at: string | null
+  last_accessed_at: string | null
+  access_count: number
+  is_active: boolean
+}
+
