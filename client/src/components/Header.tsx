@@ -112,21 +112,21 @@ export default function Header() {
             {user && profile ? (
               <>
                 <button
-                  onClick={() => handleNavigate('/world')}
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-5 h-5" />
-                    <span>World</span>
-                  </div>
-                </button>
-                <button
                   onClick={() => handleNavigate('/community')}
                   className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5" />
                     <span>Community</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleNavigate('/world')}
+                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-5 h-5" />
+                    <span>World</span>
                   </div>
                 </button>
                 <button
@@ -176,21 +176,21 @@ export default function Header() {
             ) : (
               <>
                 <button
-                  onClick={() => handleNavigate('/world')}
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-5 h-5" />
-                    <span>World</span>
-                  </div>
-                </button>
-                <button
                   onClick={() => handleNavigate('/community')}
                   className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5" />
                     <span>Community</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => handleNavigate('/world')}
+                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-5 h-5" />
+                    <span>World</span>
                   </div>
                 </button>
                 <button

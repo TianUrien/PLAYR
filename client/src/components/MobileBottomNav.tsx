@@ -32,16 +32,16 @@ export default function MobileBottomNav() {
   // Navigation items
   const navItems: NavItem[] = [
     {
-      id: 'world',
-      label: 'World',
-      path: '/world',
-      icon: Globe,
-    },
-    {
       id: 'community',
       label: 'Community',
       path: '/community',
       icon: Users,
+    },
+    {
+      id: 'world',
+      label: 'World',
+      path: '/world',
+      icon: Globe,
     },
     {
       id: 'opportunities',
