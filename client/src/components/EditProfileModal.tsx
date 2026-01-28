@@ -204,7 +204,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
     setFormData(prev => ({
       ...prev,
       nationality_country_id: countryId,
-      nationality: country?.name || '',
+      nationality: country?.nationality_name || '', // Use demonym for nationality text
     }))
   }, [getCountryById])
 

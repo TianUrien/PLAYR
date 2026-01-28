@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { User, MapPin, Globe, Calendar, Building2, Camera, UserRound, Briefcase, Users } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { Input, Button, CountrySelect } from '@/components'
+import { useCountries } from '@/hooks/useCountries'
 import ClubClaimStep, { type ClubClaimResult } from '@/components/ClubClaimStep'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
@@ -37,6 +38,7 @@ export default function CompleteProfile() {
   // Mutex ref to prevent concurrent profile creation attempts (race condition guard)
   const profileCreationMutexRef = useRef(false)
   const { user, profile, loading: authLoading, profileStatus, fetchProfile } = useAuthStore()
+  const { getCountryById } = useCountries()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<string>(profile?.avatar_url || '')
@@ -391,13 +393,17 @@ export default function CompleteProfile() {
       }
 
       // Prepare data based on role
-      const profileNationality = userRole === 'club' ? formData.country : formData.nationality
+      // Derive nationality text from country ID for consistency
+      const selectedCountry = formData.nationalityCountryId
+        ? getCountryById(formData.nationalityCountryId)
+        : null
+      const nationalityText = selectedCountry?.nationality_name || ''
 
       let updateData: Record<string, unknown> = {
         role: userRole, // IMPORTANT: Always include role in update
         full_name: formData.fullName || formData.clubName || '',
         base_location: formData.city || '',
-        nationality: profileNationality || '',
+        nationality: nationalityText, // Synced from country_id for backward compatibility
         nationality_country_id: formData.nationalityCountryId,
         onboarding_completed: true, // Mark onboarding as complete
         avatar_url: avatarUrl || null, // Include avatar if uploaded
@@ -424,7 +430,7 @@ export default function CompleteProfile() {
           ...updateData,
           full_name: formData.clubName,
           base_location: formData.city, // City is stored in base_location
-          nationality: profileNationality || '',
+          nationality: nationalityText, // Synced from country_id for backward compatibility
           year_founded: formData.yearFounded ? parseInt(formData.yearFounded) : null,
           womens_league_division: formData.womensLeagueDivision || null,
           mens_league_division: formData.mensLeagueDivision || null,
