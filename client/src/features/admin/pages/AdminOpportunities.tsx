@@ -26,7 +26,7 @@ import { logger } from '@/lib/logger'
 type StatusFilter = 'all' | 'draft' | 'open' | 'closed'
 type DaysFilter = 7 | 30 | 90 | null
 
-export function AdminVacancies() {
+export function AdminOpportunities() {
   const [vacancies, setVacancies] = useState<VacancyListItem[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [stats, setStats] = useState<ExtendedDashboardStats | null>(null)
