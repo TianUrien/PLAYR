@@ -876,7 +876,7 @@ export default function MessagesPage() {
   }, [combinedConversations, navigate, searchParams, selectedConversationId, user?.id, isPendingConversation, isValidConversationId])
 
   const rootContainerClasses = isMobile
-    ? 'flex flex-1 min-h-0 flex-col bg-white'
+    ? 'flex flex-1 min-h-0 flex-col bg-white pt-[var(--app-header-offset)]'
     : 'flex min-h-screen flex-col bg-gray-100 pt-[var(--app-header-offset)]'
 
   const mainPaddingClasses = isMobile
