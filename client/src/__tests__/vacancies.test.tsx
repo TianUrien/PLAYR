@@ -2,7 +2,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
-import VacanciesTab from '@/components/VacanciesTab'
+import OpportunitiesTab from '@/components/OpportunitiesTab'
 
 const mockSupabaseRpc = vi.fn()
 const mockSupabaseFrom = vi.fn()
@@ -43,17 +43,17 @@ vi.mock('react-router-dom', async () => {
   }
 })
 
-vi.mock('@/components/CreateVacancyModal', () => ({
+vi.mock('@/components/CreateOpportunityModal', () => ({
   __esModule: true,
   default: () => null
 }))
 
-vi.mock('@/components/ApplyToVacancyModal', () => ({
+vi.mock('@/components/ApplyToOpportunityModal', () => ({
   __esModule: true,
   default: () => null
 }))
 
-vi.mock('@/components/VacancyDetailView', () => ({
+vi.mock('@/components/OpportunityDetailView', () => ({
   __esModule: true,
   default: () => null
 }))
@@ -63,7 +63,7 @@ vi.mock('@/components/PublishConfirmationModal', () => ({
   default: () => null
 }))
 
-vi.mock('@/components/DeleteVacancyModal', () => ({
+vi.mock('@/components/DeleteOpportunityModal', () => ({
   __esModule: true,
   default: () => null
 }))
@@ -88,7 +88,7 @@ beforeEach(() => {
   rpcResponse = []
   applicationRows = []
   mockSupabaseRpc.mockImplementation((fnName: string) => {
-    if (fnName === 'fetch_club_vacancies_with_counts') {
+    if (fnName === 'fetch_club_opportunities_with_counts') {
       return {
         returns: () => Promise.resolve({ data: rpcResponse, error: null })
       }
@@ -99,7 +99,7 @@ beforeEach(() => {
   })
 
   mockSupabaseFrom.mockImplementation((table: string) => {
-    if (table === 'vacancy_applications') {
+    if (table === 'opportunity_applications') {
       return createQueryBuilder(applicationRows)
     }
     return createQueryBuilder([])
@@ -113,11 +113,11 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-const renderTab = (props?: Partial<React.ComponentProps<typeof VacanciesTab>>) => {
+const renderTab = (props?: Partial<React.ComponentProps<typeof OpportunitiesTab>>) => {
   const resolvedProfileId = props?.profileId ?? authState.user?.id
   return render(
     <MemoryRouter>
-      <VacanciesTab profileId={resolvedProfileId} {...props} />
+      <OpportunitiesTab profileId={resolvedProfileId} {...props} />
     </MemoryRouter>
   )
 }
@@ -155,9 +155,9 @@ describe('Vacancies tab', () => {
     expect(screen.getByText('4 applicants')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /4 applicants/i }))
-    expect(mockNavigate).toHaveBeenCalledWith('/dashboard/club/vacancies/vac-1/applicants')
+    expect(mockNavigate).toHaveBeenCalledWith('/dashboard/club/opportunities/vac-1/applicants')
 
-    expect(screen.getByLabelText(/open vacancy menu/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/open opportunity menu/i)).toBeInTheDocument()
   })
 
   it('shows public view with accurate cards and actions', async () => {

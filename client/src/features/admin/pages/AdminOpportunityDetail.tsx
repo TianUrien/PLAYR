@@ -204,8 +204,8 @@ export function AdminVacancyDetail() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Vacancy not found</p>
-        <Link to="/admin/vacancies" className="text-purple-600 hover:text-purple-700 mt-2 inline-block">
-          Back to vacancies
+        <Link to="/admin/opportunities" className="text-purple-600 hover:text-purple-700 mt-2 inline-block">
+          Back to opportunities
         </Link>
       </div>
     )
@@ -219,11 +219,11 @@ export function AdminVacancyDetail() {
       <div className="flex items-start justify-between">
         <div>
           <Link
-            to="/admin/vacancies"
+            to="/admin/opportunities"
             className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Vacancies
+            Back to Opportunities
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">{vacancy.title}</h1>
           <div className="flex items-center gap-2 mt-1">

@@ -10,12 +10,12 @@ import { useToastStore } from '@/lib/toast'
 import type { Vacancy } from '../lib/supabase'
 import Button from './Button'
 import RoleBadge from './RoleBadge'
-import CreateVacancyModal from './CreateVacancyModal'
-import ApplyToVacancyModal from './ApplyToVacancyModal'
-import VacancyDetailView from './VacancyDetailView'
+import CreateOpportunityModal from './CreateOpportunityModal'
+import ApplyToOpportunityModal from './ApplyToOpportunityModal'
+import OpportunityDetailView from './OpportunityDetailView'
 import PublishConfirmationModal from './PublishConfirmationModal'
-import DeleteVacancyModal from './DeleteVacancyModal'
-import Skeleton, { VacancyCardSkeleton } from './Skeleton'
+import DeleteOpportunityModal from './DeleteOpportunityModal'
+import Skeleton, { OpportunityCardSkeleton } from './Skeleton'
 import { reportSupabaseError } from '@/lib/sentryHelpers'
 
 type VacancyWithCount = Vacancy & { applicant_count: number | null }
@@ -75,7 +75,7 @@ function VacancyActionMenu({ vacancy, disabled, onEdit, onDuplicate, onPublish, 
   if (vacancy.status === 'draft') {
     menuItems.push({
       key: 'publish',
-      label: 'Publish vacancy',
+      label: 'Publish opportunity',
       icon: <Rocket className="w-4 h-4 text-green-600" />,
       onClick: () => {
         closeMenu()
@@ -136,7 +136,7 @@ function VacancyActionMenu({ vacancy, disabled, onEdit, onDuplicate, onPublish, 
     <div className="relative" ref={menuRef}>
       <button
         type="button"
-        aria-label="Open vacancy menu"
+        aria-label="Open opportunity menu"
         onClick={() => setOpen((prev) => !prev)}
         disabled={disabled}
         className="rounded-full border border-gray-200 p-2 text-gray-500 transition hover:text-gray-900 disabled:opacity-50"
@@ -205,7 +205,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
     setIsLoading(true)
     try {
       const { data, error } = await supabase
-        .rpc('fetch_club_vacancies_with_counts', {
+        .rpc('fetch_club_opportunities_with_counts', {
           p_club_id: targetUserId,
           p_include_closed: !readOnly,
           p_limit: 200
@@ -246,13 +246,13 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
 
     try {
       const { data, error } = await supabase
-        .from('vacancy_applications')
-        .select('vacancy_id')
-        .eq('player_id', user.id)
+        .from('opportunity_applications')
+        .select('opportunity_id')
+        .eq('applicant_id', user.id)
 
       if (error) throw error
       
-      const appliedVacancyIds = new Set(data?.map(app => app.vacancy_id) || [])
+      const appliedVacancyIds = new Set(data?.map(app => app.opportunity_id) || [])
       setUserApplications(appliedVacancyIds)
     } catch (error) {
       logger.error('Error fetching user applications:', error)
@@ -369,13 +369,13 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
         level: 'info'
       })
       const { error } = await supabase
-        .from('vacancies')
+        .from('opportunities')
         .insert(newVacancy as never)
 
       if (error) throw error
       
       await fetchVacancies()
-      addToast('Vacancy duplicated as draft.', 'success')
+      addToast('Opportunity duplicated as draft.', 'success')
     } catch (error) {
       logger.error('Error duplicating vacancy:', error)
       reportSupabaseError('vacancies.duplicate', error, {
@@ -384,7 +384,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
         feature: 'vacancies',
         operation: 'duplicate_vacancy'
       })
-      addToast('Failed to duplicate vacancy. Please try again.', 'error')
+      addToast('Failed to duplicate opportunity. Please try again.', 'error')
     } finally {
       setActionLoading(null)
     }
@@ -402,14 +402,14 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
         level: 'info'
       })
       const { error } = await supabase
-        .from('vacancies')
+        .from('opportunities')
         .update({ status: 'closed' } as never)
         .eq('id', vacancyId)
 
       if (error) throw error
       
       await fetchVacancies()
-      addToast('Vacancy closed.', 'success')
+      addToast('Opportunity closed.', 'success')
     } catch (error) {
       logger.error('Error closing vacancy:', error)
       reportSupabaseError('vacancies.close', error, {
@@ -418,7 +418,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
         feature: 'vacancies',
         operation: 'close_vacancy'
       })
-      addToast('Failed to close vacancy. Please try again.', 'error')
+      addToast('Failed to close opportunity. Please try again.', 'error')
     } finally {
       setActionLoading(null)
     }
@@ -441,7 +441,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
         level: 'info'
       })
       const { error } = await supabase
-        .from('vacancies')
+        .from('opportunities')
         .update({ status: 'open', published_at: new Date().toISOString() } as never)
         .eq('id', vacancyToPublish.id)
 
@@ -452,7 +452,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       // Close modal and show success toast
       setShowPublishModal(false)
       setVacancyToPublish(null)
-      addToast('Vacancy published successfully!', 'success')
+      addToast('Opportunity published successfully!', 'success')
     } catch (error) {
       logger.error('Error publishing vacancy:', error)
       reportSupabaseError('vacancies.publish', error, {
@@ -461,7 +461,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
         feature: 'vacancies',
         operation: 'publish_vacancy'
       })
-      addToast('Failed to publish vacancy. Please try again.', 'error')
+      addToast('Failed to publish opportunity. Please try again.', 'error')
     } finally {
       setActionLoading(null)
     }
@@ -485,7 +485,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
         level: 'warning'
       })
       const { error } = await supabase
-        .from('vacancies')
+        .from('opportunities')
         .delete()
         .eq('id', vacancyToDelete.id)
 
@@ -497,7 +497,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       // Close modal
       setShowDeleteModal(false)
       setVacancyToDelete(null)
-      addToast('Vacancy deleted.', 'success')
+      addToast('Opportunity deleted.', 'success')
     } catch (error) {
       logger.error('Error deleting vacancy:', error)
       reportSupabaseError('vacancies.delete', error, {
@@ -506,7 +506,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
         feature: 'vacancies',
         operation: 'delete_vacancy'
       })
-      addToast('Failed to delete vacancy. Please try again.', 'error')
+      addToast('Failed to delete opportunity. Please try again.', 'error')
     } finally {
       setActionLoading(null)
     }
@@ -553,7 +553,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {Array.from({ length: 2 }).map((_, index) => (
-            <VacancyCardSkeleton key={index} />
+            <OpportunityCardSkeleton key={index} />
           ))}
         </div>
       </div>
@@ -565,14 +565,14 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       {/* Section Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-white/80 px-4 py-4 shadow-sm">
         <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Vacancies</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Opportunities</p>
           <h2 className="text-2xl font-bold text-gray-900">
             {readOnly ? 'Open opportunities' : 'Manage openings'}
           </h2>
           <p className="text-sm text-gray-500">
             {readOnly
               ? `${vacancies.length} live role${vacancies.length === 1 ? '' : 's'}`
-              : `${vacancies.length} total vacanc${vacancies.length === 1 ? 'y' : 'ies'}`}
+              : `${vacancies.length} total opportunit${vacancies.length === 1 ? 'y' : 'ies'}`}
           </p>
         </div>
         {!readOnly && (
@@ -595,16 +595,16 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
               <span className="text-3xl">💼</span>
             </div>
           </div>
-          <h3 className="mb-2 text-lg font-semibold text-gray-900">No Vacancies Yet</h3>
+          <h3 className="mb-2 text-lg font-semibold text-gray-900">No Opportunities Yet</h3>
           <p className="mb-6 text-gray-600">
-            Create your first vacancy to start attracting talent to your club
+            Create your first opportunity to start attracting talent to your club
           </p>
           <Button
             onClick={handleCreateNew}
             className="mx-auto flex items-center gap-2 bg-[#10b981] hover:bg-[#059669]"
           >
             <Plus className="h-4 w-4" />
-            Create First Vacancy
+            Create First Opportunity
           </Button>
         </div>
       )}
@@ -684,7 +684,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
                 {!readOnly && (vacancy.status === 'open' || vacancy.status === 'closed') && (
                   <button
                     type="button"
-                    onClick={() => navigate(`/dashboard/club/vacancies/${vacancy.id}/applicants`)}
+                    onClick={() => navigate(`/dashboard/club/opportunities/${vacancy.id}/applicants`)}
                     className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-[0_6px_15px_rgba(16,185,129,0.2)] hover:border-emerald-300 hover:bg-emerald-100"
                   >
                     <Users className="w-4 h-4 text-emerald-600" />
@@ -737,7 +737,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
                       type="button"
                       onClick={() => handleViewDetails(vacancy)}
                       className="rounded-2xl border border-gray-200 p-3 text-gray-500 transition hover:bg-gray-50"
-                      aria-label="View vacancy details"
+                      aria-label="View opportunity details"
                     >
                       <Eye className="w-5 h-5" />
                     </button>
@@ -761,7 +761,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       )}
 
       {/* Create/Edit Modal */}
-      <CreateVacancyModal
+      <CreateOpportunityModal
         isOpen={showModal}
         onClose={() => {
           setShowModal(false)
@@ -773,7 +773,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
 
       {/* Apply Modal */}
       {selectedVacancy && (
-        <ApplyToVacancyModal
+        <ApplyToOpportunityModal
           isOpen={showApplyModal}
           onClose={() => {
             setShowApplyModal(false)
@@ -795,7 +795,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
 
       {/* Vacancy Detail Modal */}
       {detailVacancy && showDetailModal && (
-        <VacancyDetailView
+        <OpportunityDetailView
           vacancy={detailVacancy}
           clubName={clubName}
           clubLogo={clubLogo}
@@ -834,7 +834,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
 
       {/* Delete Confirmation Modal */}
       {vacancyToDelete && (
-        <DeleteVacancyModal
+        <DeleteOpportunityModal
           isOpen={showDeleteModal}
           onClose={() => {
             setShowDeleteModal(false)

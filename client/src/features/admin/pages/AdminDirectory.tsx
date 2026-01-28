@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Search,
   RefreshCw,
@@ -38,6 +39,7 @@ import {
 const PAGE_SIZE = 20
 
 export function AdminDirectory() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [profiles, setProfiles] = useState<AdminProfileListItem[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -95,6 +97,35 @@ export function AdminDirectory() {
     document.title = 'User Directory | PLAYR Admin'
     fetchProfiles()
   }, [fetchProfiles])
+
+  // Handle URL parameters for deep linking from global search
+  useEffect(() => {
+    const profileId = searchParams.get('profile')
+    const queryParam = searchParams.get('query')
+
+    // If profile ID is in URL, open the profile drawer
+    if (profileId && !selectedProfile) {
+      (async () => {
+        setIsLoadingProfile(true)
+        try {
+          const details = await getProfileDetails(profileId)
+          setSelectedProfile(details)
+        } catch (err) {
+          logger.error('[AdminDirectory] Failed to load profile from URL:', err)
+        } finally {
+          setIsLoadingProfile(false)
+        }
+        // Clear the URL param after loading
+        setSearchParams({}, { replace: true })
+      })()
+    }
+
+    // If query param exists, set it as search
+    if (queryParam && !searchQuery) {
+      setSearchQuery(queryParam)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams, setSearchParams, selectedProfile, searchQuery])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()

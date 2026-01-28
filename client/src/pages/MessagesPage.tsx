@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Search, MessageCircle, X } from 'lucide-react'
+import { Search, MessageCircle, X, Plus } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
@@ -10,6 +10,7 @@ import ChatWindowV2 from '@/features/chat-v2/ChatWindowV2'
 import type { ChatMessageEvent } from '@/types/chat'
 import Header from '@/components/Header'
 import { ConversationSkeleton } from '@/components/Skeleton'
+import { NewMessageModal } from '@/components'
 import { requestCache } from '@/lib/requestCache'
 import { monitor } from '@/lib/monitor'
 import { logger } from '@/lib/logger'
@@ -101,6 +102,7 @@ export default function MessagesPage() {
   const [conversationCursor, setConversationCursor] = useState<{ lastMessageAt: string | null; conversationId: string | null } | null>(null)
   const isMobile = useMediaQuery('(max-width: 767px)')
   const realtimeRefreshTimeoutRef = useRef<number | null>(null)
+  const [isNewMessageModalOpen, setIsNewMessageModalOpen] = useState(false)
 
   // Set selected conversation from URL parameter
   useEffect(() => {
@@ -938,7 +940,18 @@ export default function MessagesPage() {
           >
             {/* Header */}
             <div className="flex-shrink-0 p-4 border-b border-gray-200">
-              <h1 className="text-xl font-bold text-gray-900 mb-3">Messages</h1>
+              <div className="flex items-center justify-between mb-3">
+                <h1 className="text-xl font-bold text-gray-900">Messages</h1>
+                <button
+                  type="button"
+                  onClick={() => setIsNewMessageModalOpen(true)}
+                  className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white hover:opacity-90 transition-opacity shadow-md"
+                  aria-label="New message"
+                  title="New message"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
               
               {/* Search Bar */}
               <div className="relative">
@@ -981,18 +994,20 @@ export default function MessagesPage() {
                 </div>
               ) : filteredConversations.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-                  <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3">
-                    <MessageCircle className="w-7 h-7 text-gray-400" />
+                  <div className="w-14 h-14 bg-gradient-to-r from-[#6366f1]/20 to-[#8b5cf6]/20 rounded-full flex items-center justify-center mb-3">
+                    <MessageCircle className="w-7 h-7 text-[#6366f1]" />
                   </div>
                   <h3 className="text-base font-semibold text-gray-900 mb-1">No messages yet</h3>
                   <p className="text-sm text-gray-500 mb-4">
-                    Start a conversation from a player or club profile
+                    Start a conversation with someone in the community
                   </p>
                   <button
-                    onClick={() => fetchConversations({ force: true })}
-                    className="text-sm font-medium text-purple-600 hover:text-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500 rounded"
+                    type="button"
+                    onClick={() => setIsNewMessageModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white text-sm font-medium hover:opacity-90 transition-opacity shadow-md"
                   >
-                    Refresh list
+                    <Plus className="w-4 h-4" />
+                    New Message
                   </button>
                 </div>
               ) : (
@@ -1040,6 +1055,7 @@ export default function MessagesPage() {
                 <h3 className="text-base font-semibold text-gray-900 mb-1">Loading conversation...</h3>
                 <p className="text-sm text-gray-500">Fetching messages</p>
                 <button
+                  type="button"
                   onClick={handleBackToList}
                   className="mt-4 text-sm font-medium text-purple-600 hover:text-purple-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-500 rounded"
                 >
@@ -1060,6 +1076,12 @@ export default function MessagesPage() {
           </div>
         </div>
       </main>
+
+      {/* New Message Modal */}
+      <NewMessageModal
+        isOpen={isNewMessageModalOpen}
+        onClose={() => setIsNewMessageModalOpen(false)}
+      />
     </div>
   )
 }

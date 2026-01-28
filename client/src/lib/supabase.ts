@@ -38,13 +38,31 @@ export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 export type ProfileReference = Database['public']['Tables']['profile_references']['Row']
 
-export type Vacancy = Database['public']['Tables']['vacancies']['Row']
-export type VacancyInsert = Database['public']['Tables']['vacancies']['Insert']
-export type VacancyUpdate = Database['public']['Tables']['vacancies']['Update']
+// Opportunity types (formerly Vacancy)
+export type Opportunity = Database['public']['Tables']['opportunities']['Row']
+export type OpportunityInsert = Database['public']['Tables']['opportunities']['Insert']
+export type OpportunityUpdate = Database['public']['Tables']['opportunities']['Update']
 
-export type VacancyApplication = Database['public']['Tables']['vacancy_applications']['Row']
-export type VacancyApplicationInsert = Database['public']['Tables']['vacancy_applications']['Insert']
-export type VacancyApplicationUpdate = Database['public']['Tables']['vacancy_applications']['Update']
+// Legacy aliases - keep for backward compatibility during migration
+/** @deprecated Use Opportunity instead */
+export type Vacancy = Opportunity
+/** @deprecated Use OpportunityInsert instead */
+export type VacancyInsert = OpportunityInsert
+/** @deprecated Use OpportunityUpdate instead */
+export type VacancyUpdate = OpportunityUpdate
+
+// Application types (formerly VacancyApplication)
+export type OpportunityApplication = Database['public']['Tables']['opportunity_applications']['Row']
+export type OpportunityApplicationInsert = Database['public']['Tables']['opportunity_applications']['Insert']
+export type OpportunityApplicationUpdate = Database['public']['Tables']['opportunity_applications']['Update']
+
+// Legacy aliases
+/** @deprecated Use OpportunityApplication instead */
+export type VacancyApplication = OpportunityApplication
+/** @deprecated Use OpportunityApplicationInsert instead */
+export type VacancyApplicationInsert = OpportunityApplicationInsert
+/** @deprecated Use OpportunityApplicationUpdate instead */
+export type VacancyApplicationUpdate = OpportunityApplicationUpdate
 
 export type GalleryPhoto = Database['public']['Tables']['gallery_photos']['Row']
 export type GalleryPhotoInsert = Database['public']['Tables']['gallery_photos']['Insert']
@@ -54,9 +72,18 @@ export type ClubMedia = Database['public']['Tables']['club_media']['Row']
 export type ClubMediaInsert = Database['public']['Tables']['club_media']['Insert']
 export type ClubMediaUpdate = Database['public']['Tables']['club_media']['Update']
 
-export type PlayingHistory = Database['public']['Tables']['playing_history']['Row']
-export type PlayingHistoryInsert = Database['public']['Tables']['playing_history']['Insert']
-export type PlayingHistoryUpdate = Database['public']['Tables']['playing_history']['Update']
+// Career history types (formerly PlayingHistory)
+export type CareerHistory = Database['public']['Tables']['career_history']['Row']
+export type CareerHistoryInsert = Database['public']['Tables']['career_history']['Insert']
+export type CareerHistoryUpdate = Database['public']['Tables']['career_history']['Update']
+
+// Legacy aliases
+/** @deprecated Use CareerHistory instead */
+export type PlayingHistory = CareerHistory
+/** @deprecated Use CareerHistoryInsert instead */
+export type PlayingHistoryInsert = CareerHistoryInsert
+/** @deprecated Use CareerHistoryUpdate instead */
+export type PlayingHistoryUpdate = CareerHistoryUpdate
 
 export type Message = Database['public']['Tables']['messages']['Row']
 export type MessageInsert = Database['public']['Tables']['messages']['Insert']
@@ -67,11 +94,15 @@ export type ConversationInsert = Database['public']['Tables']['conversations']['
 export type ConversationUpdate = Database['public']['Tables']['conversations']['Update']
 
 // Complex joined types
-export type VacancyApplicationWithPlayer = VacancyApplication & {
-  player: Pick<
+export type OpportunityApplicationWithApplicant = OpportunityApplication & {
+  applicant: Pick<
     Profile,
     'id' | 'full_name' | 'avatar_url' | 'position' | 'secondary_position' | 'base_location' | 'nationality' | 'username'
   >
 }
+
+// Legacy alias
+/** @deprecated Use OpportunityApplicationWithApplicant instead */
+export type VacancyApplicationWithPlayer = OpportunityApplicationWithApplicant
 
 export type { Json } from './database.types'

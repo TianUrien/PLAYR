@@ -108,7 +108,7 @@ vi.mock('@/lib/supabase', () => {
   return {
     supabase: {
       from: (table: string) => {
-        if (table === 'playing_history') {
+        if (table === 'career_history') {
           return playingHistoryTable
         }
         return playingHistoryTable

@@ -5,7 +5,7 @@ import Header from '@/components/Header'
 import { Avatar, Button, CountryDisplay, DashboardMenu, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicViewBanner, RoleBadge, ScrollableTabs } from '@/components'
 import { useClubProfileStrength } from '@/hooks/useClubProfileStrength'
 import { logger } from '@/lib/logger'
-import VacanciesTab from '@/components/VacanciesTab'
+import OpportunitiesTab from '@/components/OpportunitiesTab'
 import ClubMediaTab from '@/components/ClubMediaTab'
 import Skeleton from '@/components/Skeleton'
 import SignInPromptModal from '@/components/SignInPromptModal'
@@ -211,7 +211,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
 
   const baseTabs: { id: TabType; label: string }[] = [
     { id: 'overview', label: 'Overview' },
-    { id: 'vacancies', label: 'Vacancies' },
+    { id: 'vacancies', label: 'Opportunities' },
     { id: 'friends', label: 'Friends' },
     { id: 'comments', label: 'Comments' },
   ]
@@ -562,7 +562,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
 
             {activeTab === 'vacancies' && (
               <div className="animate-fade-in">
-                <VacanciesTab
+                <OpportunitiesTab
                   profileId={profile.id}
                   readOnly={readOnly}
                   triggerCreate={triggerCreateVacancy}

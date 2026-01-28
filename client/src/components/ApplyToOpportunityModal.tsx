@@ -88,10 +88,10 @@ export default function ApplyToVacancyModal({
         level: 'info'
       })
       const { error: insertError } = await supabase
-        .from('vacancy_applications')
+        .from('opportunity_applications')
         .insert({
-          vacancy_id: vacancy.id,
-          player_id: user.id,
+          opportunity_id: vacancy.id,
+          applicant_id: user.id,
           status: 'pending',
         } as never)
 
@@ -116,11 +116,11 @@ export default function ApplyToVacancyModal({
           
           // Show user-friendly role mismatch message
           if (vacancy.opportunity_type === 'coach') {
-            addToast('Only coaches can apply to coach vacancies.', 'error')
+            addToast('Only coaches can apply to coach opportunities.', 'error')
           } else if (vacancy.opportunity_type === 'player') {
-            addToast('Only players can apply to player vacancies.', 'error')
+            addToast('Only players can apply to player opportunities.', 'error')
           } else {
-            addToast('You cannot apply to this vacancy due to role restrictions.', 'error')
+            addToast('You cannot apply to this opportunity due to role restrictions.', 'error')
           }
         } else {
           // Real error - revert optimistic update

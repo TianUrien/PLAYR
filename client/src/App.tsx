@@ -46,12 +46,16 @@ const AdminDataIssues = lazy(() => import('@/features/admin/pages/AdminDataIssue
 const AdminDirectory = lazy(() => import('@/features/admin/pages/AdminDirectory').then(m => ({ default: m.AdminDirectory })))
 const AdminAuditLog = lazy(() => import('@/features/admin/pages/AdminAuditLog').then(m => ({ default: m.AdminAuditLog })))
 const AdminSettings = lazy(() => import('@/features/admin/pages/AdminSettings').then(m => ({ default: m.AdminSettings })))
-const AdminVacancies = lazy(() => import('@/features/admin/pages/AdminVacancies').then(m => ({ default: m.AdminVacancies })))
-const AdminVacancyDetail = lazy(() => import('@/features/admin/pages/AdminVacancyDetail').then(m => ({ default: m.AdminVacancyDetail })))
+const AdminOpportunities = lazy(() => import('@/features/admin/pages/AdminOpportunities').then(m => ({ default: m.AdminOpportunities })))
+const AdminOpportunityDetail = lazy(() => import('@/features/admin/pages/AdminOpportunityDetail').then(m => ({ default: m.AdminOpportunityDetail })))
 const AdminClubs = lazy(() => import('@/features/admin/pages/AdminClubs').then(m => ({ default: m.AdminClubs })))
 const AdminPlayers = lazy(() => import('@/features/admin/pages/AdminPlayers').then(m => ({ default: m.AdminPlayers })))
 const AdminEngagement = lazy(() => import('@/features/admin/pages/AdminEngagement').then(m => ({ default: m.AdminEngagement })))
+const AdminInvestorDashboard = lazy(() => import('@/features/admin/pages/AdminInvestorDashboard').then(m => ({ default: m.AdminInvestorDashboard })))
 const AdminWorld = lazy(() => import('@/features/admin/pages/AdminWorld'))
+
+// Public investor dashboard (no auth required)
+const PublicInvestorDashboard = lazy(() => import('@/pages/PublicInvestorDashboard'))
 
 // Loading fallback component
 const PageLoader = () => (
@@ -147,6 +151,9 @@ function App() {
                 <Route path="/world/:countrySlug" element={<WorldCountryPage />} />
                 <Route path="/world/:countrySlug/:provinceSlug" element={<WorldProvincePage />} />
                 <Route path="/world/:countrySlug/:provinceSlug/:leagueSlug" element={<WorldLeagueClubsPage />} />
+
+                {/* Public Investor Dashboard (shareable link) */}
+                <Route path="/investors/:token" element={<PublicInvestorDashboard />} />
                 
                 {/* Protected Routes (require authentication) - Lazy loaded */}
                 <Route path="/complete-profile" element={<CompleteProfile />} />
@@ -159,7 +166,7 @@ function App() {
                 <Route path="/messages/:conversationId" element={<MessagesPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/dashboard/profile" element={<DashboardRouter />} />
-                <Route path="/dashboard/club/vacancies/:vacancyId/applicants" element={<ApplicantsList />} />
+                <Route path="/dashboard/club/opportunities/:opportunityId/applicants" element={<ApplicantsList />} />
 
                 {/* Network-only profile routes (alias for clarity; still behind auth) */}
                 <Route path="/members/:username" element={<PublicPlayerProfile />} />
@@ -174,11 +181,12 @@ function App() {
                 <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
                   <Route index element={<Navigate to="/admin/overview" replace />} />
                   <Route path="overview" element={<AdminOverview />} />
-                  <Route path="vacancies" element={<AdminVacancies />} />
-                  <Route path="vacancies/:id" element={<AdminVacancyDetail />} />
+                  <Route path="opportunities" element={<AdminOpportunities />} />
+                  <Route path="opportunities/:id" element={<AdminOpportunityDetail />} />
                   <Route path="clubs" element={<AdminClubs />} />
                   <Route path="players" element={<AdminPlayers />} />
                   <Route path="engagement" element={<AdminEngagement />} />
+                  <Route path="investors" element={<AdminInvestorDashboard />} />
                   <Route path="world" element={<AdminWorld />} />
                   <Route path="data-issues" element={<AdminDataIssues />} />
                   <Route path="directory" element={<AdminDirectory />} />

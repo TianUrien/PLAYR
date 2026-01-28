@@ -64,11 +64,15 @@ export default function ResetPassword() {
         throw updateError
       }
 
+      // Security: Sign out ALL sessions globally after password reset
+      // This ensures any potentially compromised sessions are invalidated
+      await supabase.auth.signOut({ scope: 'global' })
+
       setSuccess(true)
 
-      // Redirect to dashboard after a short delay
+      // Redirect to login after a short delay (user must re-authenticate)
       setTimeout(() => {
-        navigate('/dashboard/profile')
+        navigate('/')
       }, 2000)
     } catch (err) {
       logger.error('[RESET_PASSWORD] Error:', err)
@@ -108,7 +112,7 @@ export default function ResetPassword() {
               </div>
               <h3 className="text-2xl font-bold text-white mb-2">Password updated!</h3>
               <p className="text-gray-400 mb-6">
-                Your password has been successfully reset. Redirecting you to your dashboard...
+                Your password has been successfully reset. All sessions have been signed out for security. Redirecting you to sign in...
               </p>
               <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
             </div>

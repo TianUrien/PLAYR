@@ -159,8 +159,8 @@ export default function DeleteAccountModal({ isOpen, onClose, userEmail }: Delet
             <li>• Your profile and all personal information</li>
             <li>• All messages and conversations</li>
             <li>• All uploaded photos and media</li>
-            <li>• Applications and vacancies</li>
-            <li>• Playing history and records</li>
+            <li>• Applications and opportunities</li>
+            <li>• Career history and records</li>
           </ul>
         </div>
 

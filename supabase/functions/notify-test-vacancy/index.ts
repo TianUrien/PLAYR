@@ -110,9 +110,9 @@ Deno.serve(async (req: Request) => {
       clubId: payload.record?.club_id 
     })
 
-    // Validate this is a vacancy event
-    if (payload.table !== 'vacancies') {
-      logger.info('Ignoring non-vacancy event')
+    // Validate this is an opportunity event
+    if (payload.table !== 'opportunities') {
+      logger.info('Ignoring non-opportunity event')
       return new Response(
         JSON.stringify({ message: 'Ignored - not a vacancy event' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

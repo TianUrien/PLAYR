@@ -26,7 +26,7 @@ import { logger } from '@/lib/logger'
 type StatusFilter = 'all' | 'draft' | 'open' | 'closed'
 type DaysFilter = 7 | 30 | 90 | null
 
-export function AdminVacancies() {
+export function AdminOpportunities() {
   const [vacancies, setVacancies] = useState<VacancyListItem[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [stats, setStats] = useState<ExtendedDashboardStats | null>(null)
@@ -158,7 +158,7 @@ export function AdminVacancies() {
       label: '',
       render: (_, row) => (
         <Link
-          to={`/admin/vacancies/${row.id}`}
+          to={`/admin/opportunities/${row.id}`}
           className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors inline-flex"
         >
           <ChevronRight className="w-4 h-4 text-gray-400" />

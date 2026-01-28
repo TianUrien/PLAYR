@@ -23,7 +23,7 @@ test.describe('@smoke club', () => {
     const seeded = readSeededVacancy()
     expect(seeded.id, 'Seeded vacancy id should be written by auth.setup').toBeTruthy()
 
-    await page.goto(`/dashboard/club/vacancies/${seeded.id}/applicants`)
+    await page.goto(`/dashboard/club/opportunities/${seeded.id}/applicants`)
 
     await expect(
       page.getByRole('heading', { level: 1, name: new RegExp(`Applicants for ${seeded.title}`, 'i') })
