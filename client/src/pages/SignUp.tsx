@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Mail, Lock, User, Building2, Briefcase } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, Building2, Briefcase, Store } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { Input, Button, InAppBrowserWarning } from '@/components'
 import { supabase } from '@/lib/supabase'
@@ -9,7 +9,7 @@ import { logger } from '@/lib/logger'
 import { supportsReliableOAuth } from '@/lib/inAppBrowser'
 import { checkSignupRateLimit, formatRateLimitError } from '@/lib/rateLimit'
 
-type UserRole = 'player' | 'coach' | 'club'
+type UserRole = 'player' | 'coach' | 'club' | 'brand'
 type SignUpResponse = Awaited<ReturnType<typeof supabase.auth.signUp>>
 
 /**
@@ -202,6 +202,19 @@ export default function SignUp() {
                     <p className="text-sm text-gray-600">Discover talent and build your team</p>
                   </div>
                 </button>
+
+                <button
+                  onClick={() => setSelectedRole('brand')}
+                  className="w-full flex items-center gap-4 p-6 border-2 border-gray-200 rounded-xl hover:border-[#f59e0b] hover:bg-[#f59e0b]/5 transition-all group"
+                >
+                  <div className="w-14 h-14 rounded-full bg-[#f59e0b]/10 group-hover:bg-[#f59e0b] flex items-center justify-center transition-colors">
+                    <Store className="w-7 h-7 text-[#f59e0b] group-hover:text-white transition-colors" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <h4 className="text-lg font-bold text-gray-900 mb-1">Join as Brand</h4>
+                    <p className="text-sm text-gray-600">Showcase products and connect with athletes</p>
+                  </div>
+                </button>
               </div>
 
               <div className="mt-6 text-center">
@@ -267,6 +280,7 @@ export default function SignUp() {
                 {selectedRole === 'player' && 'Join as Player'}
                 {selectedRole === 'coach' && 'Join as Coach'}
                 {selectedRole === 'club' && 'Join as Club'}
+                {selectedRole === 'brand' && 'Join as Brand'}
               </h3>
               <p className="text-gray-600 mb-6">
                 Enter your email and password to create your account
