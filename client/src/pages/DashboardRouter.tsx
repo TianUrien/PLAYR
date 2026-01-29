@@ -5,7 +5,7 @@ import { logger } from '@/lib/logger'
 import PlayerDashboard from './PlayerDashboard'
 import CoachDashboard from './CoachDashboard'
 import ClubDashboard from './ClubDashboard'
-import { useMyBrand } from '@/hooks/useMyBrand'
+import BrandDashboard from './BrandDashboard'
 
 /**
  * DashboardRouter - Single source of truth for profile-based routing
@@ -23,7 +23,6 @@ import { useMyBrand } from '@/hooks/useMyBrand'
 export default function DashboardRouter() {
   const navigate = useNavigate()
   const { user, profile, loading, hasCompletedOnboardingRedirect, setHasCompletedOnboardingRedirect, profileStatus } = useAuthStore()
-  const { brand, isLoading: brandLoading } = useMyBrand()
 
   useEffect(() => {
     logger.debug('[DASHBOARD_ROUTER]', {
@@ -127,28 +126,9 @@ export default function DashboardRouter() {
     return <CoachDashboard />
   }
 
-  // Brand users: redirect to their brand page or onboarding
+  // Brand users: render BrandDashboard (handles its own loading/redirect logic)
   if (profile.role === 'brand') {
-    if (brandLoading) {
-      return (
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-[#6366f1] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">Loading your brand...</p>
-          </div>
-        </div>
-      )
-    }
-
-    if (brand) {
-      // Redirect to brand profile page
-      navigate(`/brands/${brand.slug}`, { replace: true })
-      return null
-    } else {
-      // No brand yet, redirect to onboarding
-      navigate('/brands/onboarding', { replace: true })
-      return null
-    }
+    return <BrandDashboard />
   }
 
   return <ClubDashboard />

@@ -1,0 +1,463 @@
+/**
+ * BrandDashboard
+ *
+ * Dashboard page for brand users to manage their brand profile.
+ * Follows the same structural pattern as PlayerDashboard, CoachDashboard, and ClubDashboard.
+ */
+
+import { useEffect, useState, useRef } from 'react'
+import { MapPin, Globe, Instagram, ExternalLink, Eye, Edit, MessageCircle, Store, Package, Users, Loader2 } from 'lucide-react'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
+import Header from '@/components/Header'
+import { Avatar, Button, DashboardMenu, ProfileStrengthCard, RoleBadge, ScrollableTabs } from '@/components'
+import { BrandForm, type BrandFormData } from '@/components/brands'
+import { useBrandProfileStrength } from '@/hooks/useBrandProfileStrength'
+import { useMyBrand } from '@/hooks/useMyBrand'
+import { useAuthStore } from '@/lib/auth'
+import { useToastStore } from '@/lib/toast'
+import { logger } from '@/lib/logger'
+import Skeleton from '@/components/Skeleton'
+
+type TabType = 'overview' | 'products' | 'messages' | 'followers'
+
+const TABS: { id: TabType; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'products', label: 'Products' },
+  { id: 'messages', label: 'Messages' },
+  { id: 'followers', label: 'Followers' },
+]
+
+export default function BrandDashboard() {
+  const navigate = useNavigate()
+  const { user, profile } = useAuthStore()
+  const { brand, isLoading: brandLoading, updateBrand, refetch: refetchBrand } = useMyBrand()
+  const { addToast } = useToastStore()
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const param = searchParams.get('tab') as TabType | null
+    return param && TABS.some(t => t.id === param) ? param : 'overview'
+  })
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Profile strength for brand
+  const { percentage, buckets, loading: strengthLoading, refresh: refreshStrength } = useBrandProfileStrength({
+    brand,
+  })
+
+  // Track previous percentage to show toast on improvement
+  const prevPercentageRef = useRef<number | null>(null)
+
+  // Redirect if not a brand user
+  useEffect(() => {
+    if (!user) {
+      navigate('/signup', { replace: true })
+      return
+    }
+    if (profile && profile.role !== 'brand') {
+      navigate('/dashboard/profile', { replace: true })
+    }
+  }, [user, profile, navigate])
+
+  // Redirect to onboarding if no brand exists
+  useEffect(() => {
+    if (!brandLoading && !brand && profile?.role === 'brand') {
+      navigate('/brands/onboarding', { replace: true })
+    }
+  }, [brand, brandLoading, profile?.role, navigate])
+
+  // Sync tab with URL
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') as TabType | null
+    if (tabParam && TABS.some(t => t.id === tabParam) && tabParam !== activeTab) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams, activeTab])
+
+  // Refresh profile strength when switching to overview tab
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      void refreshStrength()
+    }
+  }, [activeTab, refreshStrength])
+
+  // Show toast when profile strength improves
+  useEffect(() => {
+    if (strengthLoading) return
+    if (prevPercentageRef.current !== null && percentage > prevPercentageRef.current) {
+      addToast(`Profile strength: ${percentage}%`, 'success')
+    }
+    prevPercentageRef.current = percentage
+  }, [percentage, strengthLoading, addToast])
+
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab)
+    const next = new URLSearchParams(searchParams)
+    next.set('tab', tab)
+    setSearchParams(next, { replace: true })
+  }
+
+  const handleUpdateBrand = async (data: BrandFormData) => {
+    setIsSubmitting(true)
+    try {
+      const result = await updateBrand({
+        name: data.name,
+        bio: data.bio || undefined,
+        logo_url: data.logo_url || undefined,
+        website_url: data.website_url || undefined,
+        instagram_url: data.instagram_url || undefined,
+        category: data.category,
+      })
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update brand')
+      }
+
+      addToast('Brand profile updated successfully', 'success')
+      setShowEditModal(false)
+      await refetchBrand()
+      await refreshStrength()
+    } catch (err) {
+      logger.error('[BrandDashboard] Error updating brand:', err)
+      addToast(err instanceof Error ? err.message : 'Failed to update brand', 'error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const getInitials = (name: string | null) => {
+    if (!name) return '?'
+    return name
+      .trim()
+      .split(' ')
+      .filter(Boolean)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
+  const getCategoryLabel = (category: string | null) => {
+    if (!category) return null
+    const labels: Record<string, string> = {
+      equipment: 'Equipment',
+      apparel: 'Apparel',
+      accessories: 'Accessories',
+      nutrition: 'Nutrition',
+      services: 'Services',
+      technology: 'Technology',
+      other: 'Other',
+    }
+    return labels[category] || category
+  }
+
+  // Loading state
+  if (brandLoading || !brand) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main className="mx-auto max-w-7xl px-4 pt-24 pb-12 md:px-6">
+          <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm md:p-8">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center">
+              <Skeleton variant="circular" width={96} height={96} className="flex-shrink-0" />
+              <div className="flex-1 space-y-4">
+                <Skeleton width="60%" height={40} />
+                <div className="flex flex-wrap gap-4">
+                  <Skeleton width={160} height={24} />
+                  <Skeleton width={140} height={24} />
+                </div>
+                <Skeleton width={90} height={28} className="rounded-full" />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl bg-white shadow-sm">
+            <div className="space-y-6 p-6 md:p-8">
+              <Skeleton width="40%" height={28} />
+              <Skeleton width="100%" height={120} />
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-12">
+        {/* Profile Card */}
+        <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm mb-6 animate-fade-in overflow-visible">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+            <Avatar
+              src={brand.logo_url}
+              initials={getInitials(brand.name)}
+              size="xl"
+              className="flex-shrink-0"
+              alt={brand.name ?? undefined}
+              enablePreview
+              previewTitle={brand.name ?? undefined}
+            />
+
+            <div className="flex-1">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-900">{brand.name}</h1>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/brands/${brand.slug}`)}
+                    className="gap-1.5 whitespace-nowrap text-xs sm:text-sm px-2.5 sm:px-4"
+                  >
+                    <Eye className="w-4 h-4 flex-shrink-0" />
+                    <span className="hidden xs:inline">Public View</span>
+                    <span className="xs:hidden">View</span>
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setShowEditModal(true)}
+                    className="gap-1.5 whitespace-nowrap text-xs sm:text-sm px-2.5 sm:px-4"
+                  >
+                    <Edit className="w-4 h-4 flex-shrink-0" />
+                    <span className="hidden xs:inline">Edit Brand</span>
+                    <span className="xs:hidden">Edit</span>
+                  </Button>
+                  <DashboardMenu />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 text-gray-600 mb-4">
+                {brand.category && (
+                  <div className="flex items-center gap-2">
+                    <Store className="w-5 h-5" />
+                    <span>{getCategoryLabel(brand.category)}</span>
+                  </div>
+                )}
+                {brand.website_url && (
+                  <a
+                    href={brand.website_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 hover:text-indigo-600 transition-colors"
+                  >
+                    <Globe className="w-5 h-5" />
+                    <span className="truncate max-w-[200px]">
+                      {brand.website_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                    </span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+                {brand.instagram_url && (
+                  <a
+                    href={brand.instagram_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 hover:text-indigo-600 transition-colors"
+                  >
+                    <Instagram className="w-5 h-5" />
+                    <span>Instagram</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                )}
+              </div>
+
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <RoleBadge role="brand" />
+                {brand.is_verified && (
+                  <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                    Verified
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="bg-white rounded-2xl shadow-sm animate-slide-in-up">
+          <div className="sticky top-[68px] z-40 border-b border-gray-200 bg-white/90 backdrop-blur">
+            <ScrollableTabs
+              tabs={TABS}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              className="gap-8 px-6"
+              activeClassName="border-[#8b5cf6] text-[#8b5cf6]"
+              inactiveClassName="border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
+            />
+          </div>
+
+          <div className="p-6 md:p-8">
+            {/* Overview Tab */}
+            {activeTab === 'overview' && (
+              <div className="space-y-8 animate-fade-in">
+                {/* Profile Strength Card */}
+                <ProfileStrengthCard
+                  percentage={percentage}
+                  buckets={buckets}
+                  loading={strengthLoading}
+                  onBucketAction={(bucket) => {
+                    if (bucket.actionId === 'edit-profile') {
+                      setShowEditModal(true)
+                    }
+                  }}
+                />
+
+                {/* Brand Info Section */}
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Brand Information</h2>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Brand Name</label>
+                      <p className="text-gray-900 font-medium">{brand.name}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                      <p className="text-gray-900">{getCategoryLabel(brand.category) || 'Not specified'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                      {brand.website_url ? (
+                        <a
+                          href={brand.website_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                        >
+                          {brand.website_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        <p className="text-gray-500 italic">Not specified</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
+                      {brand.instagram_url ? (
+                        <a
+                          href={brand.instagram_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                        >
+                          {brand.instagram_url.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        <p className="text-gray-500 italic">Not specified</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* About Section */}
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">About</h2>
+                  {brand.bio ? (
+                    <p className="text-gray-700 whitespace-pre-wrap">{brand.bio}</p>
+                  ) : (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                      <p className="text-gray-500 mb-4">Add a description to tell people about your brand.</p>
+                      <Button variant="outline" size="sm" onClick={() => setShowEditModal(true)}>
+                        Add Description
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Products Tab */}
+            {activeTab === 'products' && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900">Products & Services</h2>
+                </div>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                  <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Coming Soon</h3>
+                  <p className="text-gray-600 max-w-md mx-auto">
+                    Soon you'll be able to showcase your products and services here. Athletes will be able to discover and connect with your brand.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Messages Tab */}
+            {activeTab === 'messages' && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900">Messages</h2>
+                  <Link to="/messages">
+                    <Button variant="primary" size="sm" className="gap-2">
+                      <MessageCircle className="w-4 h-4" />
+                      Open Messages
+                    </Button>
+                  </Link>
+                </div>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                  <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Your Conversations</h3>
+                  <p className="text-gray-600 max-w-md mx-auto mb-4">
+                    Athletes and clubs can reach out to you. View and respond to your messages in the Messages section.
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Note: As a brand, you can reply to conversations but cannot initiate them.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Followers Tab */}
+            {activeTab === 'followers' && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900">Followers</h2>
+                </div>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                  <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Coming Soon</h3>
+                  <p className="text-gray-600 max-w-md mx-auto">
+                    Soon athletes will be able to follow your brand. You'll see your followers here and be able to connect with them.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* Edit Brand Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50" onClick={() => setShowEditModal(false)} />
+            <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">Edit Brand Profile</h2>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-6">
+                <BrandForm
+                  brand={brand}
+                  onSubmit={handleUpdateBrand}
+                  isSubmitting={isSubmitting}
+                  submitLabel="Save Changes"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
