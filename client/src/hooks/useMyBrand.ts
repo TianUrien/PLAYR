@@ -92,6 +92,14 @@ export function useMyBrand(): UseMyBrandResult {
 
       const response = result as { success: boolean; brand_id: string; slug: string }
 
+      // Sync logo to profile avatar_url so it shows in Community listings
+      if (data.logo_url && user) {
+        await supabase
+          .from('profiles')
+          .update({ avatar_url: data.logo_url })
+          .eq('id', user.id)
+      }
+
       // Refetch to get the full brand data
       await fetchMyBrand()
 
@@ -103,7 +111,7 @@ export function useMyBrand(): UseMyBrandResult {
         error: err instanceof Error ? err.message : 'Failed to create brand',
       }
     }
-  }, [fetchMyBrand])
+  }, [fetchMyBrand, user])
 
   const updateBrand = useCallback(async (data: UpdateBrandInput) => {
     try {
@@ -121,6 +129,14 @@ export function useMyBrand(): UseMyBrandResult {
         throw rpcError
       }
 
+      // Sync logo to profile avatar_url so it shows in Community listings
+      if (data.logo_url && user) {
+        await supabase
+          .from('profiles')
+          .update({ avatar_url: data.logo_url })
+          .eq('id', user.id)
+      }
+
       // Refetch to get the updated data
       await fetchMyBrand()
 
@@ -132,7 +148,7 @@ export function useMyBrand(): UseMyBrandResult {
         error: err instanceof Error ? err.message : 'Failed to update brand',
       }
     }
-  }, [fetchMyBrand])
+  }, [fetchMyBrand, user])
 
   useEffect(() => {
     fetchMyBrand()
