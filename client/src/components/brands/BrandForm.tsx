@@ -334,10 +334,16 @@ export function BrandForm({
         </label>
         <Input
           id="brand-website"
-          type="url"
+          type="text"
           value={formData.website_url}
           onChange={(e) => setFormData(prev => ({ ...prev, website_url: e.target.value }))}
-          placeholder="https://your-brand.com"
+          onBlur={(e) => {
+            const value = e.target.value.trim()
+            if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
+              setFormData(prev => ({ ...prev, website_url: `https://${value}` }))
+            }
+          }}
+          placeholder="www.your-brand.com"
         />
       </div>
 
@@ -348,10 +354,16 @@ export function BrandForm({
         </label>
         <Input
           id="brand-instagram"
-          type="url"
+          type="text"
           value={formData.instagram_url}
           onChange={(e) => setFormData(prev => ({ ...prev, instagram_url: e.target.value }))}
-          placeholder="https://instagram.com/yourbrand"
+          onBlur={(e) => {
+            const value = e.target.value.trim()
+            if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
+              setFormData(prev => ({ ...prev, instagram_url: `https://${value}` }))
+            }
+          }}
+          placeholder="instagram.com/yourbrand"
         />
       </div>
 
