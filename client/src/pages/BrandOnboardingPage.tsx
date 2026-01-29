@@ -144,6 +144,7 @@ export default function BrandOnboardingPage() {
               onSubmit={handleSubmit}
               isSubmitting={isSubmitting}
               submitLabel="Create Brand"
+              persistKey="onboarding"
             />
           </div>
         </div>

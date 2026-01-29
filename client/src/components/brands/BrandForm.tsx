@@ -19,6 +19,8 @@ interface BrandFormProps {
   onSubmit: (data: BrandFormData) => Promise<void>
   isSubmitting?: boolean
   submitLabel?: string
+  /** Key for persisting draft to localStorage (enables draft saving when set) */
+  persistKey?: string
 }
 
 export interface BrandFormData {
@@ -49,26 +51,75 @@ function generateSlug(name: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
+const STORAGE_PREFIX = 'playr_brand_draft_'
+
 export function BrandForm({
   brand,
   onSubmit,
   isSubmitting = false,
   submitLabel = 'Save',
+  persistKey,
 }: BrandFormProps) {
   const { user } = useAuthStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [formData, setFormData] = useState<BrandFormData>({
-    name: brand?.name || '',
-    slug: brand?.slug || '',
-    category: brand?.category || 'equipment',
-    bio: brand?.bio || '',
-    logo_url: brand?.logo_url || '',
-    website_url: brand?.website_url || '',
-    instagram_url: brand?.instagram_url || '',
-  })
+  // Load initial data from localStorage draft or brand prop
+  const getInitialFormData = (): BrandFormData => {
+    if (persistKey) {
+      try {
+        const saved = localStorage.getItem(STORAGE_PREFIX + persistKey)
+        if (saved) {
+          const parsed = JSON.parse(saved) as Partial<BrandFormData>
+          return {
+            name: parsed.name || brand?.name || '',
+            slug: parsed.slug || brand?.slug || '',
+            category: parsed.category || brand?.category || 'equipment',
+            bio: parsed.bio || brand?.bio || '',
+            logo_url: parsed.logo_url || brand?.logo_url || '',
+            website_url: parsed.website_url || brand?.website_url || '',
+            instagram_url: parsed.instagram_url || brand?.instagram_url || '',
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+    return {
+      name: brand?.name || '',
+      slug: brand?.slug || '',
+      category: brand?.category || 'equipment',
+      bio: brand?.bio || '',
+      logo_url: brand?.logo_url || '',
+      website_url: brand?.website_url || '',
+      instagram_url: brand?.instagram_url || '',
+    }
+  }
+
+  const [formData, setFormData] = useState<BrandFormData>(getInitialFormData)
+
+  // Persist form data to localStorage when it changes
+  useEffect(() => {
+    if (persistKey && formData.name) {
+      try {
+        localStorage.setItem(STORAGE_PREFIX + persistKey, JSON.stringify(formData))
+      } catch {
+        // Ignore storage errors
+      }
+    }
+  }, [formData, persistKey])
+
+  // Clear draft after successful submission
+  const clearDraft = useCallback(() => {
+    if (persistKey) {
+      try {
+        localStorage.removeItem(STORAGE_PREFIX + persistKey)
+      } catch {
+        // Ignore storage errors
+      }
+    }
+  }, [persistKey])
 
   // Auto-generate slug from name (only for new brands)
   useEffect(() => {
@@ -152,6 +203,7 @@ export function BrandForm({
 
     try {
       await onSubmit(formData)
+      clearDraft() // Clear saved draft on successful submission
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save brand')
     }
