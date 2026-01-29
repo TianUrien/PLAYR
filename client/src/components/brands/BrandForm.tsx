@@ -139,7 +139,7 @@ export function BrandForm({
       setError(null)
 
       // Validate the image
-      const validation = validateImage(file)
+      const validation = validateImage(file, { maxFileSizeMB: 10 })
       if (!validation.valid) {
         throw new Error(validation.error)
       }
