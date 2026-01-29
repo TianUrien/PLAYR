@@ -38,6 +38,12 @@ const WorldCountryPage = lazy(() => import('@/pages/WorldCountryPage'))
 const WorldProvincePage = lazy(() => import('@/pages/WorldProvincePage'))
 const WorldLeagueClubsPage = lazy(() => import('@/pages/WorldLeagueClubsPage'))
 
+// Brand pages
+const BrandsPage = lazy(() => import('@/pages/BrandsPage'))
+const BrandProfilePage = lazy(() => import('@/pages/BrandProfilePage'))
+const BrandOnboardingPage = lazy(() => import('@/pages/BrandOnboardingPage'))
+const BrandDashboardPage = lazy(() => import('@/pages/BrandDashboardPage'))
+
 // Lazy load admin components (code splitting)
 const AdminGuard = lazy(() => import('@/features/admin/components/AdminGuard').then(m => ({ default: m.AdminGuard })))
 const AdminLayout = lazy(() => import('@/features/admin/components/AdminLayout').then(m => ({ default: m.AdminLayout })))
@@ -151,6 +157,12 @@ function App() {
                 <Route path="/world/:countrySlug" element={<WorldCountryPage />} />
                 <Route path="/world/:countrySlug/:provinceSlug" element={<WorldProvincePage />} />
                 <Route path="/world/:countrySlug/:provinceSlug/:leagueSlug" element={<WorldLeagueClubsPage />} />
+
+                {/* Brands Directory (public listing, auth for profile actions) */}
+                <Route path="/brands" element={<BrandsPage />} />
+                <Route path="/brands/onboarding" element={<BrandOnboardingPage />} />
+                <Route path="/brands/:slug" element={<BrandProfilePage />} />
+                <Route path="/dashboard/brand" element={<BrandDashboardPage />} />
 
                 {/* Public Investor Dashboard (shareable link) */}
                 <Route path="/investors/:token" element={<PublicInvestorDashboard />} />

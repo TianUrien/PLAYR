@@ -1,0 +1,132 @@
+/**
+ * BrandsPage
+ *
+ * Directory page for discovering brands.
+ */
+
+import { useState } from 'react'
+import { Search, Store, Loader2 } from 'lucide-react'
+import { Header, Layout } from '@/components'
+import { BrandCard, BrandCategoryFilter } from '@/components/brands'
+import { useBrands, type BrandCategory } from '@/hooks/useBrands'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
+
+export default function BrandsPage() {
+  const isMobile = useMediaQuery('(max-width: 1023px)')
+  const [category, setCategory] = useState<BrandCategory | null>(null)
+  const [search, setSearch] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+
+  const { brands, isLoading, error, total, hasMore, loadMore } = useBrands({
+    category,
+    search: search || null,
+  })
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    setSearch(searchInput)
+  }
+
+  return (
+    <Layout>
+      {!isMobile && <Header />}
+
+      <div className={`flex-1 ${isMobile ? 'pt-[var(--app-header-offset)]' : ''}`}>
+        <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
+          {/* Page Header */}
+          <div className="mb-6">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              Brands
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Discover equipment, apparel, and services for hockey
+            </p>
+          </div>
+
+          {/* Search */}
+          <form onSubmit={handleSearch} className="mb-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search brands..."
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+            </div>
+          </form>
+
+          {/* Category Filter */}
+          <div className="mb-6">
+            <BrandCategoryFilter value={category} onChange={setCategory} />
+          </div>
+
+          {/* Results Count */}
+          {!isLoading && (
+            <p className="text-sm text-gray-500 mb-4">
+              {total} {total === 1 ? 'brand' : 'brands'} found
+            </p>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+              {error}
+            </div>
+          )}
+
+          {/* Loading State */}
+          {isLoading && brands.length === 0 && (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!isLoading && brands.length === 0 && !error && (
+            <div className="text-center py-12">
+              <Store className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No brands found
+              </h3>
+              <p className="text-gray-500">
+                {search
+                  ? 'Try adjusting your search terms'
+                  : 'Be the first to register your brand!'}
+              </p>
+            </div>
+          )}
+
+          {/* Brands Grid */}
+          {brands.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              {brands.map((brand) => (
+                <BrandCard key={brand.id} brand={brand} />
+              ))}
+            </div>
+          )}
+
+          {/* Load More */}
+          {hasMore && !isLoading && (
+            <div className="mt-8 text-center">
+              <button
+                onClick={loadMore}
+                className="px-6 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Load more
+              </button>
+            </div>
+          )}
+
+          {/* Loading More */}
+          {isLoading && brands.length > 0 && (
+            <div className="mt-8 flex items-center justify-center">
+              <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+            </div>
+          )}
+        </div>
+      </div>
+    </Layout>
+  )
+}

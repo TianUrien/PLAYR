@@ -93,9 +93,17 @@ export default function Header() {
             </span>
           </div>
 
-          {/* Mobile Navigation - Notifications only (rest in bottom nav) */}
+          {/* Mobile Navigation - Messages + Notifications (rest in bottom nav) */}
           {user && profile && (
-            <div className="flex md:hidden items-center">
+            <div className="flex md:hidden items-center gap-1">
+              <button
+                onClick={() => handleNavigate('/messages')}
+                className="relative p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                aria-label="Messages"
+              >
+                <MessageCircle className="w-5 h-5" />
+                <NotificationBadge count={unreadCount} className="-right-0.5 -top-0.5" />
+              </button>
               <button
                 onClick={() => toggleNotificationDrawer()}
                 className="relative p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"

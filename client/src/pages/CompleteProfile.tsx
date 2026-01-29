@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, MapPin, Globe, Calendar, Building2, Camera, UserRound, Briefcase, Users } from 'lucide-react'
+import { User, MapPin, Globe, Calendar, Building2, Camera, UserRound, Briefcase, Users, Store } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { Input, Button, CountrySelect } from '@/components'
 import { useCountries } from '@/hooks/useCountries'
@@ -12,7 +12,7 @@ import { optimizeAvatarImage, validateImage } from '@/lib/imageOptimization'
 import { invalidateProfile } from '@/lib/profile'
 import { deleteStorageObject } from '@/lib/storage'
 
-type UserRole = 'player' | 'coach' | 'club'
+type UserRole = 'player' | 'coach' | 'club' | 'brand'
 
 /**
  * CompleteProfile - Step 2 of signup (POST email verification)
@@ -153,6 +153,12 @@ export default function CompleteProfile() {
       await fetchProfile(user.id, { force: true })
 
       logger.debug('[COMPLETE_PROFILE] Profile fetched after creation')
+
+      // Brands have a separate onboarding flow
+      if (selectedRole === 'brand') {
+        navigate('/brands/onboarding')
+        return
+      }
     } catch (err) {
       captureOnboardingError(err, {
         stage: 'handleRoleSelectionCatch',
@@ -198,6 +204,13 @@ export default function CompleteProfile() {
     if (!user) {
       logger.debug('[COMPLETE_PROFILE] No user, redirecting to signup')
       navigate('/signup', { replace: true })
+      return
+    }
+
+    // Brand users have a separate onboarding flow
+    if (profile?.role === 'brand' && !profile?.onboarding_completed) {
+      logger.debug('[COMPLETE_PROFILE] Brand user, redirecting to brand onboarding')
+      navigate('/brands/onboarding', { replace: true })
     }
   }, [user, profile, authLoading, navigate, profileStatus])
 
@@ -633,6 +646,24 @@ export default function CompleteProfile() {
                     <div>
                       <h4 className="font-semibold text-gray-900">I'm a Club</h4>
                       <p className="text-sm text-gray-500">Recruiting players and coaches for my organization</p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Brand Option */}
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelection('brand')}
+                  disabled={creatingProfile}
+                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#6366f1] hover:bg-purple-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center group-hover:from-purple-200 group-hover:to-indigo-200 transition-colors">
+                      <Store className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">I'm a Brand</h4>
+                      <p className="text-sm text-gray-500">Showcasing products and connecting with athletes</p>
                     </div>
                   </div>
                 </button>

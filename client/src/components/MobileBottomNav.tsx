@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Users, Briefcase, MessageCircle, Globe } from 'lucide-react'
+import { Users, Briefcase, Store, Globe } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { Avatar, NotificationBadge } from '@/components'
-import { useUnreadMessages } from '@/hooks/useUnreadMessages'
 import { useOpportunityNotifications } from '@/hooks/useOpportunityNotifications'
 import { useNotificationStore } from '@/lib/notifications'
 
@@ -18,7 +17,6 @@ export default function MobileBottomNav() {
   const navigate = useNavigate()
   const location = useLocation()
   const { profile, user } = useAuthStore()
-  const { count: unreadCount } = useUnreadMessages()
   const { count: opportunityCount } = useOpportunityNotifications()
   const toggleNotificationDrawer = useNotificationStore((state) => state.toggleDrawer)
   const closeNotificationsDrawer = () => toggleNotificationDrawer(false)
@@ -50,10 +48,10 @@ export default function MobileBottomNav() {
       icon: Briefcase,
     },
     {
-      id: 'messages',
-      label: 'Messages',
-      path: '/messages',
-      icon: MessageCircle,
+      id: 'brands',
+      label: 'Brands',
+      path: '/brands',
+      icon: Store,
     },
   ]
 
@@ -153,9 +151,6 @@ export default function MobileBottomNav() {
                       active ? 'stroke-[2.5]' : 'stroke-[2]'
                     }`}
                   />
-                  {item.id === 'messages' && (
-                    <NotificationBadge count={unreadCount} />
-                  )}
                   {item.id === 'opportunities' && (
                     <NotificationBadge count={opportunityCount} />
                   )}
