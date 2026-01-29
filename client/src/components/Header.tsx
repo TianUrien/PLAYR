@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MessageCircle, Users, Briefcase, Bell, Globe } from 'lucide-react'
+import { MessageCircle, Users, Briefcase, Bell, Globe, Store } from 'lucide-react'
 import { Avatar, NotificationBadge } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
@@ -148,6 +148,15 @@ export default function Header() {
                   <NotificationBadge count={opportunityCount} className="-right-3 -top-2" />
                 </button>
                 <button
+                  onClick={() => handleNavigate('/brands')}
+                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Store className="w-5 h-5" />
+                    <span>Brands</span>
+                  </div>
+                </button>
+                <button
                   onClick={() => handleNavigate('/messages')}
                   className="relative text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
                 >
@@ -210,6 +219,15 @@ export default function Header() {
                     <span>Opportunities</span>
                   </div>
                   <NotificationBadge count={opportunityCount} className="-right-3 -top-2" />
+                </button>
+                <button
+                  onClick={() => handleNavigate('/brands')}
+                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Store className="w-5 h-5" />
+                    <span>Brands</span>
+                  </div>
                 </button>
                 <button
                   onClick={() => handleNavigate('/')}
