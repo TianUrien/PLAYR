@@ -6,26 +6,29 @@
  */
 
 import { useEffect, useState, useRef } from 'react'
-import { MapPin, Globe, Instagram, ExternalLink, Eye, Edit, MessageCircle, Store, Package, Users, Loader2, Plus } from 'lucide-react'
+import { MapPin, Globe, Instagram, ExternalLink, Eye, Edit, MessageCircle, Store, Package, Users, Loader2, Plus, FileText } from 'lucide-react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import Header from '@/components/Header'
 import { Avatar, Button, DashboardMenu, ProfileStrengthCard, RoleBadge, ScrollableTabs } from '@/components'
-import { BrandForm, type BrandFormData, ProductCard, AddProductModal } from '@/components/brands'
+import { BrandForm, type BrandFormData, ProductCard, AddProductModal, BrandPostCard, AddPostModal } from '@/components/brands'
 import ConfirmActionModal from '@/components/ConfirmActionModal'
 import { useBrandProfileStrength } from '@/hooks/useBrandProfileStrength'
 import { useBrandProducts } from '@/hooks/useBrandProducts'
 import type { BrandProduct, CreateProductInput, UpdateProductInput } from '@/hooks/useBrandProducts'
+import { useBrandPosts } from '@/hooks/useBrandPosts'
+import type { BrandPost, CreatePostInput, UpdatePostInput } from '@/hooks/useBrandPosts'
 import { useMyBrand } from '@/hooks/useMyBrand'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import { logger } from '@/lib/logger'
 import Skeleton from '@/components/Skeleton'
 
-type TabType = 'overview' | 'products' | 'messages' | 'followers'
+type TabType = 'overview' | 'products' | 'posts' | 'messages' | 'followers'
 
 const TABS: { id: TabType; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'products', label: 'Products' },
+  { id: 'posts', label: 'Posts' },
   { id: 'messages', label: 'Messages' },
   { id: 'followers', label: 'Followers' },
 ]
@@ -50,6 +53,13 @@ export default function BrandDashboard() {
   const [editingProduct, setEditingProduct] = useState<BrandProduct | null>(null)
   const [productToDelete, setProductToDelete] = useState<BrandProduct | null>(null)
   const [isDeletingProduct, setIsDeletingProduct] = useState(false)
+
+  // Posts
+  const { posts, isLoading: postsLoading, createPost, updatePost, deletePost: deletePostFn } = useBrandPosts(brand?.id)
+  const [showAddPostModal, setShowAddPostModal] = useState(false)
+  const [editingPost, setEditingPost] = useState<BrandPost | null>(null)
+  const [postToDelete, setPostToDelete] = useState<BrandPost | null>(null)
+  const [isDeletingPost, setIsDeletingPost] = useState(false)
 
   // Profile strength for brand
   const { percentage, buckets, loading: strengthLoading, refresh: refreshStrength } = useBrandProfileStrength({
@@ -140,6 +150,37 @@ export default function BrandDashboard() {
       addToast('Failed to delete product', 'error')
     } finally {
       setIsDeletingProduct(false)
+    }
+  }
+
+  const handlePostSubmit = async (data: CreatePostInput | UpdatePostInput, isEdit: boolean) => {
+    if (isEdit && editingPost) {
+      const result = await updatePost(editingPost.id, data)
+      if (result.success) {
+        addToast('Post updated', 'success')
+        setEditingPost(null)
+      }
+      return result
+    }
+    const result = await createPost(data as CreatePostInput)
+    if (result.success) {
+      addToast('Post published', 'success')
+    }
+    return result
+  }
+
+  const handleDeletePost = async () => {
+    if (!postToDelete) return
+    setIsDeletingPost(true)
+    try {
+      const result = await deletePostFn(postToDelete.id)
+      if (!result.success) throw new Error(result.error)
+      addToast('Post deleted', 'success')
+      setPostToDelete(null)
+    } catch (err) {
+      addToast('Failed to delete post', 'error')
+    } finally {
+      setIsDeletingPost(false)
     }
   }
 
@@ -480,6 +521,69 @@ export default function BrandDashboard() {
               </div>
             )}
 
+            {/* Posts Tab */}
+            {activeTab === 'posts' && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900">Posts</h2>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => { setEditingPost(null); setShowAddPostModal(true) }}
+                    className="gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    New Post
+                  </Button>
+                </div>
+
+                {postsLoading ? (
+                  <div className="space-y-4">
+                    {[1, 2].map(i => (
+                      <div key={i} className="rounded-xl border border-gray-200 p-4 space-y-3">
+                        <Skeleton width="60%" height={18} />
+                        <Skeleton width="100%" height={14} />
+                        <Skeleton width="80%" height={14} />
+                      </div>
+                    ))}
+                  </div>
+                ) : posts.length === 0 ? (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                    <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No posts yet</h3>
+                    <p className="text-gray-600 max-w-md mx-auto mb-4">
+                      Share updates, announcements, and news with your audience. Posts appear in the global brand feed.
+                    </p>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => { setEditingPost(null); setShowAddPostModal(true) }}
+                      className="gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create Your First Post
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {posts.map(post => (
+                      <BrandPostCard
+                        key={post.id}
+                        post={post}
+                        brandName={brand.name}
+                        brandSlug={brand.slug}
+                        brandLogoUrl={brand.logo_url}
+                        brandIsVerified={brand.is_verified}
+                        isOwner
+                        onEdit={(p) => { setEditingPost(p); setShowAddPostModal(true) }}
+                        onDelete={(p) => setPostToDelete(p)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Messages Tab */}
             {activeTab === 'messages' && (
               <div className="space-y-6 animate-fade-in">
@@ -576,6 +680,31 @@ export default function BrandDashboard() {
           onConfirm={handleDeleteProduct}
           onClose={() => setProductToDelete(null)}
           confirmLoading={isDeletingProduct}
+        />
+      )}
+
+      {/* Add/Edit Post Modal */}
+      {brand && (
+        <AddPostModal
+          isOpen={showAddPostModal}
+          onClose={() => { setShowAddPostModal(false); setEditingPost(null) }}
+          onSubmit={handlePostSubmit}
+          brandId={brand.id}
+          editingPost={editingPost}
+        />
+      )}
+
+      {/* Delete Post Confirmation */}
+      {postToDelete && (
+        <ConfirmActionModal
+          isOpen={Boolean(postToDelete)}
+          title="Delete Post"
+          description="Are you sure you want to delete this post? This action cannot be undone."
+          confirmLabel="Delete"
+          confirmTone="danger"
+          onConfirm={handleDeletePost}
+          onClose={() => setPostToDelete(null)}
+          confirmLoading={isDeletingPost}
         />
       )}
     </div>
