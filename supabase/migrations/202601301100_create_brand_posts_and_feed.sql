@@ -251,57 +251,60 @@ BEGIN
     (SELECT count(*) FROM brand_posts bpo JOIN brands b ON b.id = bpo.brand_id WHERE bpo.deleted_at IS NULL AND b.deleted_at IS NULL)
   INTO v_total;
 
-  -- Fetch unified feed
-  SELECT COALESCE(jsonb_agg(item ORDER BY item_date DESC), '[]'::jsonb)
+  -- Fetch unified feed (paginate in subquery, then aggregate)
+  SELECT COALESCE(jsonb_agg(sub.item), '[]'::jsonb)
   INTO v_items
   FROM (
-    -- Products
-    SELECT
-      jsonb_build_object(
-        'type', 'product',
-        'id', bp.id,
-        'brand_id', bp.brand_id,
-        'brand_name', b.name,
-        'brand_slug', b.slug,
-        'brand_logo_url', b.logo_url,
-        'brand_category', b.category,
-        'brand_is_verified', b.is_verified,
-        'created_at', bp.created_at,
-        'product_name', bp.name,
-        'product_description', bp.description,
-        'product_images', bp.images,
-        'product_external_url', bp.external_url
-      ) AS item,
-      bp.created_at AS item_date
-    FROM brand_products bp
-    JOIN brands b ON b.id = bp.brand_id
-    WHERE bp.deleted_at IS NULL AND b.deleted_at IS NULL
+    SELECT item
+    FROM (
+      -- Products
+      SELECT
+        jsonb_build_object(
+          'type', 'product',
+          'id', bp.id,
+          'brand_id', bp.brand_id,
+          'brand_name', b.name,
+          'brand_slug', b.slug,
+          'brand_logo_url', b.logo_url,
+          'brand_category', b.category,
+          'brand_is_verified', b.is_verified,
+          'created_at', bp.created_at,
+          'product_name', bp.name,
+          'product_description', bp.description,
+          'product_images', bp.images,
+          'product_external_url', bp.external_url
+        ) AS item,
+        bp.created_at AS item_date
+      FROM brand_products bp
+      JOIN brands b ON b.id = bp.brand_id
+      WHERE bp.deleted_at IS NULL AND b.deleted_at IS NULL
 
-    UNION ALL
+      UNION ALL
 
-    -- Posts
-    SELECT
-      jsonb_build_object(
-        'type', 'post',
-        'id', bpo.id,
-        'brand_id', bpo.brand_id,
-        'brand_name', b.name,
-        'brand_slug', b.slug,
-        'brand_logo_url', b.logo_url,
-        'brand_category', b.category,
-        'brand_is_verified', b.is_verified,
-        'created_at', bpo.created_at,
-        'post_content', bpo.content,
-        'post_image_url', bpo.image_url
-      ) AS item,
-      bpo.created_at AS item_date
-    FROM brand_posts bpo
-    JOIN brands b ON b.id = bpo.brand_id
-    WHERE bpo.deleted_at IS NULL AND b.deleted_at IS NULL
-  ) feed
-  ORDER BY item_date DESC
-  LIMIT p_limit
-  OFFSET p_offset;
+      -- Posts
+      SELECT
+        jsonb_build_object(
+          'type', 'post',
+          'id', bpo.id,
+          'brand_id', bpo.brand_id,
+          'brand_name', b.name,
+          'brand_slug', b.slug,
+          'brand_logo_url', b.logo_url,
+          'brand_category', b.category,
+          'brand_is_verified', b.is_verified,
+          'created_at', bpo.created_at,
+          'post_content', bpo.content,
+          'post_image_url', bpo.image_url
+        ) AS item,
+        bpo.created_at AS item_date
+      FROM brand_posts bpo
+      JOIN brands b ON b.id = bpo.brand_id
+      WHERE bpo.deleted_at IS NULL AND b.deleted_at IS NULL
+    ) feed
+    ORDER BY item_date DESC
+    LIMIT p_limit
+    OFFSET p_offset
+  ) sub;
 
   RETURN jsonb_build_object('items', v_items, 'total', v_total);
 END;
