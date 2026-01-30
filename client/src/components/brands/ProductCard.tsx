@@ -65,8 +65,7 @@ export function ProductCard({
         <div className="relative">
           <div
             ref={scrollRef}
-            className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide [scrollbar-width:none] [-ms-overflow-style:none]"
           >
             {images.map((img, i) => (
               <div
@@ -92,6 +91,7 @@ export function ProductCard({
                 <button
                   key={i}
                   type="button"
+                  aria-label={`Go to image ${i + 1}`}
                   className={`w-2 h-2 rounded-full transition-colors ${
                     i === currentSlide ? 'bg-white' : 'bg-white/50'
                   }`}
@@ -116,6 +116,7 @@ export function ProductCard({
                   setShowMenu(!showMenu)
                 }}
                 className="p-1.5 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+                aria-label="Product actions"
               >
                 <MoreHorizontal className="w-4 h-4" />
               </button>

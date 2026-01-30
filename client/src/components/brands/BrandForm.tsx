@@ -252,6 +252,7 @@ export function BrandForm({
           accept="image/*"
           onChange={handleFileChange}
           className="hidden"
+          aria-label="Upload brand logo"
         />
       </div>
 

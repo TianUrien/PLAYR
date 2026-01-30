@@ -153,6 +153,7 @@ export function ProductImageUploader({
                   type="button"
                   onClick={() => handleRemove(i)}
                   className="absolute top-2 right-2 p-1 bg-black/60 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/80"
+                  aria-label={`Remove image ${i + 1}`}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -197,6 +198,7 @@ export function ProductImageUploader({
         accept=".jpg,.jpeg,.png"
         onChange={handleFileChange}
         className="hidden"
+        aria-label="Upload product image"
       />
     </div>
   )

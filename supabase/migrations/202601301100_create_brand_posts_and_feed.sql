@@ -308,6 +308,15 @@ END;
 $$;
 
 -- --------------------------------------------------------------------------
+-- 4b. Grant execute permissions
+-- --------------------------------------------------------------------------
+GRANT EXECUTE ON FUNCTION public.get_brand_posts(UUID) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.create_brand_post(UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.update_brand_post(UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_brand_post(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_brand_feed(INTEGER, INTEGER) TO anon, authenticated;
+
+-- --------------------------------------------------------------------------
 -- 5. Storage bucket for brand-post images
 -- --------------------------------------------------------------------------
 INSERT INTO storage.buckets (id, name, public)
