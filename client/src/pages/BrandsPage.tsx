@@ -12,12 +12,10 @@ import { useSearchParams } from 'react-router-dom'
 import { Header, Layout } from '@/components'
 import { BrandCard, BrandCategoryFilter, GlobalBrandFeed } from '@/components/brands'
 import { useBrands, type BrandCategory } from '@/hooks/useBrands'
-import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 type PageTab = 'feed' | 'directory'
 
 export default function BrandsPage() {
-  const isMobile = useMediaQuery('(max-width: 1023px)')
   const [searchParams, setSearchParams] = useSearchParams()
 
   const [activeTab, setActiveTab] = useState<PageTab>(() => {
@@ -38,9 +36,9 @@ export default function BrandsPage() {
 
   return (
     <Layout>
-      {!isMobile && <Header />}
+      <Header />
 
-      <div className={`flex-1 ${isMobile ? 'pt-[var(--app-header-offset)]' : ''}`}>
+      <div className="flex-1">
         <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
           {/* Page Header */}
           <div className="mb-6">
