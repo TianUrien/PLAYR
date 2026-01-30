@@ -5,9 +5,10 @@
  * Displays a searchable, filterable member directory.
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Search } from 'lucide-react'
-import { MemberCard } from '@/components'
+import { useNavigate } from 'react-router-dom'
+import { Avatar, RoleBadge, MemberCard } from '@/components'
 import { logger } from '@/lib/logger'
 import { ProfileCardSkeleton } from '@/components/Skeleton'
 import { supabase } from '@/lib/supabase'
@@ -37,9 +38,10 @@ type RoleFilter = 'all' | 'player' | 'coach' | 'club'
 type AvailabilityFilter = 'all' | 'open'
 
 export function PeopleListView() {
+  const navigate = useNavigate()
   const { profile: currentUserProfile } = useAuthStore()
   const isCurrentUserTestAccount = currentUserProfile?.is_test_account ?? false
-  
+
   const [baseMembers, setBaseMembers] = useState<Profile[]>([])
   const [allMembers, setAllMembers] = useState<Profile[]>([])
   const [displayedMembers, setDisplayedMembers] = useState<Profile[]>([])
@@ -50,6 +52,8 @@ export function PeopleListView() {
   const [isSearching, setIsSearching] = useState(false)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const searchContainerRef = useRef<HTMLDivElement>(null)
 
   // Responsive page size
   const pageSize = typeof window !== 'undefined' && window.innerWidth < 768 ? 12 : 24
@@ -70,12 +74,13 @@ export function PeopleListView() {
               .from('profiles')
               .select('id, avatar_url, full_name, role, nationality, nationality_country_id, nationality2_country_id, base_location, position, secondary_position, current_club, created_at, is_test_account, open_to_play, open_to_coach')
               .eq('onboarding_completed', true) // Only show fully onboarded users
-            
+              .neq('role', 'brand') // Brands have their own section
+
             // If current user is NOT a test account, exclude test accounts from results
             if (!isCurrentUserTestAccount) {
               query = query.or('is_test_account.is.null,is_test_account.eq.false')
             }
-            
+
             const { data, error } = await query
               .order('created_at', { ascending: false })
               .limit(200) // Load reasonable batch for client-side filtering
@@ -122,6 +127,7 @@ export function PeopleListView() {
               .from('profiles')
               .select('id, avatar_url, full_name, role, nationality, nationality_country_id, nationality2_country_id, base_location, position, secondary_position, current_club, created_at, is_test_account, open_to_play, open_to_coach')
               .eq('onboarding_completed', true) // Only show fully onboarded users
+              .neq('role', 'brand') // Brands have their own section
               .or(
                 `full_name.ilike.${searchTerm},nationality.ilike.${searchTerm},base_location.ilike.${searchTerm},position.ilike.${searchTerm},secondary_position.ilike.${searchTerm},current_club.ilike.${searchTerm}`
               )
@@ -211,6 +217,43 @@ export function PeopleListView() {
     setHasMore(filteredMembers.length > endIndex)
   }
 
+  // Instant client-side suggestions from already-loaded members (no debounce)
+  const suggestions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return []
+    return baseMembers
+      .filter(m =>
+        m.full_name?.toLowerCase().includes(q) ||
+        m.base_location?.toLowerCase().includes(q) ||
+        m.position?.toLowerCase().includes(q) ||
+        m.secondary_position?.toLowerCase().includes(q) ||
+        m.current_club?.toLowerCase().includes(q) ||
+        m.nationality?.toLowerCase().includes(q)
+      )
+      .slice(0, 6)
+  }, [searchQuery, baseMembers])
+
+  // Show suggestions when input is focused and has content
+  useEffect(() => {
+    if (!showSuggestions) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showSuggestions])
+
+  const handleSuggestionClick = (member: Profile) => {
+    setShowSuggestions(false)
+    if (member.role === 'club') {
+      navigate(`/clubs/id/${member.id}`)
+    } else {
+      navigate(`/players/id/${member.id}`)
+    }
+  }
+
   // Role filter chips
   const roleFilters: { value: RoleFilter; label: string }[] = [
     { value: 'all', label: 'All' },
@@ -221,13 +264,17 @@ export function PeopleListView() {
 
   return (
     <div>
-      {/* Search Bar */}
-      <div className="max-w-2xl mx-auto relative mb-8">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+      {/* Search Bar with Inline Suggestions */}
+      <div ref={searchContainerRef} className="max-w-2xl mx-auto relative mb-8">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
         <input
           type="text"
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => {
+            setSearchQuery(e.target.value)
+            setShowSuggestions(true)
+          }}
+          onFocus={() => { if (searchQuery.trim()) setShowSuggestions(true) }}
           placeholder="Search by name, location, position, or club..."
           className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           autoCapitalize="sentences"
@@ -236,6 +283,40 @@ export function PeopleListView() {
         {isSearching && (
           <div className="absolute right-4 top-1/2 -translate-y-1/2">
             <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+
+        {/* Inline suggestion dropdown */}
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
+            {suggestions.map((member) => (
+              <button
+                key={member.id}
+                type="button"
+                onClick={() => handleSuggestionClick(member)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
+              >
+                <Avatar
+                  src={member.avatar_url}
+                  alt={member.full_name}
+                  initials={member.full_name ? member.full_name.split(' ').map(n => n[0]).join('') : '?'}
+                  size="sm"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900 truncate text-sm">
+                      {member.full_name}
+                    </span>
+                    <RoleBadge role={member.role} />
+                  </div>
+                  {(member.position || member.base_location) && (
+                    <p className="text-xs text-gray-500 truncate">
+                      {[member.position, member.base_location].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                </div>
+              </button>
+            ))}
           </div>
         )}
       </div>

@@ -233,11 +233,10 @@ function FeedImageCarousel({ images, altPrefix }: { images: ProductImage[]; altP
   }, [handleScroll])
 
   return (
-    <div className="relative">
+    <div>
       <div
         ref={scrollRef}
-        className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        className="flex overflow-x-auto snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none]"
       >
         {images.map((img, i) => (
           <div key={i} className="flex-shrink-0 w-full snap-start">
@@ -254,13 +253,14 @@ function FeedImageCarousel({ images, altPrefix }: { images: ProductImage[]; altP
       </div>
 
       {images.length > 1 && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+        <div className="flex justify-center gap-1.5 py-2 bg-white">
           {images.map((_, i) => (
             <button
               key={i}
               type="button"
+              aria-label={`Go to image ${i + 1}`}
               className={`w-2 h-2 rounded-full transition-colors ${
-                i === currentSlide ? 'bg-white' : 'bg-white/50'
+                i === currentSlide ? 'bg-indigo-500' : 'bg-gray-300'
               }`}
               onClick={() => {
                 scrollRef.current?.scrollTo({
