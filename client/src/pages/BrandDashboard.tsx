@@ -103,14 +103,15 @@ export default function BrandDashboard() {
     }
   }, [activeTab, refreshStrength])
 
-  // Show toast when profile strength improves
+  // Show toast when profile strength improves (only after all data has loaded
+  // to avoid spurious toasts as brand, products, and strength resolve at different times)
   useEffect(() => {
-    if (strengthLoading) return
+    if (strengthLoading || brandLoading || productsLoading) return
     if (prevPercentageRef.current !== null && percentage > prevPercentageRef.current) {
       addToast(`Profile strength: ${percentage}%`, 'success')
     }
     prevPercentageRef.current = percentage
-  }, [percentage, strengthLoading, addToast])
+  }, [percentage, strengthLoading, brandLoading, productsLoading, addToast])
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab)
