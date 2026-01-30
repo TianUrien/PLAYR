@@ -5,11 +5,12 @@
  * Supports image upload, draft persistence for new products, and URL auto-prepend.
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Loader2 } from 'lucide-react'
 import { ProductImageUploader } from './ProductImageUploader'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import type { BrandProduct, ProductImage, CreateProductInput, UpdateProductInput } from '@/hooks/useBrandProducts'
 
 interface AddProductModalProps {
@@ -43,6 +44,9 @@ export function AddProductModal({
   const { user } = useAuthStore()
   const isEdit = Boolean(editingProduct)
   const draftKey = `${DRAFT_PREFIX}${brandId}`
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  useFocusTrap({ containerRef: dialogRef, isActive: isOpen })
 
   const [formData, setFormData] = useState<FormData>(() => {
     if (editingProduct) {
@@ -180,10 +184,17 @@ export function AddProductModal({
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-        <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-product-title"
+          tabIndex={-1}
+          className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto focus:outline-none"
+        >
           {/* Header */}
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 id="add-product-title" className="text-xl font-semibold text-gray-900">
               {isEdit ? 'Edit Product' : 'Add Product'}
             </h2>
             <button

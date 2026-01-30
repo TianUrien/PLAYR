@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase'
 import { validateImage, optimizeImage } from '@/lib/imageOptimization'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import type { BrandPost, CreatePostInput, UpdatePostInput } from '@/hooks/useBrandPosts'
 
 interface AddPostModalProps {
@@ -34,6 +35,9 @@ export function AddPostModal({
   const { user } = useAuthStore()
   const isEdit = Boolean(editingPost)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  useFocusTrap({ containerRef: dialogRef, isActive: isOpen })
 
   const [content, setContent] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
@@ -158,16 +162,24 @@ export function AddPostModal({
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-        <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-post-title"
+          tabIndex={-1}
+          className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto focus:outline-none"
+        >
           {/* Header */}
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 id="add-post-title" className="text-xl font-semibold text-gray-900">
               {isEdit ? 'Edit Post' : 'Create Post'}
             </h2>
             <button
               type="button"
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600"
+              aria-label="Close"
             >
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

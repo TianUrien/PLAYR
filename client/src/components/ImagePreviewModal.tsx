@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 
 interface ImagePreviewModalProps {
   src: string
@@ -11,6 +12,10 @@ interface ImagePreviewModalProps {
 }
 
 export default function ImagePreviewModal({ src, alt, title, isOpen, onClose }: ImagePreviewModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  useFocusTrap({ containerRef: dialogRef, isActive: isOpen })
+
   useEffect(() => {
     if (!isOpen) return
 
@@ -36,10 +41,12 @@ export default function ImagePreviewModal({ src, alt, title, isOpen, onClose }: 
 
   return createPortal(
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in"
       role="dialog"
       aria-modal="true"
       aria-label={alt || title || 'Profile image preview'}
+      tabIndex={-1}
       onClick={onClose}
     >
       <div

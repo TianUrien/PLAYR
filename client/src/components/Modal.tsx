@@ -1,6 +1,7 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 
 interface ModalProps {
   isOpen: boolean
@@ -11,6 +12,10 @@ interface ModalProps {
 }
 
 export default function Modal({ isOpen, onClose, children, className, showClose = true }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  useFocusTrap({ containerRef: dialogRef, isActive: isOpen })
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -30,18 +35,24 @@ export default function Modal({ isOpen, onClose, children, className, showClose 
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
-      
+
       {/* Modal Content */}
-      <div className={cn(
-        "relative bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-scale-in",
-        className
-      )}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        tabIndex={-1}
+        className={cn(
+          "relative bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto animate-scale-in focus:outline-none",
+          className
+        )}
+      >
         {showClose && (
           <button
             onClick={onClose}

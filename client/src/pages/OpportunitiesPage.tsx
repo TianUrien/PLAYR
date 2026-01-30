@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Grid, List, ChevronDown, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
@@ -31,6 +32,7 @@ const POSITIONS = ['goalkeeper', 'defender', 'midfielder', 'forward']
 const BENEFITS = ['housing', 'car', 'visa', 'flights', 'meals', 'job', 'insurance', 'education', 'bonuses', 'equipment']
 
 export default function OpportunitiesPage() {
+  const navigate = useNavigate()
   const { user, profile } = useAuthStore()
   const isCurrentUserTestAccount = profile?.is_test_account ?? false
   
@@ -673,6 +675,19 @@ export default function OpportunitiesPage() {
                   <Button onClick={clearFilters} className="mx-auto">
                     Clear Filters
                   </Button>
+                )}
+                {profile?.role === 'club' && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <p className="text-sm text-gray-500 mb-3">
+                      As a club, you can post opportunities to attract players and coaches.
+                    </p>
+                    <Button
+                      onClick={() => navigate('/dashboard?tab=vacancies')}
+                      className="mx-auto bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]"
+                    >
+                      Post an Opportunity
+                    </Button>
+                  </div>
                 )}
               </div>
             ) : (

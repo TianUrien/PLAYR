@@ -158,9 +158,9 @@ export default function MobileBottomNav() {
                     <div className="absolute inset-0 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] opacity-20 rounded-full blur-md" />
                   )}
                 </div>
-                <span 
+                <span
                   className={`text-[10px] font-medium transition-all duration-200 ${
-                    active ? 'opacity-100' : 'opacity-0'
+                    active ? 'opacity-100' : 'opacity-60'
                   }`}
                 >
                   {item.label}
@@ -196,9 +196,9 @@ export default function MobileBottomNav() {
                 <div className="absolute inset-0 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] opacity-20 rounded-full blur-md" />
               )}
             </div>
-            <span 
+            <span
               className={`text-[10px] font-medium transition-all duration-200 ${
-                location.pathname.startsWith('/dashboard') ? 'opacity-100' : 'opacity-0'
+                location.pathname.startsWith('/dashboard') ? 'opacity-100' : 'opacity-60'
               }`}
             >
               Dashboard

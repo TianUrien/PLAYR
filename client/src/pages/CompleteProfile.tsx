@@ -707,6 +707,19 @@ export default function CompleteProfile() {
             <p className="text-white/90 text-sm">
               Complete your profile to get started
             </p>
+            {userRole === 'club' && (
+              <div className="mt-3 flex items-center gap-3">
+                <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-white rounded-full transition-all duration-300"
+                    style={{ width: showClubClaimStep ? '50%' : '100%' }}
+                  />
+                </div>
+                <span className="text-white/80 text-xs font-medium whitespace-nowrap">
+                  Step {showClubClaimStep ? '1' : '2'} of 2
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Club Claim Step (shown first for clubs) */}
@@ -815,6 +828,8 @@ export default function CompleteProfile() {
                     required
                   />
 
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">Hockey Details</p>
+
                   <div>
                     <label htmlFor="position-select" className="block text-sm font-medium text-gray-700 mb-2">
                       Position <span className="text-red-500">*</span>
@@ -918,6 +933,8 @@ export default function CompleteProfile() {
                     showNationality
                   />
 
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">Additional Details</p>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="coach-gender">
                       Gender
@@ -976,6 +993,8 @@ export default function CompleteProfile() {
                     required
                   />
 
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">League Information</p>
+
                   <Input
                     label="Year Founded (Optional)"
                     type="number"
@@ -997,6 +1016,8 @@ export default function CompleteProfile() {
                     value={formData.mensLeagueDivision}
                     onChange={(e) => setFormData({ ...formData, mensLeagueDivision: e.target.value })}
                   />
+
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">Contact & About</p>
 
                   <Input
                     label="Website (Optional)"

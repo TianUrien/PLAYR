@@ -63,6 +63,9 @@ const AdminWorld = lazy(() => import('@/features/admin/pages/AdminWorld'))
 // Public investor dashboard (no auth required)
 const PublicInvestorDashboard = lazy(() => import('@/pages/PublicInvestorDashboard'))
 
+// 404 page
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -206,8 +209,8 @@ function App() {
                   <Route path="settings" element={<AdminSettings />} />
                 </Route>
                 
-                  {/* Fallback */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  {/* 404 */}
+                  <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </Suspense>
             </Layout>

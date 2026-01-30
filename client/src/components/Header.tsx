@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { MessageCircle, Users, Briefcase, Bell, Globe, Store } from 'lucide-react'
 import { Avatar, NotificationBadge } from '@/components'
 import { useAuthStore } from '@/lib/auth'
@@ -9,6 +9,7 @@ import { useNotificationStore } from '@/lib/notifications'
 
 export default function Header() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { user, profile } = useAuthStore()
   const { count: unreadCount } = useUnreadMessages()
   const { count: opportunityCount } = useOpportunityNotifications()
@@ -68,6 +69,9 @@ export default function Header() {
     navigate(path)
   }
 
+  const isActive = (path: string) =>
+    location.pathname === path || location.pathname.startsWith(path + '/')
+
   return (
     <header
       ref={headerRef}
@@ -116,72 +120,70 @@ export default function Header() {
           )}
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-1">
             {user && profile ? (
               <>
-                <button
-                  onClick={() => handleNavigate('/community')}
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    <span>Community</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => handleNavigate('/world')}
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-5 h-5" />
-                    <span>World</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => handleNavigate('/opportunities')}
-                  className="relative text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="w-5 h-5" />
-                    <span>Opportunities</span>
-                  </div>
-                  <NotificationBadge count={opportunityCount} className="-right-3 -top-2" />
-                </button>
-                <button
-                  onClick={() => handleNavigate('/brands')}
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Store className="w-5 h-5" />
-                    <span>Brands</span>
-                  </div>
-                </button>
+                {/* Primary nav links */}
+                {([
+                  { path: '/community', label: 'Community', icon: Users },
+                  { path: '/world', label: 'World', icon: Globe },
+                  { path: '/opportunities', label: 'Opportunities', icon: Briefcase, badge: opportunityCount },
+                  { path: '/brands', label: 'Brands', icon: Store },
+                ] as const).map(({ path, label, icon: Icon, badge }) => (
+                  <button
+                    key={path}
+                    onClick={() => handleNavigate(path)}
+                    className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      isActive(path)
+                        ? 'text-[#6366f1] bg-indigo-50'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                    aria-current={isActive(path) ? 'page' : undefined}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Icon className="w-4.5 h-4.5" />
+                      <span>{label}</span>
+                    </div>
+                    {badge !== undefined && <NotificationBadge count={badge} className="-right-1 -top-1" />}
+                  </button>
+                ))}
+
+                {/* Separator */}
+                <div className="w-px h-6 bg-gray-200 mx-1" />
+
+                {/* Icon-only cluster: Messages + Notifications */}
                 <button
                   onClick={() => handleNavigate('/messages')}
-                  className="relative text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                  className={`relative p-2 rounded-lg transition-colors ${
+                    isActive('/messages')
+                      ? 'text-[#6366f1] bg-indigo-50'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                  aria-label="Messages"
+                  aria-current={isActive('/messages') ? 'page' : undefined}
                 >
-                  <div className="flex items-center gap-2">
-                    <MessageCircle className="w-5 h-5" />
-                    <span>Messages</span>
-                  </div>
-                  <NotificationBadge count={unreadCount} />
+                  <MessageCircle className="w-5 h-5" />
+                  <NotificationBadge count={unreadCount} className="-right-0.5 -top-0.5" />
                 </button>
                 <button
                   onClick={() => toggleNotificationDrawer()}
-                  className="relative text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                  className="relative p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+                  aria-label="Notifications"
                 >
-                  <div className="flex items-center gap-2">
-                    <Bell className="w-5 h-5" />
-                    <span>Notifications</span>
-                  </div>
-                  <NotificationBadge count={notificationCount} className="-right-3 -top-2" />
+                  <Bell className="w-5 h-5" />
+                  <NotificationBadge count={notificationCount} className="-right-0.5 -top-0.5" />
                 </button>
-                
-                {/* Profile Avatar - Direct Dashboard Navigation */}
-                <button 
+
+                {/* Profile Avatar */}
+                <button
                   onClick={() => handleNavigate('/dashboard/profile')}
-                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                  className={`ml-1 flex items-center rounded-full transition-all ${
+                    isActive('/dashboard')
+                      ? 'ring-2 ring-[#6366f1] ring-offset-2'
+                      : 'hover:opacity-80'
+                  }`}
                   aria-label="Go to Dashboard"
+                  aria-current={isActive('/dashboard') ? 'page' : undefined}
                 >
                   <Avatar
                     src={profile.avatar_url}
@@ -192,46 +194,37 @@ export default function Header() {
               </>
             ) : (
               <>
-                <button
-                  onClick={() => handleNavigate('/community')}
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    <span>Community</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => handleNavigate('/world')}
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Globe className="w-5 h-5" />
-                    <span>World</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => handleNavigate('/opportunities')}
-                  className="relative text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="w-5 h-5" />
-                    <span>Opportunities</span>
-                  </div>
-                  <NotificationBadge count={opportunityCount} className="-right-3 -top-2" />
-                </button>
-                <button
-                  onClick={() => handleNavigate('/brands')}
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
-                    <Store className="w-5 h-5" />
-                    <span>Brands</span>
-                  </div>
-                </button>
+                {/* Unauthenticated primary nav links */}
+                {([
+                  { path: '/community', label: 'Community', icon: Users },
+                  { path: '/world', label: 'World', icon: Globe },
+                  { path: '/opportunities', label: 'Opportunities', icon: Briefcase, badge: opportunityCount },
+                  { path: '/brands', label: 'Brands', icon: Store },
+                ] as const).map(({ path, label, icon: Icon, badge }) => (
+                  <button
+                    key={path}
+                    onClick={() => handleNavigate(path)}
+                    className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      isActive(path)
+                        ? 'text-[#6366f1] bg-indigo-50'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                    aria-current={isActive(path) ? 'page' : undefined}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Icon className="w-4.5 h-4.5" />
+                      <span>{label}</span>
+                    </div>
+                    {badge !== undefined && <NotificationBadge count={badge} className="-right-1 -top-1" />}
+                  </button>
+                ))}
+
+                {/* Separator */}
+                <div className="w-px h-6 bg-gray-200 mx-1" />
+
                 <button
                   onClick={() => handleNavigate('/')}
-                  className="text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors px-4 py-2"
+                  className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors px-3 py-2"
                 >
                   Sign In
                 </button>
