@@ -39,7 +39,7 @@ export default function BrandsPage() {
       <Header />
 
       <div className="flex-1">
-        <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
+        <div className="max-w-6xl mx-auto px-4 pt-24 pb-12">
           {/* Page Header */}
           <div className="mb-6">
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
