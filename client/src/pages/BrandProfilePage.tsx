@@ -7,16 +7,19 @@
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Loader2, Store, MessageCircle } from 'lucide-react'
 import { Header, Layout, Button } from '@/components'
-import { BrandHeader } from '@/components/brands'
+import { BrandHeader, ProductCard } from '@/components/brands'
 import { useBrand } from '@/hooks/useBrand'
+import { useBrandProducts } from '@/hooks/useBrandProducts'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useAuthStore } from '@/lib/auth'
+import Skeleton from '@/components/Skeleton'
 
 export default function BrandProfilePage() {
   const { slug } = useParams<{ slug: string }>()
   const isMobile = useMediaQuery('(max-width: 1023px)')
   const { user, profile } = useAuthStore()
   const { brand, isLoading, error } = useBrand(slug)
+  const { products, isLoading: productsLoading } = useBrandProducts(brand?.id)
 
   // Check if current user can message this brand
   const canMessage = user && profile?.role !== 'brand' && brand
@@ -103,14 +106,39 @@ export default function BrandProfilePage() {
                 </div>
               )}
 
-              {/* Placeholder for future sections */}
+              {/* Products & Services */}
               <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">
                   Products & Services
                 </h2>
-                <p className="text-gray-500 text-sm">
-                  Coming soon - This brand hasn't added any products yet.
-                </p>
+
+                {productsLoading ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {[1, 2].map(i => (
+                      <div key={i} className="rounded-xl border border-gray-200 overflow-hidden">
+                        <Skeleton width="100%" height={180} />
+                        <div className="p-4 space-y-2">
+                          <Skeleton width="60%" height={20} />
+                          <Skeleton width="100%" height={16} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : products.length === 0 ? (
+                  <p className="text-gray-500 text-sm">
+                    This brand hasn't added any products yet.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {products.map(product => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        brandWebsiteUrl={brand.website_url}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </>

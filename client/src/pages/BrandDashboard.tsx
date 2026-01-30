@@ -6,12 +6,15 @@
  */
 
 import { useEffect, useState, useRef } from 'react'
-import { MapPin, Globe, Instagram, ExternalLink, Eye, Edit, MessageCircle, Store, Package, Users, Loader2 } from 'lucide-react'
+import { MapPin, Globe, Instagram, ExternalLink, Eye, Edit, MessageCircle, Store, Package, Users, Loader2, Plus } from 'lucide-react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import Header from '@/components/Header'
 import { Avatar, Button, DashboardMenu, ProfileStrengthCard, RoleBadge, ScrollableTabs } from '@/components'
-import { BrandForm, type BrandFormData } from '@/components/brands'
+import { BrandForm, type BrandFormData, ProductCard, AddProductModal } from '@/components/brands'
+import ConfirmActionModal from '@/components/ConfirmActionModal'
 import { useBrandProfileStrength } from '@/hooks/useBrandProfileStrength'
+import { useBrandProducts } from '@/hooks/useBrandProducts'
+import type { BrandProduct, CreateProductInput, UpdateProductInput } from '@/hooks/useBrandProducts'
 import { useMyBrand } from '@/hooks/useMyBrand'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
@@ -41,9 +44,17 @@ export default function BrandDashboard() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Products
+  const { products, isLoading: productsLoading, createProduct, updateProduct, deleteProduct, refetch: refetchProducts } = useBrandProducts(brand?.id)
+  const [showAddProductModal, setShowAddProductModal] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<BrandProduct | null>(null)
+  const [productToDelete, setProductToDelete] = useState<BrandProduct | null>(null)
+  const [isDeletingProduct, setIsDeletingProduct] = useState(false)
+
   // Profile strength for brand
   const { percentage, buckets, loading: strengthLoading, refresh: refreshStrength } = useBrandProfileStrength({
     brand,
+    productCount: products.length,
   })
 
   // Track previous percentage to show toast on improvement
@@ -96,6 +107,40 @@ export default function BrandDashboard() {
     const next = new URLSearchParams(searchParams)
     next.set('tab', tab)
     setSearchParams(next, { replace: true })
+  }
+
+  const handleProductSubmit = async (data: CreateProductInput | UpdateProductInput, isEdit: boolean) => {
+    if (isEdit && editingProduct) {
+      const result = await updateProduct(editingProduct.id, data)
+      if (result.success) {
+        addToast('Product updated', 'success')
+        setEditingProduct(null)
+        await refreshStrength()
+      }
+      return result
+    }
+    const result = await createProduct(data as CreateProductInput)
+    if (result.success) {
+      addToast('Product added', 'success')
+      await refreshStrength()
+    }
+    return result
+  }
+
+  const handleDeleteProduct = async () => {
+    if (!productToDelete) return
+    setIsDeletingProduct(true)
+    try {
+      const result = await deleteProduct(productToDelete.id)
+      if (!result.success) throw new Error(result.error)
+      addToast('Product deleted', 'success')
+      setProductToDelete(null)
+      await refreshStrength()
+    } catch (err) {
+      addToast('Failed to delete product', 'error')
+    } finally {
+      setIsDeletingProduct(false)
+    }
   }
 
   const handleUpdateBrand = async (data: BrandFormData) => {
@@ -300,6 +345,10 @@ export default function BrandDashboard() {
                   onBucketAction={(bucket) => {
                     if (bucket.actionId === 'edit-profile') {
                       setShowEditModal(true)
+                    } else if (bucket.actionId === 'add-product') {
+                      handleTabChange('products')
+                      setEditingProduct(null)
+                      setShowAddProductModal(true)
                     }
                   }}
                 />
@@ -374,14 +423,60 @@ export default function BrandDashboard() {
               <div className="space-y-6 animate-fade-in">
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold text-gray-900">Products & Services</h2>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => { setEditingProduct(null); setShowAddProductModal(true) }}
+                    className="gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Product
+                  </Button>
                 </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-                  <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Coming Soon</h3>
-                  <p className="text-gray-600 max-w-md mx-auto">
-                    Soon you'll be able to showcase your products and services here. Athletes will be able to discover and connect with your brand.
-                  </p>
-                </div>
+
+                {productsLoading ? (
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="rounded-xl border border-gray-200 overflow-hidden">
+                        <Skeleton width="100%" height={200} />
+                        <div className="p-4 space-y-2">
+                          <Skeleton width="60%" height={20} />
+                          <Skeleton width="100%" height={16} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : products.length === 0 ? (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                    <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No products yet</h3>
+                    <p className="text-gray-600 max-w-md mx-auto mb-4">
+                      Showcase your products and services here. Athletes will be able to discover and connect with your brand.
+                    </p>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => { setEditingProduct(null); setShowAddProductModal(true) }}
+                      className="gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Your First Product
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+                    {products.map(product => (
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        brandWebsiteUrl={brand.website_url}
+                        isOwner
+                        onEdit={(p) => { setEditingProduct(p); setShowAddProductModal(true) }}
+                        onDelete={(p) => setProductToDelete(p)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -457,6 +552,31 @@ export default function BrandDashboard() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Add/Edit Product Modal */}
+      {brand && (
+        <AddProductModal
+          isOpen={showAddProductModal}
+          onClose={() => { setShowAddProductModal(false); setEditingProduct(null) }}
+          onSubmit={handleProductSubmit}
+          brandId={brand.id}
+          editingProduct={editingProduct}
+        />
+      )}
+
+      {/* Delete Product Confirmation */}
+      {productToDelete && (
+        <ConfirmActionModal
+          isOpen={Boolean(productToDelete)}
+          title="Delete Product"
+          description={`Are you sure you want to delete "${productToDelete.name}"? This action cannot be undone.`}
+          confirmLabel="Delete"
+          confirmTone="danger"
+          onConfirm={handleDeleteProduct}
+          onClose={() => setProductToDelete(null)}
+          confirmLoading={isDeletingProduct}
+        />
       )}
     </div>
   )

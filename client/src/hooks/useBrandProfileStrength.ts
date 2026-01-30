@@ -19,18 +19,21 @@ export interface ProfileStrengthBucket {
 
 interface UseBrandProfileStrengthOptions {
   brand: BrandDetail | null
+  /** Number of products the brand has (passed from parent to avoid duplicate fetches) */
+  productCount?: number
 }
 
 /**
  * Brand-specific profile strength calculation.
  *
  * Buckets:
- * - Brand Identity (30%): name, logo_url, category
- * - About (25%): bio field filled (min 50 chars)
- * - Contact Info (25%): website_url OR instagram_url
- * - Location (20%): country in profile
+ * - Brand Identity (25%): name, logo_url, category
+ * - About (20%): bio field filled (min 50 chars)
+ * - Contact Info (20%): website_url OR instagram_url
+ * - Location (15%): country in profile
+ * - Products (20%): at least one product added
  */
-export function useBrandProfileStrength({ brand }: UseBrandProfileStrengthOptions) {
+export function useBrandProfileStrength({ brand, productCount = 0 }: UseBrandProfileStrengthOptions) {
   const [loading, setLoading] = useState(true)
   const [profileCountry, setProfileCountry] = useState<string | null>(null)
 
@@ -88,6 +91,9 @@ export function useBrandProfileStrength({ brand }: UseBrandProfileStrengthOption
     return Boolean(profileCountry)
   }, [profileCountry])
 
+  // Check products
+  const hasProducts = productCount > 0
+
   // Build buckets
   const buckets: ProfileStrengthBucket[] = useMemo(() => {
     const identityComplete = isBrandIdentityComplete()
@@ -100,7 +106,7 @@ export function useBrandProfileStrength({ brand }: UseBrandProfileStrengthOption
         id: 'identity',
         label: 'Brand Identity',
         hint: 'Add your brand name, logo, and category',
-        weight: 30,
+        weight: 25,
         completed: identityComplete,
         actionId: 'edit-profile',
         actionLabel: 'Edit Brand',
@@ -109,7 +115,7 @@ export function useBrandProfileStrength({ brand }: UseBrandProfileStrengthOption
         id: 'about',
         label: 'About Your Brand',
         hint: 'Write a description about your brand (min 50 characters)',
-        weight: 25,
+        weight: 20,
         completed: aboutComplete,
         actionId: 'edit-profile',
         actionLabel: 'Add Description',
@@ -118,7 +124,7 @@ export function useBrandProfileStrength({ brand }: UseBrandProfileStrengthOption
         id: 'contact',
         label: 'Contact Info',
         hint: 'Add your website or Instagram link',
-        weight: 25,
+        weight: 20,
         completed: contactComplete,
         actionId: 'edit-profile',
         actionLabel: 'Add Contact',
@@ -127,13 +133,22 @@ export function useBrandProfileStrength({ brand }: UseBrandProfileStrengthOption
         id: 'location',
         label: 'Location',
         hint: 'Add your country in profile settings',
-        weight: 20,
+        weight: 15,
         completed: locationComplete,
         actionId: 'edit-profile',
         actionLabel: 'Add Location',
       },
+      {
+        id: 'products',
+        label: 'Products',
+        hint: 'Add at least one product to showcase',
+        weight: 20,
+        completed: hasProducts,
+        actionId: 'add-product',
+        actionLabel: 'Add Product',
+      },
     ]
-  }, [isBrandIdentityComplete, hasAbout, hasContactInfo, hasLocation])
+  }, [isBrandIdentityComplete, hasAbout, hasContactInfo, hasLocation, hasProducts])
 
   // Calculate total percentage
   const percentage = useMemo(() => {
