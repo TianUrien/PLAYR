@@ -176,7 +176,8 @@ BEGIN
     trim(p_name),
     nullif(trim(p_description), ''),
     p_images,
-    nullif(trim(p_external_url), '')
+    nullif(trim(p_external_url), ''),
+    v_next_sort
   )
   RETURNING id INTO v_product_id;
 
