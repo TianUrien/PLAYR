@@ -235,10 +235,14 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       }
     } catch (error) {
       logger.error('Error fetching vacancies:', error)
+      reportSupabaseError(error, 'fetch_club_opportunities_with_counts')
+      if (!readOnly) {
+        addToast('Failed to load opportunities. Please refresh the page.', 'error')
+      }
     } finally {
       setIsLoading(false)
     }
-  }, [targetUserId, readOnly, user])
+  }, [targetUserId, readOnly, user, addToast])
 
   // Fetch user's applications to check which vacancies they've applied to
   const fetchUserApplications = useCallback(async () => {
