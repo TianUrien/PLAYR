@@ -8,6 +8,7 @@ import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Loader2, Store, MessageCircle } from 'lucide-react'
 import { Header, Layout, Button } from '@/components'
 import { BrandHeader, ProductCard } from '@/components/brands'
+import Breadcrumbs from '@/components/Breadcrumbs'
 import { useBrand } from '@/hooks/useBrand'
 import { useBrandProducts } from '@/hooks/useBrandProducts'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
@@ -39,6 +40,18 @@ export default function BrandProfilePage() {
               <ArrowLeft className="w-5 h-5" />
               <span>Back to Brands</span>
             </Link>
+          </div>
+        )}
+
+        {/* Breadcrumbs (Desktop) */}
+        {!isMobile && (
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-24 pb-2">
+            <Breadcrumbs
+              items={[
+                { label: 'Brands', to: '/brands' },
+                { label: brand?.name || 'Brand' },
+              ]}
+            />
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { initializeAuth } from '@/lib/auth'
 import { logger } from '@/lib/logger'
@@ -8,6 +8,8 @@ import ToastContainer from '@/components/ToastContainer'
 import { ProfileImagePreviewProvider } from '@/components/ProfileImagePreviewProvider'
 import InstallPrompt from '@/components/InstallPrompt'
 import { useEngagementTracking } from '@/hooks/useEngagementTracking'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal'
 import Landing from '@/pages/Landing'
 import SignUp from '@/pages/SignUp'
 import AuthCallback from '@/pages/AuthCallback'
@@ -99,6 +101,22 @@ function AnalyticsTracker() {
   return null
 }
 
+// Scroll to top on route change
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
+
+// Global keyboard shortcuts (/, g+key, ?)
+function KeyboardShortcutsManager() {
+  const [showHelp, setShowHelp] = useState(false)
+  useKeyboardShortcuts({ onShowHelp: () => setShowHelp(true) })
+  return <KeyboardShortcutsModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+}
+
 function App() {
   const initRef = useRef(false)
 
@@ -138,6 +156,8 @@ function App() {
           <InstallPrompt />
           <EngagementTracker />
           <AnalyticsTracker />
+          <ScrollToTop />
+          <KeyboardShortcutsManager />
           {!isProduction && <SentryTestButton />}
           <ProtectedRoute>
             <Layout>

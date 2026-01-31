@@ -152,3 +152,36 @@ export function truncate(str: string, length: number): string {
 export function generateId(): string {
   return Math.random().toString(36).substring(2) + Date.now().toString(36)
 }
+
+/**
+ * Human-readable relative time string.
+ *
+ * @param dateString  ISO timestamp
+ * @param compact     If true  → "5m ago", "3h ago", "2d ago"
+ *                    If false → "5 minutes ago", "3 hours ago", "2 days ago"
+ */
+export function getTimeAgo(dateString: string, compact = false): string {
+  const now = new Date()
+  const date = new Date(dateString)
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+  if (compact) {
+    if (seconds < 60) return 'Just now'
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+  const weeks = Math.floor(days / 7)
+
+  if (minutes < 5) return 'Just now'
+  if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`
+  if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`
+  if (weeks < 4) return `${weeks} week${weeks > 1 ? 's' : ''} ago`
+  return formatDate(dateString)
+}

@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { MoreHorizontal, Pencil, Trash2, CheckCircle, Store } from 'lucide-react'
 import type { BrandPost } from '@/hooks/useBrandPosts'
+import { getTimeAgo } from '@/lib/utils'
 
 interface BrandPostCardProps {
   post: BrandPost
@@ -42,7 +43,7 @@ export function BrandPostCard({
     return () => document.removeEventListener('click', close)
   }, [showMenu])
 
-  const timeAgo = getTimeAgo(post.created_at)
+  const timeAgo = getTimeAgo(post.created_at, true)
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -142,15 +143,3 @@ export function BrandPostCard({
   )
 }
 
-function getTimeAgo(dateString: string): string {
-  const now = new Date()
-  const date = new Date(dateString)
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-  if (seconds < 60) return 'Just now'
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
-
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}

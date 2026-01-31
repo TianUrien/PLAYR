@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import { requestCache } from '@/lib/requestCache'
 import { monitor } from '@/lib/monitor'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 interface Profile {
   id: string
@@ -55,8 +56,9 @@ export function PeopleListView() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const searchContainerRef = useRef<HTMLDivElement>(null)
 
-  // Responsive page size
-  const pageSize = typeof window !== 'undefined' && window.innerWidth < 768 ? 12 : 24
+  // Responsive page size — reacts to viewport changes
+  const isMobile = useMediaQuery('(max-width: 767px)')
+  const pageSize = isMobile ? 12 : 24
 
   // Fetch members from Supabase
   const fetchMembers = useCallback(async () => {
@@ -269,6 +271,7 @@ export function PeopleListView() {
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
         <input
           type="text"
+          data-keyboard-shortcut="search"
           value={searchQuery}
           onChange={(e) => {
             setSearchQuery(e.target.value)

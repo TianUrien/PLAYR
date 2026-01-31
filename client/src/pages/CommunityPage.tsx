@@ -44,7 +44,7 @@ export default function CommunityPage() {
         </div>
 
         {/* Content based on mode */}
-        <div className="mt-10">
+        <div key={mode} className="mt-10 animate-fade-in">
           {mode === 'people' ? (
             <PeopleListView />
           ) : (

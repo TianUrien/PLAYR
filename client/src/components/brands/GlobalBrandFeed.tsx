@@ -11,6 +11,7 @@ import { Loader2, Rss, Store, ExternalLink, CheckCircle, ArrowRight } from 'luci
 import { useBrandFeed, type FeedItem, type ProductFeedItem, type PostFeedItem } from '@/hooks/useBrandFeed'
 import type { ProductImage } from '@/hooks/useBrandProducts'
 import Skeleton from '@/components/Skeleton'
+import { getTimeAgo } from '@/lib/utils'
 
 export function GlobalBrandFeed() {
   const { items, isLoading, error, hasMore, loadMore } = useBrandFeed()
@@ -89,7 +90,7 @@ function ProductFeedCard({ item }: { item: ProductFeedItem }) {
     ? [...item.product_images].sort((a, b) => a.order - b.order)
     : []
   const externalUrl = item.product_external_url || null
-  const timeAgo = getTimeAgo(item.created_at)
+  const timeAgo = getTimeAgo(item.created_at, true)
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -167,7 +168,7 @@ function ProductFeedCard({ item }: { item: ProductFeedItem }) {
 // Post Feed Card
 // --------------------------------------------------------------------------
 function PostFeedCard({ item }: { item: PostFeedItem }) {
-  const timeAgo = getTimeAgo(item.created_at)
+  const timeAgo = getTimeAgo(item.created_at, true)
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -320,18 +321,3 @@ function FeedSkeleton() {
   )
 }
 
-// --------------------------------------------------------------------------
-// Utils
-// --------------------------------------------------------------------------
-function getTimeAgo(dateString: string): string {
-  const now = new Date()
-  const date = new Date(dateString)
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-  if (seconds < 60) return 'Just now'
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
-
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}

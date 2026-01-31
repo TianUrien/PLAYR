@@ -45,7 +45,10 @@ export default function OpportunitiesPage() {
   const [showSignInPrompt, setShowSignInPrompt] = useState(false)
   const [showDetailView, setShowDetailView] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    const saved = localStorage.getItem('opp-view-mode')
+    return saved === 'list' ? 'list' : 'grid'
+  })
   const [sortBy, setSortBy] = useState<'newest'>('newest')
   const [showFilters, setShowFilters] = useState(false)
   const [isSyncingNewVacancies, setIsSyncingNewVacancies] = useState(false)
@@ -477,14 +480,14 @@ export default function OpportunitiesPage() {
               {/* View Toggle */}
               <div className="hidden md:flex items-center border border-gray-300 rounded-lg overflow-hidden">
                 <button
-                  onClick={() => setViewMode('grid')}
+                  onClick={() => { setViewMode('grid'); localStorage.setItem('opp-view-mode', 'grid') }}
                   className={`p-2 ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
                   title="Grid view"
                 >
                   <Grid className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => setViewMode('list')}
+                  onClick={() => { setViewMode('list'); localStorage.setItem('opp-view-mode', 'list') }}
                   className={`p-2 ${viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
                   title="List view"
                 >
