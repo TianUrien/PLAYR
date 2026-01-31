@@ -29,7 +29,6 @@ export function AddPostModal({
   isOpen,
   onClose,
   onSubmit,
-  brandId,
   editingPost,
 }: AddPostModalProps) {
   const { user } = useAuthStore()

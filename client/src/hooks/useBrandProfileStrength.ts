@@ -37,7 +37,6 @@ export function useBrandProfileStrength({ brand, productCount = 0 }: UseBrandPro
   const [loading, setLoading] = useState(true)
   const [profileCountry, setProfileCountry] = useState<string | null>(null)
 
-  const brandId = brand?.id ?? null
   const profileId = brand?.profile_id ?? null
 
   // Fetch profile country for the brand owner

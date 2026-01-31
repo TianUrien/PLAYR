@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Loader2, ExternalLink } from 'lucide-react'
-import { Header, Layout, Button } from '@/components'
+import { Header, Layout } from '@/components'
 import { BrandForm, type BrandFormData } from '@/components/brands'
 import { useMyBrand } from '@/hooks/useMyBrand'
 import { useAuthStore } from '@/lib/auth'

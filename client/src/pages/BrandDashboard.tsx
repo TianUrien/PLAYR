@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState, useRef } from 'react'
-import { MapPin, Globe, Instagram, ExternalLink, Eye, Edit, MessageCircle, Store, Package, Users, Loader2, Plus, FileText } from 'lucide-react'
+import { Globe, Instagram, ExternalLink, Eye, Edit, MessageCircle, Store, Package, Users, Plus, FileText } from 'lucide-react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import Header from '@/components/Header'
 import { Avatar, Button, DashboardMenu, ProfileStrengthCard, RoleBadge, ScrollableTabs } from '@/components'
@@ -48,7 +48,7 @@ export default function BrandDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Products
-  const { products, isLoading: productsLoading, createProduct, updateProduct, deleteProduct, refetch: refetchProducts } = useBrandProducts(brand?.id)
+  const { products, isLoading: productsLoading, createProduct, updateProduct, deleteProduct } = useBrandProducts(brand?.id)
   const [showAddProductModal, setShowAddProductModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState<BrandProduct | null>(null)
   const [productToDelete, setProductToDelete] = useState<BrandProduct | null>(null)
@@ -147,7 +147,7 @@ export default function BrandDashboard() {
       addToast('Product deleted', 'success')
       setProductToDelete(null)
       await refreshStrength()
-    } catch (err) {
+    } catch {
       addToast('Failed to delete product', 'error')
     } finally {
       setIsDeletingProduct(false)
@@ -178,7 +178,7 @@ export default function BrandDashboard() {
       if (!result.success) throw new Error(result.error)
       addToast('Post deleted', 'success')
       setPostToDelete(null)
-    } catch (err) {
+    } catch {
       addToast('Failed to delete post', 'error')
     } finally {
       setIsDeletingPost(false)

@@ -8,7 +8,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
-import type { Brand, BrandCategory } from './useBrands'
+import type { Brand } from './useBrands'
 
 export interface BrandDetail extends Brand {
   profile_id: string
