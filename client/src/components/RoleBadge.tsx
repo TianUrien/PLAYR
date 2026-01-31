@@ -9,6 +9,7 @@ const roleStyles: Record<string, string> = {
   player: 'bg-blue-100 text-blue-700',
   coach: 'bg-purple-100 text-purple-700',
   club: 'bg-orange-100 text-orange-700',
+  brand: 'bg-amber-100 text-amber-700',
 }
 
 const formatRoleLabel = (value: string) => {

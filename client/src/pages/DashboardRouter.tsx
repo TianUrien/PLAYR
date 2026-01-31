@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger'
 import PlayerDashboard from './PlayerDashboard'
 import CoachDashboard from './CoachDashboard'
 import ClubDashboard from './ClubDashboard'
+import BrandDashboard from './BrandDashboard'
 
 /**
  * DashboardRouter - Single source of truth for profile-based routing
@@ -120,10 +121,15 @@ export default function DashboardRouter() {
   if (profile.role === 'player') {
     return <PlayerDashboard />
   }
-  
+
   if (profile.role === 'coach') {
     return <CoachDashboard />
   }
-  
+
+  // Brand users: render BrandDashboard (handles its own loading/redirect logic)
+  if (profile.role === 'brand') {
+    return <BrandDashboard />
+  }
+
   return <ClubDashboard />
 }

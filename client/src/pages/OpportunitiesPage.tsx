@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Grid, List, ChevronDown, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
@@ -31,6 +32,7 @@ const POSITIONS = ['goalkeeper', 'defender', 'midfielder', 'forward']
 const BENEFITS = ['housing', 'car', 'visa', 'flights', 'meals', 'job', 'insurance', 'education', 'bonuses', 'equipment']
 
 export default function OpportunitiesPage() {
+  const navigate = useNavigate()
   const { user, profile } = useAuthStore()
   const isCurrentUserTestAccount = profile?.is_test_account ?? false
   
@@ -43,7 +45,10 @@ export default function OpportunitiesPage() {
   const [showSignInPrompt, setShowSignInPrompt] = useState(false)
   const [showDetailView, setShowDetailView] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    const saved = localStorage.getItem('opp-view-mode')
+    return saved === 'list' ? 'list' : 'grid'
+  })
   const [sortBy, setSortBy] = useState<'newest'>('newest')
   const [showFilters, setShowFilters] = useState(false)
   const [isSyncingNewVacancies, setIsSyncingNewVacancies] = useState(false)
@@ -65,10 +70,13 @@ export default function OpportunitiesPage() {
     priority: 'all',
   })
   const { count: opportunityCount, markSeen, refresh: refreshOpportunityNotifications } = useOpportunityNotifications()
+  const hasSetDefaultFilter = useRef(false)
 
-  // Update default filter when profile becomes available
+  // Set default filter once when profile first becomes available
   useEffect(() => {
+    if (hasSetDefaultFilter.current) return
     if (profile?.role === 'player' || profile?.role === 'coach') {
+      hasSetDefaultFilter.current = true
       setFilters(prev => ({
         ...prev,
         opportunityType: profile.role as 'player' | 'coach'
@@ -472,14 +480,14 @@ export default function OpportunitiesPage() {
               {/* View Toggle */}
               <div className="hidden md:flex items-center border border-gray-300 rounded-lg overflow-hidden">
                 <button
-                  onClick={() => setViewMode('grid')}
+                  onClick={() => { setViewMode('grid'); localStorage.setItem('opp-view-mode', 'grid') }}
                   className={`p-2 ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
                   title="Grid view"
                 >
                   <Grid className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => setViewMode('list')}
+                  onClick={() => { setViewMode('list'); localStorage.setItem('opp-view-mode', 'list') }}
                   className={`p-2 ${viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
                   title="List view"
                 >
@@ -673,6 +681,19 @@ export default function OpportunitiesPage() {
                   <Button onClick={clearFilters} className="mx-auto">
                     Clear Filters
                   </Button>
+                )}
+                {profile?.role === 'club' && (
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <p className="text-sm text-gray-500 mb-3">
+                      As a club, you can post opportunities to attract players and coaches.
+                    </p>
+                    <Button
+                      onClick={() => navigate('/dashboard?tab=vacancies')}
+                      className="mx-auto bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]"
+                    >
+                      Post an Opportunity
+                    </Button>
+                  </div>
                 )}
               </div>
             ) : (

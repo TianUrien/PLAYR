@@ -1235,6 +1235,7 @@ export type Database = {
           full_name: string | null
           gender: string | null
           highlight_video_url: string | null
+          highlight_visibility: string
           id: string
           is_blocked: boolean
           is_test_account: boolean
@@ -1289,6 +1290,7 @@ export type Database = {
           full_name?: string | null
           gender?: string | null
           highlight_video_url?: string | null
+          highlight_visibility?: string
           id: string
           is_blocked?: boolean
           is_test_account?: boolean
@@ -1343,6 +1345,7 @@ export type Database = {
           full_name?: string | null
           gender?: string | null
           highlight_video_url?: string | null
+          highlight_visibility?: string
           id?: string
           is_blocked?: boolean
           is_test_account?: boolean
@@ -2530,6 +2533,7 @@ export type Database = {
               full_name: string | null
               gender: string | null
               highlight_video_url: string | null
+              highlight_visibility: string
               id: string
               is_blocked: boolean
               is_test_account: boolean
@@ -2614,6 +2618,7 @@ export type Database = {
               full_name: string | null
               gender: string | null
               highlight_video_url: string | null
+              highlight_visibility: string
               id: string
               is_blocked: boolean
               is_test_account: boolean
@@ -2688,6 +2693,7 @@ export type Database = {
           full_name: string | null
           gender: string | null
           highlight_video_url: string | null
+          highlight_visibility: string
           id: string
           is_blocked: boolean
           is_test_account: boolean

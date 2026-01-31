@@ -7,6 +7,7 @@ import Avatar from './Avatar'
 import { useNotificationStore } from '@/lib/notifications'
 import { useToastStore } from '@/lib/toast'
 import { cn } from '@/lib/utils'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import type { NotificationKind, NotificationRecord } from '@/lib/api/notifications'
 import { getNotificationConfig, resolveNotificationRoute } from './notifications/config'
 
@@ -26,6 +27,7 @@ export default function NotificationsDrawer() {
   const location = useLocation()
   const locationKey = `${location.pathname}${location.search}`
   const lastLocationKey = useRef(locationKey)
+  const drawerRef = useRef<HTMLElement>(null)
   const [activeFilter, setActiveFilter] = useState<QuickFilter>('all')
   const { addToast } = useToastStore()
   const isOpen = useNotificationStore((state) => state.isDrawerOpen)
@@ -35,6 +37,8 @@ export default function NotificationsDrawer() {
   const refreshNotifications = useNotificationStore((state) => state.refresh)
   const respondToFriendRequest = useNotificationStore((state) => state.respondToFriendRequest)
   const pendingFriendshipId = useNotificationStore((state) => state.pendingFriendshipId)
+
+  useFocusTrap({ containerRef: drawerRef, isActive: isOpen })
 
   const sortedNotifications = useMemo(() => {
     return notifications
@@ -288,11 +292,17 @@ export default function NotificationsDrawer() {
           'fixed inset-0 z-50 bg-gray-900/30 transition-opacity duration-200',
           isOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
         )}
+        aria-hidden="true"
         onClick={() => toggleDrawer(false)}
       />
       <aside
+        ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Notifications"
+        tabIndex={-1}
         className={cn(
-          'fixed inset-y-0 right-0 z-[60] flex w-full max-w-full transform bg-white shadow-2xl transition-transform duration-200 sm:max-w-md lg:max-w-lg',
+          'fixed inset-y-0 right-0 z-[60] flex w-full max-w-full transform bg-white shadow-2xl transition-transform duration-200 focus:outline-none sm:max-w-md lg:max-w-lg',
           isOpen ? 'translate-x-0' : 'translate-x-full'
         )}
       >

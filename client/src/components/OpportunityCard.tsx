@@ -4,6 +4,7 @@ import type { Vacancy } from '../lib/supabase'
 import { Avatar } from './index'
 import Button from './Button'
 import { getCountryColor, formatCountryBanner } from '@/lib/countryColors'
+import { getTimeAgo } from '@/lib/utils'
 
 interface VacancyCardProps {
   vacancy: Vacancy
@@ -51,23 +52,6 @@ export default function VacancyCard({
     if (!dateString) return null
     const date = new Date(dateString)
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-  }
-
-  const getTimeAgo = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMins / 60)
-    const diffDays = Math.floor(diffHours / 24)
-    const diffWeeks = Math.floor(diffDays / 7)
-
-    if (diffMins < 5) return 'Just now'
-    if (diffMins < 60) return `${diffMins} minutes ago`
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`
-    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`
-    if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks > 1 ? 's' : ''} ago`
-    return formatDate(dateString)
   }
 
   const getPriorityColor = (priority: string) => {

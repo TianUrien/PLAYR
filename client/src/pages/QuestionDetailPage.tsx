@@ -9,6 +9,7 @@ import { useState, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, MessageCircle, MoreVertical, Pencil, Trash2, LogIn } from 'lucide-react'
 import { Header, Avatar, RoleBadge } from '@/components'
+import Breadcrumbs from '@/components/Breadcrumbs'
 import SignInPromptModal from '@/components/SignInPromptModal'
 import { useQuestionDetail } from '@/hooks/useQuestions'
 import { useAuthStore } from '@/lib/auth'
@@ -143,14 +144,14 @@ export default function QuestionDetailPage() {
       <Header />
       
       <main className="max-w-3xl mx-auto px-4 md:px-6 pt-24 pb-12">
-        {/* Back link */}
-        <Link
-          to="/community/questions"
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Questions
-        </Link>
+        <Breadcrumbs
+          className="mb-6"
+          items={[
+            { label: 'Community', to: '/community' },
+            { label: 'Questions', to: '/community/questions' },
+            { label: question.title },
+          ]}
+        />
 
         {/* Question card */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 relative">

@@ -7,6 +7,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 import { QUESTION_CATEGORIES, CATEGORY_LABELS } from '@/types/questions'
+import { useFocusTrap } from '@/hooks/useFocusTrap'
 import type { QuestionCategory, CreateQuestionInput } from '@/types/questions'
 
 interface AskQuestionModalProps {
@@ -26,6 +27,9 @@ export function AskQuestionModal({
   const [body, setBody] = useState('')
   const [category, setCategory] = useState<QuestionCategory>('other')
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
+
+  useFocusTrap({ containerRef: dialogRef, isActive: isOpen, initialFocusRef: titleInputRef })
 
   // Reset form when modal opens
   useEffect(() => {
@@ -33,8 +37,6 @@ export function AskQuestionModal({
       setTitle('')
       setBody('')
       setCategory('other')
-      // Focus title input after animation
-      setTimeout(() => titleInputRef.current?.focus(), 100)
     }
   }, [isOpen])
 
@@ -84,10 +86,12 @@ export function AskQuestionModal({
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
         <div
-          className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl transform transition-all"
+          ref={dialogRef}
+          className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl transform transition-all focus:outline-none"
           role="dialog"
           aria-modal="true"
           aria-labelledby="modal-title"
+          tabIndex={-1}
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-100">

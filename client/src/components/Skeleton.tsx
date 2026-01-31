@@ -261,5 +261,18 @@ export function DashboardSkeleton() {
   )
 }
 
+// Brand Card Skeleton (for Brands directory grid)
+export function BrandCardSkeleton() {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="aspect-square bg-gray-100 animate-pulse" />
+      <div className="p-4 space-y-2">
+        <Skeleton width="70%" height={18} />
+        <Skeleton width="40%" height={14} />
+      </div>
+    </div>
+  )
+}
+
 /** @deprecated Use OpportunityCardSkeleton instead */
 export const VacancyCardSkeleton = OpportunityCardSkeleton

@@ -1,4 +1,4 @@
-import { useEffect, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { initializeAuth } from '@/lib/auth'
 import { logger } from '@/lib/logger'
@@ -8,6 +8,8 @@ import ToastContainer from '@/components/ToastContainer'
 import { ProfileImagePreviewProvider } from '@/components/ProfileImagePreviewProvider'
 import InstallPrompt from '@/components/InstallPrompt'
 import { useEngagementTracking } from '@/hooks/useEngagementTracking'
+import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
+import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal'
 import Landing from '@/pages/Landing'
 import SignUp from '@/pages/SignUp'
 import AuthCallback from '@/pages/AuthCallback'
@@ -38,6 +40,12 @@ const WorldCountryPage = lazy(() => import('@/pages/WorldCountryPage'))
 const WorldProvincePage = lazy(() => import('@/pages/WorldProvincePage'))
 const WorldLeagueClubsPage = lazy(() => import('@/pages/WorldLeagueClubsPage'))
 
+// Brand pages
+const BrandsPage = lazy(() => import('@/pages/BrandsPage'))
+const BrandProfilePage = lazy(() => import('@/pages/BrandProfilePage'))
+const BrandOnboardingPage = lazy(() => import('@/pages/BrandOnboardingPage'))
+const BrandDashboardPage = lazy(() => import('@/pages/BrandDashboardPage'))
+
 // Lazy load admin components (code splitting)
 const AdminGuard = lazy(() => import('@/features/admin/components/AdminGuard').then(m => ({ default: m.AdminGuard })))
 const AdminLayout = lazy(() => import('@/features/admin/components/AdminLayout').then(m => ({ default: m.AdminLayout })))
@@ -56,6 +64,9 @@ const AdminWorld = lazy(() => import('@/features/admin/pages/AdminWorld'))
 
 // Public investor dashboard (no auth required)
 const PublicInvestorDashboard = lazy(() => import('@/pages/PublicInvestorDashboard'))
+
+// 404 page
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 
 // Loading fallback component
 const PageLoader = () => (
@@ -88,6 +99,22 @@ function AnalyticsTracker() {
   }, [location])
 
   return null
+}
+
+// Scroll to top on route change
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
+
+// Global keyboard shortcuts (/, g+key, ?)
+function KeyboardShortcutsManager() {
+  const [showHelp, setShowHelp] = useState(false)
+  useKeyboardShortcuts({ onShowHelp: () => setShowHelp(true) })
+  return <KeyboardShortcutsModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
 }
 
 function App() {
@@ -129,6 +156,8 @@ function App() {
           <InstallPrompt />
           <EngagementTracker />
           <AnalyticsTracker />
+          <ScrollToTop />
+          <KeyboardShortcutsManager />
           {!isProduction && <SentryTestButton />}
           <ProtectedRoute>
             <Layout>
@@ -151,6 +180,12 @@ function App() {
                 <Route path="/world/:countrySlug" element={<WorldCountryPage />} />
                 <Route path="/world/:countrySlug/:provinceSlug" element={<WorldProvincePage />} />
                 <Route path="/world/:countrySlug/:provinceSlug/:leagueSlug" element={<WorldLeagueClubsPage />} />
+
+                {/* Brands Directory (public listing, auth for profile actions) */}
+                <Route path="/brands" element={<BrandsPage />} />
+                <Route path="/brands/onboarding" element={<BrandOnboardingPage />} />
+                <Route path="/brands/:slug" element={<BrandProfilePage />} />
+                <Route path="/dashboard/brand" element={<BrandDashboardPage />} />
 
                 {/* Public Investor Dashboard (shareable link) */}
                 <Route path="/investors/:token" element={<PublicInvestorDashboard />} />
@@ -194,8 +229,8 @@ function App() {
                   <Route path="settings" element={<AdminSettings />} />
                 </Route>
                 
-                  {/* Fallback */}
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  {/* 404 */}
+                  <Route path="*" element={<NotFoundPage />} />
                 </Routes>
               </Suspense>
             </Layout>

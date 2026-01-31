@@ -9,6 +9,7 @@ import OpportunityDetailView from '../components/OpportunityDetailView'
 import ApplyToOpportunityModal from '../components/ApplyToOpportunityModal'
 import SignInPromptModal from '../components/SignInPromptModal'
 import OpportunityJsonLd from '../components/OpportunityJsonLd'
+import Breadcrumbs from '../components/Breadcrumbs'
 
 export default function OpportunityDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -231,6 +232,14 @@ export default function OpportunityDetailPage() {
       <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="pt-20">
+          <div className="max-w-4xl mx-auto px-4 md:px-6 pt-4 pb-2">
+            <Breadcrumbs
+              items={[
+                { label: 'Opportunities', to: '/opportunities' },
+                { label: opportunity.title },
+              ]}
+            />
+          </div>
           <OpportunityDetailView
             vacancy={opportunity}
             clubName={club.full_name || 'Unknown Club'}

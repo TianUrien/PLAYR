@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, MapPin, Globe, Calendar, Building2, Camera, UserRound, Briefcase, Users } from 'lucide-react'
+import { User, MapPin, Globe, Calendar, Building2, Camera, UserRound, Briefcase, Users, Store } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { Input, Button, CountrySelect } from '@/components'
 import { useCountries } from '@/hooks/useCountries'
@@ -12,7 +12,7 @@ import { optimizeAvatarImage, validateImage } from '@/lib/imageOptimization'
 import { invalidateProfile } from '@/lib/profile'
 import { deleteStorageObject } from '@/lib/storage'
 
-type UserRole = 'player' | 'coach' | 'club'
+type UserRole = 'player' | 'coach' | 'club' | 'brand'
 
 /**
  * CompleteProfile - Step 2 of signup (POST email verification)
@@ -153,6 +153,12 @@ export default function CompleteProfile() {
       await fetchProfile(user.id, { force: true })
 
       logger.debug('[COMPLETE_PROFILE] Profile fetched after creation')
+
+      // Brands have a separate onboarding flow
+      if (selectedRole === 'brand') {
+        navigate('/brands/onboarding')
+        return
+      }
     } catch (err) {
       captureOnboardingError(err, {
         stage: 'handleRoleSelectionCatch',
@@ -198,6 +204,13 @@ export default function CompleteProfile() {
     if (!user) {
       logger.debug('[COMPLETE_PROFILE] No user, redirecting to signup')
       navigate('/signup', { replace: true })
+      return
+    }
+
+    // Brand users have a separate onboarding flow
+    if (profile?.role === 'brand' && !profile?.onboarding_completed) {
+      logger.debug('[COMPLETE_PROFILE] Brand user, redirecting to brand onboarding')
+      navigate('/brands/onboarding', { replace: true })
     }
   }, [user, profile, authLoading, navigate, profileStatus])
 
@@ -636,6 +649,24 @@ export default function CompleteProfile() {
                     </div>
                   </div>
                 </button>
+
+                {/* Brand Option */}
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelection('brand')}
+                  disabled={creatingProfile}
+                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#6366f1] hover:bg-purple-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center group-hover:from-purple-200 group-hover:to-indigo-200 transition-colors">
+                      <Store className="w-6 h-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">I'm a Brand</h4>
+                      <p className="text-sm text-gray-500">Showcasing products and connecting with athletes</p>
+                    </div>
+                  </div>
+                </button>
               </div>
 
               {creatingProfile && (
@@ -676,6 +707,19 @@ export default function CompleteProfile() {
             <p className="text-white/90 text-sm">
               Complete your profile to get started
             </p>
+            {userRole === 'club' && (
+              <div className="mt-3 flex items-center gap-3">
+                <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-white rounded-full transition-all duration-300"
+                    style={{ width: showClubClaimStep ? '50%' : '100%' }}
+                  />
+                </div>
+                <span className="text-white/80 text-xs font-medium whitespace-nowrap">
+                  Step {showClubClaimStep ? '1' : '2'} of 2
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Club Claim Step (shown first for clubs) */}
@@ -784,6 +828,8 @@ export default function CompleteProfile() {
                     required
                   />
 
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">Hockey Details</p>
+
                   <div>
                     <label htmlFor="position-select" className="block text-sm font-medium text-gray-700 mb-2">
                       Position <span className="text-red-500">*</span>
@@ -887,6 +933,8 @@ export default function CompleteProfile() {
                     showNationality
                   />
 
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">Additional Details</p>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="coach-gender">
                       Gender
@@ -945,6 +993,8 @@ export default function CompleteProfile() {
                     required
                   />
 
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">League Information</p>
+
                   <Input
                     label="Year Founded (Optional)"
                     type="number"
@@ -966,6 +1016,8 @@ export default function CompleteProfile() {
                     value={formData.mensLeagueDivision}
                     onChange={(e) => setFormData({ ...formData, mensLeagueDivision: e.target.value })}
                   />
+
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">Contact & About</p>
 
                   <Input
                     label="Website (Optional)"

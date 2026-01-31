@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
 import MediaTab from '@/components/MediaTab'
 
@@ -152,5 +153,191 @@ describe('MediaTab', () => {
       expect(profileMocks.invalidateProfile).toHaveBeenCalledWith({ userId: 'user-1', reason: 'highlight-video-removed' })
     })
     expect(addToast).toHaveBeenCalledWith('Highlight video removed.', 'success')
+  })
+})
+
+describe('MediaTab — highlight visibility toggle', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    galleryManagerProps.length = 0
+    profileMocks.invalidateProfile.mockReset()
+    supabaseMocks.mockUpdate.mockReset()
+    supabaseMocks.mockUpdateEq.mockReset()
+    supabaseMocks.mockUpdateEq.mockResolvedValue({ error: null })
+    supabaseMocks.mockUpdate.mockReturnValue({ eq: supabaseMocks.mockUpdateEq })
+    setAuthState({
+      user: { id: 'user-1' },
+      profile: {
+        id: 'user-1',
+        role: 'player',
+        highlight_video_url: 'https://youtu.be/abc123',
+      },
+    })
+  })
+
+  it('shows the visibility toggle when editing own video', async () => {
+    render(<MediaTab highlightVisibility="public" />)
+
+    await waitFor(() => {
+      expect(screen.getByTitle('Highlight video player')).toBeInTheDocument()
+    })
+
+    expect(screen.getByLabelText(/recruiters only/i)).toBeInTheDocument()
+    expect(screen.getByText('Your highlight video is visible to everyone.')).toBeInTheDocument()
+  })
+
+  it('hides the visibility toggle in readOnly mode', async () => {
+    render(<MediaTab readOnly highlightVisibility="public" viewerRole="player" isOwnProfile />)
+
+    await waitFor(() => {
+      expect(screen.getByTitle('Highlight video player')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByLabelText(/recruiters only/i)).not.toBeInTheDocument()
+  })
+
+  it('toggles to recruiters and calls Supabase update', async () => {
+    render(<MediaTab highlightVisibility="public" />)
+
+    const checkbox = await screen.findByLabelText(/recruiters only/i)
+    expect(checkbox).not.toBeChecked()
+
+    await user.click(checkbox)
+
+    await waitFor(() => {
+      expect(supabaseMocks.mockUpdate).toHaveBeenCalledWith({ highlight_visibility: 'recruiters' })
+      expect(supabaseMocks.mockUpdateEq).toHaveBeenCalledWith('id', 'user-1')
+    })
+    expect(profileMocks.invalidateProfile).toHaveBeenCalledWith({
+      userId: 'user-1',
+      reason: 'highlight-visibility-changed',
+    })
+    expect(addToast).toHaveBeenCalledWith('Highlight video restricted to recruiters.', 'success')
+  })
+
+  it('toggles back to public and shows correct toast', async () => {
+    render(<MediaTab highlightVisibility="recruiters" />)
+
+    const checkbox = await screen.findByLabelText(/recruiters only/i)
+    expect(checkbox).toBeChecked()
+
+    await user.click(checkbox)
+
+    await waitFor(() => {
+      expect(supabaseMocks.mockUpdate).toHaveBeenCalledWith({ highlight_visibility: 'public' })
+    })
+    expect(addToast).toHaveBeenCalledWith('Highlight video visible to everyone.', 'success')
+  })
+
+  it('rolls back on Supabase error and shows error toast', async () => {
+    supabaseMocks.mockUpdateEq.mockResolvedValueOnce({ error: { message: 'fail' } })
+
+    render(<MediaTab highlightVisibility="public" />)
+
+    const checkbox = await screen.findByLabelText(/recruiters only/i)
+    await user.click(checkbox)
+
+    await waitFor(() => {
+      expect(addToast).toHaveBeenCalledWith('Failed to update visibility. Please try again.', 'error')
+    })
+
+    // Checkbox should revert to unchecked (public)
+    expect(checkbox).not.toBeChecked()
+  })
+
+  it('shows restricted state when video is hidden from another player', async () => {
+    render(
+      <MemoryRouter>
+        <MediaTab
+          readOnly
+          highlightVisibility="recruiters"
+          viewerRole="player"
+          isOwnProfile={false}
+          showGallery={false}
+        />
+      </MemoryRouter>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Highlight Video Restricted')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText(/only visible to clubs and coaches/i)).toBeInTheDocument()
+    // No sign-in prompt since viewer is authenticated
+    expect(screen.queryByText(/sign in/i)).not.toBeInTheDocument()
+  })
+
+  it('shows sign-in prompt for unauthenticated viewers', async () => {
+    render(
+      <MemoryRouter>
+        <MediaTab
+          readOnly
+          highlightVisibility="recruiters"
+          viewerRole={null}
+          isOwnProfile={false}
+          showGallery={false}
+        />
+      </MemoryRouter>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Highlight Video Restricted')).toBeInTheDocument()
+    })
+
+    expect(screen.getByText(/sign in/i)).toBeInTheDocument()
+  })
+
+  it('shows video to clubs even when restricted', async () => {
+    render(
+      <MediaTab
+        readOnly
+        highlightVisibility="recruiters"
+        viewerRole="club"
+        isOwnProfile={false}
+        showGallery={false}
+      />
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTitle('Highlight video player')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('Highlight Video Restricted')).not.toBeInTheDocument()
+  })
+
+  it('shows video to coaches even when restricted', async () => {
+    render(
+      <MediaTab
+        readOnly
+        highlightVisibility="recruiters"
+        viewerRole="coach"
+        isOwnProfile={false}
+        showGallery={false}
+      />
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTitle('Highlight video player')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('Highlight Video Restricted')).not.toBeInTheDocument()
+  })
+
+  it('always shows video on own public profile even when restricted', async () => {
+    render(
+      <MediaTab
+        readOnly
+        highlightVisibility="recruiters"
+        viewerRole="player"
+        isOwnProfile
+        showGallery={false}
+      />
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTitle('Highlight video player')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('Highlight Video Restricted')).not.toBeInTheDocument()
   })
 })

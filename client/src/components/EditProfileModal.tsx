@@ -72,6 +72,24 @@ interface WorldClubClaim {
 
 const getInitialContactEmail = (profile?: Profile | null): string => profile?.contact_email || ''
 
+/**
+ * Validates form data before submission.
+ * Returns an error message string if invalid, or null if valid.
+ */
+function validateFormData(formData: ProfileFormData, role: string): string | null {
+  if (role === 'player' && formData.secondary_position && formData.secondary_position === formData.position) {
+    return 'Primary and secondary positions must be different.'
+  }
+
+  const cleanedSocialLinks = cleanSocialLinks(formData.social_links)
+  const socialLinksValidation = validateSocialLinks(cleanedSocialLinks)
+  if (!socialLinksValidation.valid) {
+    return socialLinksValidation.error || 'Invalid social media links'
+  }
+
+  return null
+}
+
 const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   full_name: profile?.full_name || '',
   base_location: profile?.base_location || '',
@@ -342,20 +360,15 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
     e.preventDefault()
     setError('')
 
-    if (role === 'player' && formData.secondary_position && formData.secondary_position === formData.position) {
-      setError('Primary and secondary positions must be different.')
-      return
-    }
-
-    // Validate social links
-    const cleanedSocialLinks = cleanSocialLinks(formData.social_links)
-    const socialLinksValidation = validateSocialLinks(cleanedSocialLinks)
-    if (!socialLinksValidation.valid) {
-      setError(socialLinksValidation.error || 'Invalid social media links')
+    const validationError = validateFormData(formData, role)
+    if (validationError) {
+      setError(validationError)
       return
     }
 
     setLoading(true)
+
+    const cleanedSocialLinks = cleanSocialLinks(formData.social_links)
 
     const trimmedContactEmail = formData.contact_email.trim()
     const normalizedContactEmail = trimmedContactEmail ? trimmedContactEmail : null
@@ -602,6 +615,11 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
               />
             )}
 
+            {/* ── Contact Information ── */}
+            <div className="pt-3 mt-1 border-t border-gray-100">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Contact</p>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Account Email</label>
               <div className="px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-sm text-gray-700">
@@ -636,6 +654,11 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
             {/* Player-specific fields */}
             {role === 'player' && (
               <>
+                {/* ── Hockey Details ── */}
+                <div className="pt-3 mt-1 border-t border-gray-100">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Hockey Details</p>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="player-position">
                     Position
@@ -694,6 +717,11 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   </select>
                 </div>
 
+                {/* ── Personal ── */}
+                <div className="pt-3 mt-1 border-t border-gray-100">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Personal</p>
+                </div>
+
                 <Input
                   label="Date of Birth (Optional)"
                   type="date"
@@ -747,6 +775,11 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
             {/* Coach-specific fields */}
             {role === 'coach' && (
               <>
+                {/* ── Coaching Details ── */}
+                <div className="pt-3 mt-1 border-t border-gray-100">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Details</p>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="coach-gender-edit">
                     Gender
@@ -815,6 +848,11 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
             {/* Club-specific fields */}
             {role === 'club' && (
               <>
+                {/* ── Organization ── */}
+                <div className="pt-3 mt-1 border-t border-gray-100">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Organization</p>
+                </div>
+
                 <Input
                   label="Year Founded (Optional)"
                   type="number"
@@ -930,6 +968,11 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     />
                   </>
                 )}
+
+                {/* ── Web & About ── */}
+                <div className="pt-3 mt-1 border-t border-gray-100">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Web & About</p>
+                </div>
 
                 <Input
                   label="Website (Optional)"
