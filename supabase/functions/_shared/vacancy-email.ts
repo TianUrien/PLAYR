@@ -10,7 +10,9 @@
 
 export const RESEND_API_URL = 'https://api.resend.com/emails'
 export const SENDER_EMAIL = 'PLAYR Hockey <team@oplayr.com>'
+export const REPLY_TO_EMAIL = 'team@oplayr.com'
 export const PLAYR_BASE_URL = 'https://oplayr.com'
+export const UNSUBSCRIBE_URL = 'https://oplayr.com/settings'
 
 export interface VacancyRecord {
   id: string
@@ -254,9 +256,14 @@ export async function sendEmail(
       body: JSON.stringify({
         from: SENDER_EMAIL,
         to,
+        reply_to: REPLY_TO_EMAIL,
         subject,
         html,
         text,
+        headers: {
+          'List-Unsubscribe': `<${UNSUBSCRIBE_URL}>`,
+          'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        },
       }),
     })
 
@@ -530,9 +537,14 @@ export async function sendEmailsIndividually(
     const emailPayloads = batchRecipients.map(recipient => ({
       from: SENDER_EMAIL,
       to: recipient,
+      reply_to: REPLY_TO_EMAIL,
       subject,
       html,
       text,
+      headers: {
+        'List-Unsubscribe': `<${UNSUBSCRIBE_URL}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     }))
 
     // Send the batch
