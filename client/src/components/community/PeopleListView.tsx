@@ -159,24 +159,34 @@ export function PeopleListView() {
     }, { query })
   }, [pageSize, isCurrentUserTestAccount])
 
-  // Server-side search with debounce
+  // Client-side search filtering (instant, for both grid and suggestions)
+  const clientFilteredMembers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return baseMembers
+    return baseMembers.filter(m =>
+      m.full_name?.toLowerCase().includes(q) ||
+      m.base_location?.toLowerCase().includes(q) ||
+      m.position?.toLowerCase().includes(q) ||
+      m.secondary_position?.toLowerCase().includes(q) ||
+      m.current_club?.toLowerCase().includes(q) ||
+      m.nationality?.toLowerCase().includes(q)
+    )
+  }, [searchQuery, baseMembers])
+
+  // Update grid with client-side results instantly; fall back to server when no matches
   useEffect(() => {
-    if (!searchQuery.trim()) {
-      // Reset to initial load
-      setIsSearching(false)
-      setAllMembers(baseMembers)
-      setDisplayedMembers(baseMembers.slice(0, pageSize))
-      setPage(1)
-      setHasMore(baseMembers.length > pageSize)
-      return
+    setAllMembers(clientFilteredMembers)
+    setIsSearching(false)
+
+    // Only trigger server search if client-side found nothing
+    // (the person might exist beyond the initial 200 loaded)
+    if (searchQuery.trim() && clientFilteredMembers.length === 0) {
+      const debounceTimer = setTimeout(() => {
+        performServerSearch(searchQuery)
+      }, 500)
+      return () => clearTimeout(debounceTimer)
     }
-
-    const debounceTimer = setTimeout(() => {
-      performServerSearch(searchQuery)
-    }, 500)
-
-    return () => clearTimeout(debounceTimer)
-  }, [searchQuery, baseMembers, pageSize, performServerSearch])
+  }, [searchQuery, clientFilteredMembers, performServerSearch])
 
   // Client-side role and availability filtering
   const filteredMembers = useMemo(() => {
@@ -217,21 +227,11 @@ export function PeopleListView() {
     setHasMore(filteredMembers.length > endIndex)
   }
 
-  // Instant client-side suggestions from already-loaded members (no debounce)
+  // Inline suggestions derived from client-filtered results
   const suggestions = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase()
-    if (!q) return []
-    return baseMembers
-      .filter(m =>
-        m.full_name?.toLowerCase().includes(q) ||
-        m.base_location?.toLowerCase().includes(q) ||
-        m.position?.toLowerCase().includes(q) ||
-        m.secondary_position?.toLowerCase().includes(q) ||
-        m.current_club?.toLowerCase().includes(q) ||
-        m.nationality?.toLowerCase().includes(q)
-      )
-      .slice(0, 6)
-  }, [searchQuery, baseMembers])
+    if (!searchQuery.trim()) return []
+    return clientFilteredMembers.slice(0, 6)
+  }, [searchQuery, clientFilteredMembers])
 
   // Show suggestions when input is focused and has content
   useEffect(() => {

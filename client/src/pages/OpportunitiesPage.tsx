@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Grid, List, ChevronDown, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -67,10 +67,13 @@ export default function OpportunitiesPage() {
     priority: 'all',
   })
   const { count: opportunityCount, markSeen, refresh: refreshOpportunityNotifications } = useOpportunityNotifications()
+  const hasSetDefaultFilter = useRef(false)
 
-  // Update default filter when profile becomes available
+  // Set default filter once when profile first becomes available
   useEffect(() => {
+    if (hasSetDefaultFilter.current) return
     if (profile?.role === 'player' || profile?.role === 'coach') {
+      hasSetDefaultFilter.current = true
       setFilters(prev => ({
         ...prev,
         opportunityType: profile.role as 'player' | 'coach'

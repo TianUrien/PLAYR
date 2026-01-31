@@ -69,9 +69,30 @@ export function BrandCard({ brand }: BrandCardProps) {
             {brand.bio}
           </p>
         )}
+
+        {formatActivity(brand.last_activity_at) && (
+          <p className="mt-2 text-xs text-gray-400">
+            {formatActivity(brand.last_activity_at)}
+          </p>
+        )}
       </div>
     </Link>
   )
+}
+
+function formatActivity(dateString: string | undefined | null): string {
+  if (!dateString) return ''
+  const now = new Date()
+  const date = new Date(dateString)
+  if (isNaN(date.getTime())) return ''
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+  if (seconds < 3600) return 'Active just now'
+  if (seconds < 86400) return 'Active today'
+  if (seconds < 172800) return 'Active yesterday'
+  if (seconds < 604800) return `Active ${Math.floor(seconds / 86400)}d ago`
+
+  return `Active ${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
 }
 
 export default BrandCard

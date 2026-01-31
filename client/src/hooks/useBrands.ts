@@ -30,6 +30,8 @@ export interface Brand {
   instagram_url: string | null
   is_verified: boolean
   created_at: string
+  /** Most recent product or post date, falls back to created_at */
+  last_activity_at: string
 }
 
 export interface BrandsQueryParams {

@@ -7,7 +7,7 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { Loader2, Rss, Store, ExternalLink, CheckCircle } from 'lucide-react'
+import { Loader2, Rss, Store, ExternalLink, CheckCircle, ArrowRight } from 'lucide-react'
 import { useBrandFeed, type FeedItem, type ProductFeedItem, type PostFeedItem } from '@/hooks/useBrandFeed'
 import type { ProductImage } from '@/hooks/useBrandProducts'
 import Skeleton from '@/components/Skeleton'
@@ -148,6 +148,17 @@ function ProductFeedCard({ item }: { item: ProductFeedItem }) {
           </a>
         )}
       </div>
+
+      {/* View brand footer */}
+      <div className="px-4 pb-3 pt-1 border-t border-gray-100">
+        <Link
+          to={`/brands/${item.brand_slug}`}
+          className="text-sm text-gray-500 hover:text-indigo-600 transition-colors inline-flex items-center gap-1"
+        >
+          View brand
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
     </div>
   )
 }
@@ -207,6 +218,17 @@ function PostFeedCard({ item }: { item: PostFeedItem }) {
           />
         </div>
       )}
+
+      {/* View brand footer */}
+      <div className="px-4 pb-3 pt-1 border-t border-gray-100">
+        <Link
+          to={`/brands/${item.brand_slug}`}
+          className="text-sm text-gray-500 hover:text-indigo-600 transition-colors inline-flex items-center gap-1"
+        >
+          View brand
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
     </div>
   )
 }

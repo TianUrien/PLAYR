@@ -8,6 +8,7 @@
 
 import { useState } from 'react'
 import { Search, Store, Loader2, Rss, Grid3X3 } from 'lucide-react'
+import { BrandCardSkeleton } from '@/components/Skeleton'
 import { useSearchParams } from 'react-router-dom'
 import { Header, Layout } from '@/components'
 import { BrandCard, BrandCategoryFilter, GlobalBrandFeed } from '@/components/brands'
@@ -150,8 +151,10 @@ function BrandDirectory() {
 
       {/* Loading State */}
       {isLoading && brands.length === 0 && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+          {Array.from({ length: 8 }, (_, i) => (
+            <BrandCardSkeleton key={i} />
+          ))}
         </div>
       )}
 
