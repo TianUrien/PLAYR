@@ -18,6 +18,7 @@ type PublicProfileBase = Pick<
   | 'base_location'
   | 'bio'
   | 'highlight_video_url'
+  | 'highlight_visibility'
   | 'nationality'
   | 'nationality_country_id'
   | 'nationality2_country_id'
@@ -46,6 +47,7 @@ const PUBLIC_PROFILE_FIELDS = [
   'base_location',
   'bio',
   'highlight_video_url',
+  'highlight_visibility',
   'nationality',
   'nationality_country_id',
   'nationality2_country_id',
@@ -191,5 +193,5 @@ export default function PublicPlayerProfile() {
     contact_email_public: profile.contact_email_public ?? false,
   }
 
-  return <PlayerDashboard profileData={playerProfileData} readOnly={true} isOwnProfile={isOwnProfile} />
+  return <PlayerDashboard profileData={playerProfileData} readOnly={true} isOwnProfile={isOwnProfile} viewerRole={currentUserProfile?.role ?? null} />
 }

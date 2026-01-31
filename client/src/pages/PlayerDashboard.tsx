@@ -52,9 +52,11 @@ interface PlayerDashboardProps {
   readOnly?: boolean
   /** When true and readOnly is true, shows a banner indicating user is viewing their own public profile */
   isOwnProfile?: boolean
+  /** Role of the viewer (from auth store), used for highlight video visibility */
+  viewerRole?: string | null
 }
 
-export default function PlayerDashboard({ profileData, readOnly = false, isOwnProfile = false }: PlayerDashboardProps) {
+export default function PlayerDashboard({ profileData, readOnly = false, isOwnProfile = false, viewerRole }: PlayerDashboardProps) {
   const { profile: authProfile, user } = useAuthStore()
   const profile = (profileData ?? authProfile) as PlayerProfileShape | null
   const navigate = useNavigate()
@@ -589,6 +591,9 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                     readOnly={readOnly}
                     showVideo={true}
                     showGallery={false}
+                    viewerRole={viewerRole ?? authProfile?.role ?? null}
+                    isOwnProfile={!readOnly || isOwnProfile}
+                    highlightVisibility={(profile as Profile)?.highlight_visibility ?? 'public'}
                     renderHeader={({ canManageVideo, openManageModal }) => (
                       <div className="flex items-center justify-between gap-3">
                         <h2 className="text-2xl font-bold text-gray-900">Highlight Video</h2>

@@ -1,5 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react'
-import { Video, Upload, Trash2 } from 'lucide-react'
+import { Video, Upload, Trash2, Lock } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { useAuthStore } from '@/lib/auth'
@@ -17,6 +18,8 @@ interface MediaTabHeaderRenderProps {
   openManageModal: () => void
 }
 
+type HighlightVisibility = 'public' | 'recruiters'
+
 interface MediaTabProps {
   profileId?: string
   readOnly?: boolean
@@ -24,9 +27,15 @@ interface MediaTabProps {
   /** Control which sections to show. Defaults to true for both. */
   showVideo?: boolean
   showGallery?: boolean
+  /** Role of the viewer, used for highlight video visibility */
+  viewerRole?: string | null
+  /** Whether the viewer is looking at their own profile */
+  isOwnProfile?: boolean
+  /** Current highlight visibility setting for this profile */
+  highlightVisibility?: string
 }
 
-export default function MediaTab({ profileId, readOnly = false, renderHeader, showVideo = true, showGallery = true }: MediaTabProps) {
+export default function MediaTab({ profileId, readOnly = false, renderHeader, showVideo = true, showGallery = true, viewerRole, isOwnProfile, highlightVisibility }: MediaTabProps) {
   const { user, profile: authProfile } = useAuthStore()
   const targetUserId = profileId || user?.id
   const { addToast } = useToastStore()
@@ -35,13 +44,60 @@ export default function MediaTab({ profileId, readOnly = false, renderHeader, sh
   const [showAddVideoModal, setShowAddVideoModal] = useState(false)
   const [deletingVideo, setDeletingVideo] = useState(false)
   const [showVideoDeleteModal, setShowVideoDeleteModal] = useState(false)
+  const [visibility, setVisibility] = useState<HighlightVisibility>(
+    highlightVisibility === 'recruiters' ? 'recruiters' : 'public'
+  )
+  const [savingVisibility, setSavingVisibility] = useState(false)
+
+  // Sync visibility state when prop changes (e.g. navigating between profiles)
+  useEffect(() => {
+    setVisibility(highlightVisibility === 'recruiters' ? 'recruiters' : 'public')
+  }, [highlightVisibility])
 
   // Use the target profile if viewing someone else, otherwise use auth profile
   const displayProfile = targetProfile || authProfile
   const isPlayerProfile = displayProfile?.role === 'player'
   const canManageHighlightVideo = Boolean(!readOnly && displayProfile?.highlight_video_url)
 
+  const canViewVideo = (() => {
+    if (!readOnly) return true
+    if (isOwnProfile) return true
+    if (visibility === 'public') return true
+    return viewerRole === 'club' || viewerRole === 'coach'
+  })()
+
   const openManageModal = () => setShowAddVideoModal(true)
+
+  const handleVisibilityChange = async (newVisibility: HighlightVisibility) => {
+    if (!user || savingVisibility) return
+
+    const prevVisibility = visibility
+    setVisibility(newVisibility)
+    setSavingVisibility(true)
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ highlight_visibility: newVisibility })
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      await invalidateProfile({ userId: user.id, reason: 'highlight-visibility-changed' })
+      addToast(
+        newVisibility === 'recruiters'
+          ? 'Highlight video restricted to recruiters.'
+          : 'Highlight video visible to everyone.',
+        'success'
+      )
+    } catch (error) {
+      setVisibility(prevVisibility)
+      logger.error('Error updating highlight visibility:', error)
+      addToast('Failed to update visibility. Please try again.', 'error')
+    } finally {
+      setSavingVisibility(false)
+    }
+  }
 
   // Fetch the profile data for the user being viewed
   useEffect(() => {
@@ -136,21 +192,34 @@ export default function MediaTab({ profileId, readOnly = false, renderHeader, sh
               <Skeleton className="h-10 w-40" />
             </div>
           ) : displayProfile?.highlight_video_url ? (
-            <div className="relative">
-              <VideoEmbed url={displayProfile.highlight_video_url} />
-              {!readOnly && (
-                <button
-                  onClick={() => setShowVideoDeleteModal(true)}
-                  disabled={deletingVideo}
-                  className="absolute right-4 top-4 rounded-lg bg-red-500 p-2 text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
-                  title="Remove video"
-                  aria-label="Remove video"
-                  type="button"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+            canViewVideo ? (
+              <>
+                <div className="relative">
+                  <VideoEmbed url={displayProfile.highlight_video_url} />
+                  {!readOnly && (
+                    <button
+                      onClick={() => setShowVideoDeleteModal(true)}
+                      disabled={deletingVideo}
+                      className="absolute right-4 top-4 rounded-lg bg-red-500 p-2 text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      title="Remove video"
+                      aria-label="Remove video"
+                      type="button"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {!readOnly && (
+                  <VisibilityToggle
+                    visibility={visibility}
+                    saving={savingVisibility}
+                    onChange={handleVisibilityChange}
+                  />
+                )}
+              </>
+            ) : (
+              <RestrictedVideoState showSignIn={!viewerRole} />
+            )
           ) : (
             <div className="rounded-xl border-2 border-dashed border-gray-300 p-8 text-center sm:p-12">
               <div className="mb-4 flex justify-center">
@@ -295,6 +364,62 @@ function VideoEmbed({ url }: { url: string }) {
         allowFullScreen
         title="Highlight video player"
       />
+    </div>
+  )
+}
+
+function VisibilityToggle({
+  visibility,
+  saving,
+  onChange,
+}: {
+  visibility: HighlightVisibility
+  saving: boolean
+  onChange: (v: HighlightVisibility) => void
+}) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 mt-4">
+      <label className="flex items-start gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={visibility === 'recruiters'}
+          onChange={(e) => onChange(e.target.checked ? 'recruiters' : 'public')}
+          disabled={saving}
+          className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+        />
+        <div>
+          <span className="text-sm font-medium text-gray-900">Recruiters only</span>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {visibility === 'recruiters'
+              ? 'Only clubs and coaches can see your highlight video.'
+              : 'Your highlight video is visible to everyone.'}
+          </p>
+        </div>
+      </label>
+    </div>
+  )
+}
+
+function RestrictedVideoState({ showSignIn }: { showSignIn: boolean }) {
+  return (
+    <div className="rounded-xl border-2 border-dashed border-gray-300 p-8 text-center sm:p-12">
+      <div className="mb-4 flex justify-center">
+        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gray-100">
+          <Lock className="h-10 w-10 text-gray-400" />
+        </div>
+      </div>
+      <h3 className="mb-2 text-lg font-semibold text-gray-900">Highlight Video Restricted</h3>
+      <p className="text-gray-600">
+        This player&apos;s highlight video is only visible to clubs and coaches.
+      </p>
+      {showSignIn && (
+        <p className="mt-3 text-sm text-gray-500">
+          <Link to="/auth" className="text-indigo-600 hover:text-indigo-700 font-medium">
+            Sign in
+          </Link>{' '}
+          as a club or coach to view.
+        </p>
+      )}
     </div>
   )
 }
