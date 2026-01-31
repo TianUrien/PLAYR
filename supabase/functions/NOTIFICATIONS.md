@@ -88,17 +88,35 @@ The notification system is split into **two completely isolated modes**:
 
 You need to create **two separate webhooks** in Supabase Dashboard:
 
-### Webhook 1: Test Mode
+### Opportunity Webhooks
+
+#### Webhook 1: Test Mode
 - **Name:** `notify-test-vacancy`
-- **Table:** `vacancies`
+- **Table:** `opportunities`
 - **Events:** INSERT, UPDATE
 - **URL:** `https://xtertgftujnebubxgqit.supabase.co/functions/v1/notify-test-vacancy`
 
-### Webhook 2: Real Mode
+#### Webhook 2: Real Mode
 - **Name:** `notify-vacancy`
-- **Table:** `vacancies`
+- **Table:** `opportunities`
 - **Events:** INSERT, UPDATE
 - **URL:** `https://xtertgftujnebubxgqit.supabase.co/functions/v1/notify-vacancy`
+
+> **Note:** Both webhooks point to the same table. Each function internally filters for test vs real accounts.
+
+### Application Webhooks
+
+#### Webhook 3: Test Mode
+- **Name:** `notify-test-application`
+- **Table:** `opportunity_applications`
+- **Events:** INSERT
+- **URL:** `https://xtertgftujnebubxgqit.supabase.co/functions/v1/notify-test-application`
+
+#### Webhook 4: Real Mode
+- **Name:** `notify-application`
+- **Table:** `opportunity_applications`
+- **Events:** INSERT
+- **URL:** `https://xtertgftujnebubxgqit.supabase.co/functions/v1/notify-application`
 
 > **Note:** Both webhooks point to the same table. Each function internally filters for test vs real accounts.
 
