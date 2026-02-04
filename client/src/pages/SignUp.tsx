@@ -144,7 +144,7 @@ export default function SignUp() {
 
         <div className="relative z-10 w-full max-w-2xl">
           <div className="bg-white rounded-2xl shadow-2xl animate-scale-in overflow-hidden">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#8026FA] to-[#924CEC]">
               <div className="flex items-center gap-3 mb-2">
                 <img
                   src="/WhiteLogo.svg"
@@ -166,10 +166,10 @@ export default function SignUp() {
               <div className="space-y-4">
                 <button
                   onClick={() => setSelectedRole('player')}
-                  className="w-full flex items-center gap-4 p-6 border-2 border-gray-200 rounded-xl hover:border-[#6366f1] hover:bg-[#6366f1]/5 transition-all group"
+                  className="w-full flex items-center gap-4 p-6 border-2 border-gray-200 rounded-xl hover:border-[#8026FA] hover:bg-[#8026FA]/5 transition-all group"
                 >
-                  <div className="w-14 h-14 rounded-full bg-[#6366f1]/10 group-hover:bg-[#6366f1] flex items-center justify-center transition-colors">
-                    <User className="w-7 h-7 text-[#6366f1] group-hover:text-white transition-colors" />
+                  <div className="w-14 h-14 rounded-full bg-[#8026FA]/10 group-hover:bg-[#8026FA] flex items-center justify-center transition-colors">
+                    <User className="w-7 h-7 text-[#8026FA] group-hover:text-white transition-colors" />
                   </div>
                   <div className="flex-1 text-left">
                     <h4 className="text-lg font-bold text-gray-900 mb-1">Join as Player</h4>
@@ -179,10 +179,10 @@ export default function SignUp() {
 
                 <button
                   onClick={() => setSelectedRole('coach')}
-                  className="w-full flex items-center gap-4 p-6 border-2 border-gray-200 rounded-xl hover:border-[#8b5cf6] hover:bg-[#8b5cf6]/5 transition-all group"
+                  className="w-full flex items-center gap-4 p-6 border-2 border-gray-200 rounded-xl hover:border-[#924CEC] hover:bg-[#924CEC]/5 transition-all group"
                 >
-                  <div className="w-14 h-14 rounded-full bg-[#8b5cf6]/10 group-hover:bg-[#8b5cf6] flex items-center justify-center transition-colors">
-                    <Briefcase className="w-7 h-7 text-[#8b5cf6] group-hover:text-white transition-colors" />
+                  <div className="w-14 h-14 rounded-full bg-[#924CEC]/10 group-hover:bg-[#924CEC] flex items-center justify-center transition-colors">
+                    <Briefcase className="w-7 h-7 text-[#924CEC] group-hover:text-white transition-colors" />
                   </div>
                   <div className="flex-1 text-left">
                     <h4 className="text-lg font-bold text-gray-900 mb-1">Join as Coach</h4>
@@ -220,7 +220,7 @@ export default function SignUp() {
               <div className="mt-6 text-center">
                 <button
                   onClick={() => navigate('/')}
-                  className="text-sm text-[#6366f1] hover:text-[#4f46e5] font-medium"
+                  className="text-sm text-[#8026FA] hover:text-[#6B20D4] font-medium"
                 >
                   Already have an account? Sign in
                 </button>
@@ -271,7 +271,7 @@ export default function SignUp() {
               <button
                 type="button"
                 onClick={() => setSelectedRole(null)}
-                className="mb-6 text-sm text-[#6366f1] hover:text-[#4f46e5] font-medium"
+                className="mb-6 text-sm text-[#8026FA] hover:text-[#6B20D4] font-medium"
               >
                 ← Back to role selection
               </button>
@@ -312,7 +312,7 @@ export default function SignUp() {
                       placeholder="Create a password (min. 8 characters)"
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                       required
                     />
                     <button
@@ -330,7 +330,7 @@ export default function SignUp() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-6 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]"
+                className="w-full mt-6 bg-gradient-to-r from-[#8026FA] to-[#924CEC]"
               >
                 {loading ? 'Creating Account...' : 'Create Account'}
               </Button>

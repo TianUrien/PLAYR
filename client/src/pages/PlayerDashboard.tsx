@@ -288,7 +288,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                       type="button"
                       onClick={handleSendMessage}
                       disabled={sendingMessage}
-                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-60"
+                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-60"
                     >
                       {sendingMessage ? (
                         <>
@@ -404,7 +404,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                     <span className="text-gray-400">•</span>
                     <a
                       href={`mailto:${publicContact.displayEmail}`}
-                      className="flex items-center gap-1.5 hover:text-[#6366f1] transition-colors"
+                      className="flex items-center gap-1.5 hover:text-[#8026FA] transition-colors"
                     >
                       <Mail className="w-4 h-4 md:w-5 md:h-5" />
                       <span>{publicContact.displayEmail}</span>
@@ -434,7 +434,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                 activeTab={activeTab}
                 onTabChange={handleTabChange}
                 className="gap-8 px-6"
-                activeClassName="border-[#6366f1] text-[#6366f1]"
+                activeClassName="border-[#8026FA] text-[#8026FA]"
                 inactiveClassName="border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
               />
           </div>
@@ -459,7 +459,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                     <h2 className="text-2xl font-bold text-gray-900">Basic Information</h2>
                     <button
                       onClick={() => setShowEditModal(true)}
-                      className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-[#6366f1] text-white rounded-lg hover:bg-[#4f46e5] transition-colors text-sm font-medium"
+                      className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-[#8026FA] text-white rounded-lg hover:bg-[#6B20D4] transition-colors text-sm font-medium"
                     >
                       <Edit2 className="w-4 h-4" />
                       Edit Profile
@@ -483,7 +483,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                       {publicContact.shouldShow && publicContact.displayEmail ? (
                         <a
                           href={`mailto:${publicContact.displayEmail}`}
-                          className="text-[#6366f1] hover:text-[#4f46e5] underline break-words"
+                          className="text-[#8026FA] hover:text-[#6B20D4] underline break-words"
                         >
                           {publicContact.displayEmail}
                         </a>
@@ -576,7 +576,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                   <div className="pt-6 border-t border-gray-200 md:hidden">
                     <button
                       onClick={() => setShowEditModal(true)}
-                      className="w-full px-6 py-3 bg-[#6366f1] text-white rounded-lg hover:bg-[#4f46e5] transition-colors font-medium"
+                      className="w-full px-6 py-3 bg-[#8026FA] text-white rounded-lg hover:bg-[#6B20D4] transition-colors font-medium"
                     >
                       Update Profile Information
                     </button>

@@ -710,7 +710,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
                       <button
                         type="button"
                         onClick={() => handleApply(vacancy)}
-                        className="flex-1 rounded-2xl bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/30"
+                        className="flex-1 rounded-2xl bg-gradient-to-r from-[#8026FA] to-[#924CEC] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/30"
                       >
                         Sign in to apply
                       </button>
@@ -726,7 +726,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
                       <button
                         type="button"
                         onClick={() => handleApply(vacancy)}
-                        className="flex-1 rounded-2xl bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/30"
+                        className="flex-1 rounded-2xl bg-gradient-to-r from-[#8026FA] to-[#924CEC] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/30"
                       >
                         Apply now
                       </button>

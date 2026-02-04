@@ -354,14 +354,14 @@ export default function VacancyDetailView({
               ) : onApply ? (
                 <Button
                   onClick={onApply}
-                  className="flex-1 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:opacity-90"
+                  className="flex-1 bg-gradient-to-r from-[#8026FA] to-[#924CEC] hover:opacity-90"
                 >
                   Apply for This Position
                 </Button>
               ) : (
                 <Button
                   onClick={onClose}
-                  className="flex-1 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:opacity-90"
+                  className="flex-1 bg-gradient-to-r from-[#8026FA] to-[#924CEC] hover:opacity-90"
                 >
                   Close
                 </Button>

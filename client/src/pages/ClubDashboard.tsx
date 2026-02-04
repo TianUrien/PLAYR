@@ -397,7 +397,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
               activeTab={activeTab}
               onTabChange={handleTabChange}
               className="gap-8 px-6"
-              activeClassName="border-[#8b5cf6] text-[#8b5cf6]"
+              activeClassName="border-[#924CEC] text-[#924CEC]"
               inactiveClassName="border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
             />
           </div>
@@ -426,12 +426,12 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
                 )}
 
                 {!readOnly && (
-                  <div className="bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] rounded-xl p-6 text-white">
+                  <div className="bg-gradient-to-br from-[#8026FA] to-[#924CEC] rounded-xl p-6 text-white">
                     <h3 className="text-lg font-semibold mb-2">Quick Actions</h3>
                     <p className="text-blue-100 mb-4 text-sm">Manage your club and find the best talent</p>
                     <button
                       onClick={handleCreateVacancyClick}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#6366f1] rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#8026FA] rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
                     >
                       <Plus className="w-4 h-4" />
                       Create Vacancy
@@ -488,7 +488,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
                           href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[#6366f1] hover:text-[#4f46e5] underline"
+                          className="text-[#8026FA] hover:text-[#6B20D4] underline"
                         >
                           {profile.website}
                         </a>
@@ -502,7 +502,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
                       {publicContact.shouldShow && publicContact.displayEmail ? (
                         <a
                           href={`mailto:${publicContact.displayEmail}`}
-                          className="text-[#6366f1] hover:text-[#4f46e5] underline"
+                          className="text-[#8026FA] hover:text-[#6B20D4] underline"
                         >
                           {publicContact.displayEmail}
                         </a>
@@ -551,7 +551,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
                   <div className="pt-6 border-t border-gray-200">
                     <button
                       onClick={() => setShowEditModal(true)}
-                      className="px-6 py-3 bg-[#8b5cf6] text-white rounded-lg hover:bg-[#7c3aed] transition-colors font-medium"
+                      className="px-6 py-3 bg-[#924CEC] text-white rounded-lg hover:bg-[#6B20D4] transition-colors font-medium"
                     >
                       Update Club Information
                     </button>

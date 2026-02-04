@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
+import { Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Input, Button, InAppBrowserWarning, PublicNav } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
@@ -8,6 +9,25 @@ import { logger } from '@/lib/logger'
 import { getAuthRedirectUrl } from '@/lib/siteUrl'
 import { supportsReliableOAuth } from '@/lib/inAppBrowser'
 import { checkLoginRateLimit, formatRateLimitError } from '@/lib/rateLimit'
+
+const CAROUSEL_SLIDES = [
+  {
+    title: 'Built for\nField Hockey.',
+    subtitle: 'The home of players, coaches, clubs\nand brands.',
+  },
+  {
+    title: 'For Players\n& Coaches.',
+    subtitle: 'Connect with your community.\nTrack your journey. Elevate your game.',
+  },
+  {
+    title: 'For Clubs\n& Brands.',
+    subtitle: 'Build your presence. Engage your fans.\nGrow the sport.',
+  },
+] as const
+
+const AUTO_ADVANCE_MS = 5000
+const RESUME_DELAY_MS = 8000
+const SWIPE_THRESHOLD = 50
 
 export default function Landing() {
   const navigate = useNavigate()
@@ -20,6 +40,15 @@ export default function Landing() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [activeSlide, setActiveSlide] = useState(0)
+  const [showPassword, setShowPassword] = useState(false)
+
+  // Carousel refs
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
+  const autoAdvanceTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isPausedByUser = useRef(false)
 
   const captureAuthFlowError = (
     err: unknown,
@@ -36,6 +65,66 @@ export default function Landing() {
       },
     })
   }
+
+  // Carousel navigation
+  const goToSlide = useCallback((index: number) => {
+    setActiveSlide(index)
+  }, [])
+
+  const goNext = useCallback(() => {
+    setActiveSlide((prev) => (prev + 1) % CAROUSEL_SLIDES.length)
+  }, [])
+
+  const goPrev = useCallback(() => {
+    setActiveSlide((prev) => (prev - 1 + CAROUSEL_SLIDES.length) % CAROUSEL_SLIDES.length)
+  }, [])
+
+  const pauseAutoAdvance = useCallback(() => {
+    isPausedByUser.current = true
+    if (resumeTimer.current) clearTimeout(resumeTimer.current)
+    resumeTimer.current = setTimeout(() => {
+      isPausedByUser.current = false
+    }, RESUME_DELAY_MS)
+  }, [])
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX
+    touchStartY.current = e.touches[0].clientY
+  }, [])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current
+
+    // Only register horizontal swipes (ignore vertical scroll)
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD || Math.abs(deltaY) > Math.abs(deltaX)) return
+
+    pauseAutoAdvance()
+    if (deltaX < 0) goNext()
+    else goPrev()
+  }, [goNext, goPrev, pauseAutoAdvance])
+
+  // Force dark body background while landing page is mounted (prevents
+  // white flash on iOS overscroll / rubber-band bounce)
+  useEffect(() => {
+    const prev = document.body.style.backgroundColor
+    document.body.style.backgroundColor = '#000'
+    return () => { document.body.style.backgroundColor = prev }
+  }, [])
+
+  // Auto-advance carousel
+  useEffect(() => {
+    autoAdvanceTimer.current = setInterval(() => {
+      if (!isPausedByUser.current) {
+        setActiveSlide((prev) => (prev + 1) % CAROUSEL_SLIDES.length)
+      }
+    }, AUTO_ADVANCE_MS)
+
+    return () => {
+      if (autoAdvanceTimer.current) clearInterval(autoAdvanceTimer.current)
+      if (resumeTimer.current) clearTimeout(resumeTimer.current)
+    }
+  }, [])
 
   // Redirect if already logged in
   useEffect(() => {
@@ -166,7 +255,7 @@ export default function Landing() {
       {/* Background Image with Overlay - Responsive Art Direction */}
       <div className="absolute inset-0" aria-hidden="true">
         {/* Mobile: Portrait-optimized image */}
-        <div className="lg:hidden h-full w-full bg-[url('/hero-mobile.webp')] bg-cover bg-center" />
+        <div className="lg:hidden h-full w-full bg-[url('/hero_mobile_2.webp')] bg-cover bg-center" />
         {/* Desktop: Landscape-optimized image */}
         <div className="hidden lg:block h-full w-full bg-[url('/hero-desktop.webp')] bg-cover bg-center" />
         {/* Multi-stop gradient: dark top for logo, clear middle for hero visibility, dark bottom for form */}
@@ -177,14 +266,66 @@ export default function Landing() {
       <div className="lg:hidden absolute inset-0 z-10 flex flex-col pt-6">
         <PublicNav transparent />
 
-        {/* Hero Zone - spacing from nav to title */}
-        <div className="flex-none flex flex-col justify-start px-6 pt-8 pb-2">
-          <h1 className="text-center text-[1.85rem] xs:text-[2.05rem] font-bold text-white leading-tight tracking-tight">
-            Built for<br />Field Hockey.
-          </h1>
-          <p className="text-center text-white/80 text-sm mt-2">
-            Connect players, coaches, and clubs.
-          </p>
+        {/* Hero Zone - Swipeable Carousel */}
+        <div
+          className="flex-none flex flex-col justify-start px-6 pt-8 pb-2"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* Slide content with fade transition */}
+          <div className="relative min-h-[120px] flex items-center justify-center">
+            <div key={activeSlide} className="animate-fadeSlideIn">
+              <h1 className="text-center text-[1.85rem] xs:text-[2.05rem] font-bold text-white leading-tight tracking-tight whitespace-pre-line">
+                {CAROUSEL_SLIDES[activeSlide].title}
+              </h1>
+              <p className="text-center text-white/80 text-sm mt-2 whitespace-pre-line">
+                {CAROUSEL_SLIDES[activeSlide].subtitle}
+              </p>
+            </div>
+          </div>
+
+          {/* Carousel Controls: arrows + dots + hint */}
+          <div className="flex flex-col items-center mt-4 gap-2">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => { pauseAutoAdvance(); goPrev() }}
+                className="p-1.5 text-white/60 hover:text-white transition-colors"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-2">
+                {CAROUSEL_SLIDES.map((_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => { pauseAutoAdvance(); goToSlide(index) }}
+                    className={`transition-all duration-300 rounded-full ${
+                      index === activeSlide
+                        ? 'w-6 h-2 bg-white'
+                        : 'w-2 h-2 bg-white/40'
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => { pauseAutoAdvance(); goNext() }}
+                className="p-1.5 text-white/60 hover:text-white transition-colors"
+                aria-label="Next slide"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-white/40 text-[10px] tracking-wider">
+              Swipe to explore
+            </p>
+          </div>
         </div>
 
         {/* Sign In Card */}
@@ -193,7 +334,7 @@ export default function Landing() {
             data-signin-card
             className="rounded-2xl px-5 py-5 bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl"
           >
-            <h2 className="text-sm font-semibold text-white text-center mb-3">Sign In</h2>
+            <h2 className="text-lg font-bold text-white text-center mb-3">Sign In</h2>
             
             <form onSubmit={handleSignIn} className="space-y-2.5">
               <div>
@@ -209,24 +350,24 @@ export default function Landing() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-[11px] font-medium text-gray-400">Password</label>
+                <label className="block text-[11px] font-medium text-gray-400 mb-1">Password</label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Password"
+                    className="!bg-white border-0 text-gray-900 placeholder:text-gray-400 !h-10 !text-[13px] !rounded-xl !pr-10"
+                    required
+                  />
                   <button
                     type="button"
-                    onClick={() => navigate('/forgot-password')}
-                    className="text-[11px] text-gray-400 hover:text-white transition-colors"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    Forgot?
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
-                  className="!bg-white border-0 text-gray-900 placeholder:text-gray-400 !h-10 !text-[13px] !rounded-xl"
-                  required
-                />
               </div>
 
               {error && (
@@ -241,6 +382,16 @@ export default function Landing() {
               >
                 {loading ? 'Signing in...' : 'Sign In'}
               </Button>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => navigate('/forgot-password')}
+                  className="text-[11px] text-gray-400 hover:text-white transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
             </form>
 
             <div className="relative my-3">
@@ -248,7 +399,7 @@ export default function Landing() {
                 <div className="w-full border-t border-white/15"></div>
               </div>
               <div className="relative flex justify-center">
-                <span className="px-3 text-[10px] text-gray-500 bg-black/50">or continue with</span>
+                <span className="px-3 text-[10px] text-gray-500 bg-black/50 font-semibold">OR</span>
               </div>
             </div>
 
@@ -273,12 +424,12 @@ export default function Landing() {
             </button>
 
             <p className="mt-3 text-center text-[11px] text-gray-400">
-              New here?{' '}
+              Don't have an account?{' '}
               <button
                 onClick={() => navigate('/signup')}
-                className="text-[#8b5cf6] hover:text-[#a78bfa] font-semibold transition-colors"
+                className="text-[#924CEC] hover:text-[#a855f7] font-semibold transition-colors"
               >
-                Join PLAYR
+                Create account
               </button>
             </p>
           </div>
@@ -404,7 +555,7 @@ export default function Landing() {
                 New here?{' '}
                 <button
                   onClick={() => navigate('/signup')}
-                  className="text-[#a78bfa] hover:text-[#c4b5fd] font-semibold transition-colors"
+                  className="text-[#924CEC] hover:text-[#a855f7] font-semibold transition-colors"
                 >
                   Join PLAYR
                 </button>

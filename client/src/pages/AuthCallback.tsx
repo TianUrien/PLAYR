@@ -452,7 +452,7 @@ export default function AuthCallback() {
           <div className="space-y-3">
             <button
               onClick={() => navigate('/')}
-              className="w-full px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+              className="w-full px-6 py-3 bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
             >
               Back to Sign In
             </button>
@@ -476,7 +476,7 @@ export default function AuthCallback() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#6366f1] mb-4"></div>
+        <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#8026FA] mb-4"></div>
         <p className="text-gray-600">{status}</p>
         
         {/* Show hint if in-app browser detected */}

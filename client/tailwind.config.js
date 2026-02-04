@@ -15,8 +15,8 @@ export default {
     },
     extend: {
       colors: {
-        'playr-primary': '#6366f1',
-        'playr-secondary': '#8b5cf6',
+        'playr-primary': '#8026FA',
+        'playr-secondary': '#924CEC',
         'playr-accent': '#ec4899',
         'playr-success': '#10b981',
         'playr-warning': '#f59e0b',
@@ -37,9 +37,14 @@ export default {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
         },
+        fadeSlideIn: {
+          '0%': { opacity: '0', transform: 'translateY(6px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
         shimmer: 'shimmer 2s ease-in-out infinite',
+        fadeSlideIn: 'fadeSlideIn 400ms ease-out forwards',
       },
     },
   },

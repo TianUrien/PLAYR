@@ -5,8 +5,8 @@
 /* PLAYR Brand Colors & Custom Properties */
 :root {
   /* Primary Brand Colors */
-  --color-playr-primary: #6366f1;
-  --color-playr-secondary: #8b5cf6;
+  --color-playr-primary: #8026FA;
+  --color-playr-secondary: #924CEC;
   --color-playr-accent: #ec4899;
   --color-playr-success: #10b981;
   --color-playr-warning: #f59e0b;
@@ -105,7 +105,7 @@
   }
 
   .gradient-playr-soft {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 50%, rgba(236, 72, 153, 0.1) 100%);
+    background: linear-gradient(135deg, rgba(128, 38, 250, 0.1) 0%, rgba(146, 76, 236, 0.1) 50%, rgba(236, 72, 153, 0.1) 100%);
   }
 
   /* Text Gradient */
@@ -202,7 +202,7 @@
   .btn-primary:hover:not(:disabled) {
     opacity: 0.9;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 12px rgba(128, 38, 250, 0.3);
   }
 
   .btn-glass {
