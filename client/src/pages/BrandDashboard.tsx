@@ -67,8 +67,9 @@ export default function BrandDashboard() {
     productCount: products.length,
   })
 
-  // Track previous percentage to show toast on improvement
-  const prevPercentageRef = useRef<number | null>(null)
+  // Snapshot ref for action-triggered strength toasts: set to current percentage
+  // BEFORE a user action that may change strength, then compared after refresh.
+  const strengthSnapshotRef = useRef<number | null>(null)
 
   // Redirect if not a brand user
   useEffect(() => {
@@ -103,15 +104,21 @@ export default function BrandDashboard() {
     }
   }, [activeTab, refreshStrength])
 
-  // Show toast when profile strength improves (only after all data has loaded
-  // to avoid spurious toasts as brand, products, and strength resolve at different times)
+  // Show toast when profile strength improves after a user action.
+  // Only fires when strengthSnapshotRef was set before a refresh (i.e. after
+  // editing the brand, adding/removing a product). Passive navigation and
+  // multi-phase initial loading never trigger the toast.
   useEffect(() => {
-    if (strengthLoading || brandLoading || productsLoading) return
-    if (prevPercentageRef.current !== null && percentage > prevPercentageRef.current) {
+    if (strengthLoading) return
+    if (strengthSnapshotRef.current === null) return
+
+    const before = strengthSnapshotRef.current
+    strengthSnapshotRef.current = null
+
+    if (percentage > before) {
       addToast(`Profile strength: ${percentage}%`, 'success')
     }
-    prevPercentageRef.current = percentage
-  }, [percentage, strengthLoading, brandLoading, productsLoading, addToast])
+  }, [percentage, strengthLoading, addToast])
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab)
@@ -126,6 +133,7 @@ export default function BrandDashboard() {
       if (result.success) {
         addToast('Product updated', 'success')
         setEditingProduct(null)
+        strengthSnapshotRef.current = percentage
         await refreshStrength()
       }
       return result
@@ -133,6 +141,7 @@ export default function BrandDashboard() {
     const result = await createProduct(data as CreateProductInput)
     if (result.success) {
       addToast('Product added', 'success')
+      strengthSnapshotRef.current = percentage
       await refreshStrength()
     }
     return result
@@ -146,6 +155,7 @@ export default function BrandDashboard() {
       if (!result.success) throw new Error(result.error)
       addToast('Product deleted', 'success')
       setProductToDelete(null)
+      strengthSnapshotRef.current = percentage
       await refreshStrength()
     } catch {
       addToast('Failed to delete product', 'error')
@@ -203,6 +213,7 @@ export default function BrandDashboard() {
 
       addToast('Brand profile updated successfully', 'success')
       setShowEditModal(false)
+      strengthSnapshotRef.current = percentage
       await refetchBrand()
       await refreshStrength()
     } catch (err) {
