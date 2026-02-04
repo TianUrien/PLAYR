@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { Search } from 'lucide-react'
+import { Search, Filter } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Avatar, RoleBadge, MemberCard } from '@/components'
 import { logger } from '@/lib/logger'
@@ -29,14 +29,23 @@ interface Profile {
   position: string | null
   secondary_position: string | null
   current_club: string | null
+  gender: string | null
   created_at: string
   is_test_account?: boolean
   open_to_play?: boolean
   open_to_coach?: boolean
 }
 
-type RoleFilter = 'all' | 'player' | 'coach' | 'club'
-type AvailabilityFilter = 'all' | 'open'
+interface CommunityFilters {
+  role: 'all' | 'player' | 'coach' | 'club'
+  position: string[]
+  gender: 'all' | 'Men' | 'Women'
+  location: string
+  nationality: string
+  availability: 'all' | 'open'
+}
+
+const POSITIONS = ['goalkeeper', 'defender', 'midfielder', 'forward']
 
 export function PeopleListView() {
   const navigate = useNavigate()
@@ -47,8 +56,15 @@ export function PeopleListView() {
   const [allMembers, setAllMembers] = useState<Profile[]>([])
   const [displayedMembers, setDisplayedMembers] = useState<Profile[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
-  const [availabilityFilter, setAvailabilityFilter] = useState<AvailabilityFilter>('all')
+  const [filters, setFilters] = useState<CommunityFilters>({
+    role: 'all',
+    position: [],
+    gender: 'all',
+    location: '',
+    nationality: '',
+    availability: 'all',
+  })
+  const [showFilters, setShowFilters] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSearching, setIsSearching] = useState(false)
   const [page, setPage] = useState(1)
@@ -74,7 +90,7 @@ export function PeopleListView() {
           async () => {
             let query = supabase
               .from('profiles')
-              .select('id, avatar_url, full_name, role, nationality, nationality_country_id, nationality2_country_id, base_location, position, secondary_position, current_club, created_at, is_test_account, open_to_play, open_to_coach')
+              .select('id, avatar_url, full_name, role, nationality, nationality_country_id, nationality2_country_id, base_location, position, secondary_position, current_club, gender, created_at, is_test_account, open_to_play, open_to_coach')
               .eq('onboarding_completed', true) // Only show fully onboarded users
               .neq('role', 'brand') // Brands have their own section
 
@@ -127,7 +143,7 @@ export function PeopleListView() {
             const searchTerm = `%${query}%`
             let dbQuery = supabase
               .from('profiles')
-              .select('id, avatar_url, full_name, role, nationality, nationality_country_id, nationality2_country_id, base_location, position, secondary_position, current_club, created_at, is_test_account, open_to_play, open_to_coach')
+              .select('id, avatar_url, full_name, role, nationality, nationality_country_id, nationality2_country_id, base_location, position, secondary_position, current_club, gender, created_at, is_test_account, open_to_play, open_to_coach')
               .eq('onboarding_completed', true) // Only show fully onboarded users
               .neq('role', 'brand') // Brands have their own section
               .or(
@@ -190,32 +206,46 @@ export function PeopleListView() {
     }
   }, [searchQuery, clientFilteredMembers, performServerSearch])
 
-  // Client-side role and availability filtering
+  // Client-side filtering (all filters)
   const filteredMembers = useMemo(() => {
     let result = allMembers
-    
-    // Role filter
-    if (roleFilter !== 'all') {
-      result = result.filter(member => member.role === roleFilter)
+
+    if (filters.role !== 'all') {
+      result = result.filter(m => m.role === filters.role)
     }
-    
-    // Availability filter
-    if (availabilityFilter === 'open') {
-      result = result.filter(member => 
-        (member.role === 'player' && member.open_to_play) ||
-        (member.role === 'coach' && member.open_to_coach)
+    if (filters.position.length > 0) {
+      result = result.filter(m =>
+        (m.position && filters.position.includes(m.position.toLowerCase())) ||
+        (m.secondary_position && filters.position.includes(m.secondary_position.toLowerCase()))
       )
     }
-    
+    if (filters.gender !== 'all') {
+      result = result.filter(m => m.gender === filters.gender)
+    }
+    if (filters.location.trim()) {
+      const loc = filters.location.toLowerCase()
+      result = result.filter(m => m.base_location?.toLowerCase().includes(loc))
+    }
+    if (filters.nationality.trim()) {
+      const nat = filters.nationality.toLowerCase()
+      result = result.filter(m => m.nationality?.toLowerCase().includes(nat))
+    }
+    if (filters.availability === 'open') {
+      result = result.filter(m =>
+        (m.role === 'player' && m.open_to_play) ||
+        (m.role === 'coach' && m.open_to_coach)
+      )
+    }
+
     return result
-  }, [allMembers, roleFilter, availabilityFilter])
+  }, [allMembers, filters])
 
   // Update displayed members when filter changes
   useEffect(() => {
     setDisplayedMembers(filteredMembers.slice(0, pageSize))
     setPage(1)
     setHasMore(filteredMembers.length > pageSize)
-  }, [filteredMembers, roleFilter, availabilityFilter, pageSize])
+  }, [filteredMembers, pageSize])
 
   // Load more handler
   const handleLoadMore = () => {
@@ -256,18 +286,46 @@ export function PeopleListView() {
     }
   }
 
-  // Role filter chips
-  const roleFilters: { value: RoleFilter; label: string }[] = [
-    { value: 'all', label: 'All' },
-    { value: 'player', label: 'Players' },
-    { value: 'coach', label: 'Coaches' },
-    { value: 'club', label: 'Clubs' },
-  ]
+  // Filter helpers
+  const updateFilter = <K extends keyof CommunityFilters>(key: K, value: CommunityFilters[K]) => {
+    setFilters(prev => {
+      const next = { ...prev, [key]: value }
+      if (key === 'role') {
+        next.position = []
+        next.gender = 'all'
+      }
+      return next
+    })
+  }
+
+  const togglePosition = (pos: string) => {
+    setFilters(prev => ({
+      ...prev,
+      position: prev.position.includes(pos)
+        ? prev.position.filter(p => p !== pos)
+        : [...prev.position, pos]
+    }))
+  }
+
+  const clearFilters = () => {
+    setFilters({ role: 'all', position: [], gender: 'all', location: '', nationality: '', availability: 'all' })
+  }
+
+  const hasActiveFilters = () => {
+    return (
+      filters.role !== 'all' ||
+      filters.position.length > 0 ||
+      filters.gender !== 'all' ||
+      filters.location.trim() !== '' ||
+      filters.nationality.trim() !== '' ||
+      filters.availability !== 'all'
+    )
+  }
 
   return (
     <div>
       {/* Search Bar with Inline Suggestions */}
-      <div ref={searchContainerRef} className="max-w-2xl mx-auto relative mb-8">
+      <div ref={searchContainerRef} className="max-w-2xl mx-auto relative mb-4">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
         <input
           type="text"
@@ -324,32 +382,14 @@ export function PeopleListView() {
         )}
       </div>
 
-      {/* Role Filter Chips - responsive single row */}
-      <div className="flex justify-center mb-6 px-4 sm:px-0">
-        <div className="flex gap-1.5 sm:gap-2 w-full max-w-md sm:w-auto">
-          {roleFilters.map((filter) => (
-            <button
-              key={filter.value}
-              onClick={() => setRoleFilter(filter.value)}
-              className={`flex-1 sm:flex-none px-3 sm:px-6 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] rounded-full text-xs sm:text-sm font-medium transition-all ${
-                roleFilter === filter.value
-                  ? 'bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white shadow-md'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:border-purple-300'
-              }`}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Availability Filter - secondary pill toggles */}
-      <div className="flex justify-center mb-8 px-4 sm:px-0">
-        <div className="flex gap-2 sm:gap-2.5">
+      {/* Action Row: Availability toggle + Filters button */}
+      <div className="flex items-center justify-between mb-4 px-4 sm:px-0">
+        <div className="flex gap-1.5 sm:gap-2">
           <button
-            onClick={() => setAvailabilityFilter('all')}
-            className={`px-4 sm:px-5 py-1.5 rounded-full text-xs font-medium transition-all ${
-              availabilityFilter === 'all'
+            type="button"
+            onClick={() => updateFilter('availability', 'all')}
+            className={`whitespace-nowrap px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+              filters.availability === 'all'
                 ? 'bg-gray-700 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
@@ -357,78 +397,204 @@ export function PeopleListView() {
             All Members
           </button>
           <button
-            onClick={() => setAvailabilityFilter('open')}
-            className={`px-4 sm:px-5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
-              availabilityFilter === 'open'
+            type="button"
+            onClick={() => updateFilter('availability', 'open')}
+            className={`whitespace-nowrap px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+              filters.availability === 'open'
                 ? 'bg-emerald-500 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-current" />
+            <span className="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0" />
             Open to Opportunities
           </button>
         </div>
+        <button
+          type="button"
+          onClick={() => setShowFilters(!showFilters)}
+          className="md:hidden flex items-center gap-1.5 whitespace-nowrap px-3.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 active:bg-gray-300 transition-colors"
+        >
+          <Filter className="w-3.5 h-3.5" />
+          Filters
+          {hasActiveFilters() && (
+            <span className="w-2 h-2 bg-purple-600 rounded-full" />
+          )}
+        </button>
       </div>
 
-      {/* New Members Section */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">New Members</h2>
-        <p className="text-gray-600 mb-6">See who recently joined PLAYR.</p>
+      {/* Filtered results count — only when narrowing */}
+      {(searchQuery.trim() || hasActiveFilters()) && (
+        <p className="text-sm text-gray-500 mb-4 px-4 sm:px-0">
+          Showing <span className="font-semibold text-gray-900">{filteredMembers.length}</span> members
+        </p>
+      )}
 
-        {/* Loading State */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(12)].map((_, i) => (
-              <ProfileCardSkeleton key={i} />
-            ))}
-          </div>
-        ) : displayedMembers.length === 0 ? (
-          // Empty State
-          <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-            <p className="text-gray-500">
-              {searchQuery.trim() || roleFilter !== 'all' || availabilityFilter !== 'all'
-                ? 'No results found. Try a different name or filter.'
-                : 'No members yet.'}
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Member Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {displayedMembers.map((member) => (
-                <MemberCard
-                  key={member.id}
-                  id={member.id}
-                  avatar_url={member.avatar_url}
-                  full_name={member.full_name}
-                  role={member.role}
-                  nationality={member.nationality}
-                  nationality_country_id={member.nationality_country_id}
-                  nationality2_country_id={member.role === 'club' ? null : member.nationality2_country_id}
-                  base_location={member.base_location}
-                  position={member.position}
-                  secondary_position={member.secondary_position}
-                  current_team={member.current_club}
-                  created_at={member.created_at}
-                  open_to_play={member.open_to_play}
-                  open_to_coach={member.open_to_coach}
-                />
-              ))}
+      <div className="flex flex-col gap-6 lg:flex-row">
+        {/* Filters Panel */}
+        <aside className={`${showFilters ? 'block' : 'hidden'} md:block w-full lg:w-72 flex-shrink-0`}>
+          <div className="bg-white rounded-xl p-6 shadow-sm sticky top-24 space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">Filters</h2>
+              {hasActiveFilters() && (
+                <button
+                  onClick={clearFilters}
+                  className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                >
+                  Clear all
+                </button>
+              )}
             </div>
 
-            {/* Load More Button */}
-            {hasMore && (
-              <div className="flex justify-center">
-                <button
-                  onClick={handleLoadMore}
-                  className="px-8 py-3 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white font-medium hover:opacity-90 transition-opacity"
-                >
-                  Load More
-                </button>
+            {/* Role */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+              <div className="space-y-2">
+                {(['all', 'player', 'coach', 'club'] as const).map((role) => (
+                  <label key={role} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={filters.role === role}
+                      onChange={() => updateFilter('role', role)}
+                      className="w-4 h-4 text-purple-600"
+                    />
+                    <span className="text-sm text-gray-700 capitalize">{role === 'all' ? 'All' : role}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Position — hidden when role is club */}
+            {filters.role !== 'club' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Position</label>
+                <div className="space-y-2">
+                  {POSITIONS.map((position) => (
+                    <label key={position} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filters.position.includes(position)}
+                        onChange={() => togglePosition(position)}
+                        className="w-4 h-4 text-purple-600 rounded"
+                      />
+                      <span className="text-sm text-gray-700 capitalize">{position}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             )}
-          </>
-        )}
+
+            {/* Gender — hidden when role is club */}
+            {filters.role !== 'club' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                <div className="space-y-2">
+                  {(['all', 'Men', 'Women'] as const).map((gender) => (
+                    <label key={gender} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={filters.gender === gender}
+                        onChange={() => updateFilter('gender', gender)}
+                        className="w-4 h-4 text-purple-600"
+                      />
+                      <span className="text-sm text-gray-700">{gender === 'all' ? 'All' : gender}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Location */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+              <input
+                type="text"
+                value={filters.location}
+                onChange={(e) => updateFilter('location', e.target.value)}
+                placeholder="City or Country"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Nationality */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nationality</label>
+              <input
+                type="text"
+                value={filters.nationality}
+                onChange={(e) => updateFilter('nationality', e.target.value)}
+                placeholder="e.g. Dutch, Australian"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <div className="flex-1">
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(12)].map((_, i) => (
+                <ProfileCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : displayedMembers.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">🔍</span>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No members found</h3>
+              <p className="text-gray-500 mb-4">
+                {searchQuery.trim() || hasActiveFilters()
+                  ? 'Try adjusting your search or filters to see more results.'
+                  : 'No members yet.'}
+              </p>
+              {hasActiveFilters() && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="px-6 py-2 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white font-medium hover:opacity-90 transition-opacity"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {displayedMembers.map((member) => (
+                  <MemberCard
+                    key={member.id}
+                    id={member.id}
+                    avatar_url={member.avatar_url}
+                    full_name={member.full_name}
+                    role={member.role}
+                    nationality={member.nationality}
+                    nationality_country_id={member.nationality_country_id}
+                    nationality2_country_id={member.role === 'club' ? null : member.nationality2_country_id}
+                    base_location={member.base_location}
+                    position={member.position}
+                    secondary_position={member.secondary_position}
+                    current_team={member.current_club}
+                    created_at={member.created_at}
+                    open_to_play={member.open_to_play}
+                    open_to_coach={member.open_to_coach}
+                  />
+                ))}
+              </div>
+
+              {hasMore && (
+                <div className="flex justify-center">
+                  <button
+                    onClick={handleLoadMore}
+                    className="px-8 py-3 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white font-medium hover:opacity-90 transition-opacity"
+                  >
+                    Load More
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   )

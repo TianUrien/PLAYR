@@ -18,7 +18,7 @@ export default function OpportunityDetailPage() {
   const isCurrentUserTestAccount = profile?.is_test_account ?? false
   
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null)
-  const [club, setClub] = useState<{ id: string; full_name: string | null; avatar_url: string | null } | null>(null)
+  const [club, setClub] = useState<{ id: string; full_name: string | null; avatar_url: string | null; role: string | null; current_club: string | null } | null>(null)
   const [hasApplied, setHasApplied] = useState(false)
   const [showApplyModal, setShowApplyModal] = useState(false)
   const [showSignInPrompt, setShowSignInPrompt] = useState(false)
@@ -38,7 +38,9 @@ export default function OpportunityDetailPage() {
             id,
             full_name,
             avatar_url,
-            is_test_account
+            is_test_account,
+            role,
+            current_club
           )
         `)
         .eq('id', id)
@@ -52,7 +54,7 @@ export default function OpportunityDetailPage() {
       }
 
       // Check if this is a test opportunity and current user is not a test account
-      const opportunityWithClub = opportunityData as Opportunity & { club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean } }
+      const opportunityWithClub = opportunityData as Opportunity & { club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean; role?: string | null; current_club?: string | null } }
       if (opportunityWithClub.club?.is_test_account && !isCurrentUserTestAccount) {
         // Real users cannot view test opportunities
         logger.debug('Test opportunity not accessible to non-test user')
@@ -68,6 +70,8 @@ export default function OpportunityDetailPage() {
           id: opportunityWithClub.club.id,
           full_name: opportunityWithClub.club.full_name,
           avatar_url: opportunityWithClub.club.avatar_url,
+          role: opportunityWithClub.club.role ?? null,
+          current_club: opportunityWithClub.club.current_club ?? null,
         })
       }
 
@@ -245,6 +249,8 @@ export default function OpportunityDetailPage() {
             clubName={club.full_name || 'Unknown Club'}
             clubLogo={club.avatar_url}
             clubId={club.id}
+            publisherRole={club.role}
+            publisherOrganization={opportunity.organization_name || club.current_club || null}
             onClose={() => navigate('/opportunities')}
             onApply={canShowApplyButton ? handleApplyClick : undefined}
             hasApplied={hasApplied}

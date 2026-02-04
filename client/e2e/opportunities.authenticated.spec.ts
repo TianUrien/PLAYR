@@ -33,9 +33,11 @@ test.describe('Opportunities Page - Authenticated Player', () => {
   })
 
   test('shows position filters', async ({ page }) => {
-    // Position filter section should be visible
-    await expect(page.getByText('Position', { exact: true })).toBeVisible()
-    
+    // Position filter section should be visible inside the filter sidebar
+    // (scoped to sidebar because vacancy cards also show "Position" labels)
+    const sidebar = page.getByRole('complementary')
+    await expect(sidebar.getByText('Position', { exact: true })).toBeVisible()
+
     // Position checkbox options - use role to be specific
     await expect(page.getByRole('checkbox', { name: /goalkeeper/i })).toBeVisible()
     await expect(page.getByRole('checkbox', { name: /defender/i })).toBeVisible()
@@ -182,8 +184,9 @@ test.describe('Responsive Opportunities - Authenticated', () => {
     if (await filtersButton.isVisible()) {
       await filtersButton.click()
       
-      // Filters panel should now be visible
-      await expect(page.getByText('Position', { exact: true })).toBeVisible()
+      // Filters panel should now be visible (scope to sidebar to avoid card matches)
+      const sidebar = page.getByRole('complementary')
+      await expect(sidebar.getByText('Position', { exact: true })).toBeVisible()
     }
   })
 })

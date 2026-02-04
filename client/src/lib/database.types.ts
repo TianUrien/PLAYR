@@ -732,6 +732,7 @@ export type Database = {
           location_city: string
           location_country: string
           opportunity_type: Database["public"]["Enums"]["opportunity_type"]
+          organization_name: string | null
           position: Database["public"]["Enums"]["opportunity_position"] | null
           priority: Database["public"]["Enums"]["opportunity_priority"] | null
           published_at: string | null
@@ -758,6 +759,7 @@ export type Database = {
           location_city: string
           location_country: string
           opportunity_type?: Database["public"]["Enums"]["opportunity_type"]
+          organization_name?: string | null
           position?: Database["public"]["Enums"]["opportunity_position"] | null
           priority?: Database["public"]["Enums"]["opportunity_priority"] | null
           published_at?: string | null
@@ -784,6 +786,7 @@ export type Database = {
           location_city?: string
           location_country?: string
           opportunity_type?: Database["public"]["Enums"]["opportunity_type"]
+          organization_name?: string | null
           position?: Database["public"]["Enums"]["opportunity_position"] | null
           priority?: Database["public"]["Enums"]["opportunity_priority"] | null
           published_at?: string | null
@@ -2034,7 +2037,10 @@ export type Database = {
             | null
           position: Database["public"]["Enums"]["opportunity_position"] | null
           priority: Database["public"]["Enums"]["opportunity_priority"] | null
+          organization_name: string | null
           published_at: string | null
+          publisher_current_club: string | null
+          publisher_role: string | null
           requirements: string[] | null
           start_date: string | null
           title: string | null

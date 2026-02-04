@@ -289,6 +289,22 @@ async function authenticateUser(
     const role = (profileData as { role?: string }).role
     if (role === 'club') {
       const title = 'E2E Vacancy - Automated Test'
+      const expectedFields = {
+        club_id: data.user.id,
+        opportunity_type: 'player' as const,
+        title,
+        position: 'midfielder',
+        gender: 'Men',
+        description: 'Automated E2E test vacancy. Safe to ignore.',
+        location_city: 'London',
+        location_country: 'United Kingdom',
+        duration_text: '1 season',
+        requirements: ['E2E'],
+        benefits: ['housing'],
+        priority: 'medium',
+        status: 'open',
+        published_at: new Date().toISOString(),
+      }
 
       const { data: existingVacancy, error: existingVacancyError } = await authSupabase
         .from('opportunities')
@@ -308,22 +324,7 @@ async function authenticateUser(
       if (!existingVacancy) {
         const { error: vacancyInsertError } = await authSupabase
           .from('opportunities')
-          .insert({
-            club_id: data.user.id,
-            opportunity_type: 'player',
-            title,
-            position: 'midfielder',
-            gender: 'Men',
-            description: 'Automated E2E test vacancy. Safe to ignore.',
-            location_city: 'London',
-            location_country: 'United Kingdom',
-            duration_text: '1 season',
-            requirements: ['E2E'],
-            benefits: ['housing'],
-            priority: 'medium',
-            status: 'open',
-            published_at: new Date().toISOString(),
-          } as never)
+          .insert(expectedFields as never)
 
         if (vacancyInsertError) {
           console.warn(`[Auth Setup] Error inserting test vacancy: ${vacancyInsertError.message}`)
@@ -341,19 +342,17 @@ async function authenticateUser(
           .maybeSingle()
 
         vacancyId = insertedVacancy?.id ?? null
-      } else if (existingVacancy.status !== 'open') {
+      } else {
+        // Always reset all fields to expected values for deterministic tests
         const { error: vacancyUpdateError } = await authSupabase
           .from('opportunities')
-          .update({
-            status: 'open',
-            published_at: new Date().toISOString(),
-          } as never)
+          .update(expectedFields as never)
           .eq('id', existingVacancy.id)
 
         if (vacancyUpdateError) {
-          console.warn(`[Auth Setup] Error updating test vacancy status: ${vacancyUpdateError.message}`)
+          console.warn(`[Auth Setup] Error updating test vacancy: ${vacancyUpdateError.message}`)
         } else {
-          console.log('[Auth Setup] Updated E2E test vacancy to open')
+          console.log('[Auth Setup] Reset E2E test vacancy to expected state')
         }
 
         vacancyId = existingVacancy.id

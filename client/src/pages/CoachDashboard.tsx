@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react'
-import { MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail } from 'lucide-react'
+import { MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail, Plus } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
 import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, ProfileStrengthCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, DualNationalityDisplay, AvailabilityPill } from '@/components'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
+import OpportunitiesTab from '@/components/OpportunitiesTab'
 import Button from '@/components/Button'
 import { DashboardSkeleton } from '@/components/Skeleton'
 import SignInPromptModal from '@/components/SignInPromptModal'
@@ -20,7 +21,7 @@ import type { SocialLinks } from '@/lib/socialLinks'
 import { useCoachProfileStrength } from '@/hooks/useCoachProfileStrength'
 import { calculateAge, formatDateOfBirth } from '@/lib/utils'
 
-type TabType = 'profile' | 'journey' | 'friends' | 'comments'
+type TabType = 'profile' | 'vacancies' | 'journey' | 'friends' | 'comments'
 
 export type CoachProfileShape =
   Partial<Profile> &
@@ -57,11 +58,12 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const param = searchParams.get('tab') as TabType | null
-    return param && ['profile', 'journey', 'friends', 'comments'].includes(param) ? param : 'profile'
+    return param && ['profile', 'vacancies', 'journey', 'friends', 'comments'].includes(param) ? param : 'profile'
   })
   const [showEditModal, setShowEditModal] = useState(false)
   const [showSignInPrompt, setShowSignInPrompt] = useState(false)
   const [sendingMessage, setSendingMessage] = useState(false)
+  const [triggerCreateVacancy, setTriggerCreateVacancy] = useState(false)
   const { addToast } = useToastStore()
   const claimCommentHighlights = useNotificationStore((state) => state.claimCommentHighlights)
   const clearCommentNotifications = useNotificationStore((state) => state.clearCommentNotifications)
@@ -81,7 +83,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
 
   useEffect(() => {
     if (!tabParam) return
-    if (tabParam !== activeTab && ['profile', 'journey', 'friends', 'comments'].includes(tabParam)) {
+    if (tabParam !== activeTab && ['profile', 'vacancies', 'journey', 'friends', 'comments'].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [tabParam, activeTab])
@@ -130,6 +132,11 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
 
   const publicContact = derivePublicContactEmail(profile)
   const savedContactEmail = profile.contact_email?.trim() || ''
+
+  const handleCreateVacancyClick = () => {
+    handleTabChange('vacancies')
+    setTriggerCreateVacancy(true)
+  }
 
   const handleSendMessage = async () => {
     if (!user) {
@@ -199,6 +206,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
 
   const tabs: { id: TabType; label: string }[] = [
     { id: 'profile', label: 'Profile' },
+    { id: 'vacancies', label: 'Opportunities' },
     { id: 'journey', label: 'Journey' },
     { id: 'friends', label: 'Friends' },
     { id: 'comments', label: 'Comments' },
@@ -412,6 +420,21 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                   />
                 )}
 
+                {!readOnly && (
+                  <div className="bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] rounded-xl p-6 text-white">
+                    <h3 className="text-lg font-semibold mb-2">Quick Actions</h3>
+                    <p className="text-blue-100 mb-4 text-sm">Manage your coaching profile and find opportunities</p>
+                    <button
+                      type="button"
+                      onClick={handleCreateVacancyClick}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#6366f1] rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create Opportunity
+                    </button>
+                  </div>
+                )}
+
                 {/* Basic Information - Only shown in private view (not readOnly) to avoid duplication with header card */}
                 {!readOnly && (
                 <div>
@@ -549,6 +572,17 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                     )}
                   />
                 </section>
+              </div>
+            )}
+
+            {activeTab === 'vacancies' && (
+              <div className="animate-fade-in">
+                <OpportunitiesTab
+                  profileId={profile.id}
+                  readOnly={readOnly}
+                  triggerCreate={triggerCreateVacancy}
+                  onCreateTriggered={() => setTriggerCreateVacancy(false)}
+                />
               </div>
             )}
 

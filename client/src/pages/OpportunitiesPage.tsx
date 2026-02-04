@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Grid, List, ChevronDown, Filter } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -38,7 +38,7 @@ export default function OpportunitiesPage() {
   
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
   const [filteredVacancies, setFilteredVacancies] = useState<Vacancy[]>([])
-  const [clubs, setClubs] = useState<Record<string, { id: string; full_name: string; avatar_url: string | null }>>({})
+  const [clubs, setClubs] = useState<Record<string, { id: string; full_name: string; avatar_url: string | null; role: string | null; current_club: string | null }>>({})
   const [userApplications, setUserApplications] = useState<string[]>([])
   const [selectedVacancy, setSelectedVacancy] = useState<Vacancy | null>(null)
   const [showApplyModal, setShowApplyModal] = useState(false)
@@ -53,15 +53,8 @@ export default function OpportunitiesPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [isSyncingNewVacancies, setIsSyncingNewVacancies] = useState(false)
   
-  // Smart default: Set opportunity type filter based on user's role
-  const getDefaultOpportunityType = (): 'all' | 'player' | 'coach' => {
-    if (profile?.role === 'player') return 'player'
-    if (profile?.role === 'coach') return 'coach'
-    return 'all'
-  }
-
   const [filters, setFilters] = useState<FiltersState>({
-    opportunityType: getDefaultOpportunityType(),
+    opportunityType: 'all',
     position: [],
     gender: 'all',
     location: '',
@@ -70,19 +63,6 @@ export default function OpportunitiesPage() {
     priority: 'all',
   })
   const { count: opportunityCount, markSeen, refresh: refreshOpportunityNotifications } = useOpportunityNotifications()
-  const hasSetDefaultFilter = useRef(false)
-
-  // Set default filter once when profile first becomes available
-  useEffect(() => {
-    if (hasSetDefaultFilter.current) return
-    if (profile?.role === 'player' || profile?.role === 'coach') {
-      hasSetDefaultFilter.current = true
-      setFilters(prev => ({
-        ...prev,
-        opportunityType: profile.role as 'player' | 'coach'
-      }))
-    }
-  }, [profile?.role])
 
   const fetchVacancies = useCallback(async (options?: { skipCache?: boolean; silent?: boolean }) => {
     if (!options?.silent) {
@@ -111,7 +91,9 @@ export default function OpportunitiesPage() {
                   id,
                   full_name,
                   avatar_url,
-                  is_test_account
+                  is_test_account,
+                  role,
+                  current_club
                 )
               `)
               .eq('status', 'open')
@@ -123,7 +105,7 @@ export default function OpportunitiesPage() {
             logger.debug('Fetched vacancies with clubs:', vacanciesData)
 
             // Filter out test vacancies for non-test users
-            type VacancyWithClub = Vacancy & { club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean } }
+            type VacancyWithClub = Vacancy & { club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean; role?: string | null; current_club?: string | null } }
             let filteredVacancies = vacanciesData as VacancyWithClub[]
             
             if (!isCurrentUserTestAccount) {
@@ -134,14 +116,16 @@ export default function OpportunitiesPage() {
             }
 
             // Build clubs map from embedded data
-            const clubsMap: Record<string, { id: string; full_name: string; avatar_url: string | null }> = {}
-            
+            const clubsMap: Record<string, { id: string; full_name: string; avatar_url: string | null; role: string | null; current_club: string | null }> = {}
+
             filteredVacancies.forEach((vacancy) => {
               if (vacancy.club && vacancy.club.id) {
                 clubsMap[vacancy.club.id] = {
                   id: vacancy.club.id,
                   full_name: vacancy.club.full_name || 'Unknown Club',
                   avatar_url: vacancy.club.avatar_url,
+                  role: vacancy.club.role ?? null,
+                  current_club: vacancy.club.current_club ?? null,
                 }
               }
             })
@@ -682,10 +666,12 @@ export default function OpportunitiesPage() {
                     Clear Filters
                   </Button>
                 )}
-                {profile?.role === 'club' && (
+                {(profile?.role === 'club' || profile?.role === 'coach') && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
                     <p className="text-sm text-gray-500 mb-3">
-                      As a club, you can post opportunities to attract players and coaches.
+                      {profile.role === 'coach'
+                        ? 'As a coach, you can post opportunities to find players and staff.'
+                        : 'As a club, you can post opportunities to attract players and coaches.'}
                     </p>
                     <Button
                       onClick={() => navigate('/dashboard?tab=vacancies')}
@@ -701,6 +687,7 @@ export default function OpportunitiesPage() {
                 {filteredVacancies.map((vacancy) => {
                   const club = clubs[vacancy.club_id]
                   const isApplied = userApplications.includes(vacancy.id)
+                  const org = vacancy.organization_name || club?.current_club || null
                   return (
                     <OpportunityCard
                       key={vacancy.id}
@@ -708,6 +695,8 @@ export default function OpportunitiesPage() {
                       clubName={club?.full_name || 'Unknown Club'}
                       clubLogo={club?.avatar_url || null}
                       clubId={vacancy.club_id}
+                      publisherRole={club?.role}
+                      publisherOrganization={org}
                       onViewDetails={() => {
                         setSelectedVacancy(vacancy)
                         setShowDetailView(true)
@@ -730,6 +719,8 @@ export default function OpportunitiesPage() {
           clubName={clubs[selectedVacancy.club_id]?.full_name || 'Unknown Club'}
           clubLogo={clubs[selectedVacancy.club_id]?.avatar_url || null}
           clubId={selectedVacancy.club_id}
+          publisherRole={clubs[selectedVacancy.club_id]?.role}
+          publisherOrganization={selectedVacancy.organization_name || clubs[selectedVacancy.club_id]?.current_club || null}
           onClose={() => {
             setShowDetailView(false)
             setSelectedVacancy(null)

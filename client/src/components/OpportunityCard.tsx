@@ -11,6 +11,8 @@ interface VacancyCardProps {
   clubName: string
   clubLogo?: string | null
   clubId: string
+  publisherRole?: string | null
+  publisherOrganization?: string | null
   onViewDetails: () => void
   onApply?: () => void
   hasApplied?: boolean
@@ -32,6 +34,8 @@ export default function VacancyCard({
   clubName,
   clubLogo,
   clubId,
+  publisherRole,
+  publisherOrganization,
   onViewDetails,
   onApply,
   hasApplied = false
@@ -45,7 +49,7 @@ export default function VacancyCard({
 
   const handleClubClick = (e: React.MouseEvent) => {
     e.stopPropagation()
-    navigate(`/clubs/id/${clubId}`)
+    navigate(publisherRole === 'coach' ? `/players/id/${clubId}` : `/clubs/id/${clubId}`)
   }
 
   const formatDate = (dateString: string | null) => {
@@ -64,19 +68,14 @@ export default function VacancyCard({
   }
 
   const getPriorityLabel = (priority: string) => {
-    if (priority === 'high' && vacancy.start_date) {
-      const startDate = new Date(vacancy.start_date)
-      const now = new Date()
-      const diffDays = Math.floor((startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      if (diffDays <= 30) return 'Urgent'
-    }
+    if (priority === 'high') return 'Urgent'
     return priority.charAt(0).toUpperCase() + priority.slice(1)
   }
 
   const isImmediate = !vacancy.start_date || vacancy.start_date === null
 
-  const visibleBenefits = vacancy.benefits?.slice(0, 4) || []
-  const additionalBenefitsCount = Math.max(0, (vacancy.benefits?.length || 0) - 4)
+  const visibleBenefits = vacancy.benefits?.slice(0, 3) || []
+  const additionalBenefitsCount = Math.max(0, (vacancy.benefits?.length || 0) - 3)
 
   // Get country color for banner
   const countryColor = getCountryColor(vacancy.location_country)
@@ -111,20 +110,29 @@ export default function VacancyCard({
             <h3 className="font-semibold text-gray-900 hover:text-purple-600 transition-colors">
               {clubName}
             </h3>
+            {publisherRole && (
+              <p className="text-xs text-gray-500 mt-0.5">
+                {publisherRole === 'coach'
+                  ? publisherOrganization
+                    ? `Coach · ${publisherOrganization}`
+                    : 'Coach'
+                  : 'Club'}
+              </p>
+            )}
           </div>
         </button>
       </div>
 
       {/* Badges */}
       <div className="flex items-center flex-wrap gap-2 mb-3">
-        <span className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-medium ${
-          vacancy.opportunity_type === 'player' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+        <span className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold ${
+          vacancy.opportunity_type === 'player' ? 'bg-blue-600 text-white' : 'bg-purple-600 text-white'
         }`}>
           {vacancy.opportunity_type === 'player' ? 'Player' : 'Coach'}
         </span>
         {vacancy.opportunity_type === 'player' && vacancy.gender && (
           <span className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-medium ${
-            vacancy.gender === 'Men' ? 'bg-blue-50 text-blue-700' : 'bg-pink-50 text-pink-700'
+            vacancy.gender === 'Men' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'
           }`}>
             <span className="leading-none">{vacancy.gender === 'Men' ? 'Men' : 'Women'}</span>
           </span>
@@ -142,33 +150,31 @@ export default function VacancyCard({
         {vacancy.title}
       </h2>
 
-      {/* Position - Only show for player opportunities */}
-      {vacancy.opportunity_type === 'player' && vacancy.position && (
-        <div className="mb-4">
-          <span className="inline-block px-3 py-1 bg-[#2F855A] text-white rounded-lg text-sm font-medium">
-            {vacancy.position.charAt(0).toUpperCase() + vacancy.position.slice(1)}
-          </span>
+      {/* Position */}
+      {vacancy.position && (
+        <div className="mb-4 rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5">
+          <span className="block text-[11px] uppercase tracking-wider text-gray-500 font-medium">Position</span>
+          <span className="block text-sm font-semibold text-gray-900 capitalize">{vacancy.position.replace(/_/g, ' ')}</span>
         </div>
       )}
 
-      {/* Location */}
-      <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
-        <MapPin className="w-4 h-4 flex-shrink-0" />
-        <span>{vacancy.location_city}</span>
-      </div>
-
-      {/* Timeline */}
-      <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
-        <div className="flex items-center gap-1">
+      {/* Location & Timeline */}
+      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-sm text-gray-600 mb-4">
+        <div className="flex items-center gap-1.5">
+          <MapPin className="w-4 h-4 flex-shrink-0" />
+          <span>{vacancy.location_city}</span>
+        </div>
+        <span className="text-gray-300">·</span>
+        <div className="flex items-center gap-1.5">
           <Calendar className="w-4 h-4" />
-          {isImmediate ? 'Immediate' : formatDate(vacancy.start_date)}
+          <span>{isImmediate ? 'Immediate' : formatDate(vacancy.start_date)}</span>
         </div>
         {vacancy.duration_text && (
           <>
-            <span>•</span>
-            <div className="flex items-center gap-1">
+            <span className="text-gray-300">·</span>
+            <div className="flex items-center gap-1.5">
               <Clock className="w-4 h-4" />
-              {vacancy.duration_text}
+              <span>{vacancy.duration_text}</span>
             </div>
           </>
         )}

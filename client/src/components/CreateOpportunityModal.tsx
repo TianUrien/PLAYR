@@ -47,6 +47,7 @@ const buildInitialFormData = (vacancy?: Vacancy | null): Partial<VacancyInsert> 
   application_deadline: vacancy?.application_deadline || null,
   contact_email: vacancy?.contact_email || '',
   contact_phone: vacancy?.contact_phone || '',
+  organization_name: vacancy?.organization_name || '',
 })
 
 const getVacancyDraftKey = (profileId: string) => `vacancyDraft:new:${profileId}`
@@ -58,7 +59,7 @@ type VacancyDraftStorage = {
 }
 
 export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editingVacancy }: CreateVacancyModalProps) {
-  const { user } = useAuthStore()
+  const { user, profile } = useAuthStore()
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const { addToast } = useToastStore()
@@ -84,6 +85,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
   const contactPhoneFieldId = useId()
   const newRequirementFieldId = useId()
   const newCustomBenefitFieldId = useId()
+  const organizationNameFieldId = useId()
   const vacancyDraftSaveTimeoutRef = useRef<number | null>(null)
   const vacancyDraftRestoringRef = useRef(false)
 
@@ -134,8 +136,13 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
       }
     }
 
-    setFormData(buildInitialFormData(editingVacancy))
-  }, [addToast, editingVacancy, isOpen, user])
+    const initial = buildInitialFormData(editingVacancy)
+    // Pre-fill organization name from coach's current club for new opportunities
+    if (!editingVacancy && profile?.role === 'coach' && profile.current_club && !initial.organization_name) {
+      initial.organization_name = profile.current_club
+    }
+    setFormData(initial)
+  }, [addToast, editingVacancy, isOpen, profile, user])
 
   useEffect(() => {
     if (!isOpen) {
@@ -215,7 +222,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
     setFormData(prev => {
       const next = { ...prev, [field]: value }
       if (field === 'opportunity_type' && value === 'coach') {
-        next.position = undefined
+        next.position = undefined  // reset — coach has different position options
         next.gender = undefined
       }
       return next
@@ -306,8 +313,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
         club_id: user.id,
         opportunity_type: formData.opportunity_type || 'player',
         title: formData.title!,
-        // Only include position and gender for player opportunities
-        position: formData.opportunity_type === 'player' ? formData.position! : null,
+        position: formData.position || null,
         gender: formData.opportunity_type === 'player' ? formData.gender! : null,
         description: formData.description || null,
         location_city: formData.location_city!,
@@ -322,6 +328,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
         application_deadline: formData.application_deadline || null,
         contact_email: formData.contact_email || null,
         contact_phone: formData.contact_phone || null,
+        organization_name: formData.organization_name?.trim() || null,
       }
 
       if (editingVacancy) {
@@ -479,32 +486,64 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
                 {errors.title && <p id={titleErrorId} className="mt-1 text-sm text-red-600">{errors.title}</p>}
               </div>
 
-              {/* Position and Gender - Only show for player opportunities */}
-              {formData.opportunity_type === 'player' && (
+              {/* Organization Name - shown for coaches, optional for clubs */}
+              {profile?.role === 'coach' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor={organizationNameFieldId}>
+                  Organization / On behalf of
+                </label>
+                <input
+                  id={organizationNameFieldId}
+                  type="text"
+                  value={formData.organization_name ?? ''}
+                  onChange={(e) => handleInputChange('organization_name', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#10b981] focus:border-transparent"
+                  placeholder="e.g., Melbourne Hockey Club, Youth Academy"
+                  autoCapitalize="words"
+                  inputMode="text"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  The club, academy, or organization this opportunity is for. Shown on the card so applicants know who is hiring.
+                </p>
+              </div>
+              )}
+
+              {/* Position and Gender */}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 animate-in fade-in duration-200">
                 {/* Position */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Position <span className="text-red-500">*</span>
+                    Position {formData.opportunity_type === 'player' && <span className="text-red-500">*</span>}
                   </label>
                   <select
                     value={formData.position || ''}
-                    onChange={(e) => handleInputChange('position', e.target.value as 'goalkeeper' | 'defender' | 'midfielder' | 'forward')}
+                    onChange={(e) => handleInputChange('position', e.target.value || undefined)}
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#10b981] focus:border-transparent bg-white ${
                       errors.position ? 'border-red-500' : 'border-gray-300'
                     }`}
                     title="Position"
                   >
                     <option value="">Select position</option>
-                    <option value="goalkeeper">Goalkeeper</option>
-                    <option value="defender">Defender</option>
-                    <option value="midfielder">Midfielder</option>
-                    <option value="forward">Forward</option>
+                    {formData.opportunity_type === 'player' ? (
+                      <>
+                        <option value="goalkeeper">Goalkeeper</option>
+                        <option value="defender">Defender</option>
+                        <option value="midfielder">Midfielder</option>
+                        <option value="forward">Forward</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="head_coach">Head Coach</option>
+                        <option value="assistant_coach">Assistant Coach</option>
+                        <option value="youth_coach">Youth Coach</option>
+                      </>
+                    )}
                   </select>
                   {errors.position && <p className="mt-1 text-sm text-red-600">{errors.position}</p>}
                 </div>
 
-                {/* Gender */}
+                {/* Gender - Only for player opportunities */}
+                {formData.opportunity_type === 'player' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Gender <span className="text-red-500">*</span>
@@ -523,8 +562,8 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
                   </select>
                   {errors.gender && <p className="mt-1 text-sm text-red-600">{errors.gender}</p>}
                 </div>
+                )}
               </div>
-              )}
 
               {/* Description */}
               <div>

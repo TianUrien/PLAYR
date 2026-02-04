@@ -688,7 +688,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
                 {!readOnly && (vacancy.status === 'open' || vacancy.status === 'closed') && (
                   <button
                     type="button"
-                    onClick={() => navigate(`/dashboard/club/opportunities/${vacancy.id}/applicants`)}
+                    onClick={() => navigate(`/dashboard/opportunities/${vacancy.id}/applicants`)}
                     className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-[0_6px_15px_rgba(16,185,129,0.2)] hover:border-emerald-300 hover:bg-emerald-100"
                   >
                     <Users className="w-4 h-4 text-emerald-600" />

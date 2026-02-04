@@ -24,7 +24,7 @@ test.describe('Vacancy Management - Club', () => {
 
     expect(seeded.id, 'Seeded vacancy id should be written by auth.setup').toBeTruthy()
 
-    await page.goto(`/dashboard/club/vacancies/${seeded.id}/applicants`)
+    await page.goto(`/dashboard/opportunities/${seeded.id}/applicants`)
 
     // ApplicantsList page
     await expect(page.getByRole('heading', { level: 1, name: new RegExp(`Applicants for ${seeded.title}`, 'i') }))

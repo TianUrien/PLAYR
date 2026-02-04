@@ -201,7 +201,7 @@ function App() {
                 <Route path="/messages/:conversationId" element={<MessagesPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/dashboard/profile" element={<DashboardRouter />} />
-                <Route path="/dashboard/club/opportunities/:opportunityId/applicants" element={<ApplicantsList />} />
+                <Route path="/dashboard/opportunities/:opportunityId/applicants" element={<ApplicantsList />} />
 
                 {/* Network-only profile routes (alias for clarity; still behind auth) */}
                 <Route path="/members/:username" element={<PublicPlayerProfile />} />

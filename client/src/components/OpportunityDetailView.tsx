@@ -11,6 +11,8 @@ interface VacancyDetailViewProps {
   clubName: string
   clubLogo?: string | null
   clubId: string
+  publisherRole?: string | null
+  publisherOrganization?: string | null
   onClose: () => void
   onApply?: () => void
   hasApplied?: boolean
@@ -33,6 +35,8 @@ export default function VacancyDetailView({
   clubName,
   clubLogo,
   clubId,
+  publisherRole,
+  publisherOrganization,
   onClose,
   onApply,
   hasApplied = false,
@@ -42,7 +46,7 @@ export default function VacancyDetailView({
 
   const handleClubClick = () => {
     onClose()
-    navigate(`/clubs/id/${clubId}`)
+    navigate(publisherRole === 'coach' ? `/players/id/${clubId}` : `/clubs/id/${clubId}`)
   }
 
   const formatDate = (dateString: string | null) => {
@@ -136,12 +140,24 @@ export default function VacancyDetailView({
               <div className="flex-1 min-w-0">
                 {/* Club Name Row with Close Button */}
                 <div className="flex items-start justify-between gap-2">
-                  <button
-                    onClick={handleClubClick}
-                    className="text-sm text-gray-600 hover:text-gray-900 block"
-                  >
-                    {clubName}
-                  </button>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={handleClubClick}
+                      className="text-sm text-gray-600 hover:text-gray-900 block"
+                    >
+                      {clubName}
+                    </button>
+                    {publisherRole && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {publisherRole === 'coach'
+                          ? publisherOrganization
+                            ? `Coach · ${publisherOrganization}`
+                            : 'Coach'
+                          : 'Club'}
+                      </p>
+                    )}
+                  </div>
                   {/* Close Button - Subtle, inside white area */}
                   <button
                     onClick={onClose}
@@ -157,26 +173,25 @@ export default function VacancyDetailView({
                   {vacancy.title}
                 </h1>
 
-                {/* Position Pill - Primary, prominent */}
-                {vacancy.opportunity_type === 'player' && vacancy.position && (
-                  <div className="mb-3">
-                    <span className="inline-flex h-9 items-center rounded-lg px-4 text-sm font-semibold capitalize bg-[#2F855A] text-white">
-                      {vacancy.position}
-                    </span>
+                {/* Position Block */}
+                {vacancy.position && (
+                  <div className="mb-3 rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5 max-w-xs">
+                    <span className="block text-[11px] uppercase tracking-wider text-gray-500 font-medium">Position</span>
+                    <span className="block text-sm font-semibold text-gray-900 capitalize">{vacancy.position.replace(/_/g, ' ')}</span>
                   </div>
                 )}
 
                 {/* Secondary Tags Row - Role, Gender, Priority */}
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <span className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-medium ${
-                    vacancy.opportunity_type === 'player' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
+                  <span className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold ${
+                    vacancy.opportunity_type === 'player' ? 'bg-blue-600 text-white' : 'bg-purple-600 text-white'
                   }`}>
-                    {vacancy.opportunity_type === 'player' ? '👤 Player' : '🎓 Coach'}
+                    {vacancy.opportunity_type === 'player' ? 'Player' : 'Coach'}
                   </span>
                   {vacancy.opportunity_type === 'player' && vacancy.gender && (
                     <span
                       className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-medium ${
-                        vacancy.gender === 'Men' ? 'bg-gray-100 text-gray-600' : 'bg-pink-50 text-pink-600'
+                        vacancy.gender === 'Men' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'
                       }`}
                     >
                       <span className="leading-none">{formatGender(vacancy.gender)}</span>
@@ -357,7 +372,7 @@ export default function VacancyDetailView({
                   variant="outline"
                   className="sm:w-auto"
                 >
-                  View Club Profile
+                  {publisherRole === 'coach' ? 'View Profile' : 'View Club Profile'}
                 </Button>
               )}
             </div>

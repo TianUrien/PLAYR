@@ -155,7 +155,7 @@ describe('Vacancies tab', () => {
     expect(screen.getByText('4 applicants')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /4 applicants/i }))
-    expect(mockNavigate).toHaveBeenCalledWith('/dashboard/club/opportunities/vac-1/applicants')
+    expect(mockNavigate).toHaveBeenCalledWith('/dashboard/opportunities/vac-1/applicants')
 
     expect(screen.getByLabelText(/open opportunity menu/i)).toBeInTheDocument()
   })
