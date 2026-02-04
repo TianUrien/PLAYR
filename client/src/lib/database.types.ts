@@ -3156,6 +3156,30 @@ export type Database = {
         Returns: boolean
       }
       validate_social_links: { Args: { links: Json }; Returns: boolean }
+      edit_endorsement: {
+        Args: { p_reference_id: string; p_endorsement: string }
+        Returns: {
+          accepted_at: string | null
+          created_at: string
+          endorsement_text: string | null
+          id: string
+          reference_id: string
+          relationship_type: string
+          request_note: string | null
+          requester_id: string
+          responded_at: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          status: Database["public"]["Enums"]["profile_reference_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "profile_references"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       withdraw_reference: {
         Args: { p_reference_id: string }
         Returns: {

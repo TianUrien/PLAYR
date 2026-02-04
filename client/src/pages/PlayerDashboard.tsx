@@ -584,6 +584,10 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                 </section>
                 )}
 
+                {readOnly && (
+                  <PublicReferencesSection profileId={profile.id} profileName={profile.full_name ?? profile.username ?? null} />
+                )}
+
                 {/* Highlight Video - placed early for immediate visual context */}
                 <section className="space-y-3">
                   <MediaTab
@@ -638,10 +642,6 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                     )}
                   </div>
                 </section>
-
-                {readOnly && (
-                  <PublicReferencesSection profileId={profile.id} profileName={profile.full_name ?? profile.username ?? null} />
-                )}
 
                 {/* Photo Gallery - placed after About Me for visual balance */}
                 <section className="space-y-3">

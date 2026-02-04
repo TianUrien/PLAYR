@@ -35,7 +35,7 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
   const scroll = (direction: 'left' | 'right') => {
     const container = scrollContainerRef.current
     if (!container) return
-    const scrollAmount = 300
+    const scrollAmount = 356
     container.scrollBy({
       left: direction === 'left' ? -scrollAmount : scrollAmount,
       behavior: 'smooth',
@@ -83,7 +83,7 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
       {Array.from({ length: 3 }).map((_, idx) => (
         <div
           key={idx}
-          className="min-w-[280px] flex-shrink-0 rounded-2xl border border-gray-100 bg-white/80 p-4 shadow-sm animate-pulse"
+          className="min-w-[300px] flex-shrink-0 rounded-2xl border border-gray-100 bg-white/80 p-4 shadow-sm animate-pulse"
         >
           <div className="flex items-center gap-3">
             <div className="h-12 w-12 rounded-full bg-gray-200" />
@@ -137,7 +137,7 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
         onScroll={updateScrollButtons}
         onLoad={updateScrollButtons}
         className={cn(
-          'flex gap-3 overflow-x-auto pb-2 scrollbar-hide',
+          'flex gap-4 overflow-x-auto pb-2 scrollbar-hide',
           'snap-x snap-mandatory scroll-smooth',
           '-mx-1 px-1' // Minimal edge peek
         )}
@@ -149,7 +149,6 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
             layout="carousel"
             onMessage={handleMessage}
             messageLoading={messageTarget === reference.profile?.id}
-            endorsementFallback="No written endorsement yet."
             className="snap-start"
             onOpenProfile={(id, role) => {
               if (!id) return
@@ -181,9 +180,9 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
   return (
     <section className="space-y-4 rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-sm sm:p-5">
       <header className="space-y-1">
-        <p className="text-xs font-semibold uppercase tracking-wide text-indigo-500">Trusted References</p>
-        <h3 className="text-xl font-bold text-gray-900">{primaryName ? `${primaryName}'s trusted circle` : 'Trusted circle'}</h3>
-        <p className="text-sm text-gray-600">Direct contacts who agreed to vouch for this profile.</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">Trusted References</p>
+        <h3 className="text-xl font-bold text-gray-900">Trusted by</h3>
+        <p className="text-sm text-gray-600">{primaryName ? `Key people who vouch for ${primaryName}.` : 'Key people who vouch for this profile.'}</p>
       </header>
 
       {loading ? renderSkeleton() : acceptedReferences.length === 0 ? renderEmpty() : renderReferences()}

@@ -2,6 +2,7 @@ import { type ReactNode, useMemo, useState } from 'react'
 import { ShieldCheck, MessageCircle, Loader2, Quote } from 'lucide-react'
 import Avatar from './Avatar'
 import RoleBadge from './RoleBadge'
+import { NationalityFlagsInline } from './DualNationalityDisplay'
 import { cn } from '@/lib/utils'
 import type { ReferenceCard, PublicReferenceCard } from '@/hooks/useTrustedReferences'
 
@@ -34,7 +35,7 @@ export default function TrustedReferenceCard({
   disabled = false,
   className,
   layout = 'grid',
-  endorsementFallback = 'No written endorsement yet.',
+  endorsementFallback,
   secondaryAction,
   showShield = true,
   messageLabel = 'Message',
@@ -42,28 +43,33 @@ export default function TrustedReferenceCard({
   maxEndorsementLength = TRUNCATION_THRESHOLD,
 }: TrustedReferenceCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
-  
+
   const profileName = reference.profile?.fullName ?? 'PLAYR Member'
   const profileInitials = reference.profile?.fullName?.slice(0, 2) ?? 'PM'
+  const hasNationality = Boolean(reference.profile?.nationalityCountryId)
   const profileDetails = useMemo(() => {
     const { position, currentClub, baseLocation } = reference.profile ?? {}
-    return position || currentClub || baseLocation || null
-  }, [reference.profile])
+    // Skip position if it duplicates the relationship type (e.g. both "Head Coach")
+    const showPosition = position && position.toLowerCase() !== reference.relationshipType?.toLowerCase()
+    // When nationality flags are shown, skip baseLocation from the fallback chain
+    if (hasNationality) return (showPosition ? position : null) || currentClub || null
+    return (showPosition ? position : null) || currentClub || baseLocation || null
+  }, [reference.profile, reference.relationshipType, hasNationality])
 
   const messageDisabled = disabled || !reference.profile?.id || messageLoading
   const isCarousel = layout === 'carousel'
   // Responsive width: fills mobile viewport nicely, fixed on larger screens
-  const layoutClasses = isCarousel 
-    ? 'w-[calc(100vw-4rem)] min-w-[280px] max-w-[320px] flex-shrink-0 sm:w-[320px]' 
+  const layoutClasses = isCarousel
+    ? 'w-[calc(100vw-3rem)] min-w-[300px] max-w-[340px] flex-shrink-0 sm:w-[340px]'
     : ''
   const canNavigateProfile = Boolean(onOpenProfile && reference.profile?.id)
 
   const rawEndorsement = reference.endorsementText?.trim() ?? ''
   const hasEndorsement = rawEndorsement.length > 0
   const needsTruncation = rawEndorsement.length > maxEndorsementLength
-  
+
   const endorsementDisplay = useMemo(() => {
-    if (!hasEndorsement) return endorsementFallback
+    if (!hasEndorsement) return endorsementFallback ?? null
     if (isExpanded || !needsTruncation) return `"${rawEndorsement}"`
     // Truncate at word boundary
     const truncated = rawEndorsement.slice(0, maxEndorsementLength).replace(/\s+\S*$/, '')
@@ -89,16 +95,17 @@ export default function TrustedReferenceCard({
       )}
     >
       {/* Subtle quote watermark - smaller and more subtle */}
-      <Quote 
-        className="pointer-events-none absolute -right-1 -top-1 h-12 w-12 rotate-12 text-amber-100/40" 
-        aria-hidden 
+      <Quote
+        className="pointer-events-none absolute -right-1 -top-1 h-12 w-12 rotate-12 text-amber-100/40"
+        aria-hidden
       />
-      
+
       {/* Inner glow border */}
       <div className="pointer-events-none absolute inset-0 rounded-2xl border border-white/50" />
-      
-      {/* Header: Avatar + Info */}
-      <div className="relative flex items-start gap-4">
+
+      {/* Identity block - centered vertical layout */}
+      <div className="relative flex flex-col items-center text-center">
+        {/* Avatar - larger, centered */}
         {canNavigateProfile ? (
           <button
             type="button"
@@ -110,7 +117,7 @@ export default function TrustedReferenceCard({
               src={reference.profile?.avatarUrl}
               alt={profileName}
               initials={profileInitials}
-              size="md"
+              size="lg"
               className="shadow-md"
             />
           </button>
@@ -119,67 +126,84 @@ export default function TrustedReferenceCard({
             src={reference.profile?.avatarUrl}
             alt={profileName}
             initials={profileInitials}
-            size="md"
-            className="flex-shrink-0 shadow-md"
+            size="lg"
+            className="shadow-md"
           />
         )}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              {canNavigateProfile ? (
-                <button
-                  type="button"
-                  onClick={handleOpenProfile}
-                  className="truncate text-left text-base font-semibold text-slate-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500"
-                >
-                  {profileName}
-                </button>
-              ) : (
-                <p className="truncate text-base font-semibold text-slate-900">{profileName}</p>
-              )}
-              <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                <RoleBadge role={reference.profile?.role ?? undefined} className="px-2 py-0.5 text-[11px]" />
-                <span className="text-xs font-medium text-slate-500">{reference.relationshipType}</span>
-              </div>
-            </div>
-            {showShield && (
-              <ShieldCheck className="h-5 w-5 flex-shrink-0 text-emerald-500" aria-hidden />
-            )}
-          </div>
-          {profileDetails && (
-            <p className="mt-2 truncate text-sm text-slate-500">{profileDetails}</p>
+
+        {/* Name + Shield */}
+        <div className="mt-3 flex items-center gap-1.5">
+          {canNavigateProfile ? (
+            <button
+              type="button"
+              onClick={handleOpenProfile}
+              className="text-base font-semibold text-slate-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500"
+            >
+              {profileName}
+            </button>
+          ) : (
+            <p className="text-base font-semibold text-slate-900">{profileName}</p>
+          )}
+          {showShield && (
+            <ShieldCheck className="h-5 w-5 flex-shrink-0 text-emerald-500" aria-hidden />
           )}
         </div>
-      </div>
 
-      {/* Endorsement Quote */}
-      <div className="relative mt-5">
-        <p 
-          className={cn(
-            'text-sm leading-relaxed text-slate-600',
-            !hasEndorsement && 'italic text-slate-400',
-            // Smooth height transition
-            'transition-all duration-300 ease-out'
-          )}
-        >
-          {endorsementDisplay}
-        </p>
-        
-        {/* Read more / Show less toggle */}
-        {hasEndorsement && needsTruncation && (
-          <button
-            type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="mt-2 text-sm font-medium text-amber-600 hover:text-amber-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
-          >
-            {isExpanded ? 'Show less' : 'Read more'}
-          </button>
+        {/* Role badge + Relationship type */}
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+          <RoleBadge role={reference.profile?.role ?? undefined} className="px-2 py-0.5 text-[11px]" />
+          <span className="text-xs font-medium text-slate-500">{reference.relationshipType}</span>
+        </div>
+
+        {/* Nationality flags (preferred) or location fallback */}
+        {hasNationality ? (
+          <NationalityFlagsInline
+            primaryCountryId={reference.profile?.nationalityCountryId ?? null}
+            secondaryCountryId={reference.profile?.nationality2CountryId ?? null}
+            className="mt-1.5 text-sm text-slate-500"
+          />
+        ) : profileDetails ? (
+          <p className="mt-1.5 truncate text-sm text-slate-500 max-w-full">{profileDetails}</p>
+        ) : null}
+
+        {/* Position / club details (shown below flags when both exist) */}
+        {hasNationality && profileDetails && (
+          <p className="mt-1 truncate text-xs text-slate-400 max-w-full">{profileDetails}</p>
         )}
       </div>
+
+      {/* Endorsement Quote - only if text exists */}
+      {endorsementDisplay && (
+        <div className="relative mt-4 border-t border-amber-100/40 pt-3 text-center">
+          <p
+            className={cn(
+              'text-sm leading-relaxed text-slate-600',
+              !hasEndorsement && 'italic text-slate-400',
+              'transition-all duration-300 ease-out'
+            )}
+          >
+            {endorsementDisplay}
+          </p>
+
+          {/* Read more / Show less toggle */}
+          {hasEndorsement && needsTruncation && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="mt-2 text-sm font-medium text-amber-600 hover:text-amber-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2"
+            >
+              {isExpanded ? 'Show less' : 'Read more'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Action buttons */}
       {(secondaryAction || onMessage) && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-amber-100/40 pt-3">
+        <div className={cn(
+          'mt-4 flex flex-wrap items-center justify-center gap-2 pt-3',
+          !endorsementDisplay && 'border-t border-amber-100/40'
+        )}>
           {onMessage && (
             <button
               type="button"

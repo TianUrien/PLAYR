@@ -59,6 +59,7 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
     respondToRequest,
     removeReference,
     withdrawReference,
+    editEndorsement,
     refresh,
     isMutating,
   } = useTrustedReferences(profileId)
@@ -68,6 +69,7 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
 
   const [addModalOpen, setAddModalOpen] = useState(false)
   const [endorsementRequest, setEndorsementRequest] = useState<typeof incomingRequests[number] | null>(null)
+  const [editingReference, setEditingReference] = useState<typeof givenReferences[number] | null>(null)
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null)
   const [messageTarget, setMessageTarget] = useState<string | null>(null)
   const { user } = useAuthStore()
@@ -159,6 +161,15 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
       headline: 'Remove trusted reference',
       description: `This will remove ${referenceName} from your trusted references. You can always invite them again later.`,
     })
+  }
+
+  const handleEditEndorsement = async (endorsement: string | null) => {
+    if (!editingReference) return false
+    const success = await editEndorsement(editingReference.id, endorsement)
+    if (success) {
+      setEditingReference(null)
+    }
+    return success
   }
 
   const openWithdrawConfirm = (referenceId: string, referenceName: string) => {
@@ -446,7 +457,15 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
                     {reference.endorsementText && (
                       <p className="mt-3 text-sm text-gray-600">“{reference.endorsementText}”</p>
                     )}
-                    <div className="mt-4 flex justify-end">
+                    <div className="mt-4 flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingReference(reference)}
+                        className="rounded-2xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                        disabled={isMutating('edit', reference.id)}
+                      >
+                        {reference.endorsementText ? 'Edit' : 'Add endorsement'}
+                      </button>
                       <button
                         type="button"
                         onClick={() => openWithdrawConfirm(reference.id, reference.requesterProfile?.fullName ?? 'this player')}
@@ -472,6 +491,7 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
           onSubmit={requestReference}
           isSubmitting={isMutating('request')}
           remainingSlots={maxReferences - acceptedCount}
+          requesterRole={profileRole}
         />
       )}
 
@@ -483,6 +503,17 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
         requesterName={endorsementRequest?.requesterProfile?.fullName ?? 'this member'}
         relationshipType={endorsementRequest?.relationshipType ?? ''}
         requestNote={endorsementRequest?.requestNote}
+      />
+
+      <ReferenceEndorsementModal
+        isOpen={Boolean(editingReference)}
+        onClose={() => setEditingReference(null)}
+        onSubmit={handleEditEndorsement}
+        loading={editingReference ? isMutating('edit', editingReference.id) : false}
+        requesterName={editingReference?.requesterProfile?.fullName ?? 'this member'}
+        relationshipType={editingReference?.relationshipType ?? ''}
+        existingEndorsement={editingReference?.endorsementText}
+        mode="edit"
       />
 
       <ConfirmActionModal

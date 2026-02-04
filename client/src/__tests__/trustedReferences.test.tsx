@@ -98,7 +98,8 @@ type HookState = {
   removeReference: (referenceId: string) => Promise<boolean>
   withdrawReference: (referenceId: string) => Promise<boolean>
   refresh: () => Promise<void>
-  isMutating: (type: 'request' | 'respond' | 'remove' | 'withdraw', targetId?: string) => boolean
+  editEndorsement: (referenceId: string, endorsement: string | null) => Promise<boolean>
+  isMutating: (type: 'request' | 'respond' | 'remove' | 'withdraw' | 'edit', targetId?: string) => boolean
 }
 
 const createHookState = (overrides: Partial<HookState> = {}): HookState => {
@@ -116,6 +117,7 @@ const createHookState = (overrides: Partial<HookState> = {}): HookState => {
     respondToRequest: vi.fn().mockResolvedValue(true),
     removeReference: vi.fn().mockResolvedValue(true),
     withdrawReference: vi.fn().mockResolvedValue(true),
+    editEndorsement: vi.fn().mockResolvedValue(true),
     refresh: vi.fn().mockResolvedValue(undefined),
     isMutating: vi.fn().mockReturnValue(false)
   }
@@ -159,7 +161,14 @@ describe('Trusted references flow', () => {
     renderSection('player')
 
     await user.click(screen.getByRole('button', { name: /add reference/i }))
+
+    // Open the searchable dropdown and select a friend
+    await user.click(screen.getByText('Search connections...'))
     await user.click(screen.getByText('Riley Captain'))
+
+    // Select relationship type (no longer pre-selected)
+    await user.selectOptions(screen.getByRole('combobox'), 'Teammate')
+
     await user.click(screen.getByRole('button', { name: /send request/i }))
 
     await waitFor(() => {
@@ -186,7 +195,9 @@ describe('Trusted references flow', () => {
         avatarUrl: null,
         baseLocation: null,
         position: null,
-        currentClub: null
+        currentClub: null,
+        nationalityCountryId: null,
+        nationality2CountryId: null
       }
     }
 
@@ -234,7 +245,9 @@ describe('Trusted references flow', () => {
         avatarUrl: null,
         baseLocation: 'Rome',
         position: null,
-        currentClub: 'Roma United'
+        currentClub: 'Roma United',
+        nationalityCountryId: null,
+        nationality2CountryId: null
       }
     }
 

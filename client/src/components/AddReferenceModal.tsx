@@ -1,5 +1,5 @@
-import { useId, useMemo, useState } from 'react'
-import { Search, UserPlus } from 'lucide-react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { Search, UserPlus, X, CheckCircle, ChevronDown } from 'lucide-react'
 import Modal from './Modal'
 import Avatar from './Avatar'
 import RoleBadge from './RoleBadge'
@@ -15,14 +15,28 @@ export type ReferenceFriendOption = {
   currentClub: string | null
 }
 
-const RELATIONSHIP_OPTIONS = [
-  'Teammate',
-  'Head Coach',
-  'Assistant Coach',
-  'Club Manager',
-  'National Team Coach',
-  'Mentor',
-]
+/** Relationship options keyed by [requester role][reference role] */
+const RELATIONSHIP_MAP: Record<string, Record<string, string[]>> = {
+  player: {
+    player: ['Teammate', 'Team Captain', 'Former Teammate', 'Former Captain'],
+    coach:  ['Head Coach', 'Assistant Coach', 'Former Coach', 'Academy Coach'],
+    club:   ['Club', 'Former Club'],
+  },
+  coach: {
+    player: ['Player', 'Former Player', 'Team Captain', 'Mentor'],
+    coach:  ['Colleague', 'Fellow Coach', 'Former Colleague'],
+    club:   ['Club', 'Former Club'],
+  },
+  club: {
+    player: ['Club Member', 'Former Member', 'Club Captain'],
+    coach:  ['Club Coach', 'Former Coach', 'Head Coach'],
+  },
+}
+
+/** Flat fallback if role pair is unknown */
+const FALLBACK_OPTIONS = ['Teammate', 'Colleague', 'Mentor']
+
+const MAX_NOTE_LENGTH = 300
 
 interface AddReferenceModalProps {
   isOpen: boolean
@@ -31,14 +45,22 @@ interface AddReferenceModalProps {
   onSubmit: (payload: { referenceId: string; relationshipType: string; requestNote?: string | null }) => Promise<boolean>
   isSubmitting: boolean
   remainingSlots: number
+  /** Role of the logged-in user requesting the reference */
+  requesterRole?: string | null
 }
 
-export default function AddReferenceModal({ isOpen, onClose, friends, onSubmit, isSubmitting, remainingSlots }: AddReferenceModalProps) {
+export default function AddReferenceModal({ isOpen, onClose, friends, onSubmit, isSubmitting, remainingSlots, requesterRole }: AddReferenceModalProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedFriendId, setSelectedFriendId] = useState<string>('')
-  const [relationshipType, setRelationshipType] = useState(RELATIONSHIP_OPTIONS[0]!)
+  const [relationshipType, setRelationshipType] = useState('')
   const [requestNote, setRequestNote] = useState('')
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const relationshipSelectId = useId()
+
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const filteredFriends = useMemo(() => {
     if (!searchTerm) return friends
@@ -51,15 +73,28 @@ export default function AddReferenceModal({ isOpen, onClose, friends, onSubmit, 
 
   const selectedFriend = friends.find((friend) => friend.id === selectedFriendId) ?? null
 
+  const relationshipOptions = useMemo(() => {
+    const rRole = requesterRole?.toLowerCase()
+    const refRole = selectedFriend?.role?.toLowerCase()
+    if (!rRole || !refRole) return FALLBACK_OPTIONS
+    return RELATIONSHIP_MAP[rRole]?.[refRole] ?? FALLBACK_OPTIONS
+  }, [requesterRole, selectedFriend?.role])
+
   const resetState = () => {
     setSearchTerm('')
     setSelectedFriendId('')
-    setRelationshipType(RELATIONSHIP_OPTIONS[0]!)
+    setRelationshipType('')
     setRequestNote('')
+    setShowSuccess(false)
+    setIsDropdownOpen(false)
   }
 
   const handleClose = () => {
     if (isSubmitting) return
+    if (successTimerRef.current) {
+      clearTimeout(successTimerRef.current)
+      successTimerRef.current = null
+    }
     resetState()
     onClose()
   }
@@ -73,119 +108,215 @@ export default function AddReferenceModal({ isOpen, onClose, friends, onSubmit, 
     })
 
     if (success) {
-      resetState()
-      onClose()
+      setShowSuccess(true)
+      successTimerRef.current = setTimeout(() => {
+        successTimerRef.current = null
+        resetState()
+        onClose()
+      }, 1000)
     }
   }
 
+  const handleSelectFriend = (friendId: string) => {
+    setSelectedFriendId(friendId)
+    setRelationshipType('')
+    setIsDropdownOpen(false)
+    setSearchTerm('')
+  }
+
+  const handleClearSelection = () => {
+    setSelectedFriendId('')
+    setRelationshipType('')
+    setSearchTerm('')
+  }
+
+  // Cleanup success timer on unmount
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current)
+      }
+    }
+  }, [])
+
+  // Click-outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Auto-focus search input when dropdown opens
+  useEffect(() => {
+    if (isDropdownOpen && searchInputRef.current) {
+      searchInputRef.current.focus()
+    }
+  }, [isDropdownOpen])
+
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} className="max-w-3xl">
-      <div className="p-6 space-y-6">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-playr-primary">Add Reference</p>
-            <h2 className="text-2xl font-bold text-gray-900">Choose a trusted connection</h2>
-            <p className="mt-1 text-sm text-gray-500">Select up to five people who can vouch for you. {remainingSlots} {remainingSlots === 1 ? 'spot' : 'spots'} left.</p>
+    <Modal isOpen={isOpen} onClose={handleClose}>
+      <div className="p-6">
+        {showSuccess ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+              <CheckCircle className="h-6 w-6 text-emerald-600" />
+            </div>
+            <p className="mt-3 text-lg font-semibold text-gray-900">Request sent</p>
+            <p className="mt-1 text-sm text-gray-500">
+              {selectedFriend?.fullName} will be notified
+            </p>
           </div>
-          <div className="rounded-xl bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">{remainingSlots} / 5 available</div>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-4">
+        ) : (
+          <div className="space-y-5">
+            {/* Header */}
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Step 1</p>
-              <h3 className="text-lg font-semibold text-gray-900">Select a connection</h3>
-              <p className="text-sm text-gray-500">Only accepted friends can become references.</p>
+              <p className="text-sm font-semibold uppercase tracking-wide text-playr-primary">Add Reference</p>
+              <h2 className="text-xl font-bold text-gray-900">Request a trusted reference</h2>
+              <p className="mt-1 text-sm text-gray-500">{5 - remainingSlots} of 5 references used</p>
             </div>
 
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by name, club, or location"
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-3 text-sm placeholder:text-gray-400 focus:border-playr-primary focus:bg-white focus:outline-none"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                aria-label="Search connections"
-              />
-            </div>
+            {/* Person selector */}
+            <div>
+              <label className="text-sm font-medium text-gray-700">Connection</label>
 
-            <div className="rounded-2xl border border-gray-100 bg-white shadow-inner">
-              <div className="max-h-80 overflow-y-auto divide-y divide-gray-100">
-                {filteredFriends.length === 0 ? (
-                  <div className="p-6 text-center text-sm text-gray-500">No matching connections.</div>
-                ) : (
-                  filteredFriends.map((friend) => {
-                    const isSelected = friend.id === selectedFriendId
-                    return (
-                      <button
-                        type="button"
-                        key={friend.id}
-                        onClick={() => setSelectedFriendId(friend.id)}
-                        className={cn(
-                          'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
-                          isSelected ? 'bg-emerald-50/60' : 'hover:bg-gray-50'
-                        )}
-                      >
-                        <Avatar
-                          src={friend.avatarUrl}
-                          initials={friend.fullName.split(' ').map((n) => n[0]).join('').slice(0, 2) || '?'}
-                          alt={friend.fullName}
-                          size="sm"
-                        />
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-gray-900">{friend.fullName}</p>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                            <RoleBadge role={friend.role ?? undefined} />
-                            {friend.currentClub && <span>{friend.currentClub}</span>}
-                            {!friend.currentClub && friend.baseLocation && <span>{friend.baseLocation}</span>}
-                          </div>
+              {selectedFriend ? (
+                <div className="mt-2 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 px-3 py-2.5">
+                  <Avatar
+                    src={selectedFriend.avatarUrl}
+                    initials={selectedFriend.fullName.split(' ').map((n) => n[0]).join('').slice(0, 2) || '?'}
+                    alt={selectedFriend.fullName}
+                    size="sm"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-gray-900">{selectedFriend.fullName}</p>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <RoleBadge role={selectedFriend.role ?? undefined} />
+                      {selectedFriend.currentClub && <span className="truncate">{selectedFriend.currentClub}</span>}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearSelection}
+                    className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                    aria-label="Change selection"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative mt-2" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className={cn(
+                      'flex w-full items-center justify-between rounded-xl border bg-gray-50 px-3 py-2.5 text-left text-sm transition-colors',
+                      isDropdownOpen ? 'border-playr-primary bg-white' : 'border-gray-200 hover:border-gray-300'
+                    )}
+                  >
+                    <span className="text-gray-400">Search connections...</span>
+                    <ChevronDown className={cn('h-4 w-4 text-gray-400 transition-transform', isDropdownOpen && 'rotate-180')} />
+                  </button>
+
+                  {isDropdownOpen && (
+                    <div className="absolute z-10 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg">
+                      <div className="border-b border-gray-100 p-2">
+                        <div className="relative">
+                          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                          <input
+                            ref={searchInputRef}
+                            type="text"
+                            placeholder="Search by name, club, or location"
+                            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm placeholder:text-gray-400 focus:border-playr-primary focus:outline-none"
+                            value={searchTerm}
+                            onChange={(event) => setSearchTerm(event.target.value)}
+                            aria-label="Search connections"
+                          />
                         </div>
-                        {isSelected && <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Selected</span>}
-                      </button>
-                    )
-                  })
-                )}
-              </div>
-            </div>
-          </div>
+                      </div>
 
-          <div className="space-y-4">
+                      <div className="max-h-48 overflow-y-auto">
+                        {filteredFriends.length === 0 ? (
+                          <div className="p-4 text-center text-sm text-gray-500">No matching connections.</div>
+                        ) : (
+                          filteredFriends.map((friend) => (
+                            <button
+                              type="button"
+                              key={friend.id}
+                              onClick={() => handleSelectFriend(friend.id)}
+                              className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-50"
+                            >
+                              <Avatar
+                                src={friend.avatarUrl}
+                                initials={friend.fullName.split(' ').map((n) => n[0]).join('').slice(0, 2) || '?'}
+                                alt={friend.fullName}
+                                size="sm"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-semibold text-gray-900">{friend.fullName}</p>
+                                <div className="flex items-center gap-2 text-xs text-gray-500">
+                                  <RoleBadge role={friend.role ?? undefined} />
+                                  {friend.currentClub && <span className="truncate">{friend.currentClub}</span>}
+                                  {!friend.currentClub && friend.baseLocation && <span className="truncate">{friend.baseLocation}</span>}
+                                </div>
+                              </div>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Relationship type */}
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Step 2</p>
-              <h3 className="text-lg font-semibold text-gray-900">Describe the relationship</h3>
-              <p className="text-sm text-gray-500">Provide a quick context so they know how to respond.</p>
-            </div>
-
-            <div className="space-y-3">
-              <label htmlFor={relationshipSelectId} className="text-sm font-medium text-gray-700">Relationship type</label>
+              <label htmlFor={relationshipSelectId} className="text-sm font-medium text-gray-700">Relationship</label>
               <select
                 id={relationshipSelectId}
-                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-playr-primary focus:outline-none"
+                className={cn(
+                  'mt-2 w-full rounded-xl border bg-white px-3 py-2.5 text-sm focus:border-playr-primary focus:outline-none',
+                  relationshipType ? 'border-gray-200 text-gray-900' : 'border-gray-200 text-gray-400'
+                )}
                 value={relationshipType}
                 onChange={(event) => setRelationshipType(event.target.value)}
               >
-                {RELATIONSHIP_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
+                <option value="" disabled>Select relationship...</option>
+                {relationshipOptions.map((option) => (
+                  <option key={option} value={option}>{option}</option>
                 ))}
               </select>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Add a note (optional)</label>
+            {/* Optional note */}
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Note <span className="font-normal text-gray-400">(optional)</span>
+              </label>
               <textarea
                 value={requestNote}
                 onChange={(event) => setRequestNote(event.target.value)}
-                placeholder="Give them context for the request."
-                rows={6}
-                className="w-full rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-playr-primary focus:outline-none"
-                maxLength={600}
+                placeholder="Brief context for this request"
+                rows={3}
+                className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-playr-primary focus:outline-none"
+                maxLength={MAX_NOTE_LENGTH}
               />
-              <p className="text-right text-xs text-gray-400">{requestNote.length}/600</p>
+              <p className="mt-1 text-right text-xs text-gray-400">{requestNote.length}/{MAX_NOTE_LENGTH}</p>
             </div>
 
+            {/* Confirmation summary */}
+            {selectedFriend && relationshipType && (
+              <p className="rounded-xl bg-gray-50 px-3 py-2.5 text-center text-sm text-gray-600">
+                Requesting <span className="font-semibold text-gray-900">{selectedFriend.fullName}</span>{' '}
+                as your <span className="font-semibold text-gray-900">{relationshipType}</span>
+              </p>
+            )}
+
+            {/* Submit button */}
             <button
               type="button"
               disabled={!selectedFriend || !relationshipType || isSubmitting}
@@ -196,7 +327,7 @@ export default function AddReferenceModal({ isOpen, onClose, friends, onSubmit, 
               {isSubmitting ? 'Sending...' : 'Send Request'}
             </button>
           </div>
-        </div>
+        )}
       </div>
     </Modal>
   )

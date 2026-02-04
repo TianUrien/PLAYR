@@ -499,6 +499,10 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                 </div>
                 )}
 
+                {readOnly && (
+                  <PublicReferencesSection profileId={profile.id} profileName={profile.full_name} />
+                )}
+
                 <section className="space-y-4">
                   <div className="flex items-start justify-between gap-4">
                     <h3 className="text-2xl font-bold text-gray-900">About</h3>
@@ -528,10 +532,6 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                     )}
                   </div>
                 </section>
-
-                {readOnly && (
-                  <PublicReferencesSection profileId={profile.id} profileName={profile.full_name} />
-                )}
 
                 <section data-section="media" className="space-y-3 pt-6 border-t border-gray-200">
                   <MediaTab

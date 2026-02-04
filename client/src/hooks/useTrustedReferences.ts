@@ -24,6 +24,8 @@ type ProfileSummary = {
   baseLocation: string | null
   position: string | null
   currentClub: string | null
+  nationalityCountryId: number | null
+  nationality2CountryId: number | null
 }
 
 export type ReferenceCard = {
@@ -62,7 +64,7 @@ export type GivenReference = {
   requesterProfile: ProfileSummary | null
 }
 
-type MutationType = 'request' | 'respond' | 'remove' | 'withdraw'
+type MutationType = 'request' | 'respond' | 'remove' | 'withdraw' | 'edit'
 
 type MutationState = {
   type: MutationType | null
@@ -89,6 +91,8 @@ const parseProfile = (value: Json | null): ProfileSummary | null => {
     baseLocation: typeof record.base_location === 'string' ? record.base_location : null,
     position: typeof record.position === 'string' ? record.position : null,
     currentClub: typeof record.current_club === 'string' ? record.current_club : null,
+    nationalityCountryId: typeof record.nationality_country_id === 'number' ? record.nationality_country_id : null,
+    nationality2CountryId: typeof record.nationality2_country_id === 'number' ? record.nationality2_country_id : null,
   }
 }
 
@@ -332,6 +336,30 @@ export function useTrustedReferences(profileId: string) {
     [addToast, fetchReferences]
   )
 
+  const editEndorsement = useCallback(
+    async (referenceId: string, endorsement: string | null) => {
+      setMutating('edit', referenceId)
+      try {
+        const { error } = await supabase.rpc('edit_endorsement', {
+          p_reference_id: referenceId,
+          p_endorsement: endorsement ?? '',
+        })
+
+        if (error) throw error
+        addToast('Endorsement updated.', 'success')
+        await fetchReferences()
+        return true
+      } catch (error) {
+        logger.error('Failed to edit endorsement', error)
+        addToast('Unable to update endorsement. Please try again.', 'error')
+        return false
+      } finally {
+        setMutating(null)
+      }
+    },
+    [addToast, fetchReferences]
+  )
+
   const isMutating = useCallback(
     (type: MutationType, targetId?: string) => {
       if (mutation.type !== type) return false
@@ -355,6 +383,7 @@ export function useTrustedReferences(profileId: string) {
     respondToRequest,
     removeReference,
     withdrawReference,
+    editEndorsement,
     refresh: fetchReferences,
     isMutating,
   }
