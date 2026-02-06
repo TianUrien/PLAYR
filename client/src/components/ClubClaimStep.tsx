@@ -87,6 +87,7 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
   const [selectedRegion, setSelectedRegion] = useState<Region | null>(null)
   const [selectedClub, setSelectedClub] = useState<WorldClub | null>(null)
   const [isCreatingNew, setIsCreatingNew] = useState(false)
+  const [regionSkipped, setRegionSkipped] = useState(false)
   const [newClubName, setNewClubName] = useState('')
   const [menLeagueId, setMenLeagueId] = useState<number | null>(null)
   const [womenLeagueId, setWomenLeagueId] = useState<number | null>(null)
@@ -186,6 +187,31 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
     }
   }
 
+  // Handle region skip - "My region is not listed"
+  const handleRegionSkip = async () => {
+    if (!selectedCountry?.country_id) return
+    setRegionSkipped(true)
+    setSelectedRegion(null)
+    setLoading(true)
+    setError('')
+
+    try {
+      // Fetch country-level leagues (province_id IS NULL)
+      // For Argentina this returns [] since all leagues are Buenos Aires-scoped — that's fine
+      await fetchLeaguesForLocation(selectedCountry.country_id, null)
+
+      // Go directly to create-new mode (no clubs to browse without a region)
+      setSelectedClub(null)
+      setIsCreatingNew(true)
+      setStep('leagues')
+    } catch (err) {
+      logger.error('[ClubClaimStep] Failed to process region skip:', err)
+      setError('Failed to load data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Fetch leagues using the RPC function
   const fetchLeaguesForLocation = async (countryId: number, regionId: number | null) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -217,11 +243,23 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
   const handleBack = () => {
     setError('')
     if (step === 'leagues') {
-      setStep('club')
-      setSelectedClub(null)
-      setIsCreatingNew(false)
-      setMenLeagueId(null)
-      setWomenLeagueId(null)
+      if (regionSkipped) {
+        // Came from region skip — go back to region selection
+        setStep('region')
+        setRegionSkipped(false)
+        setIsCreatingNew(false)
+        setNewClubName('')
+        setMenLeagueId(null)
+        setWomenLeagueId(null)
+        setLeagues([])
+        setClubs([])
+      } else {
+        setStep('club')
+        setSelectedClub(null)
+        setIsCreatingNew(false)
+        setMenLeagueId(null)
+        setWomenLeagueId(null)
+      }
     } else if (step === 'club') {
       if (selectedCountry?.has_regions) {
         setStep('region')
@@ -330,6 +368,9 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
 
   // Determine progress steps based on whether country has regions
   const getProgressSteps = () => {
+    if (regionSkipped) {
+      return ['country', 'leagues']
+    }
     if (!selectedCountry || selectedCountry.has_regions) {
       return ['country', 'region', 'club', 'leagues']
     }
@@ -464,6 +505,15 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
             </div>
           )}
 
+          <div className="pt-4 border-t border-gray-200">
+            <button
+              onClick={handleRegionSkip}
+              className="w-full py-3 text-gray-600 hover:text-gray-900 text-sm"
+            >
+              My region is not listed – create a new club
+            </button>
+          </div>
+
           <button
             onClick={handleBack}
             className="w-full py-3 text-gray-600 hover:text-gray-900 text-sm"
@@ -576,7 +626,11 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
               {isCreatingNew ? 'Create your club' : `Claim ${selectedClub?.club_name}`}
             </h2>
-            <p className="text-gray-600">Select the leagues your club plays in</p>
+            <p className="text-gray-600">
+              {leagues.length > 0
+                ? 'Select the leagues your club plays in'
+                : 'Enter your club name to get started'}
+            </p>
           </div>
 
           {/* New club name input */}
@@ -610,55 +664,65 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
             </div>
           )}
 
-          {/* Women's League */}
-          <div>
-            <label id="womens-league-label" className="block text-sm font-medium text-gray-700 mb-2">
-              <Trophy className="w-4 h-4 inline mr-1" />
-              Women's League
-            </label>
-            <p className="text-xs text-gray-500 mb-1.5">Select the league for your main women's team.</p>
-            <select
-              aria-labelledby="womens-league-label"
-              value={womenLeagueId ?? ''}
-              onChange={(e) => setWomenLeagueId(e.target.value ? parseInt(e.target.value) : null)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
-            >
-              <option value="">None / Not applicable</option>
-              {leagues.map(league => (
-                <option key={league.id} value={league.id}>
-                  {league.name}
-                  {league.tier && ` (Tier ${league.tier})`}
-                </option>
-              ))}
-            </select>
-          </div>
+          {leagues.length > 0 ? (
+            <>
+              {/* Women's League */}
+              <div>
+                <label id="womens-league-label" className="block text-sm font-medium text-gray-700 mb-2">
+                  <Trophy className="w-4 h-4 inline mr-1" />
+                  Women's League
+                </label>
+                <p className="text-xs text-gray-500 mb-1.5">Select the league for your main women's team.</p>
+                <select
+                  aria-labelledby="womens-league-label"
+                  value={womenLeagueId ?? ''}
+                  onChange={(e) => setWomenLeagueId(e.target.value ? parseInt(e.target.value) : null)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                >
+                  <option value="">None / Not applicable</option>
+                  {leagues.map(league => (
+                    <option key={league.id} value={league.id}>
+                      {league.name}
+                      {league.tier && ` (Tier ${league.tier})`}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          {/* Men's League */}
-          <div>
-            <label id="mens-league-label" className="block text-sm font-medium text-gray-700 mb-2">
-              <Trophy className="w-4 h-4 inline mr-1" />
-              Men's League
-            </label>
-            <p className="text-xs text-gray-500 mb-1.5">Select the league for your main men's team.</p>
-            <select
-              aria-labelledby="mens-league-label"
-              value={menLeagueId ?? ''}
-              onChange={(e) => setMenLeagueId(e.target.value ? parseInt(e.target.value) : null)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
-            >
-              <option value="">None / Not applicable</option>
-              {leagues.map(league => (
-                <option key={league.id} value={league.id}>
-                  {league.name}
-                  {league.tier && ` (Tier ${league.tier})`}
-                </option>
-              ))}
-            </select>
-          </div>
+              {/* Men's League */}
+              <div>
+                <label id="mens-league-label" className="block text-sm font-medium text-gray-700 mb-2">
+                  <Trophy className="w-4 h-4 inline mr-1" />
+                  Men's League
+                </label>
+                <p className="text-xs text-gray-500 mb-1.5">Select the league for your main men's team.</p>
+                <select
+                  aria-labelledby="mens-league-label"
+                  value={menLeagueId ?? ''}
+                  onChange={(e) => setMenLeagueId(e.target.value ? parseInt(e.target.value) : null)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                >
+                  <option value="">None / Not applicable</option>
+                  {leagues.map(league => (
+                    <option key={league.id} value={league.id}>
+                      {league.name}
+                      {league.tier && ` (Tier ${league.tier})`}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <p className="text-xs text-gray-500 text-center">
-            If your club has multiple teams, you'll be able to add them later from your dashboard.
-          </p>
+              <p className="text-xs text-gray-500 text-center">
+                If your club has multiple teams, you'll be able to add them later from your dashboard.
+              </p>
+            </>
+          ) : (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+              <p className="text-sm text-amber-800">
+                No leagues are available for your region yet. You can add league information later from your club dashboard.
+              </p>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-4">
