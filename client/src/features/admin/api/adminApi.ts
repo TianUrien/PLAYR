@@ -281,6 +281,8 @@ import type {
   VacancyDetail,
   ClubActivity,
   ClubSummary,
+  BrandActivity,
+  BrandSummary,
   PlayerFunnel,
   ProfileCompletenessDistribution,
   ExtendedDashboardStats,
@@ -381,6 +383,43 @@ export async function getClubSummary(): Promise<ClubSummary> {
   const { data, error } = await adminRpc('admin_get_club_summary')
   if (error) throw new Error(`Failed to get club summary: ${error.message}`)
   return data as ClubSummary
+}
+
+// ============================================================================
+// BRAND ANALYTICS
+// ============================================================================
+
+/**
+ * Get brand activity with product/post counts, paginated
+ */
+export async function getBrandActivity(
+  days = 30,
+  limit = 20,
+  offset = 0
+): Promise<{
+  brands: BrandActivity[]
+  totalCount: number
+}> {
+  const { data, error } = await adminRpc('admin_get_brand_activity', {
+    p_days: days,
+    p_limit: limit,
+    p_offset: offset,
+  })
+  if (error) throw new Error(`Failed to get brand activity: ${error.message}`)
+
+  const brands = data as BrandActivity[]
+  const totalCount = brands.length > 0 ? brands[0].total_count : 0
+
+  return { brands, totalCount }
+}
+
+/**
+ * Get brand summary statistics
+ */
+export async function getBrandSummary(): Promise<BrandSummary> {
+  const { data, error } = await adminRpc('admin_get_brand_summary')
+  if (error) throw new Error(`Failed to get brand summary: ${error.message}`)
+  return data as BrandSummary
 }
 
 // ============================================================================

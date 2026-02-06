@@ -268,7 +268,7 @@ async function authenticateUser(
     // Check if profile exists
     const { data: existingProfile, error: fetchError } = await authSupabase
       .from('profiles')
-      .select('id, onboarding_completed')
+      .select('id, onboarding_completed, is_test_account')
       .eq('id', data.user.id)
       .single()
 
@@ -297,6 +297,21 @@ async function authenticateUser(
       }
     } else {
       console.log(`[Auth Setup] Profile already complete for ${email}`)
+
+      // Always ensure is_test_account is set, even for already-complete profiles.
+      // This handles accounts created manually through the UI.
+      if (!existingProfile.is_test_account && profileData.is_test_account) {
+        const { error: flagError } = await authSupabase
+          .from('profiles')
+          .update({ is_test_account: true, updated_at: new Date().toISOString() })
+          .eq('id', data.user.id)
+
+        if (flagError) {
+          console.warn(`[Auth Setup] Error setting is_test_account: ${flagError.message}`)
+        } else {
+          console.log(`[Auth Setup] Marked ${email} as test account`)
+        }
+      }
     }
 
     // Ensure a predictable, open vacancy exists for E2E flows.

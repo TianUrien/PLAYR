@@ -17,6 +17,8 @@ import {
   AlertTriangle,
   RefreshCw,
   TrendingUp,
+  Store,
+  Package,
 } from 'lucide-react'
 import { StatCard } from '../components/StatCard'
 import { useAdminStats } from '../hooks/useAdminStats'
@@ -72,7 +74,7 @@ export function AdminOverview() {
       {/* User Metrics */}
       <section>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Users</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <StatCard
             label="Total Users"
             value={stats?.total_users ?? 0}
@@ -108,6 +110,13 @@ export function AdminOverview() {
             value={stats?.total_clubs ?? 0}
             icon={Building2}
             color="amber"
+            loading={isLoading}
+          />
+          <StatCard
+            label="Brands"
+            value={stats?.total_brands ?? 0}
+            icon={Store}
+            color="purple"
             loading={isLoading}
           />
         </div>
@@ -176,6 +185,41 @@ export function AdminOverview() {
           <StatCard
             label="Applications (7d)"
             value={stats?.applications_7d ?? 0}
+            icon={FileText}
+            color="amber"
+            loading={isLoading}
+          />
+        </div>
+      </section>
+
+      {/* Brands */}
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Brands</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="Total Brands"
+            value={stats?.total_brands ?? 0}
+            icon={Store}
+            color="purple"
+            loading={isLoading}
+          />
+          <StatCard
+            label="New Brands (7d)"
+            value={stats?.brands_7d ?? 0}
+            icon={TrendingUp}
+            color="blue"
+            loading={isLoading}
+          />
+          <StatCard
+            label="Brand Products"
+            value={stats?.total_brand_products ?? 0}
+            icon={Package}
+            color="green"
+            loading={isLoading}
+          />
+          <StatCard
+            label="Brand Posts"
+            value={stats?.total_brand_posts ?? 0}
             icon={FileText}
             color="amber"
             loading={isLoading}

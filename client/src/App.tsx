@@ -56,6 +56,7 @@ const AdminSettings = lazy(() => import('@/features/admin/pages/AdminSettings').
 const AdminOpportunities = lazy(() => import('@/features/admin/pages/AdminOpportunities').then(m => ({ default: m.AdminOpportunities })))
 const AdminOpportunityDetail = lazy(() => import('@/features/admin/pages/AdminOpportunityDetail').then(m => ({ default: m.AdminOpportunityDetail })))
 const AdminClubs = lazy(() => import('@/features/admin/pages/AdminClubs').then(m => ({ default: m.AdminClubs })))
+const AdminBrands = lazy(() => import('@/features/admin/pages/AdminBrands').then(m => ({ default: m.AdminBrands })))
 const AdminPlayers = lazy(() => import('@/features/admin/pages/AdminPlayers').then(m => ({ default: m.AdminPlayers })))
 const AdminEngagement = lazy(() => import('@/features/admin/pages/AdminEngagement').then(m => ({ default: m.AdminEngagement })))
 const AdminInvestorDashboard = lazy(() => import('@/features/admin/pages/AdminInvestorDashboard').then(m => ({ default: m.AdminInvestorDashboard })))
@@ -217,6 +218,7 @@ function App() {
                   <Route path="opportunities" element={<AdminOpportunities />} />
                   <Route path="opportunities/:id" element={<AdminOpportunityDetail />} />
                   <Route path="clubs" element={<AdminClubs />} />
+                  <Route path="brands" element={<AdminBrands />} />
                   <Route path="players" element={<AdminPlayers />} />
                   <Route path="engagement" element={<AdminEngagement />} />
                   <Route path="investors" element={<AdminInvestorDashboard />} />

@@ -12,7 +12,13 @@ export interface DashboardStats {
   total_clubs: number
   blocked_users: number
   test_accounts: number
-  
+
+  // Brand metrics
+  total_brands: number
+  brands_7d: number
+  total_brand_products: number
+  total_brand_posts: number
+
   // Signups
   signups_7d: number
   signups_30d: number
@@ -53,6 +59,7 @@ export interface SignupTrend {
   players: number
   coaches: number
   clubs: number
+  brands: number
 }
 
 export interface TopCountry {
@@ -355,6 +362,36 @@ export interface ClubSummary {
   active_clubs_90d: number
   clubs_onboarded: number
   avg_vacancies_per_active_club: number | null
+}
+
+// ============================================================================
+// BRAND ANALYTICS TYPES
+// ============================================================================
+
+export interface BrandActivity {
+  brand_id: string
+  brand_name: string | null
+  logo_url: string | null
+  category: string
+  slug: string
+  is_verified: boolean
+  product_count: number
+  post_count: number
+  last_activity_at: string | null
+  onboarding_completed: boolean
+  created_at: string
+  total_count: number
+}
+
+export interface BrandSummary {
+  total_brands: number
+  verified_brands: number
+  brands_with_products: number
+  brands_with_posts: number
+  total_products: number
+  total_posts: number
+  brands_7d: number
+  brands_30d: number
 }
 
 // ============================================================================
