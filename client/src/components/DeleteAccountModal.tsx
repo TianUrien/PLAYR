@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { X, AlertTriangle, Loader2 } from 'lucide-react'
-import { supabase, SUPABASE_URL } from '../lib/supabase'
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../lib/supabase'
 import { logger } from '../lib/logger'
 import { useAuthStore } from '../lib/auth'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
@@ -61,14 +61,15 @@ export default function DeleteAccountModal({ isOpen, onClose, userEmail }: Delet
     setError(null)
 
     try {
-      // Get current session
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
+      // Refresh session to get a fresh access token
+      const { data: { session }, error: refreshError } = await supabase.auth.refreshSession()
+
+      if (refreshError || !session) {
         throw new Error('No active session. Please sign in again.')
       }
 
-      // Call the delete-account edge function
+      // Call the delete-account edge function with fresh token
+      // apikey header is required by the Supabase gateway to identify the project
       const response = await fetch(
         `${SUPABASE_URL}/functions/v1/delete-account`,
         {
@@ -76,14 +77,27 @@ export default function DeleteAccountModal({ isOpen, onClose, userEmail }: Delet
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session.access_token}`,
+            'apikey': SUPABASE_ANON_KEY,
           },
         }
       )
 
-      const result = await response.json()
+      let result: Record<string, unknown>
+      try {
+        result = await response.json()
+      } catch {
+        throw new Error(`Server error (${response.status}). Please try again.`)
+      }
+
+      logger.debug('Delete account response:', { status: response.status, result })
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete account')
+        const errorMsg = result.error || result.message || result.msg || `Failed (status ${response.status})`
+        throw new Error(String(errorMsg))
+      }
+
+      if (result && !result.success) {
+        throw new Error(String(result.error || 'Failed to delete account'))
       }
 
       if (profile?.id) {
