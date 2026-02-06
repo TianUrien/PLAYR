@@ -1227,6 +1227,7 @@ export type Database = {
           blocked_at: string | null
           blocked_by: string | null
           blocked_reason: string | null
+          brand_representation: string | null
           club_bio: string | null
           club_history: string | null
           contact_email: string | null
@@ -1282,6 +1283,7 @@ export type Database = {
           blocked_at?: string | null
           blocked_by?: string | null
           blocked_reason?: string | null
+          brand_representation?: string | null
           club_bio?: string | null
           club_history?: string | null
           contact_email?: string | null
@@ -1337,6 +1339,7 @@ export type Database = {
           blocked_at?: string | null
           blocked_by?: string | null
           blocked_reason?: string | null
+          brand_representation?: string | null
           club_bio?: string | null
           club_history?: string | null
           contact_email?: string | null

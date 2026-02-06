@@ -49,6 +49,7 @@ type ProfileFormData = {
   social_links: SocialLinks
   open_to_play: boolean
   open_to_coach: boolean
+  brand_representation: string
 }
 
 interface WorldRegion {
@@ -117,6 +118,7 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   social_links: (profile?.social_links as SocialLinks) || {},
   open_to_play: Boolean(profile?.open_to_play),
   open_to_coach: Boolean(profile?.open_to_coach),
+  brand_representation: profile?.brand_representation || '',
 })
 
 export default function EditProfileModal({ isOpen, onClose, role }: EditProfileModalProps) {
@@ -394,6 +396,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.current_club = formData.current_club || null
       optimisticUpdate.bio = formData.bio || null
       optimisticUpdate.open_to_play = formData.open_to_play
+      optimisticUpdate.brand_representation = formData.brand_representation || null
     } else if (role === 'coach') {
       optimisticUpdate.nationality = formData.nationality
       optimisticUpdate.nationality_country_id = formData.nationality_country_id
@@ -735,6 +738,15 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   value={formData.current_club}
                   onChange={(e) => setFormData({ ...formData, current_club: e.target.value })}
                   placeholder="e.g., Holcombe Hockey Club"
+                />
+
+                <Input
+                  label="Brand Representation (Optional)"
+                  type="text"
+                  value={formData.brand_representation}
+                  onChange={(e) => setFormData({ ...formData, brand_representation: e.target.value.slice(0, 60) })}
+                  placeholder="e.g., Grays Player"
+                  maxLength={60}
                 />
 
                 <div>

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail } from 'lucide-react'
+import { MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail, Award } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
 import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, ProfileStrengthCard, DualNationalityDisplay, AvailabilityPill } from '@/components'
@@ -394,6 +394,17 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                     <div className="flex items-center gap-1.5">
                       <Landmark className="w-4 h-4 md:w-5 md:h-5" />
                       <span>{profile.current_club}</span>
+                    </div>
+                  </>
+                )}
+
+                {/* Brand Representation (if specified) */}
+                {profile.brand_representation && (
+                  <>
+                    <span className="text-gray-400">•</span>
+                    <div className="flex items-center gap-1.5">
+                      <Award className="w-4 h-4 md:w-5 md:h-5" />
+                      <span>{profile.brand_representation}</span>
                     </div>
                   </>
                 )}
