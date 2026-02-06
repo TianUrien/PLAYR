@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useCallback } from 'react'
 import { format } from 'date-fns'
 import { ShieldCheck, Plus, Clock3, AlertTriangle } from 'lucide-react'
 import { logger } from '@/lib/logger'
@@ -15,6 +15,7 @@ import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import { useNavigate } from 'react-router-dom'
 import { useNotificationStore } from '@/lib/notifications'
+import { cn } from '@/lib/utils'
 import type { Profile } from '@/lib/supabase'
 
 interface TrustedReferencesSectionProps {
@@ -72,12 +73,32 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
   const [editingReference, setEditingReference] = useState<typeof givenReferences[number] | null>(null)
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null)
   const [messageTarget, setMessageTarget] = useState<string | null>(null)
+  const [activeIndex, setActiveIndex] = useState(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const { user } = useAuthStore()
   const { addToast } = useToastStore()
   const navigate = useNavigate()
   const dismissNotification = useNotificationStore((state) => state.dismissBySource)
   const allowedRequesterRoles: Profile['role'][] = ['player', 'coach']
   const canCollectReferences = isOwner && !!profileRole && allowedRequesterRoles.includes(profileRole)
+
+  const handleScroll = useCallback(() => {
+    const container = scrollRef.current
+    if (!container || container.children.length === 0) return
+    const containerCenter = container.scrollLeft + container.clientWidth / 2
+    let closestIdx = 0
+    let closestDist = Infinity
+    for (let i = 0; i < container.children.length; i++) {
+      const card = container.children[i] as HTMLElement
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2
+      const dist = Math.abs(cardCenter - containerCenter)
+      if (dist < closestDist) {
+        closestDist = dist
+        closestIdx = i
+      }
+    }
+    setActiveIndex(closestIdx)
+  }, [])
 
   const availableFriends = useMemo(() => {
     if (!canCollectReferences) return []
@@ -232,19 +253,50 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
             <p className="text-sm text-gray-600">No trusted references yet. This user hasn&apos;t added any references on PLAYR.</p>
           </div>
         ) : (
-          <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-2 [scrollbar-width:none]">
-            {acceptedReferences.map((reference) => (
-              <TrustedReferenceCard
-                key={reference.id}
-                reference={reference}
-                onMessage={handleMessage}
-                messageLoading={messageTarget === reference.profile?.id}
-                layout="carousel"
-                endorsementFallback="No written endorsement yet."
-                onOpenProfile={handleOpenReferenceProfile}
-              />
-            ))}
-          </div>
+          <>
+            <div
+              ref={scrollRef}
+              onScroll={handleScroll}
+              className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-2 snap-x snap-mandatory scroll-smooth scrollbar-hide [scrollbar-width:none]"
+            >
+              {acceptedReferences.map((reference) => (
+                <TrustedReferenceCard
+                  key={reference.id}
+                  reference={reference}
+                  onMessage={handleMessage}
+                  messageLoading={messageTarget === reference.profile?.id}
+                  layout="carousel"
+                  endorsementFallback="No written endorsement yet."
+                  onOpenProfile={handleOpenReferenceProfile}
+                  className="snap-center"
+                />
+              ))}
+            </div>
+            {acceptedReferences.length > 1 && (
+              <div className="mt-3 flex justify-center gap-2 md:hidden">
+                {acceptedReferences.map((_, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    aria-label={`Go to reference ${idx + 1}`}
+                    onClick={() => {
+                      const container = scrollRef.current
+                      const card = container?.children[idx] as HTMLElement | undefined
+                      if (container && card) {
+                        container.scrollTo({ left: card.offsetLeft - 4, behavior: 'smooth' })
+                      }
+                    }}
+                    className={cn(
+                      'rounded-full transition-all duration-200',
+                      idx === activeIndex
+                        ? 'h-2 w-5 bg-emerald-500'
+                        : 'h-2 w-2 bg-gray-300'
+                    )}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </section>
     )
@@ -323,7 +375,11 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
           <h3 className="text-lg font-semibold text-gray-900">Trusted contacts ({acceptedCount}/{maxReferences})</h3>
           {!isOwner && <p className="text-sm text-gray-500">Message anyone to learn more.</p>}
         </div>
-        <div className="-mx-2 flex gap-3 overflow-x-auto px-2 pb-3 [scrollbar-width:none] sm:mx-0 sm:px-0">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="-mx-2 flex gap-4 overflow-x-auto px-2 pb-3 snap-x snap-mandatory scroll-smooth scrollbar-hide [scrollbar-width:none] sm:mx-0 sm:px-0"
+        >
           {loading && acceptedReferences.length === 0 ? (
             Array.from({ length: 2 }).map((_, index) => (
               <div key={index} className="min-w-[280px] flex-shrink-0 rounded-2xl border border-gray-100 bg-gray-50 p-4 shadow-sm animate-pulse">
@@ -349,6 +405,7 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
                   layout="carousel"
                   endorsementFallback="No endorsement added yet."
                   onOpenProfile={handleOpenReferenceProfile}
+                  className="snap-center"
                   secondaryAction={(
                     <button
                       type="button"
@@ -364,7 +421,7 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
                 <button
                   type="button"
                   onClick={() => setAddModalOpen(true)}
-                  className="min-w-[260px] flex-shrink-0 rounded-3xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-5 text-center text-emerald-700"
+                  className="min-w-[260px] flex-shrink-0 snap-center rounded-3xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-5 text-center text-emerald-700"
                 >
                   <Plus className="mx-auto mb-2 h-6 w-6" />
                   <p className="font-semibold">Add Reference</p>
@@ -374,6 +431,30 @@ export default function TrustedReferencesSection({ profileId, friendOptions, pro
             </>
           )}
         </div>
+        {acceptedReferences.length > 1 && (
+          <div className="mt-3 flex justify-center gap-2 md:hidden">
+            {acceptedReferences.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                aria-label={`Go to reference ${idx + 1}`}
+                onClick={() => {
+                  const container = scrollRef.current
+                  const card = container?.children[idx] as HTMLElement | undefined
+                  if (container && card) {
+                    container.scrollTo({ left: card.offsetLeft - 8, behavior: 'smooth' })
+                  }
+                }}
+                className={cn(
+                  'rounded-full transition-all duration-200',
+                  idx === activeIndex
+                    ? 'h-2 w-5 bg-emerald-500'
+                    : 'h-2 w-2 bg-gray-300'
+                )}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {isOwner && (

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import TrustedReferenceCard from './TrustedReferenceCard'
@@ -23,14 +23,41 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
   const primaryName = profileName?.split(' ')[0]?.trim() || null
 
-  const updateScrollButtons = () => {
+  const updateScrollState = useCallback(() => {
     const container = scrollContainerRef.current
     if (!container) return
     setCanScrollLeft(container.scrollLeft > 0)
     setCanScrollRight(container.scrollLeft < container.scrollWidth - container.clientWidth - 1)
-  }
+
+    // Track active card index based on scroll position
+    const cards = container.children
+    if (cards.length === 0) return
+    const containerLeft = container.scrollLeft
+    const containerCenter = containerLeft + container.clientWidth / 2
+    let closestIdx = 0
+    let closestDist = Infinity
+    for (let i = 0; i < cards.length; i++) {
+      const card = cards[i] as HTMLElement
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2
+      const dist = Math.abs(cardCenter - containerCenter)
+      if (dist < closestDist) {
+        closestDist = dist
+        closestIdx = i
+      }
+    }
+    setActiveIndex(closestIdx)
+  }, [])
+
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    // Initial check after layout
+    const timer = setTimeout(updateScrollState, 100)
+    return () => clearTimeout(timer)
+  }, [acceptedReferences.length, loading, updateScrollState])
 
   const scroll = (direction: 'left' | 'right') => {
     const container = scrollContainerRef.current
@@ -134,12 +161,11 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
       {/* Horizontal scrollable container */}
       <div
         ref={scrollContainerRef}
-        onScroll={updateScrollButtons}
-        onLoad={updateScrollButtons}
+        onScroll={updateScrollState}
         className={cn(
           'flex gap-4 overflow-x-auto pb-2 scrollbar-hide',
           'snap-x snap-mandatory scroll-smooth',
-          '-mx-1 px-1' // Minimal edge peek
+          '-mx-1 px-1 scroll-pl-1' // Edge peek with scroll padding
         )}
       >
         {acceptedReferences.map((reference) => (
@@ -149,7 +175,7 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
             layout="carousel"
             onMessage={handleMessage}
             messageLoading={messageTarget === reference.profile?.id}
-            className="snap-start"
+            className="snap-center"
             onOpenProfile={(id, role) => {
               if (!id) return
               if (role === 'club') {
@@ -164,12 +190,25 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
 
       {/* Scroll indicator dots for mobile */}
       {acceptedReferences.length > 1 && (
-        <div className="mt-3 flex justify-center gap-1.5 md:hidden">
+        <div className="mt-3 flex justify-center gap-2 md:hidden">
           {acceptedReferences.map((_, idx) => (
-            <div
+            <button
               key={idx}
-              className="h-1.5 w-1.5 rounded-full bg-gray-300"
-              aria-hidden
+              type="button"
+              aria-label={`Go to card ${idx + 1}`}
+              onClick={() => {
+                const container = scrollContainerRef.current
+                const card = container?.children[idx] as HTMLElement | undefined
+                if (container && card) {
+                  container.scrollTo({ left: card.offsetLeft - 4, behavior: 'smooth' })
+                }
+              }}
+              className={cn(
+                'rounded-full transition-all duration-200',
+                idx === activeIndex
+                  ? 'h-2 w-5 bg-emerald-500'
+                  : 'h-2 w-2 bg-gray-300'
+              )}
             />
           ))}
         </div>

@@ -58,9 +58,9 @@ export default function TrustedReferenceCard({
 
   const messageDisabled = disabled || !reference.profile?.id || messageLoading
   const isCarousel = layout === 'carousel'
-  // Responsive width: fills mobile viewport nicely, fixed on larger screens
+  // Responsive width: leaves a visible peek of the next card on mobile
   const layoutClasses = isCarousel
-    ? 'w-[calc(100vw-3rem)] min-w-[300px] max-w-[340px] flex-shrink-0 sm:w-[340px]'
+    ? 'w-[calc(100vw-6rem)] min-w-[260px] max-w-[340px] flex-shrink-0 sm:w-[340px]'
     : ''
   const canNavigateProfile = Boolean(onOpenProfile && reference.profile?.id)
 
