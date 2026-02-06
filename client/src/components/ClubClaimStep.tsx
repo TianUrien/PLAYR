@@ -55,7 +55,9 @@ export interface ClubClaimResult {
   worldClubId?: string
   clubName: string
   countryId: number
+  countryName: string
   regionId?: number
+  regionName?: string
   menLeagueId?: number | null
   womenLeagueId?: number | null
   menLeagueName?: string | null
@@ -269,7 +271,9 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
           worldClubId: selectedClub.id,
           clubName: selectedClub.club_name,
           countryId: selectedCountry.country_id,
+          countryName: selectedCountry.country_name || '',
           regionId: selectedRegion?.id,
+          regionName: selectedRegion?.name,
           menLeagueId,
           womenLeagueId,
           menLeagueName: menLeague?.name || null,
@@ -300,7 +304,9 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
           worldClubId: data?.club_id,
           clubName: newClubName.trim(),
           countryId: selectedCountry.country_id,
+          countryName: selectedCountry.country_name || '',
           regionId: selectedRegion?.id,
+          regionName: selectedRegion?.name,
           menLeagueId,
           womenLeagueId,
           menLeagueName: menLeague?.name || null,

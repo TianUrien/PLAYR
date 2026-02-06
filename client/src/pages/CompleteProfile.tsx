@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, MapPin, Globe, Calendar, Building2, Camera, UserRound, Briefcase, Users, Store } from 'lucide-react'
+import { User, MapPin, Calendar, Building2, Camera, UserRound, Briefcase, Users, Store } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { Input, Button, CountrySelect } from '@/components'
 import { useCountries } from '@/hooks/useCountries'
@@ -58,7 +58,6 @@ export default function CompleteProfile() {
     nationality: '',
     nationalityCountryId: null as number | null,
     nationality2CountryId: null as number | null,
-    country: '',
     dateOfBirth: '',
     position: '',
     secondaryPosition: '',
@@ -241,7 +240,7 @@ export default function CompleteProfile() {
 
       if (profile.role === 'club') {
         next.clubName = profile.full_name ?? prev.clubName
-        next.country = profile.nationality ?? prev.country
+        next.nationalityCountryId = profile.nationality_country_id ?? prev.nationalityCountryId
         next.yearFounded = profile.year_founded ? String(profile.year_founded) : prev.yearFounded
         next.womensLeagueDivision = (profile as unknown as { womens_league_division?: string | null }).womens_league_division ?? prev.womensLeagueDivision
         next.mensLeagueDivision = (profile as unknown as { mens_league_division?: string | null }).mens_league_division ?? prev.mensLeagueDivision
@@ -276,11 +275,13 @@ export default function CompleteProfile() {
   const handleClubClaimComplete = (result: ClubClaimResult) => {
     logger.debug('[CompleteProfile] Club claim completed:', result)
     setShowClubClaimStep(false)
-    
-    // Pre-fill form with claim data
+
+    // Pre-fill form with claim data (country ID + region from Step 1)
     setFormData(prev => ({
       ...prev,
       clubName: result.clubName,
+      nationalityCountryId: result.countryId || prev.nationalityCountryId,
+      city: result.regionName || prev.city,
       womensLeagueDivision: result.womenLeagueName || '',
       mensLeagueDivision: result.menLeagueName || '',
     }))
@@ -371,7 +372,7 @@ export default function CompleteProfile() {
     } else if (userRole === 'club') {
       if (!formData.clubName.trim()) return 'Club name is required.'
       if (!formData.city.trim()) return 'City is required.'
-      if (!formData.country.trim()) return 'Country is required.'
+      if (!formData.nationalityCountryId) return 'Country is required.'
       if (!formData.contactEmail.trim()) return 'Contact email is required.'
       // Basic email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -410,7 +411,10 @@ export default function CompleteProfile() {
       const selectedCountry = formData.nationalityCountryId
         ? getCountryById(formData.nationalityCountryId)
         : null
-      const nationalityText = selectedCountry?.nationality_name || ''
+      // Clubs store country name (e.g. "Argentina"), players/coaches store demonym (e.g. "Argentine")
+      const nationalityText = userRole === 'club'
+        ? (selectedCountry?.name || '')
+        : (selectedCountry?.nationality_name || '')
 
       let updateData: Record<string, unknown> = {
         role: userRole, // IMPORTANT: Always include role in update
@@ -984,12 +988,12 @@ export default function CompleteProfile() {
                     required
                   />
 
-                  <Input
+                  <CountrySelect
                     label="Country"
-                    icon={<Globe className="w-5 h-5" />}
-                    placeholder="Country"
-                    value={formData.country}
-                    onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                    value={formData.nationalityCountryId}
+                    onChange={(id) => setFormData({ ...formData, nationalityCountryId: id })}
+                    placeholder="Select country"
+                    disabled={!showClubClaimStep && !!formData.nationalityCountryId}
                     required
                   />
 
