@@ -26,7 +26,7 @@ import { getVacancyDetail, getVacancyApplicants } from '../api/adminApi'
 import type { VacancyDetail, VacancyApplicant, ApplicationStatus } from '../types'
 import { logger } from '@/lib/logger'
 
-export function AdminVacancyDetail() {
+export function AdminOpportunityDetail() {
   const { id } = useParams<{ id: string }>()
   const [detail, setDetail] = useState<VacancyDetail | null>(null)
   const [applicants, setApplicants] = useState<VacancyApplicant[]>([])
