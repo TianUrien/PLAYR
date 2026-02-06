@@ -470,7 +470,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">League/Division</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Leagues</label>
                       {profile.womens_league_division || profile.mens_league_division ? (
                         <div className="text-gray-900 space-y-1">
                           {profile.womens_league_division ? <div>Women: {profile.womens_league_division}</div> : null}

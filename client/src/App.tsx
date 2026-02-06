@@ -38,7 +38,6 @@ const MessagesPage = lazy(() => import('@/pages/MessagesPage'))
 const WorldPage = lazy(() => import('@/pages/WorldPage'))
 const WorldCountryPage = lazy(() => import('@/pages/WorldCountryPage'))
 const WorldProvincePage = lazy(() => import('@/pages/WorldProvincePage'))
-const WorldLeagueClubsPage = lazy(() => import('@/pages/WorldLeagueClubsPage'))
 
 // Brand pages
 const BrandsPage = lazy(() => import('@/pages/BrandsPage'))
@@ -179,7 +178,6 @@ function App() {
                 <Route path="/world" element={<WorldPage />} />
                 <Route path="/world/:countrySlug" element={<WorldCountryPage />} />
                 <Route path="/world/:countrySlug/:provinceSlug" element={<WorldProvincePage />} />
-                <Route path="/world/:countrySlug/:provinceSlug/:leagueSlug" element={<WorldLeagueClubsPage />} />
 
                 {/* Brands Directory (public listing, auth for profile actions) */}
                 <Route path="/brands" element={<BrandsPage />} />

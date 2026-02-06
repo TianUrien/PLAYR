@@ -899,6 +899,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                         <Trophy className="w-4 h-4 inline mr-1" />
                         Women's League
                       </label>
+                      <p className="text-xs text-gray-500 mb-1.5">Main women's team. You'll be able to add more teams later.</p>
                       <select
                         aria-label="Women's League"
                         value={formData.womens_league_id ?? ''}
@@ -928,6 +929,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                         <Trophy className="w-4 h-4 inline mr-1" />
                         Men's League
                       </label>
+                      <p className="text-xs text-gray-500 mb-1.5">Main men's team. You'll be able to add more teams later.</p>
                       <select
                         aria-label="Men's League"
                         value={formData.mens_league_id ?? ''}
@@ -954,14 +956,14 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                 ) : (
                   <>
                     <Input
-                      label="Women's League / Division (Optional)"
+                      label="Women's League (Optional)"
                       placeholder="e.g. Serie A1"
                       value={formData.womens_league_division}
                       onChange={(e) => setFormData({ ...formData, womens_league_division: e.target.value })}
                     />
 
                     <Input
-                      label="Men's League / Division (Optional)"
+                      label="Men's League (Optional)"
                       placeholder="e.g. Elite Division"
                       value={formData.mens_league_division}
                       onChange={(e) => setFormData({ ...formData, mens_league_division: e.target.value })}

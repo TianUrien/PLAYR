@@ -610,6 +610,7 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
               <Trophy className="w-4 h-4 inline mr-1" />
               Women's League
             </label>
+            <p className="text-xs text-gray-500 mb-1.5">Select the league for your main women's team.</p>
             <select
               aria-labelledby="womens-league-label"
               value={womenLeagueId ?? ''}
@@ -632,6 +633,7 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
               <Trophy className="w-4 h-4 inline mr-1" />
               Men's League
             </label>
+            <p className="text-xs text-gray-500 mb-1.5">Select the league for your main men's team.</p>
             <select
               aria-labelledby="mens-league-label"
               value={menLeagueId ?? ''}
@@ -649,8 +651,7 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
           </div>
 
           <p className="text-xs text-gray-500 text-center">
-            Both dropdowns show the same leagues — select the appropriate one for each team.
-            You can update these later from your club dashboard.
+            If your club has multiple teams, you'll be able to add them later from your dashboard.
           </p>
 
           {/* Actions */}

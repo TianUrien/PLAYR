@@ -1004,14 +1004,14 @@ export default function CompleteProfile() {
                   />
 
                   <Input
-                    label="Women’s League / Division (Optional)"
+                    label="Women's League (Optional)"
                     placeholder="e.g. Serie A1"
                     value={formData.womensLeagueDivision}
                     onChange={(e) => setFormData({ ...formData, womensLeagueDivision: e.target.value })}
                   />
 
                   <Input
-                    label="Men’s League / Division (Optional)"
+                    label="Men's League (Optional)"
                     placeholder="e.g. Elite Division"
                     value={formData.mensLeagueDivision}
                     onChange={(e) => setFormData({ ...formData, mensLeagueDivision: e.target.value })}
