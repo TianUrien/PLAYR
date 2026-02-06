@@ -160,10 +160,25 @@ const TEST_COACH = {
   },
 }
 
+const TEST_BRAND = {
+  get email() { return getRequiredEnv('E2E_BRAND_EMAIL') },
+  get password() { return getRequiredEnv('E2E_BRAND_PASSWORD') },
+  profile: {
+    role: 'brand',
+    full_name: 'E2E Test Brand',
+    username: 'e2e-test-brand',
+    base_location: 'London, UK',
+    bio: 'E2E test brand account for automated testing',
+    onboarding_completed: true,
+    is_test_account: true,
+  },
+}
+
 // Storage state file paths
 export const PLAYER_STORAGE_STATE = path.join(__dirname, '.auth/player.json')
 export const CLUB_STORAGE_STATE = path.join(__dirname, '.auth/club.json')
 export const COACH_STORAGE_STATE = path.join(__dirname, '.auth/coach.json')
+export const BRAND_STORAGE_STATE = path.join(__dirname, '.auth/brand.json')
 
 // Ensure auth directory exists
 const authDir = path.join(__dirname, '.auth')
@@ -441,8 +456,67 @@ setup('@smoke authenticate as club', async ({ page }) => {
 })
 
 /**
- * Setup: Authenticate Coach user  
+ * Setup: Authenticate Coach user
  */
 setup('@smoke authenticate as coach', async ({ page }) => {
   await authenticateUser(page, TEST_COACH.email, TEST_COACH.password, COACH_STORAGE_STATE, TEST_COACH.profile)
+})
+
+/**
+ * Setup: Authenticate Brand user
+ */
+setup('@smoke authenticate as brand', async ({ page }) => {
+  await authenticateUser(page, TEST_BRAND.email, TEST_BRAND.password, BRAND_STORAGE_STATE, TEST_BRAND.profile)
+
+  // Ensure a brand entity exists for the E2E test user
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
+  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+  if (!supabaseUrl || !supabaseAnonKey) return
+
+  const { data: authData } = await createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  }).auth.signInWithPassword({ email: TEST_BRAND.email, password: TEST_BRAND.password })
+
+  if (!authData?.session) return
+
+  const authSupabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: `Bearer ${authData.session.access_token}` } },
+  })
+
+  const brandSlug = 'e2e-test-brand'
+  const brandName = 'E2E Test Brand'
+
+  const { data: existingBrand } = await authSupabase
+    .from('brands')
+    .select('id, slug')
+    .eq('profile_id', authData.user.id)
+    .maybeSingle()
+
+  if (!existingBrand) {
+    const { error: insertError } = await authSupabase
+      .from('brands')
+      .insert({
+        profile_id: authData.user.id,
+        name: brandName,
+        slug: brandSlug,
+        category: 'equipment',
+        bio: 'E2E automated test brand. Safe to ignore.',
+        website_url: 'https://e2e-test-brand.playr.test',
+      })
+
+    if (insertError) {
+      console.warn(`[Auth Setup] Error inserting test brand: ${insertError.message}`)
+    } else {
+      console.log('[Auth Setup] Inserted E2E test brand')
+    }
+  } else {
+    console.log(`[Auth Setup] Brand already exists for test user (slug: ${existingBrand.slug})`)
+  }
+
+  writeJsonFileSafe(path.join(dataDir, 'brand.json'), {
+    slug: existingBrand?.slug ?? brandSlug,
+    name: brandName,
+    profileId: authData.user.id,
+  })
 })

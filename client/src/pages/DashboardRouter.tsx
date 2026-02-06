@@ -119,17 +119,17 @@ export default function DashboardRouter() {
 
   // Route based on role
   if (profile.role === 'player') {
-    return <PlayerDashboard />
+    return <div data-testid="dashboard-player"><PlayerDashboard /></div>
   }
 
   if (profile.role === 'coach') {
-    return <CoachDashboard />
+    return <div data-testid="dashboard-coach"><CoachDashboard /></div>
   }
 
   // Brand users: render BrandDashboard (handles its own loading/redirect logic)
   if (profile.role === 'brand') {
-    return <BrandDashboard />
+    return <div data-testid="dashboard-brand"><BrandDashboard /></div>
   }
 
-  return <ClubDashboard />
+  return <div data-testid="dashboard-club"><ClubDashboard /></div>
 }

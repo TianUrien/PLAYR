@@ -19,6 +19,19 @@ function readSeededVacancy(): SeededVacancyData {
 }
 
 test.describe('@smoke club', () => {
+  test('club dashboard loads for authenticated club user', async ({ page }) => {
+    await page.goto('/dashboard/profile')
+
+    // Club name should render as H1
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20000 })
+
+    // Should show club-specific tabs
+    await expect(
+      page.getByRole('button', { name: /overview/i })
+        .or(page.getByRole('button', { name: /opportunities/i }))
+    ).toBeVisible({ timeout: 10000 })
+  })
+
   test('club can open applicants page for seeded vacancy', async ({ page }) => {
     const seeded = readSeededVacancy()
     expect(seeded.id, 'Seeded vacancy id should be written by auth.setup').toBeTruthy()
@@ -33,5 +46,32 @@ test.describe('@smoke club', () => {
     const emptyState = page.getByRole('heading', { level: 3, name: 'No Applicants Yet' })
     const hasEmptyOrApplicants = await emptyState.isVisible() || await page.getByText(/\d+\s+applicants?/i).first().isVisible()
     expect(hasEmptyOrApplicants).toBe(true)
+  })
+
+  test('club public profile is accessible', async ({ page }) => {
+    await page.goto('/clubs/e2e-test-fc')
+
+    await expect(
+      page.getByRole('heading', { level: 1, name: /e2e test fc/i })
+    ).toBeVisible({ timeout: 20000 })
+
+    // Should show the Message button for visitors
+    await expect(
+      page.getByRole('button', { name: /message/i })
+    ).toBeVisible({ timeout: 10000 })
+  })
+
+  test('club cannot access brand dashboard', async ({ page }) => {
+    await page.goto('/dashboard/brand')
+    await page.waitForTimeout(3000)
+
+    // Club should not see brand dashboard content
+    const url = page.url()
+    const isOnBrandDash = url.includes('/dashboard/brand')
+    if (isOnBrandDash) {
+      // If still on the URL, should show an error or empty state, not brand controls
+      const hasBrandControls = await page.getByRole('button', { name: /add product/i }).isVisible().catch(() => false)
+      expect(hasBrandControls).toBe(false)
+    }
   })
 })

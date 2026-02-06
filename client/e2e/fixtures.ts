@@ -50,6 +50,13 @@ export const TEST_USERS = {
     baseLocation: 'Birmingham, UK',
     position: 'Head Coach',
   },
+  brand: {
+    get email() { return getRequiredEnv('E2E_BRAND_EMAIL') },
+    get password() { return getRequiredEnv('E2E_BRAND_PASSWORD') },
+    brandName: 'E2E Test Brand',
+    slug: 'e2e-test-brand',
+    category: 'equipment',
+  },
 } as const
 
 /**
@@ -362,6 +369,63 @@ export class QuestionsPage extends PlayrPage {
 }
 
 /**
+ * Page Object for Brand Dashboard & Brand Pages
+ */
+export class BrandsPage extends PlayrPage {
+  async openBrandsDirectory() {
+    await this.page.goto('/brands')
+    await this.waitForLoadingToComplete()
+  }
+
+  async openBrandProfile(slug: string) {
+    await this.page.goto(`/brands/${slug}`)
+    await this.waitForLoadingToComplete()
+  }
+
+  async openBrandDashboard() {
+    await this.page.goto('/dashboard/brand')
+    await this.waitForLoadingToComplete()
+  }
+
+  async switchTab(tab: 'Overview' | 'Products' | 'Posts' | 'Messages' | 'Followers') {
+    await this.page.getByRole('button', { name: tab }).click()
+    await this.waitForLoadingToComplete()
+  }
+
+  async switchDirectoryView(view: 'Feed' | 'Directory') {
+    await this.page.getByRole('button', { name: view }).click()
+    await this.waitForLoadingToComplete()
+  }
+
+  async clickAddProduct() {
+    await this.page.getByRole('button', { name: /add product/i }).click()
+  }
+
+  async clickNewPost() {
+    await this.page.getByRole('button', { name: /new post/i }).click()
+  }
+
+  async fillProductForm(name: string, description?: string) {
+    await this.page.locator('#product-name').fill(name)
+    if (description) {
+      await this.page.locator('#product-description').fill(description)
+    }
+  }
+
+  async fillPostForm(content: string) {
+    await this.page.locator('#post-content').fill(content)
+  }
+
+  async submitProductForm() {
+    await this.page.getByRole('button', { name: /add product|save changes/i }).click()
+  }
+
+  async submitPostForm() {
+    await this.page.getByRole('button', { name: /publish post|save changes/i }).click()
+  }
+}
+
+/**
  * Extended test fixture with page objects
  */
 export const test = base.extend<{
@@ -371,6 +435,7 @@ export const test = base.extend<{
   opportunitiesPage: OpportunitiesPage
   communityPage: CommunityPage
   questionsPage: QuestionsPage
+  brandsPage: BrandsPage
 }>({
   authPage: async ({ page }, use) => {
     await use(new AuthPage(page))
@@ -389,6 +454,9 @@ export const test = base.extend<{
   },
   questionsPage: async ({ page }, use) => {
     await use(new QuestionsPage(page))
+  },
+  brandsPage: async ({ page }, use) => {
+    await use(new BrandsPage(page))
   },
 })
 
