@@ -497,6 +497,14 @@ import type {
   WorldLeague,
   WorldClubCreatePayload,
   WorldClubUpdatePayload,
+  WorldLeagueAdmin,
+  WorldLeagueFilters,
+  WorldLeagueCreatePayload,
+  WorldLeagueUpdatePayload,
+  WorldProvinceAdmin,
+  WorldProvinceFilters,
+  WorldProvinceCreatePayload,
+  WorldProvinceUpdatePayload,
   InvestorMetrics,
   InvestorSignupTrend,
   InvestorShareToken,
@@ -748,6 +756,356 @@ export async function unclaimWorldClub(clubId: string): Promise<void> {
     .eq('id', clubId)
 
   if (error) throw new Error(`Failed to unclaim world club: ${error.message}`)
+}
+
+/**
+ * Delete a world club (admin only)
+ */
+export async function deleteWorldClub(clubId: string): Promise<void> {
+  const { error } = await supabase
+    .from('world_clubs')
+    .delete()
+    .eq('id', clubId)
+
+  if (error) throw new Error(`Failed to delete world club: ${error.message}`)
+}
+
+/**
+ * Force claim a world club to a specific profile (admin only)
+ */
+export async function forceClaimWorldClub(
+  clubId: string,
+  profileId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('world_clubs')
+    .update({
+      is_claimed: true,
+      claimed_profile_id: profileId,
+      claimed_at: new Date().toISOString(),
+    })
+    .eq('id', clubId)
+
+  if (error) throw new Error(`Failed to force claim club: ${error.message}`)
+}
+
+// ============================================================================
+// Hockey World — All Countries (full list, not directory-only)
+// ============================================================================
+
+/**
+ * Get ALL countries (not just those with leagues).
+ * Used in admin modals for creating leagues/regions in new countries.
+ */
+export async function getAllCountries(): Promise<WorldCountry[]> {
+  const { data, error } = await supabase
+    .from('countries')
+    .select('id, code, name, flag_emoji')
+    .order('name')
+
+  if (error) throw new Error(`Failed to get all countries: ${error.message}`)
+
+  return (data || []).map((row) => ({
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    flag_emoji: row.flag_emoji,
+  }))
+}
+
+// ============================================================================
+// Hockey World — Leagues CRUD
+// ============================================================================
+
+function generateSlug(name: string): string {
+  return name.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim()
+}
+
+/**
+ * Get leagues with filters, pagination, and joined country/province names
+ */
+export async function getWorldLeaguesAdmin(
+  filters: WorldLeagueFilters = {},
+  limit = 50,
+  offset = 0
+): Promise<{ leagues: WorldLeagueAdmin[]; totalCount: number }> {
+  let query = supabase
+    .from('world_leagues')
+    .select(`
+      *,
+      country:countries(id, code, name, flag_emoji),
+      province:world_provinces(id, name, country_id)
+    `, { count: 'exact' })
+
+  if (filters.province_id) {
+    query = query.eq('province_id', filters.province_id)
+  } else if (filters.country_id) {
+    // Leagues can be directly under a country (province_id IS NULL) or under a province
+    // belonging to that country. We need to find province IDs for this country first.
+    const provinces = await getWorldProvinces(filters.country_id)
+    const provinceIds = provinces.map(p => p.id)
+    if (provinceIds.length > 0) {
+      query = query.or(
+        `country_id.eq.${filters.country_id},province_id.in.(${provinceIds.join(',')})`
+      )
+    } else {
+      query = query.eq('country_id', filters.country_id)
+    }
+  }
+  if (filters.search) {
+    query = query.ilike('name', `%${filters.search}%`)
+  }
+
+  query = query.order('name').range(offset, offset + limit - 1)
+
+  const { data, error, count } = await query
+
+  if (error) throw new Error(`Failed to get world leagues: ${error.message}`)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const leagues: WorldLeagueAdmin[] = (data || []).map((row: any) => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    tier: row.tier,
+    logical_id: row.logical_id,
+    display_order: row.display_order,
+    province_id: row.province_id,
+    province_name: row.province?.name ?? null,
+    country_id: row.country_id ?? row.province?.country_id ?? null,
+    country_name: row.country?.name ?? undefined,
+    country_code: row.country?.code ?? undefined,
+    country_flag_emoji: row.country?.flag_emoji ?? null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }))
+
+  return { leagues, totalCount: count ?? 0 }
+}
+
+/**
+ * Create a new league (admin only)
+ */
+export async function createWorldLeague(
+  payload: WorldLeagueCreatePayload
+): Promise<void> {
+  const { error } = await supabase
+    .from('world_leagues')
+    .insert({
+      name: payload.name.trim(),
+      slug: generateSlug(payload.name),
+      tier: payload.tier ?? null,
+      country_id: payload.province_id ? null : payload.country_id,
+      province_id: payload.province_id ?? null,
+      display_order: payload.display_order ?? 0,
+    })
+
+  if (error) {
+    if (error.message.includes('duplicate key') || error.message.includes('unique')) {
+      throw new Error('A league with this name already exists in this location')
+    }
+    throw new Error(`Failed to create league: ${error.message}`)
+  }
+}
+
+/**
+ * Update a league (admin only)
+ */
+export async function updateWorldLeague(
+  leagueId: number,
+  payload: WorldLeagueUpdatePayload
+): Promise<void> {
+  const updates: Record<string, unknown> = {}
+
+  if (payload.name !== undefined) {
+    updates.name = payload.name.trim()
+    updates.slug = generateSlug(payload.name)
+  }
+  if (payload.tier !== undefined) updates.tier = payload.tier
+  if (payload.province_id !== undefined) {
+    updates.province_id = payload.province_id
+    // If province is set, clear country_id (league gets country via province)
+    if (payload.province_id) {
+      updates.country_id = null
+    } else if (payload.country_id !== undefined) {
+      updates.country_id = payload.country_id
+    }
+  } else if (payload.country_id !== undefined) {
+    updates.country_id = payload.country_id
+  }
+  if (payload.display_order !== undefined) updates.display_order = payload.display_order
+
+  const { error } = await supabase
+    .from('world_leagues')
+    .update(updates)
+    .eq('id', leagueId)
+
+  if (error) {
+    if (error.message.includes('duplicate key') || error.message.includes('unique')) {
+      throw new Error('A league with this name already exists in this location')
+    }
+    throw new Error(`Failed to update league: ${error.message}`)
+  }
+}
+
+/**
+ * Delete a league (admin only)
+ * Note: FK ON DELETE SET NULL means clubs referencing this league will have their league set to null
+ */
+export async function deleteWorldLeague(leagueId: number): Promise<void> {
+  const { error } = await supabase
+    .from('world_leagues')
+    .delete()
+    .eq('id', leagueId)
+
+  if (error) throw new Error(`Failed to delete league: ${error.message}`)
+}
+
+// ============================================================================
+// Hockey World — Regions/Provinces CRUD
+// ============================================================================
+
+/**
+ * Get provinces with filters, pagination, and joined country names
+ */
+export async function getWorldProvincesAdmin(
+  filters: WorldProvinceFilters = {},
+  limit = 50,
+  offset = 0
+): Promise<{ provinces: WorldProvinceAdmin[]; totalCount: number }> {
+  let query = supabase
+    .from('world_provinces')
+    .select(`
+      *,
+      country:countries(id, code, name, flag_emoji)
+    `, { count: 'exact' })
+
+  if (filters.country_id) {
+    query = query.eq('country_id', filters.country_id)
+  }
+  if (filters.search) {
+    query = query.ilike('name', `%${filters.search}%`)
+  }
+
+  query = query.order('country_id').order('display_order').range(offset, offset + limit - 1)
+
+  const { data, error, count } = await query
+
+  if (error) throw new Error(`Failed to get world provinces: ${error.message}`)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const provinces: WorldProvinceAdmin[] = (data || []).map((row: any) => ({
+    id: row.id,
+    country_id: row.country_id,
+    country_name: row.country?.name ?? undefined,
+    country_code: row.country?.code ?? undefined,
+    country_flag_emoji: row.country?.flag_emoji ?? null,
+    name: row.name,
+    slug: row.slug,
+    logical_id: row.logical_id,
+    description: row.description,
+    display_order: row.display_order,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }))
+
+  return { provinces, totalCount: count ?? 0 }
+}
+
+/**
+ * Create a new province/region (admin only)
+ */
+export async function createWorldProvince(
+  payload: WorldProvinceCreatePayload
+): Promise<void> {
+  const { error } = await supabase
+    .from('world_provinces')
+    .insert({
+      name: payload.name.trim(),
+      slug: generateSlug(payload.name),
+      country_id: payload.country_id,
+      description: payload.description ?? null,
+      display_order: payload.display_order ?? 0,
+    })
+
+  if (error) {
+    if (error.message.includes('duplicate key') || error.message.includes('unique')) {
+      throw new Error('A region with this name already exists in this country')
+    }
+    throw new Error(`Failed to create region: ${error.message}`)
+  }
+}
+
+/**
+ * Update a province/region (admin only)
+ */
+export async function updateWorldProvince(
+  provinceId: number,
+  payload: WorldProvinceUpdatePayload
+): Promise<void> {
+  const updates: Record<string, unknown> = {}
+
+  if (payload.name !== undefined) {
+    updates.name = payload.name.trim()
+    updates.slug = generateSlug(payload.name)
+  }
+  if (payload.country_id !== undefined) updates.country_id = payload.country_id
+  if (payload.description !== undefined) updates.description = payload.description
+  if (payload.display_order !== undefined) updates.display_order = payload.display_order
+
+  const { error } = await supabase
+    .from('world_provinces')
+    .update(updates)
+    .eq('id', provinceId)
+
+  if (error) {
+    if (error.message.includes('duplicate key') || error.message.includes('unique')) {
+      throw new Error('A region with this name already exists in this country')
+    }
+    throw new Error(`Failed to update region: ${error.message}`)
+  }
+}
+
+/**
+ * Delete a province/region (admin only)
+ * Note: FK ON DELETE CASCADE will delete all leagues in this region.
+ * FK ON DELETE SET NULL will unlink clubs from this region.
+ */
+export async function deleteWorldProvince(provinceId: number): Promise<void> {
+  const { error } = await supabase
+    .from('world_provinces')
+    .delete()
+    .eq('id', provinceId)
+
+  if (error) throw new Error(`Failed to delete region: ${error.message}`)
+}
+
+/**
+ * Get counts of leagues and clubs in a province (for delete confirmation)
+ */
+export async function getWorldProvinceRelationCounts(
+  provinceId: number
+): Promise<{ leagueCount: number; clubCount: number }> {
+  const [leagueResult, clubResult] = await Promise.all([
+    supabase
+      .from('world_leagues')
+      .select('*', { count: 'exact', head: true })
+      .eq('province_id', provinceId),
+    supabase
+      .from('world_clubs')
+      .select('*', { count: 'exact', head: true })
+      .eq('province_id', provinceId),
+  ])
+
+  return {
+    leagueCount: leagueResult.count ?? 0,
+    clubCount: clubResult.count ?? 0,
+  }
 }
 
 // ============================================================================

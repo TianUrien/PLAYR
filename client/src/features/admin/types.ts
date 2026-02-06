@@ -565,6 +565,81 @@ export interface WorldClubUpdatePayload {
   claimed_profile_id?: string | null
 }
 
+// Admin-enriched league (with joined country/province names)
+export interface WorldLeagueAdmin {
+  id: number
+  name: string
+  slug: string | null
+  tier: number | null
+  logical_id: string | null
+  display_order: number
+  province_id: number | null
+  province_name?: string | null
+  country_id: number | null
+  country_name?: string | null
+  country_code?: string | null
+  country_flag_emoji?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface WorldLeagueFilters {
+  country_id?: number
+  province_id?: number
+  search?: string
+}
+
+export interface WorldLeagueCreatePayload {
+  name: string
+  tier?: number | null
+  country_id: number
+  province_id?: number | null
+  display_order?: number
+}
+
+export interface WorldLeagueUpdatePayload {
+  name?: string
+  tier?: number | null
+  country_id?: number
+  province_id?: number | null
+  display_order?: number
+}
+
+// Admin-enriched region (with joined country name)
+export interface WorldProvinceAdmin {
+  id: number
+  country_id: number
+  country_name?: string
+  country_code?: string
+  country_flag_emoji?: string | null
+  name: string
+  slug: string
+  logical_id: string | null
+  description: string | null
+  display_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface WorldProvinceFilters {
+  country_id?: number
+  search?: string
+}
+
+export interface WorldProvinceCreatePayload {
+  name: string
+  country_id: number
+  description?: string | null
+  display_order?: number
+}
+
+export interface WorldProvinceUpdatePayload {
+  name?: string
+  country_id?: number
+  description?: string | null
+  display_order?: number
+}
+
 // ============================================================================
 // INVESTOR DASHBOARD TYPES
 // ============================================================================
