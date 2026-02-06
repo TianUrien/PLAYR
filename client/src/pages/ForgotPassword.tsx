@@ -100,8 +100,8 @@ export default function ForgotPassword() {
             /* Form State */
             <>
               <div className="text-center mb-6">
-                <div className="w-16 h-16 rounded-full bg-[#6366f1]/20 flex items-center justify-center mx-auto mb-4">
-                  <Mail className="w-8 h-8 text-[#8b5cf6]" />
+                <div className="w-16 h-16 rounded-full bg-[#8026FA]/20 flex items-center justify-center mx-auto mb-4">
+                  <Mail className="w-8 h-8 text-[#924CEC]" />
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-2">Forgot password?</h3>
                 <p className="text-gray-400">
@@ -129,7 +129,7 @@ export default function ForgotPassword() {
                 <Button
                   type="submit"
                   variant="primary"
-                  className="w-full min-h-[44px] bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:opacity-90"
+                  className="w-full min-h-[44px] bg-gradient-to-r from-[#8026FA] to-[#924CEC] hover:opacity-90"
                   disabled={loading}
                 >
                   {loading ? 'Sending...' : 'Send Reset Link'}

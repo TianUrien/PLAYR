@@ -39,7 +39,7 @@ export default function SignInPromptModal({
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="p-6 text-center">
         {/* Icon */}
-        <div className="w-16 h-16 bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] rounded-full flex items-center justify-center mx-auto mb-4">
+        <div className="w-16 h-16 bg-gradient-to-br from-[#8026FA] to-[#924CEC] rounded-full flex items-center justify-center mx-auto mb-4">
           <LogIn className="w-8 h-8 text-white" />
         </div>
 
@@ -53,7 +53,7 @@ export default function SignInPromptModal({
         <div className="space-y-3">
           <Button
             onClick={handleSignIn}
-            className="w-full bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:opacity-90 flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-[#8026FA] to-[#924CEC] hover:opacity-90 flex items-center justify-center gap-2"
           >
             <LogIn className="w-4 h-4" />
             Sign In

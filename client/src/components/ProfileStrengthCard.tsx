@@ -97,7 +97,7 @@ export default function ProfileStrengthCard<TBucket extends BucketLike>({
           {/* Right: Toggle button */}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="flex items-center gap-1 text-xs font-medium text-[#6366f1] hover:text-[#4f46e5] transition-colors flex-shrink-0"
+            className="flex items-center gap-1 text-xs font-medium text-[#8026FA] hover:text-[#6B20D4] transition-colors flex-shrink-0"
           >
             {isExpanded ? (
               <>

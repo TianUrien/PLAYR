@@ -135,7 +135,7 @@ export default function Header() {
                     onClick={() => handleNavigate(path)}
                     className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       isActive(path)
-                        ? 'text-[#6366f1] bg-indigo-50'
+                        ? 'text-[#8026FA] bg-indigo-50'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                     aria-current={isActive(path) ? 'page' : undefined}
@@ -156,7 +156,7 @@ export default function Header() {
                   onClick={() => handleNavigate('/messages')}
                   className={`relative p-2 rounded-lg transition-colors ${
                     isActive('/messages')
-                      ? 'text-[#6366f1] bg-indigo-50'
+                      ? 'text-[#8026FA] bg-indigo-50'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
                   aria-label="Messages"
@@ -179,7 +179,7 @@ export default function Header() {
                   onClick={() => handleNavigate('/dashboard/profile')}
                   className={`ml-1 flex items-center rounded-full transition-all ${
                     isActive('/dashboard')
-                      ? 'ring-2 ring-[#6366f1] ring-offset-2'
+                      ? 'ring-2 ring-[#8026FA] ring-offset-2'
                       : 'hover:opacity-80'
                   }`}
                   aria-label="Go to Dashboard"
@@ -206,7 +206,7 @@ export default function Header() {
                     onClick={() => handleNavigate(path)}
                     className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       isActive(path)
-                        ? 'text-[#6366f1] bg-indigo-50'
+                        ? 'text-[#8026FA] bg-indigo-50'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                     aria-current={isActive(path) ? 'page' : undefined}
@@ -230,7 +230,7 @@ export default function Header() {
                 </button>
                 <button
                   onClick={() => handleNavigate('/signup')}
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                   Join PLAYR
                 </button>

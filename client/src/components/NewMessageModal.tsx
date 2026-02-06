@@ -139,7 +139,7 @@ export default function NewMessageModal({ isOpen, onClose }: NewMessageModalProp
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-[#8026FA] to-[#924CEC] flex items-center justify-center">
               <MessageCircle className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -155,7 +155,7 @@ export default function NewMessageModal({ isOpen, onClose }: NewMessageModalProp
           <input
             type="text"
             placeholder="Search by name or club..."
-            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm placeholder:text-gray-400 focus:border-[#6366f1] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#6366f1]/20"
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm placeholder:text-gray-400 focus:border-[#8026FA] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#8026FA]/20"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             autoFocus
@@ -164,7 +164,7 @@ export default function NewMessageModal({ isOpen, onClose }: NewMessageModalProp
           />
           {isSearching && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <div className="w-4 h-4 border-2 border-[#6366f1] border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-[#8026FA] border-t-transparent rounded-full animate-spin" />
             </div>
           )}
         </div>
@@ -180,7 +180,7 @@ export default function NewMessageModal({ isOpen, onClose }: NewMessageModalProp
             {isLoadingRecent && !searchTerm.trim() ? (
               // Loading state
               <div className="p-8 text-center">
-                <div className="w-6 h-6 border-2 border-[#6366f1] border-t-transparent rounded-full animate-spin mx-auto" />
+                <div className="w-6 h-6 border-2 border-[#8026FA] border-t-transparent rounded-full animate-spin mx-auto" />
               </div>
             ) : showEmptyState ? (
               // Empty search results

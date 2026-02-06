@@ -552,7 +552,7 @@ export function PeopleListView() {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="px-6 py-2 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white font-medium hover:opacity-90 transition-opacity"
+                  className="px-6 py-2 rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white font-medium hover:opacity-90 transition-opacity"
                 >
                   Clear Filters
                 </button>
@@ -586,7 +586,7 @@ export function PeopleListView() {
                 <div className="flex justify-center">
                   <button
                     onClick={handleLoadMore}
-                    className="px-8 py-3 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white font-medium hover:opacity-90 transition-opacity"
+                    className="px-8 py-3 rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white font-medium hover:opacity-90 transition-opacity"
                   >
                     Load More
                   </button>

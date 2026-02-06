@@ -193,7 +193,7 @@ export default function OpportunityDetailPage() {
             <p className="text-gray-600 mb-6">This opportunity may have been closed or removed.</p>
             <button
               onClick={() => navigate('/opportunities')}
-              className="px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity"
+              className="px-6 py-3 bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white rounded-lg hover:opacity-90 transition-opacity"
             >
               Browse Opportunities
             </button>

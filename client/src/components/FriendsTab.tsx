@@ -322,7 +322,7 @@ export default function FriendsTab({ profileId, readOnly = false, profileRole }:
             <p className="text-sm text-gray-600">Trusted connections build credibility on PLAYR.</p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700">
-            <Users className="h-4 w-4 text-[#6366f1]" />
+            <Users className="h-4 w-4 text-[#8026FA]" />
             {acceptedConnections.length} {acceptedConnections.length === 1 ? 'friend' : 'friends'}
           </div>
         </div>

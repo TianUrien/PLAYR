@@ -137,7 +137,7 @@ export default function MobileBottomNav() {
                 onClick={() => handleNavigate(item.path)}
                 className={`flex flex-col items-center justify-center min-w-[48px] min-h-[44px] py-1 px-2 rounded-xl transition-all duration-200 ${
                   active 
-                    ? 'text-[#6366f1]' 
+                    ? 'text-[#8026FA]' 
                     : 'text-gray-600 active:bg-gray-100'
                 }`}
                 aria-label={item.label}
@@ -155,7 +155,7 @@ export default function MobileBottomNav() {
                     <NotificationBadge count={opportunityCount} />
                   )}
                   {active && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] opacity-20 rounded-full blur-md" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#8026FA] to-[#924CEC] opacity-20 rounded-full blur-md" />
                   )}
                 </div>
                 <span
@@ -174,7 +174,7 @@ export default function MobileBottomNav() {
             onClick={() => handleNavigate('/dashboard/profile')}
             className={`flex flex-col items-center justify-center min-w-[48px] min-h-[44px] py-1 px-2 rounded-xl transition-all duration-200 ${
               location.pathname.startsWith('/dashboard')
-                ? 'text-[#6366f1]'
+                ? 'text-[#8026FA]'
                 : 'text-gray-600 active:bg-gray-100'
             }`}
             aria-label="Go to Dashboard"
@@ -188,12 +188,12 @@ export default function MobileBottomNav() {
                 size="sm"
                 className={`transition-all duration-200 ${
                   location.pathname.startsWith('/dashboard')
-                    ? 'ring-2 ring-[#6366f1] ring-offset-2'
+                    ? 'ring-2 ring-[#8026FA] ring-offset-2'
                     : ''
                 }`}
               />
               {location.pathname.startsWith('/dashboard') && (
-                <div className="absolute inset-0 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] opacity-20 rounded-full blur-md" />
+                <div className="absolute inset-0 bg-gradient-to-r from-[#8026FA] to-[#924CEC] opacity-20 rounded-full blur-md" />
               )}
             </div>
             <span

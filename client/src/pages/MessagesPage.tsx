@@ -945,7 +945,7 @@ export default function MessagesPage() {
                 <button
                   type="button"
                   onClick={() => setIsNewMessageModalOpen(true)}
-                  className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white hover:opacity-90 transition-opacity shadow-md"
+                  className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white hover:opacity-90 transition-opacity shadow-md"
                   aria-label="New message"
                   title="New message"
                 >
@@ -995,8 +995,8 @@ export default function MessagesPage() {
                 </div>
               ) : filteredConversations.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-                  <div className="w-14 h-14 bg-gradient-to-r from-[#6366f1]/20 to-[#8b5cf6]/20 rounded-full flex items-center justify-center mb-3">
-                    <MessageCircle className="w-7 h-7 text-[#6366f1]" />
+                  <div className="w-14 h-14 bg-gradient-to-r from-[#8026FA]/20 to-[#924CEC]/20 rounded-full flex items-center justify-center mb-3">
+                    <MessageCircle className="w-7 h-7 text-[#8026FA]" />
                   </div>
                   <h3 className="text-base font-semibold text-gray-900 mb-1">No messages yet</h3>
                   <p className="text-sm text-gray-500 mb-4">
@@ -1005,7 +1005,7 @@ export default function MessagesPage() {
                   <button
                     type="button"
                     onClick={() => setIsNewMessageModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white text-sm font-medium hover:opacity-90 transition-opacity shadow-md"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white text-sm font-medium hover:opacity-90 transition-opacity shadow-md"
                   >
                     <Plus className="w-4 h-4" />
                     New Message

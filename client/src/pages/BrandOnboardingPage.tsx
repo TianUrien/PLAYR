@@ -112,7 +112,7 @@ export default function BrandOnboardingPage() {
       <div className="relative z-10 w-full max-w-xl">
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
           {/* Header */}
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]">
+          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#8026FA] to-[#924CEC]">
             <div className="flex items-center gap-3 mb-2">
               <img
                 src="/WhiteLogo.svg"

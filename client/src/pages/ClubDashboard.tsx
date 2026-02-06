@@ -428,7 +428,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
                 {!readOnly && (
                   <div className="bg-gradient-to-br from-[#8026FA] to-[#924CEC] rounded-xl p-6 text-white">
                     <h3 className="text-lg font-semibold mb-2">Quick Actions</h3>
-                    <p className="text-blue-100 mb-4 text-sm">Manage your club and find the best talent</p>
+                    <p className="text-purple-100 mb-4 text-sm">Manage your club and find the best talent</p>
                     <button
                       onClick={handleCreateVacancyClick}
                       className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#8026FA] rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
@@ -551,7 +551,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
                   <div className="pt-6 border-t border-gray-200">
                     <button
                       onClick={() => setShowEditModal(true)}
-                      className="px-6 py-3 bg-[#924CEC] text-white rounded-lg hover:bg-[#6B20D4] transition-colors font-medium"
+                      className="px-6 py-3 bg-[#8026FA] text-white rounded-lg hover:bg-[#6B20D4] transition-colors font-medium"
                     >
                       Update Club Information
                     </button>

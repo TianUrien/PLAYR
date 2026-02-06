@@ -642,7 +642,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
             <label className="flex items-start gap-3 text-sm text-gray-700">
               <input
                 type="checkbox"
-                className="mt-1 h-4 w-4 rounded border-gray-300 text-[#6366f1] focus:ring-[#6366f1]"
+                className="mt-1 h-4 w-4 rounded border-gray-300 text-[#8026FA] focus:ring-[#8026FA]"
                 checked={formData.contact_email_public}
                 onChange={(e) => setFormData({ ...formData, contact_email_public: e.target.checked })}
               />
@@ -670,7 +670,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     id="player-position"
                     value={formData.position}
                     onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                     required
                     aria-label="Select position"
                   >
@@ -690,7 +690,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     id="player-secondary-position"
                     value={formData.secondary_position}
                     onChange={(e) => setFormData({ ...formData, secondary_position: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                     aria-label="Select secondary position"
                   >
                     <option value="">No secondary position</option>
@@ -710,7 +710,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     id="player-gender"
                     value={formData.gender}
                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                     required
                     aria-label="Select gender"
                   >
@@ -758,7 +758,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     value={formData.bio || ''}
                     onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                     rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent resize-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent resize-none"
                     placeholder="Share your playing background, strengths, and goals"
                     aria-label="About me"
                   />
@@ -800,7 +800,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     id="coach-gender-edit"
                     value={formData.gender}
                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                   >
                     <option value="">Select gender</option>
                     <option value="Men">Men</option>
@@ -832,7 +832,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     value={formData.bio || ''}
                     onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                     rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent resize-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent resize-none"
                     placeholder="Tell us about your coaching experience..."
                   />
                 </div>
@@ -894,7 +894,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                               womens_league_id: null,
                             })
                           }}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                           disabled={loadingWorld}
                         >
                           <option value="">Select region...</option>
@@ -919,7 +919,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                           ...formData,
                           womens_league_id: e.target.value ? parseInt(e.target.value) : null,
                         })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                         disabled={(countryHasRegions && !formData.world_region_id) || loadingWorld}
                       >
                         <option value="">None / Not applicable</option>
@@ -949,7 +949,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                           ...formData,
                           mens_league_id: e.target.value ? parseInt(e.target.value) : null,
                         })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                         disabled={(countryHasRegions && !formData.world_region_id) || loadingWorld}
                       >
                         <option value="">None / Not applicable</option>
@@ -1004,7 +1004,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     value={formData.club_bio || ''}
                     onChange={(e) => setFormData({ ...formData, club_bio: e.target.value })}
                     rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent resize-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent resize-none"
                     placeholder="Tell us about your club..."
                     aria-label="Club bio"
                   />
@@ -1018,7 +1018,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     id="club-history"
                     value={formData.club_history}
                     onChange={(e) => setFormData({ ...formData, club_history: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8b5cf6] focus:border-transparent"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#924CEC] focus:border-transparent"
                     rows={3}
                     placeholder="Tell us about your club's history..."
                     aria-label="Club history"
@@ -1049,7 +1049,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            className="px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+            className="px-6 py-3 bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
           >
             {loading ? (
               <>

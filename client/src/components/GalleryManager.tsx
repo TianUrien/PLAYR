@@ -465,7 +465,7 @@ export default function GalleryManager({
           <>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-6 py-3 font-medium text-white transition-opacity hover:opacity-90 sm:w-auto"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] px-6 py-3 font-medium text-white transition-opacity hover:opacity-90 sm:w-auto"
               type="button"
             >
               <Upload className="h-5 w-5" />
@@ -524,7 +524,7 @@ export default function GalleryManager({
           onDragLeave={handleUploadDragLeave}
           onDrop={handleUploadDrop}
           className={`cursor-pointer rounded-xl border-2 border-dashed p-12 text-center transition-colors ${
-            isUploadDragActive ? 'border-[#8b5cf6] bg-[#f5f3ff]' : 'border-gray-300 hover:border-[#8b5cf6]'
+            isUploadDragActive ? 'border-[#924CEC] bg-[#f5f3ff]' : 'border-gray-300 hover:border-[#924CEC]'
           }`}
           onClick={() => fileInputRef.current?.click()}
           onKeyDown={(event) => {
@@ -649,7 +649,7 @@ export default function GalleryManager({
                       </button>
                       <button
                         onClick={cancelEdit}
-                        className="flex-1 rounded-lg border border-[#8b5cf6] px-3 py-2 text-sm font-medium text-[#8b5cf6] transition-colors hover:bg-[#f5f3ff] disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:min-w-[120px]"
+                        className="flex-1 rounded-lg border border-[#924CEC] px-3 py-2 text-sm font-medium text-[#924CEC] transition-colors hover:bg-[#f5f3ff] disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none sm:min-w-[120px]"
                         disabled={savingCaptionId === item.id}
                         type="button"
                       >
@@ -667,7 +667,7 @@ export default function GalleryManager({
                         <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 bg-white">
                           <button
                             onClick={() => moveMedia(item.id, 'up')}
-                            className="tap-target px-2 py-1 text-gray-500 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b5cf6] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                            className="tap-target px-2 py-1 text-gray-500 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#924CEC] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                             disabled={index === 0}
                             type="button"
                           >
@@ -676,7 +676,7 @@ export default function GalleryManager({
                           </button>
                           <button
                             onClick={() => moveMedia(item.id, 'down')}
-                            className="tap-target px-2 py-1 text-gray-500 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b5cf6] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                            className="tap-target px-2 py-1 text-gray-500 transition-colors hover:bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#924CEC] focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                             disabled={index === media.length - 1}
                             type="button"
                           >
@@ -710,7 +710,7 @@ export default function GalleryManager({
               onDragLeave={handleUploadDragLeave}
               onDrop={handleUploadDrop}
               className={`flex aspect-[3/4] flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed text-center transition-colors ${
-                isUploadDragActive ? 'border-[#8b5cf6] bg-[#f5f3ff] text-[#8b5cf6]' : 'border-gray-300 text-gray-500 hover:border-[#8b5cf6]'
+                isUploadDragActive ? 'border-[#924CEC] bg-[#f5f3ff] text-[#924CEC]' : 'border-gray-300 text-gray-500 hover:border-[#924CEC]'
               }`}
             >
               <Upload className="h-8 w-8" />

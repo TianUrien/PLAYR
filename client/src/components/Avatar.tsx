@@ -76,10 +76,10 @@ export default function Avatar({
   return (
     <div
       className={cn(
-        'relative aspect-square rounded-full overflow-hidden bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] font-semibold text-white flex items-center justify-center flex-shrink-0',
+        'relative aspect-square rounded-full overflow-hidden bg-gradient-to-br from-[#8026FA] to-[#924CEC] font-semibold text-white flex items-center justify-center flex-shrink-0',
         canPreview &&
           (previewInteraction === 'auto'
-            ? 'cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#6366f1]'
+            ? 'cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#8026FA]'
             : 'cursor-zoom-in'),
         sizeClasses[size],
         className

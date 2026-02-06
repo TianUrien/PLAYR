@@ -82,7 +82,7 @@ export default function DashboardRouter() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#6366f1] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 border-4 border-[#8026FA] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -96,7 +96,7 @@ export default function DashboardRouter() {
           <p className="text-gray-600 mb-4">No profile found. Please complete your profile.</p>
           <button
             onClick={() => navigate('/complete-profile')}
-            className="px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+            className="px-6 py-3 bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
           >
             Complete Profile
           </button>
@@ -110,7 +110,7 @@ export default function DashboardRouter() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#6366f1] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-16 h-16 border-4 border-[#8026FA] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-600">Loading your profile...</p>
         </div>
       </div>

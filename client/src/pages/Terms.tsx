@@ -180,7 +180,7 @@ export default function Terms() {
                 <span>📧</span>
                 <a
                   href="mailto:team@oplayr.com"
-                  className="text-[#6366f1] hover:text-[#8b5cf6] transition-colors"
+                  className="text-[#8026FA] hover:text-[#924CEC] transition-colors"
                 >
                   team@oplayr.com
                 </a>

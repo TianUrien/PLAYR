@@ -598,8 +598,8 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
                             className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm shadow-sm md:max-w-[70%] ${
                               isMyMessage
                                 ? isPending
-                                  ? 'bg-gradient-to-br from-[#6366f1]/70 to-[#8b5cf6]/70 text-white'
-                                  : 'bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white'
+                                  ? 'bg-gradient-to-br from-[#8026FA]/70 to-[#924CEC]/70 text-white'
+                                  : 'bg-gradient-to-br from-[#8026FA] to-[#924CEC] text-white'
                                 : 'bg-white text-gray-900'
                             } ${!isMyMessage ? 'border border-gray-200' : ''}`}
                           >
@@ -685,7 +685,7 @@ export default function ChatWindow({ conversation, currentUserId, onBack, onMess
           <button
             type="submit"
             disabled={isSendDisabled}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] text-white shadow-lg transition-all duration-200 hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-300 disabled:cursor-not-allowed disabled:opacity-60 md:h-12 md:w-12"
+            className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#8026FA] to-[#924CEC] text-white shadow-lg transition-all duration-200 hover:shadow-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-300 disabled:cursor-not-allowed disabled:opacity-60 md:h-12 md:w-12"
             aria-label="Send message"
           >
             {sending ? (

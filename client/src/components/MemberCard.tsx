@@ -182,7 +182,7 @@ export default function MemberCard({
         <button
           onClick={handleMessage}
           disabled={isLoading}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           <MessageCircle className="w-4 h-4" />
           <span>Message</span>

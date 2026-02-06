@@ -155,7 +155,7 @@ export default function FriendshipButton({ profileId, className }: FriendshipBut
     return {
       label: 'Add Friend',
       icon: <UserPlus className="h-4 w-4" />,
-      className: 'bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white shadow-sm hover:opacity-90',
+      className: 'bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white shadow-sm hover:opacity-90',
       hasDropdown: false,
     }
   }

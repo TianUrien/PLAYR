@@ -306,7 +306,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                       type="button"
                       onClick={handleSendMessage}
                       disabled={sendingMessage}
-                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-60"
+                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-60"
                     >
                       {sendingMessage ? (
                         <>
@@ -366,7 +366,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                 {publicContact.shouldShow && publicContact.displayEmail && (
                   <a
                     href={`mailto:${publicContact.displayEmail}`}
-                    className="flex items-center gap-2 hover:text-[#6366f1] transition-colors"
+                    className="flex items-center gap-2 hover:text-[#8026FA] transition-colors"
                   >
                     <Mail className="w-5 h-5" />
                     <span>{publicContact.displayEmail}</span>
@@ -385,7 +385,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
               activeTab={activeTab}
               onTabChange={handleTabChange}
               className="gap-8 px-6"
-              activeClassName="border-[#6366f1] text-[#6366f1]"
+              activeClassName="border-[#8026FA] text-[#8026FA]"
               inactiveClassName="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
             />
           </div>
@@ -421,13 +421,13 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                 )}
 
                 {!readOnly && (
-                  <div className="bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] rounded-xl p-6 text-white">
+                  <div className="bg-gradient-to-br from-[#8026FA] to-[#924CEC] rounded-xl p-6 text-white">
                     <h3 className="text-lg font-semibold mb-2">Quick Actions</h3>
-                    <p className="text-blue-100 mb-4 text-sm">Manage your coaching profile and find opportunities</p>
+                    <p className="text-purple-100 mb-4 text-sm">Manage your coaching profile and find opportunities</p>
                     <button
                       type="button"
                       onClick={handleCreateVacancyClick}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#6366f1] rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#8026FA] rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
                     >
                       <Plus className="w-4 h-4" />
                       Create Opportunity
@@ -498,7 +498,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
                       {publicContact.shouldShow && publicContact.displayEmail ? (
-                        <a href={`mailto:${publicContact.displayEmail}`} className="text-[#6366f1] hover:underline">
+                        <a href={`mailto:${publicContact.displayEmail}`} className="text-[#8026FA] hover:underline">
                           {publicContact.displayEmail}
                         </a>
                       ) : (

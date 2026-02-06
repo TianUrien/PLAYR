@@ -675,7 +675,7 @@ export default function OpportunitiesPage() {
                     </p>
                     <Button
                       onClick={() => navigate('/dashboard?tab=vacancies')}
-                      className="mx-auto bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]"
+                      className="mx-auto bg-gradient-to-r from-[#8026FA] to-[#924CEC]"
                     >
                       Post an Opportunity
                     </Button>

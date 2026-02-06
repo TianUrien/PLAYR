@@ -44,7 +44,7 @@ export default function ResendVerificationButton({ email }: ResendVerificationBu
             ? 'bg-green-100 text-green-700 cursor-not-allowed'
             : isLoading
             ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-            : 'bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white hover:opacity-90'
+            : 'bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white hover:opacity-90'
         }`}
       >
         {isLoading ? (

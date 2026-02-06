@@ -528,7 +528,7 @@ export default function CompleteProfile() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#6366f1] mb-4"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#8026FA] mb-4"></div>
           <p className="text-gray-600">Loading your profile...</p>
         </div>
       </div>
@@ -551,7 +551,7 @@ export default function CompleteProfile() {
           </p>
           <button
             onClick={() => navigate('/')}
-            className="px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+            className="px-6 py-3 bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
           >
             Back to Home
           </button>
@@ -576,7 +576,7 @@ export default function CompleteProfile() {
 
         <div className="relative z-10 w-full max-w-2xl">
           <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#8026FA] to-[#924CEC]">
               <div className="flex items-center gap-3 mb-2">
                 <img
                   src="/WhiteLogo.svg"
@@ -605,7 +605,7 @@ export default function CompleteProfile() {
                   type="button"
                   onClick={() => handleRoleSelection('player')}
                   disabled={creatingProfile}
-                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#6366f1] hover:bg-purple-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#8026FA] hover:bg-purple-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center group-hover:from-purple-200 group-hover:to-indigo-200 transition-colors">
@@ -623,7 +623,7 @@ export default function CompleteProfile() {
                   type="button"
                   onClick={() => handleRoleSelection('coach')}
                   disabled={creatingProfile}
-                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#6366f1] hover:bg-purple-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#8026FA] hover:bg-purple-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center group-hover:from-purple-200 group-hover:to-indigo-200 transition-colors">
@@ -641,7 +641,7 @@ export default function CompleteProfile() {
                   type="button"
                   onClick={() => handleRoleSelection('club')}
                   disabled={creatingProfile}
-                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#6366f1] hover:bg-purple-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#8026FA] hover:bg-purple-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center group-hover:from-purple-200 group-hover:to-indigo-200 transition-colors">
@@ -659,7 +659,7 @@ export default function CompleteProfile() {
                   type="button"
                   onClick={() => handleRoleSelection('brand')}
                   disabled={creatingProfile}
-                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#6366f1] hover:bg-purple-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#8026FA] hover:bg-purple-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center group-hover:from-purple-200 group-hover:to-indigo-200 transition-colors">
@@ -675,7 +675,7 @@ export default function CompleteProfile() {
 
               {creatingProfile && (
                 <div className="mt-6 text-center">
-                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[#6366f1] mb-2"></div>
+                  <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-[#8026FA] mb-2"></div>
                   <p className="text-sm text-gray-500">Setting up your profile...</p>
                 </div>
               )}
@@ -700,7 +700,7 @@ export default function CompleteProfile() {
 
       <div className="relative z-10 w-full max-w-2xl">
         <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]">
+          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-[#8026FA] to-[#924CEC]">
             <div className="flex items-center gap-3 mb-2">
               <img
                 src="/WhiteLogo.svg"
@@ -842,7 +842,7 @@ export default function CompleteProfile() {
                       id="position-select"
                       value={formData.position}
                       onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                       required
                     >
                       <option value="">Select your position</option>
@@ -861,7 +861,7 @@ export default function CompleteProfile() {
                       id="secondary-position-select"
                       value={formData.secondaryPosition}
                       onChange={(e) => setFormData({ ...formData, secondaryPosition: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                     >
                       <option value="">No secondary position</option>
                       {['Goalkeeper', 'Defender', 'Midfielder', 'Forward'].map((option) => (
@@ -880,7 +880,7 @@ export default function CompleteProfile() {
                       id="gender-select"
                       value={formData.gender}
                       onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                       required
                     >
                       <option value="">Select gender</option>
@@ -947,7 +947,7 @@ export default function CompleteProfile() {
                       id="coach-gender"
                       value={formData.gender}
                       onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                       required
                     >
                       <option value="">Select gender</option>
@@ -1048,7 +1048,7 @@ export default function CompleteProfile() {
                       value={formData.clubBio}
                       onChange={(e) => setFormData({ ...formData, clubBio: e.target.value })}
                       placeholder="Tell us about your club..."
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#6366f1] focus:border-transparent"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                       rows={4}
                     />
                   </div>
@@ -1059,7 +1059,7 @@ export default function CompleteProfile() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full mt-6 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6]"
+              className="w-full mt-6 bg-gradient-to-r from-[#8026FA] to-[#924CEC]"
             >
               {loading ? 'Saving Profile...' : 'Complete Profile'}
             </Button>

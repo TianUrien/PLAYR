@@ -338,7 +338,7 @@ export default function WorldCountryPage() {
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
                 <Link to="/world" className="hover:text-gray-700">World</Link>
                 <span>/</span>
-                <span className="text-[#6366f1]">{country.name}</span>
+                <span className="text-[#8026FA]">{country.name}</span>
               </div>
               <h1 className="text-2xl font-bold text-gray-900">{country.name}</h1>
             </div>
@@ -411,7 +411,7 @@ export default function WorldCountryPage() {
                   onClick={() => setGenderFilter('women')}
                   className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
                     genderFilter === 'women'
-                      ? 'bg-[#6366f1] text-white shadow-sm'
+                      ? 'bg-[#8026FA] text-white shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
@@ -421,7 +421,7 @@ export default function WorldCountryPage() {
                   onClick={() => setGenderFilter('men')}
                   className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
                     genderFilter === 'men'
-                      ? 'bg-[#6366f1] text-white shadow-sm'
+                      ? 'bg-[#8026FA] text-white shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
@@ -437,7 +437,7 @@ export default function WorldCountryPage() {
                     onClick={() => setSelectedLeague(league)}
                     className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border ${
                       selectedLeague?.id === league.id
-                        ? 'bg-white border-[#6366f1] text-[#6366f1] shadow-sm'
+                        ? 'bg-white border-[#8026FA] text-[#8026FA] shadow-sm'
                         : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                     }`}
                   >
@@ -477,7 +477,7 @@ export default function WorldCountryPage() {
                     disabled={!club.is_claimed}
                     className={`w-full text-left p-4 rounded-xl border transition-all ${
                       club.is_claimed
-                        ? 'bg-white border-gray-200 hover:border-[#6366f1] hover:shadow-md cursor-pointer'
+                        ? 'bg-white border-gray-200 hover:border-[#8026FA] hover:shadow-md cursor-pointer'
                         : 'bg-gray-50 border-gray-100 cursor-not-allowed opacity-60'
                     }`}
                   >
@@ -492,7 +492,7 @@ export default function WorldCountryPage() {
                         ) : (
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                             club.is_claimed
-                              ? 'bg-gradient-to-br from-[#6366f1] to-[#8b5cf6]'
+                              ? 'bg-gradient-to-br from-[#8026FA] to-[#924CEC]'
                               : 'bg-gray-200'
                           }`}>
                             <Building2 className={`w-5 h-5 ${club.is_claimed ? 'text-white' : 'text-gray-400'}`} />

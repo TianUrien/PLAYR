@@ -381,7 +381,7 @@ export default function BrandDashboard() {
               activeTab={activeTab}
               onTabChange={handleTabChange}
               className="gap-8 px-6"
-              activeClassName="border-[#8b5cf6] text-[#8b5cf6]"
+              activeClassName="border-[#924CEC] text-[#924CEC]"
               inactiveClassName="border-transparent text-gray-600 hover:text-gray-900 hover:border-gray-300"
             />
           </div>

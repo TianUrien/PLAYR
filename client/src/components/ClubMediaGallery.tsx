@@ -106,7 +106,7 @@ export default function ClubMediaGallery({ clubId, itemsPerPage = 12 }: ClubMedi
         <div className="flex justify-center pt-4">
           <button
             onClick={loadMore}
-            className="px-8 py-3 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+            className="px-8 py-3 bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
           >
             Load More
           </button>
