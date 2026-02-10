@@ -113,6 +113,17 @@ export default defineConfig({
       testMatch: /.*\.brand\.spec\.ts/,
     },
 
+    // Mobile viewport - authenticated as Player (catches responsive regressions)
+    {
+      name: 'mobile-player',
+      use: {
+        ...devices['Pixel 5'],
+        storageState: PLAYER_STORAGE_STATE,
+      },
+      dependencies: ['setup'],
+      testMatch: /.*\.authenticated\.spec\.ts|.*\.player\.spec\.ts/,
+    },
+
     // Optional WebKit projects (iOS Safari proxy). Enable with PLAYWRIGHT_WEBKIT=1
     ...(includeWebkit
       ? [

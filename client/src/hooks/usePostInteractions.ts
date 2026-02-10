@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
+import { withTimeout } from '@/lib/retry'
 import type { PostComment } from '@/types/homeFeed'
 
 interface LikeResult {
@@ -29,9 +30,13 @@ interface SimpleResult {
 export function usePostInteractions() {
   const toggleLike = useCallback(async (postId: string): Promise<LikeResult> => {
     try {
-      const { data, error } = await supabase.rpc('toggle_post_like', {
-        p_post_id: postId,
-      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await withTimeout(
+        async () => await (supabase.rpc as any)('toggle_post_like', {
+          p_post_id: postId,
+        }),
+        10_000
+      )
 
       if (error) throw error
 
@@ -52,11 +57,15 @@ export function usePostInteractions() {
     offset = 0
   ): Promise<CommentsResult> => {
     try {
-      const { data, error } = await supabase.rpc('get_post_comments', {
-        p_post_id: postId,
-        p_limit: limit,
-        p_offset: offset,
-      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await withTimeout(
+        async () => await (supabase.rpc as any)('get_post_comments', {
+          p_post_id: postId,
+          p_limit: limit,
+          p_offset: offset,
+        }),
+        10_000
+      )
 
       if (error) throw error
 
@@ -76,10 +85,14 @@ export function usePostInteractions() {
     content: string
   ): Promise<CommentCreateResult> => {
     try {
-      const { data, error } = await supabase.rpc('create_post_comment', {
-        p_post_id: postId,
-        p_content: content,
-      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await withTimeout(
+        async () => await (supabase.rpc as any)('create_post_comment', {
+          p_post_id: postId,
+          p_content: content,
+        }),
+        15_000
+      )
 
       if (error) throw error
 
@@ -96,9 +109,13 @@ export function usePostInteractions() {
 
   const deleteComment = useCallback(async (commentId: string): Promise<SimpleResult> => {
     try {
-      const { data, error } = await supabase.rpc('delete_post_comment', {
-        p_comment_id: commentId,
-      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await withTimeout(
+        async () => await (supabase.rpc as any)('delete_post_comment', {
+          p_comment_id: commentId,
+        }),
+        15_000
+      )
 
       if (error) throw error
 

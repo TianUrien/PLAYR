@@ -3,6 +3,7 @@ import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import type { InfiniteData } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
+import { withTimeout } from '@/lib/retry'
 import type { HomeFeedItem } from '@/types/homeFeed'
 
 interface FeedPage {
@@ -36,10 +37,13 @@ export function useHomeFeed(): UseHomeFeedResult {
       const offset = typeof pageParam === 'number' ? pageParam : 0
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)('get_home_feed', {
-        p_limit: DEFAULT_LIMIT,
-        p_offset: offset,
-      })
+      const { data, error } = await withTimeout(
+        async () => await (supabase.rpc as any)('get_home_feed', {
+          p_limit: DEFAULT_LIMIT,
+          p_offset: offset,
+        }),
+        10_000
+      )
 
       if (error) throw error
 

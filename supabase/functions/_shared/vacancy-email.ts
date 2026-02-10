@@ -1,9 +1,12 @@
+// NOTE: This file runs on Supabase Edge Functions (Deno runtime).
+declare const Deno: { env: { get(key: string): string | undefined } }
+
 /**
  * Shared Email Template for Vacancy Notifications
- * 
+ *
  * This module contains the email generation functions used by both
  * TEST and REAL vacancy notification Edge Functions.
- * 
+ *
  * IMPORTANT: Both functions use IDENTICAL email templates.
  * Only the recipient routing logic differs.
  */
@@ -11,8 +14,8 @@
 export const RESEND_API_URL = 'https://api.resend.com/emails'
 export const SENDER_EMAIL = 'PLAYR Hockey <team@oplayr.com>'
 export const REPLY_TO_EMAIL = 'team@oplayr.com'
-export const PLAYR_BASE_URL = 'https://oplayr.com'
-export const UNSUBSCRIBE_URL = 'https://oplayr.com/settings'
+export const PLAYR_BASE_URL = Deno.env.get('PUBLIC_SITE_URL') ?? 'https://oplayr.com'
+export const UNSUBSCRIBE_URL = `${PLAYR_BASE_URL}/settings`
 
 export interface VacancyRecord {
   id: string

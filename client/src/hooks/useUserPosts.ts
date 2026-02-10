@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
+import { withTimeout } from '@/lib/retry'
 
 export interface PostImage {
   url: string
@@ -24,10 +25,14 @@ export function useUserPosts() {
     images?: PostImage[] | null
   ): Promise<PostResult> => {
     try {
-      const { data, error } = await supabase.rpc('create_user_post', {
-        p_content: content,
-        p_images: images && images.length > 0 ? JSON.stringify(images) : null,
-      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await withTimeout(
+        async () => await (supabase.rpc as any)('create_user_post', {
+          p_content: content,
+          p_images: images && images.length > 0 ? JSON.stringify(images) : null,
+        }),
+        15_000
+      )
 
       if (error) throw error
 
@@ -48,11 +53,15 @@ export function useUserPosts() {
     images?: PostImage[] | null
   ): Promise<SimpleResult> => {
     try {
-      const { data, error } = await supabase.rpc('update_user_post', {
-        p_post_id: postId,
-        p_content: content,
-        p_images: images && images.length > 0 ? JSON.stringify(images) : null,
-      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await withTimeout(
+        async () => await (supabase.rpc as any)('update_user_post', {
+          p_post_id: postId,
+          p_content: content,
+          p_images: images && images.length > 0 ? JSON.stringify(images) : null,
+        }),
+        15_000
+      )
 
       if (error) throw error
 
@@ -69,9 +78,13 @@ export function useUserPosts() {
 
   const deletePost = useCallback(async (postId: string): Promise<SimpleResult> => {
     try {
-      const { data, error } = await supabase.rpc('delete_user_post', {
-        p_post_id: postId,
-      })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await withTimeout(
+        async () => await (supabase.rpc as any)('delete_user_post', {
+          p_post_id: postId,
+        }),
+        15_000
+      )
 
       if (error) throw error
 
