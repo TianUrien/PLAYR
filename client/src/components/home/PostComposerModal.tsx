@@ -125,6 +125,8 @@ export function PostComposerModal({
   }, [])
 
   const handleSubmit = useCallback(async () => {
+    if (isSubmitting) return
+
     const trimmed = content.trim()
 
     if (!trimmed) {
@@ -184,7 +186,7 @@ export function PostComposerModal({
     } finally {
       setIsSubmitting(false)
     }
-  }, [content, images, isEdit, editingPost, createPost, updatePost, profile, onPostCreated, onClose])
+  }, [content, images, isEdit, editingPost, createPost, updatePost, profile, onPostCreated, onClose, isSubmitting])
 
   if (!isOpen) return null
 

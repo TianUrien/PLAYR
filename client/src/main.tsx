@@ -52,12 +52,37 @@ if ('serviceWorker' in navigator) {
       if (registration) {
         // Check for updates immediately on registration
         registration.update().catch((err) => logger.error('[PWA] Update check failed:', err))
-        
-        // Then check for updates every 15 minutes (more frequent for better UX)
-        setInterval(() => {
-          logger.debug('[PWA] Checking for updates...')
-          registration.update().catch((err) => logger.error('[PWA] Update check failed:', err))
-        }, 15 * 60 * 1000)
+
+        // Check for updates every 15 minutes, but only when tab is visible
+        let intervalId: ReturnType<typeof setInterval> | null = null
+
+        const startUpdateLoop = () => {
+          if (intervalId) return
+          intervalId = setInterval(() => {
+            logger.debug('[PWA] Checking for updates...')
+            registration.update().catch((err) => logger.error('[PWA] Update check failed:', err))
+          }, 15 * 60 * 1000)
+        }
+
+        const stopUpdateLoop = () => {
+          if (intervalId) {
+            clearInterval(intervalId)
+            intervalId = null
+          }
+        }
+
+        const handleVisibilityChange = () => {
+          if (document.hidden) {
+            stopUpdateLoop()
+          } else {
+            // Check immediately when tab becomes visible, then resume loop
+            registration.update().catch((err) => logger.error('[PWA] Update check failed:', err))
+            startUpdateLoop()
+          }
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+        startUpdateLoop()
       }
     },
     onOfflineReady() {

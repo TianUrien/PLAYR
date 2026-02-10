@@ -186,8 +186,12 @@ export default function WorldPage() {
                           // Fallback to emoji if image fails
                           const target = e.currentTarget;
                           target.style.display = 'none';
-                          target.parentElement!.innerHTML = `<span class="text-3xl">${country.flag_emoji || '🏳️'}</span>`;
-                          target.parentElement!.className = 'w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center';
+                          const span = document.createElement('span');
+                          span.className = 'text-3xl';
+                          span.textContent = country.flag_emoji || '🏳️';
+                          const parent = target.parentElement!;
+                          parent.replaceChildren(span);
+                          parent.className = 'w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center';
                         }}
                       />
                     </div>

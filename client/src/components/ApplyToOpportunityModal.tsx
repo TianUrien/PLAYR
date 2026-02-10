@@ -71,7 +71,9 @@ export default function ApplyToVacancyModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
+    if (isSubmitting) return
+
     if (!user) {
       setError('You must be signed in to apply.')
       return

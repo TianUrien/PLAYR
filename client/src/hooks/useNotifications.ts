@@ -64,7 +64,7 @@ export const useNotificationCounts = () => {
     queryKey: notificationsQueryKeys.counts(),
     queryFn: fetchNotificationCounts,
     refetchOnWindowFocus: false,
-    refetchInterval: 60_000,
+    refetchInterval: 120_000,
   })
 }
 

@@ -68,6 +68,29 @@ const PublicInvestorDashboard = lazy(() => import('@/pages/PublicInvestorDashboa
 // 404 page
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'))
 
+// Route-level error fallback — keeps nav alive so user can recover
+const RouteErrorFallback = () => (
+  <div className="min-h-[60vh] flex items-center justify-center px-4">
+    <div className="max-w-sm w-full text-center">
+      <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-red-100 mb-4">
+        <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <h2 className="text-xl font-bold text-gray-900 mb-2">Something went wrong</h2>
+      <p className="text-gray-600 text-sm mb-6">This page encountered an error. You can try reloading or go back home.</p>
+      <div className="space-y-3">
+        <button type="button" onClick={() => window.location.reload()} className="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm">
+          Reload Page
+        </button>
+        <button type="button" onClick={() => { window.location.href = '/home' }} className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm">
+          Go to Home
+        </button>
+      </div>
+    </div>
+  </div>
+)
+
 // Loading fallback component
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -191,17 +214,17 @@ function App() {
                 
                 {/* Protected Routes (require authentication) - Lazy loaded */}
                 <Route path="/complete-profile" element={<CompleteProfile />} />
-                <Route path="/home" element={<HomePage />} />
-                <Route path="/community" element={<CommunityPage />} />
-                <Route path="/community/:tab" element={<CommunityPage />} />
-                <Route path="/community/questions/:questionId" element={<QuestionDetailPage />} />
-                <Route path="/opportunities" element={<OpportunitiesPage />} />
-                <Route path="/opportunities/:id" element={<OpportunityDetailPage />} />
-                <Route path="/messages" element={<MessagesPage />} />
-                <Route path="/messages/:conversationId" element={<MessagesPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/dashboard/profile" element={<DashboardRouter />} />
-                <Route path="/dashboard/opportunities/:opportunityId/applicants" element={<ApplicantsList />} />
+                <Route path="/home" element={<ErrorBoundary fallback={<RouteErrorFallback />}><HomePage /></ErrorBoundary>} />
+                <Route path="/community" element={<ErrorBoundary fallback={<RouteErrorFallback />}><CommunityPage /></ErrorBoundary>} />
+                <Route path="/community/:tab" element={<ErrorBoundary fallback={<RouteErrorFallback />}><CommunityPage /></ErrorBoundary>} />
+                <Route path="/community/questions/:questionId" element={<ErrorBoundary fallback={<RouteErrorFallback />}><QuestionDetailPage /></ErrorBoundary>} />
+                <Route path="/opportunities" element={<ErrorBoundary fallback={<RouteErrorFallback />}><OpportunitiesPage /></ErrorBoundary>} />
+                <Route path="/opportunities/:id" element={<ErrorBoundary fallback={<RouteErrorFallback />}><OpportunityDetailPage /></ErrorBoundary>} />
+                <Route path="/messages" element={<ErrorBoundary fallback={<RouteErrorFallback />}><MessagesPage /></ErrorBoundary>} />
+                <Route path="/messages/:conversationId" element={<ErrorBoundary fallback={<RouteErrorFallback />}><MessagesPage /></ErrorBoundary>} />
+                <Route path="/settings" element={<ErrorBoundary fallback={<RouteErrorFallback />}><SettingsPage /></ErrorBoundary>} />
+                <Route path="/dashboard/profile" element={<ErrorBoundary fallback={<RouteErrorFallback />}><DashboardRouter /></ErrorBoundary>} />
+                <Route path="/dashboard/opportunities/:opportunityId/applicants" element={<ErrorBoundary fallback={<RouteErrorFallback />}><ApplicantsList /></ErrorBoundary>} />
 
                 {/* Network-only profile routes (alias for clarity; still behind auth) */}
                 <Route path="/members/:username" element={<PublicPlayerProfile />} />
@@ -213,7 +236,7 @@ function App() {
                 <Route path="/clubs/id/:id" element={<PublicClubProfile />} />
                 
                 {/* Admin Routes - Protected + Admin Guard */}
-                <Route path="/admin" element={<AdminGuard><AdminLayout /></AdminGuard>}>
+                <Route path="/admin" element={<ErrorBoundary fallback={<RouteErrorFallback />}><AdminGuard><AdminLayout /></AdminGuard></ErrorBoundary>}>
                   <Route index element={<Navigate to="/admin/overview" replace />} />
                   <Route path="overview" element={<AdminOverview />} />
                   <Route path="opportunities" element={<AdminOpportunities />} />

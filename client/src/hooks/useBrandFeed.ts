@@ -5,7 +5,8 @@
  * Used on the Brands page Global Feed tab.
  */
 
-import { useState, useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import type { ProductImage } from './useBrandProducts'
@@ -37,6 +38,11 @@ export interface PostFeedItem extends FeedItemBase {
 
 export type FeedItem = ProductFeedItem | PostFeedItem
 
+interface FeedPage {
+  items: FeedItem[]
+  total: number
+}
+
 interface UseBrandFeedResult {
   items: FeedItem[]
   isLoading: boolean
@@ -48,70 +54,62 @@ interface UseBrandFeedResult {
 }
 
 const DEFAULT_LIMIT = 20
+const QUERY_KEY = ['brand-feed'] as const
 
 export function useBrandFeed(): UseBrandFeedResult {
-  const [items, setItems] = useState<FeedItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [total, setTotal] = useState(0)
-  const [offset, setOffset] = useState(0)
+  const query = useInfiniteQuery<FeedPage>({
+    queryKey: QUERY_KEY,
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const offset = typeof pageParam === 'number' ? pageParam : 0
 
-  const fetchFeed = useCallback(async (reset = false) => {
-    try {
-      setIsLoading(true)
-      setError(null)
-
-      const currentOffset = reset ? 0 : offset
-
-      const { data, error: rpcError } = await supabase.rpc('get_brand_feed', {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.rpc as any)('get_brand_feed', {
         p_limit: DEFAULT_LIMIT,
-        p_offset: currentOffset,
+        p_offset: offset,
       })
 
-      if (rpcError) throw rpcError
+      if (error) throw error
 
-      const result = data as unknown as { items: FeedItem[]; total: number }
-
-      const feedItems = Array.isArray(result.items) ? result.items : []
-
-      if (reset) {
-        setItems(feedItems)
-        setOffset(DEFAULT_LIMIT)
-      } else {
-        setItems(prev => [...prev, ...feedItems])
-        setOffset(prev => prev + DEFAULT_LIMIT)
+      const result = data as unknown as FeedPage
+      return {
+        items: Array.isArray(result.items) ? result.items : [],
+        total: result.total ?? 0,
       }
+    },
+    getNextPageParam: (_lastPage, allPages) => {
+      const loaded = allPages.reduce((sum, p) => sum + p.items.length, 0)
+      const total = allPages[allPages.length - 1]?.total ?? 0
+      return loaded < total ? loaded : undefined
+    },
+  })
 
-      setTotal(result.total)
-    } catch (err) {
-      logger.error('[useBrandFeed] Error fetching feed:', err)
-      setError(err instanceof Error ? err.message : 'Failed to load feed')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [offset])
+  const pages = query.data?.pages ?? []
+  const items = pages.flatMap(p => p.items)
+  const total = pages[pages.length - 1]?.total ?? 0
 
   const refetch = useCallback(async () => {
-    setOffset(0)
-    await fetchFeed(true)
-  }, [fetchFeed])
+    await query.refetch()
+  }, [query])
 
   const loadMore = useCallback(async () => {
-    if (!isLoading && items.length < total) {
-      await fetchFeed(false)
+    if (query.hasNextPage && !query.isFetchingNextPage) {
+      await query.fetchNextPage()
     }
-  }, [fetchFeed, isLoading, items.length, total])
+  }, [query])
 
-  useEffect(() => {
-    fetchFeed(true)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  let errorStr: string | null = null
+  if (query.error) {
+    logger.error('[useBrandFeed] Error fetching feed:', query.error)
+    errorStr = query.error instanceof Error ? query.error.message : 'Failed to load feed'
+  }
 
   return {
     items,
-    isLoading,
-    error,
+    isLoading: query.isLoading,
+    error: errorStr,
     total,
-    hasMore: items.length < total,
+    hasMore: query.hasNextPage ?? false,
     refetch,
     loadMore,
   }

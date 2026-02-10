@@ -329,8 +329,12 @@ export default function WorldCountryPage() {
                 onError={(e) => {
                   const target = e.currentTarget;
                   target.style.display = 'none';
-                  target.parentElement!.innerHTML = `<span class="text-4xl">${country.flag_emoji || ''}</span>`;
-                  target.parentElement!.className = 'w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center';
+                  const span = document.createElement('span');
+                  span.className = 'text-4xl';
+                  span.textContent = country.flag_emoji || '';
+                  const parent = target.parentElement!;
+                  parent.replaceChildren(span);
+                  parent.className = 'w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center';
                 }}
               />
             </div>

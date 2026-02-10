@@ -314,8 +314,12 @@ export default function WorldProvincePage() {
                 onError={(e) => {
                   const target = e.currentTarget;
                   target.style.display = 'none';
-                  target.parentElement!.innerHTML = `<span class="text-3xl">${country.flag_emoji || ''}</span>`;
-                  target.parentElement!.className = 'w-16 h-16 rounded-full bg-gradient-to-br from-sky-100 to-white border-2 border-sky-200 flex items-center justify-center';
+                  const span = document.createElement('span');
+                  span.className = 'text-3xl';
+                  span.textContent = country.flag_emoji || '';
+                  const parent = target.parentElement!;
+                  parent.replaceChildren(span);
+                  parent.className = 'w-16 h-16 rounded-full bg-gradient-to-br from-sky-100 to-white border-2 border-sky-200 flex items-center justify-center';
                 }}
               />
             </div>

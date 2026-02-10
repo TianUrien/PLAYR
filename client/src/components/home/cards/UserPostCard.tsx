@@ -59,6 +59,9 @@ export function UserPostCard({ item, onLikeUpdate, onDelete }: UserPostCardProps
     if (result.success && result.liked !== undefined && result.like_count !== undefined) {
       // Correct with server state
       onLikeUpdate?.(item.post_id, result.liked, result.like_count)
+    } else if (!result.success) {
+      // Rollback optimistic update on failure
+      onLikeUpdate?.(item.post_id, item.has_liked, item.like_count)
     }
   }, [item.has_liked, item.like_count, item.post_id, onLikeUpdate, toggleLike])
 

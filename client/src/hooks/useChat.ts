@@ -757,12 +757,20 @@ export function useChat({
           )
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          logger.debug(`[useChat] Realtime subscribed for conversation ${conversation.id}`)
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          logger.error(`[useChat] Realtime ${status} for conversation ${conversation.id}, refetching`)
+          // Refetch messages to fill any gap from the disconnection
+          void fetchMessages()
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [conversation.id, conversation.isPending, currentUserId, onMessageSent, syncMessagesState])
+  }, [conversation.id, conversation.isPending, currentUserId, onMessageSent, syncMessagesState, fetchMessages])
 
   // Initial load
   useEffect(() => {

@@ -438,8 +438,12 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
                       onError={(e) => {
                         const target = e.currentTarget;
                         target.style.display = 'none';
-                        target.parentElement!.innerHTML = `<span class="text-2xl">${country.flag_emoji || '🏳️'}</span>`;
-                        target.parentElement!.className = 'w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center';
+                        const span = document.createElement('span');
+                        span.className = 'text-2xl';
+                        span.textContent = country.flag_emoji || '🏳️';
+                        const parent = target.parentElement!;
+                        parent.replaceChildren(span);
+                        parent.className = 'w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center';
                       }}
                     />
                   </div>
