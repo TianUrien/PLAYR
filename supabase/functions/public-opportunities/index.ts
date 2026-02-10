@@ -17,14 +17,14 @@ import {
  * ============================================================================
  * Public Opportunities API - Edge Function
  * ============================================================================
- * 
+ *
  * A public, read-only API for AI agents and external consumers to discover
  * field hockey opportunities on PLAYR.
- * 
+ *
  * Endpoints:
  *   GET /public-opportunities         - List all open opportunities
  *   GET /public-opportunities/{id}    - Get a single opportunity by ID
- * 
+ *
  * Query Parameters (for list endpoint):
  *   - position: goalkeeper | defender | midfielder | forward
  *   - gender: Men | Women
@@ -33,67 +33,81 @@ import {
  *   - priority: high | medium | low
  *   - limit: 1-100 (default: 20)
  *   - offset: 0+ (default: 0)
- * 
+ *
  * Security:
  *   - No authentication required (public data only)
- *   - Rate limited: 60 req/min, 500 req/hour per IP
+ *   - Rate limited: 60 req/min, 500 req/hour per IP (database-backed)
  *   - Response caching: 5 minutes
  *   - CORS: Open (*)
- * 
+ *
  * Data Boundary:
  *   - Only exposes data from the public_opportunities view
  *   - No internal IDs, contact info, or PII
  *   - Only open vacancies from non-test, onboarded clubs
- * 
+ *
  * ============================================================================
  */
 
 // =============================================================================
-// RATE LIMITING (Simple in-memory store)
+// RATE LIMITING (Database-backed via check_rate_limit RPC)
 // =============================================================================
 
-interface RateLimitEntry {
-  count: number
-  resetAt: number
+interface RateLimitResult {
+  allowed: boolean
+  remaining: number
+  reset_at: string
+  limit: number
 }
 
-// In-memory rate limit store (resets on function cold start)
-// For production, consider using Upstash Redis or similar
-const rateLimitStore = new Map<string, RateLimitEntry>()
+async function checkDbRateLimit(
+  supabase: any,
+  ip: string
+): Promise<{ allowed: boolean; retryAfter?: number }> {
+  try {
+    // Per-minute check: 60 req/min
+    const { data: minuteCheck, error: minuteError } = await supabase.rpc('check_rate_limit', {
+      p_identifier: ip,
+      p_action_type: 'public_api',
+      p_max_requests: RATE_LIMIT.REQUESTS_PER_MINUTE,
+      p_window_seconds: 60,
+    })
 
-function checkRateLimit(ip: string): { allowed: boolean; retryAfter?: number } {
-  const now = Date.now()
-  const windowMs = 60 * 1000 // 1 minute window
-  const key = `rate:${ip}`
-  
-  const entry = rateLimitStore.get(key)
-  
-  if (!entry || now > entry.resetAt) {
-    // New window
-    rateLimitStore.set(key, { count: 1, resetAt: now + windowMs })
-    return { allowed: true }
-  }
-  
-  if (entry.count >= RATE_LIMIT.REQUESTS_PER_MINUTE) {
-    const retryAfter = Math.ceil((entry.resetAt - now) / 1000)
-    return { allowed: false, retryAfter }
-  }
-  
-  entry.count++
-  return { allowed: true }
-}
-
-// Clean up old entries periodically (every 100 requests)
-let requestCount = 0
-function cleanupRateLimitStore() {
-  requestCount++
-  if (requestCount % 100 === 0) {
-    const now = Date.now()
-    for (const [key, entry] of rateLimitStore.entries()) {
-      if (now > entry.resetAt) {
-        rateLimitStore.delete(key)
-      }
+    if (minuteError) {
+      console.error('Rate limit RPC error (minute):', minuteError)
+      return { allowed: true } // fail-open for public API
     }
+
+    const minuteResult = minuteCheck as RateLimitResult
+    if (!minuteResult.allowed) {
+      const resetAt = new Date(minuteResult.reset_at).getTime()
+      const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))
+      return { allowed: false, retryAfter }
+    }
+
+    // Per-hour check: 500 req/hour
+    const { data: hourCheck, error: hourError } = await supabase.rpc('check_rate_limit', {
+      p_identifier: ip,
+      p_action_type: 'public_api_hour',
+      p_max_requests: RATE_LIMIT.REQUESTS_PER_HOUR,
+      p_window_seconds: 3600,
+    })
+
+    if (hourError) {
+      console.error('Rate limit RPC error (hour):', hourError)
+      return { allowed: true } // fail-open for public API
+    }
+
+    const hourResult = hourCheck as RateLimitResult
+    if (!hourResult.allowed) {
+      const resetAt = new Date(hourResult.reset_at).getTime()
+      const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))
+      return { allowed: false, retryAfter }
+    }
+
+    return { allowed: true }
+  } catch (err) {
+    console.error('Rate limit check failed:', err)
+    return { allowed: true } // fail-open for public API
   }
 }
 
@@ -146,13 +160,27 @@ Deno.serve(async (req: Request) => {
   }
 
   // Get client IP for rate limiting
-  const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() 
-    || req.headers.get('cf-connecting-ip') 
+  const clientIP = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || req.headers.get('cf-connecting-ip')
     || 'unknown'
 
-  // Check rate limit
-  cleanupRateLimitStore()
-  const rateCheck = checkRateLimit(clientIP)
+  // Initialize Supabase client (using service role for view access)
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+  if (!supabaseUrl || !supabaseKey) {
+    console.error('Missing Supabase environment variables')
+    return errorResponse(
+      'INTERNAL_ERROR',
+      'Service configuration error',
+      500
+    )
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey)
+
+  // Check rate limit (database-backed, survives cold starts)
+  const rateCheck = await checkDbRateLimit(supabase, clientIP)
   if (!rateCheck.allowed) {
     return new Response(
       JSON.stringify({
@@ -176,30 +204,15 @@ Deno.serve(async (req: Request) => {
   // Parse URL
   const url = new URL(req.url)
   const pathParts = url.pathname.split('/').filter(Boolean)
-  
+
   // Extract opportunity ID if present
   // Path: /public-opportunities or /public-opportunities/{id}
   // After Supabase routing, we get just the path after function name
-  const opportunityId = pathParts.length > 0 && pathParts[0] !== 'public-opportunities' 
-    ? pathParts[0] 
-    : pathParts.length > 1 
-      ? pathParts[1] 
+  const opportunityId = pathParts.length > 0 && pathParts[0] !== 'public-opportunities'
+    ? pathParts[0]
+    : pathParts.length > 1
+      ? pathParts[1]
       : null
-
-  // Initialize Supabase client (using service role for view access)
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')
-  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  
-  if (!supabaseUrl || !supabaseKey) {
-    console.error('Missing Supabase environment variables')
-    return errorResponse(
-      'INTERNAL_ERROR',
-      'Service configuration error',
-      500
-    )
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseKey)
 
   try {
     // ==========================================================================
