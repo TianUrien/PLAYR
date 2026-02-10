@@ -1,6 +1,9 @@
+// NOTE: This file runs on Supabase Edge Functions (Deno runtime).
+declare const Deno: { env: { get(key: string): string | undefined } }
+
 /**
  * Public Opportunities API Types
- * 
+ *
  * Shared type definitions for the public-opportunities Edge Function.
  * These types define the public API contract for AI agents and external consumers.
  */
@@ -117,7 +120,7 @@ export interface PublicOpportunityRow {
 // CONSTANTS
 // =============================================================================
 
-export const PLAYR_BASE_URL = 'https://oplayr.com'
+export const PLAYR_BASE_URL = Deno.env.get('PUBLIC_SITE_URL') ?? 'https://oplayr.com'
 
 export const DEFAULT_LIMIT = 20
 export const MAX_LIMIT = 100

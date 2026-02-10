@@ -55,9 +55,9 @@ test.describe('@smoke club', () => {
       page.getByRole('heading', { level: 1, name: /e2e test fc/i })
     ).toBeVisible({ timeout: 20000 })
 
-    // Should show the Message button for visitors
+    // Should show the Message action button (exact match avoids nav "Messages" icon)
     await expect(
-      page.getByRole('button', { name: /message/i })
+      page.getByRole('button', { name: 'Message', exact: true })
     ).toBeVisible({ timeout: 10000 })
   })
 

@@ -10,10 +10,40 @@ env:
   NODE_VERSION: '20'
 
 jobs:
+  security:
+    name: Security Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Secrets scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./client
+        run: npm ci
+
+      - name: Dependency audit
+        working-directory: ./client
+        run: npm audit --audit-level=high
+
   lint-and-typecheck:
     name: Lint & Type Check
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -95,12 +125,69 @@ jobs:
           VITE_SUPABASE_ANON_KEY: placeholder-key-for-build-verification
         run: npm run build
 
+      - name: Bundle size budget
+        working-directory: ./client
+        run: |
+          TOTAL_JS=$(cat dist/assets/*.js | wc -c)
+          TOTAL_KB=$((TOTAL_JS / 1024))
+          echo "Total JS bundle: ${TOTAL_KB}KB (budget: 2500KB)"
+
+          # Fail if total JS exceeds 2.5MB (uncompressed)
+          if [ "$TOTAL_JS" -gt 2621440 ]; then
+            echo "::error::Bundle size budget exceeded! JS total: ${TOTAL_KB}KB > 2500KB budget"
+            exit 1
+          fi
+
+          # Warn on individual chunks > 512KB
+          for f in dist/assets/*.js; do
+            SIZE=$(wc -c < "$f")
+            if [ "$SIZE" -gt 524288 ]; then
+              echo "::warning::Large chunk: $(basename "$f") is $((SIZE / 1024))KB (> 512KB)"
+            fi
+          done
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-output
           path: client/dist
           retention-days: 7
+
+  db-tests:
+    name: DB Integration Tests
+    runs-on: ubuntu-latest
+    # Only run when secrets are available (not on forks)
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./client
+        run: npm ci
+
+      - name: Run DB integration tests
+        working-directory: ./client
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.STAGING_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+          E2E_PLAYER_EMAIL: ${{ secrets.E2E_PLAYER_EMAIL }}
+          E2E_PLAYER_PASSWORD: ${{ secrets.E2E_PLAYER_PASSWORD }}
+          E2E_CLUB_EMAIL: ${{ secrets.E2E_CLUB_EMAIL }}
+          E2E_CLUB_PASSWORD: ${{ secrets.E2E_CLUB_PASSWORD }}
+          E2E_COACH_EMAIL: ${{ secrets.E2E_COACH_EMAIL }}
+          E2E_COACH_PASSWORD: ${{ secrets.E2E_COACH_PASSWORD }}
+          E2E_BRAND_EMAIL: ${{ secrets.E2E_BRAND_EMAIL }}
+          E2E_BRAND_PASSWORD: ${{ secrets.E2E_BRAND_PASSWORD }}
+        run: npm run test:db
 
   e2e-tests:
     name: E2E Tests

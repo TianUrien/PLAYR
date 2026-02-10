@@ -7,7 +7,7 @@ import { FeedSkeleton } from './FeedSkeleton'
 import { PostComposer } from './PostComposer'
 
 export function HomeFeed() {
-  const { items, isLoading, error, hasMore, loadMore, updateItemLike, removeItem, prependItem } = useHomeFeed()
+  const { items, isLoading, error, refetch, hasMore, loadMore, updateItemLike, removeItem, prependItem } = useHomeFeed()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const feedVirtualizer = useVirtualizer({
@@ -41,7 +41,14 @@ export function HomeFeed() {
       {/* Error state */}
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
-          {error}
+          <p>{error}</p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="mt-2 px-4 py-1.5 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors"
+          >
+            Try again
+          </button>
         </div>
       )}
 

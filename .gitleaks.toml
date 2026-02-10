@@ -1,0 +1,21 @@
+# Gitleaks configuration for PLAYR
+# https://github.com/gitleaks/gitleaks
+
+title = "PLAYR Gitleaks Config"
+
+[allowlist]
+  description = "Known safe patterns"
+
+  # CI uses placeholder values for build verification
+  regexTarget = "match"
+  regexes = [
+    '''placeholder-key-for-build-verification''',
+  ]
+
+  # Paths that contain test fixtures, example configs, or generated types
+  paths = [
+    '''client/e2e/\.auth/''',
+    '''client/e2e/\.data/''',
+    '''client/src/types/supabase\.ts''',
+    '''\.env\.example''',
+  ]

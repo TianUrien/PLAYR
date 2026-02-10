@@ -70,12 +70,19 @@ interface RecipientProfile {
 }
 
 /**
+ * Page size for paginated recipient fetching.
+ * Keeps each query fast and memory usage bounded.
+ */
+const RECIPIENT_PAGE_SIZE = 200
+
+/**
  * Fetch eligible recipients based on vacancy opportunity type
  * - For 'player' vacancies: fetch players
  * - For 'coach' vacancies: fetch coaches
  * - Excludes test accounts
  * - Excludes users who opted out of opportunity notifications
  * - Excludes blocked test recipients
+ * - Paginates to avoid timeout on large result sets
  */
 async function fetchEligibleRecipients(
   supabase: any,
@@ -83,46 +90,61 @@ async function fetchEligibleRecipients(
   logger: ReturnType<typeof createLogger>
 ): Promise<string[]> {
   const targetRole = vacancy.opportunity_type // 'player' or 'coach'
-  
-  logger.info('Fetching eligible recipients', { 
+
+  logger.info('Fetching eligible recipients (paginated)', {
     targetRole,
-    vacancyId: vacancy.id 
+    vacancyId: vacancy.id,
+    pageSize: RECIPIENT_PAGE_SIZE,
   })
 
-  // Query profiles matching the target role
-  // - Must match role (player/coach)
-  // - Must NOT be a test account
-  // - Must have completed onboarding
-  // - Must have a valid email
-  // - Must have notify_opportunities = true (opted in to receive emails)
-  const { data: profiles, error } = await supabase
-    .from('profiles')
-    .select('id, email, role, is_test_account, notify_opportunities')
-    .eq('role', targetRole)
-    .eq('is_test_account', false)
-    .eq('onboarding_completed', true)
-    .eq('notify_opportunities', true)
-    .not('email', 'is', null)
+  const eligibleEmails: string[] = []
+  let offset = 0
+  let hasMore = true
 
-  if (error) {
-    logger.error('Failed to fetch recipient profiles', { error: error.message })
-    return []
+  while (hasMore) {
+    const { data: profiles, error } = await supabase
+      .from('profiles')
+      .select('id, email, role, is_test_account, notify_opportunities')
+      .eq('role', targetRole)
+      .eq('is_test_account', false)
+      .eq('onboarding_completed', true)
+      .eq('notify_opportunities', true)
+      .not('email', 'is', null)
+      .order('id', { ascending: true })
+      .range(offset, offset + RECIPIENT_PAGE_SIZE - 1)
+
+    if (error) {
+      logger.error('Failed to fetch recipient profiles', { error: error.message, offset })
+      // Return what we've collected so far rather than failing entirely
+      break
+    }
+
+    if (!profiles || profiles.length === 0) {
+      hasMore = false
+      break
+    }
+
+    const batch = (profiles as RecipientProfile[])
+      .filter(p => !BLOCKED_TEST_RECIPIENTS.includes(p.email.toLowerCase()))
+      .map(p => p.email)
+
+    eligibleEmails.push(...batch)
+
+    logger.info('Fetched recipient page', {
+      offset,
+      pageSize: profiles.length,
+      batchEmails: batch.length,
+      totalSoFar: eligibleEmails.length,
+    })
+
+    offset += RECIPIENT_PAGE_SIZE
+    hasMore = profiles.length === RECIPIENT_PAGE_SIZE
   }
 
-  if (!profiles || profiles.length === 0) {
-    logger.info('No eligible recipients found', { targetRole })
-    return []
-  }
-
-  // Filter out blocked test recipients and extract emails
-  const eligibleEmails = (profiles as RecipientProfile[])
-    .filter(p => !BLOCKED_TEST_RECIPIENTS.includes(p.email.toLowerCase()))
-    .map(p => p.email)
-
-  logger.info('Found eligible recipients', { 
-    totalFound: profiles.length,
-    afterFiltering: eligibleEmails.length,
-    targetRole 
+  logger.info('Found eligible recipients', {
+    totalEligible: eligibleEmails.length,
+    targetRole,
+    pagesQueried: Math.ceil(offset / RECIPIENT_PAGE_SIZE) || 1,
   })
 
   return eligibleEmails

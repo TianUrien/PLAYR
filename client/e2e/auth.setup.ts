@@ -508,17 +508,19 @@ setup('@smoke authenticate as brand', async ({ page }) => {
     .eq('profile_id', authData.user.id)
     .maybeSingle()
 
+  const brandFields = {
+    profile_id: authData.user.id,
+    name: brandName,
+    slug: brandSlug,
+    category: 'equipment',
+    bio: 'E2E automated test brand. Safe to ignore.',
+    website_url: 'https://e2e-test-brand.playr.test',
+  }
+
   if (!existingBrand) {
     const { error: insertError } = await authSupabase
       .from('brands')
-      .insert({
-        profile_id: authData.user.id,
-        name: brandName,
-        slug: brandSlug,
-        category: 'equipment',
-        bio: 'E2E automated test brand. Safe to ignore.',
-        website_url: 'https://e2e-test-brand.playr.test',
-      })
+      .insert(brandFields)
 
     if (insertError) {
       console.warn(`[Auth Setup] Error inserting test brand: ${insertError.message}`)
@@ -526,7 +528,17 @@ setup('@smoke authenticate as brand', async ({ page }) => {
       console.log('[Auth Setup] Inserted E2E test brand')
     }
   } else {
-    console.log(`[Auth Setup] Brand already exists for test user (slug: ${existingBrand.slug})`)
+    // Reset brand to expected values (name/slug may have drifted)
+    const { error: updateError } = await authSupabase
+      .from('brands')
+      .update({ name: brandName, slug: brandSlug, category: 'equipment' })
+      .eq('id', existingBrand.id)
+
+    if (updateError) {
+      console.warn(`[Auth Setup] Error resetting test brand: ${updateError.message}`)
+    } else {
+      console.log(`[Auth Setup] Reset E2E test brand (slug: ${brandSlug})`)
+    }
   }
 
   writeJsonFileSafe(path.join(dataDir, 'brand.json'), {

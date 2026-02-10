@@ -96,6 +96,41 @@ Deno.serve(async (req) => {
 
     logger.info('Admin authenticated', { adminId: user.id })
 
+    // Rate limiting: 20 admin actions per minute (database-backed)
+    try {
+      const { data: rateData, error: rateError } = await adminClient.rpc('check_rate_limit', {
+        p_identifier: user.id,
+        p_action_type: 'admin_action',
+        p_max_requests: 20,
+        p_window_seconds: 60,
+      })
+
+      if (rateError) {
+        logger.error('Rate limit RPC error', { error: rateError.message })
+        return new Response(
+          JSON.stringify({ success: false, error: 'Rate limit check failed. Please try again.' }),
+          { status: 503, headers: { ...headers, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const rateResult = rateData as { allowed: boolean; remaining: number; reset_at: string }
+      if (!rateResult.allowed) {
+        const resetAt = new Date(rateResult.reset_at).getTime()
+        const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))
+        logger.warn('Rate limit exceeded', { adminId: user.id })
+        return new Response(
+          JSON.stringify({ success: false, error: 'Rate limit exceeded. Please slow down.' }),
+          { status: 429, headers: { ...headers, 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) } }
+        )
+      }
+    } catch (rateLimitErr) {
+      logger.error('Rate limit check failed', { error: rateLimitErr })
+      return new Response(
+        JSON.stringify({ success: false, error: 'Rate limit check failed. Please try again.' }),
+        { status: 503, headers: { ...headers, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Parse request body
     const body: AdminActionRequest = await req.json()
     const { action, target_id, params } = body

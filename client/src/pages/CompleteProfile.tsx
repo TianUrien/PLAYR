@@ -1056,13 +1056,25 @@ export default function CompleteProfile() {
               )}
             </div>
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full mt-6 bg-gradient-to-r from-[#8026FA] to-[#924CEC]"
-            >
-              {loading ? 'Saving Profile...' : 'Complete Profile'}
-            </Button>
+            <div className="flex gap-3 mt-6">
+              {userRole === 'club' && (
+                <Button
+                  type="button"
+                  onClick={() => setShowClubClaimStep(true)}
+                  disabled={loading}
+                  className="px-6 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                >
+                  Back
+                </Button>
+              )}
+              <Button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-gradient-to-r from-[#8026FA] to-[#924CEC]"
+              >
+                {loading ? 'Saving Profile...' : 'Complete Profile'}
+              </Button>
+            </div>
           </form>
           )}
         </div>

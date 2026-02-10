@@ -2,27 +2,41 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getCorsHeaders } from '../_shared/cors.ts'
 
-// Rate limiting for delete-account endpoint
-// Key: userId, Value: { count, resetAt }
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>()
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000 // 1 hour
+// Rate limiting for delete-account endpoint (database-backed, survives cold starts)
 const MAX_DELETE_ATTEMPTS = 3
+const DELETE_WINDOW_SECONDS = 3600 // 1 hour
 
-function checkRateLimit(userId: string): { allowed: boolean; retryAfter?: number } {
-  const now = Date.now()
-  const entry = rateLimitStore.get(userId)
+async function checkDeleteRateLimit(
+  supabase: SupabaseClient<any, any, any>,
+  userId: string
+): Promise<{ allowed: boolean; retryAfter?: number }> {
+  try {
+    const { data, error } = await supabase.rpc('check_rate_limit', {
+      p_identifier: userId,
+      p_action_type: 'delete_account',
+      p_max_requests: MAX_DELETE_ATTEMPTS,
+      p_window_seconds: DELETE_WINDOW_SECONDS,
+    })
 
-  if (!entry || now > entry.resetAt) {
-    rateLimitStore.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS })
+    if (error) {
+      console.error('[DELETE_ACCOUNT] Rate limit RPC error:', error)
+      // Fail-closed for destructive operation
+      return { allowed: false, retryAfter: 60 }
+    }
+
+    const result = data as { allowed: boolean; remaining: number; reset_at: string; limit: number }
+    if (!result.allowed) {
+      const resetAt = new Date(result.reset_at).getTime()
+      const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))
+      return { allowed: false, retryAfter }
+    }
+
     return { allowed: true }
+  } catch (err) {
+    console.error('[DELETE_ACCOUNT] Rate limit check failed:', err)
+    // Fail-closed for destructive operation
+    return { allowed: false, retryAfter: 60 }
   }
-
-  if (entry.count >= MAX_DELETE_ATTEMPTS) {
-    return { allowed: false, retryAfter: Math.ceil((entry.resetAt - now) / 1000) }
-  }
-
-  entry.count++
-  return { allowed: true }
 }
 
 interface DeleteAccountResponse {
@@ -304,8 +318,8 @@ Deno.serve(async (req) => {
       throw new Error('Invalid or expired token')
     }
 
-    // Rate limiting check
-    const rateCheck = checkRateLimit(user.id)
+    // Rate limiting check (database-backed, survives cold starts)
+    const rateCheck = await checkDeleteRateLimit(supabase, user.id)
     if (!rateCheck.allowed) {
       logger.warn('Rate limit exceeded for delete-account', { userId: user.id })
       const response: DeleteAccountResponse = {

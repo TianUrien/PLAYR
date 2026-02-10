@@ -36,8 +36,7 @@ test.describe('@smoke public', () => {
 
     // Should show the brand search or empty state
     await expect(
-      page.getByPlaceholder(/search brands/i)
-        .or(page.getByText(/no brands found/i))
+      page.getByPlaceholder(/search brands/i).first()
     ).toBeVisible({ timeout: 10000 })
   })
 
