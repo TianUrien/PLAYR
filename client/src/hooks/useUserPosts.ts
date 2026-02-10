@@ -25,8 +25,8 @@ export function useUserPosts() {
     images?: PostImage[] | null
   ): Promise<PostResult> => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await withTimeout(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async () => await (supabase.rpc as any)('create_user_post', {
           p_content: content,
           p_images: images && images.length > 0 ? JSON.stringify(images) : null,
@@ -53,8 +53,8 @@ export function useUserPosts() {
     images?: PostImage[] | null
   ): Promise<SimpleResult> => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await withTimeout(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async () => await (supabase.rpc as any)('update_user_post', {
           p_post_id: postId,
           p_content: content,
@@ -78,8 +78,8 @@ export function useUserPosts() {
 
   const deletePost = useCallback(async (postId: string): Promise<SimpleResult> => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await withTimeout(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async () => await (supabase.rpc as any)('delete_user_post', {
           p_post_id: postId,
         }),

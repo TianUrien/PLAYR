@@ -27,8 +27,8 @@ test.describe('@smoke home feed player', () => {
     const postBtn = page.getByRole('button', { name: /^post$/i })
     await expect(postBtn).toBeVisible()
 
-    // Close the modal
-    await page.getByRole('button', { name: /close/i }).click()
+    // Close the modal (exact match avoids "Close notifications" button)
+    await page.getByRole('button', { name: 'Close', exact: true }).click()
 
     // Modal should be gone
     await expect(

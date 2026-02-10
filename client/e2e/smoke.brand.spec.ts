@@ -7,49 +7,33 @@ test.describe('@smoke brand', () => {
   test('brand dashboard loads for authenticated brand user', async ({ page }) => {
     await page.goto('/dashboard/brand')
 
-    // Should show brand name in the profile card heading
+    // Brand dashboard shows "Edit Brand Profile" as the h1
     await expect(
-      page.getByRole('heading', { level: 1, name: E2E_BRAND_NAME })
+      page.getByRole('heading', { level: 1, name: /edit brand profile/i })
     ).toBeVisible({ timeout: 20000 })
 
-    // Should show the tab navigation
-    await expect(page.getByRole('button', { name: 'Overview' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Products' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Posts' })).toBeVisible()
+    // Brand name should appear in the form
+    await expect(page.getByLabel(/brand name/i)).toHaveValue(new RegExp(E2E_BRAND_NAME, 'i'))
   })
 
-  test('brand can navigate dashboard tabs', async ({ page }) => {
+  test('brand can navigate to public profile from dashboard', async ({ page }) => {
     await page.goto('/dashboard/brand')
 
     await expect(
-      page.getByRole('heading', { level: 1, name: E2E_BRAND_NAME })
+      page.getByRole('heading', { level: 1, name: /edit brand profile/i })
     ).toBeVisible({ timeout: 20000 })
 
-    // Navigate to Products tab
-    await page.getByRole('button', { name: 'Products' }).click()
-    await expect(page).toHaveURL(/tab=products/)
-    await expect(page.getByText(/Products & Services|No products yet/i)).toBeVisible({ timeout: 10000 })
-
-    // Navigate to Posts tab
-    await page.getByRole('button', { name: 'Posts' }).click()
-    await expect(page).toHaveURL(/tab=posts/)
-    await expect(page.getByText(/Posts|No posts yet/i)).toBeVisible({ timeout: 10000 })
-
-    // Navigate to Messages tab
-    await page.getByRole('button', { name: 'Messages' }).click()
-    await expect(page).toHaveURL(/tab=messages/)
-    await expect(page.getByText(/Your Conversations|Open Messages/i)).toBeVisible({ timeout: 10000 })
-
-    // Back to Overview
-    await page.getByRole('button', { name: 'Overview' }).click()
-    await expect(page).toHaveURL(/tab=overview/)
+    // "View public profile" link should be visible
+    await expect(page.getByText(/view public profile/i)).toBeVisible()
   })
 
   test('brand public profile is accessible', async ({ page }) => {
     await page.goto(`/brands/${E2E_BRAND_SLUG}`)
 
-    // Brand name should be visible in the header
-    await expect(page.getByText(E2E_BRAND_NAME)).toBeVisible({ timeout: 20000 })
+    // Brand name should be visible as the page heading
+    await expect(
+      page.getByRole('heading', { name: E2E_BRAND_NAME })
+    ).toBeVisible({ timeout: 20000 })
 
     // Category should be displayed
     await expect(page.getByText(/Equipment/i)).toBeVisible()
@@ -58,20 +42,17 @@ test.describe('@smoke brand', () => {
     await expect(page.getByText(/Products & Services/i)).toBeVisible()
   })
 
-  test('brand dashboard has Edit Brand button', async ({ page }) => {
+  test('brand dashboard has Save Changes button', async ({ page }) => {
     await page.goto('/dashboard/brand')
 
     await expect(
-      page.getByRole('heading', { level: 1, name: E2E_BRAND_NAME })
+      page.getByRole('heading', { level: 1, name: /edit brand profile/i })
     ).toBeVisible({ timeout: 20000 })
 
-    // Edit Brand button should be visible
-    const editBtn = page.getByRole('button', { name: /edit brand|edit/i }).first()
-    await expect(editBtn).toBeVisible()
-
-    // Public View button should be visible
-    const viewBtn = page.getByRole('button', { name: /public view|view/i }).first()
-    await expect(viewBtn).toBeVisible()
+    // Save Changes button should be visible in the form
+    await expect(
+      page.getByRole('button', { name: /save changes/i })
+    ).toBeVisible()
   })
 
   test('brand can view public brands directory', async ({ page }) => {
@@ -82,10 +63,9 @@ test.describe('@smoke brand', () => {
       page.getByRole('button', { name: /brands/i })
     ).toBeVisible({ timeout: 20000 })
 
-    // Should show the brand search or empty state
+    // Should show the brand search
     await expect(
-      page.getByPlaceholder(/search brands/i)
-        .or(page.getByText(/no brands found/i))
+      page.getByPlaceholder(/search brands/i).first()
     ).toBeVisible({ timeout: 10000 })
   })
 

@@ -30,8 +30,8 @@ interface SimpleResult {
 export function usePostInteractions() {
   const toggleLike = useCallback(async (postId: string): Promise<LikeResult> => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await withTimeout(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async () => await (supabase.rpc as any)('toggle_post_like', {
           p_post_id: postId,
         }),
@@ -57,8 +57,8 @@ export function usePostInteractions() {
     offset = 0
   ): Promise<CommentsResult> => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await withTimeout(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async () => await (supabase.rpc as any)('get_post_comments', {
           p_post_id: postId,
           p_limit: limit,
@@ -85,8 +85,8 @@ export function usePostInteractions() {
     content: string
   ): Promise<CommentCreateResult> => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await withTimeout(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async () => await (supabase.rpc as any)('create_post_comment', {
           p_post_id: postId,
           p_content: content,
@@ -109,8 +109,8 @@ export function usePostInteractions() {
 
   const deleteComment = useCallback(async (commentId: string): Promise<SimpleResult> => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await withTimeout(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async () => await (supabase.rpc as any)('delete_post_comment', {
           p_comment_id: commentId,
         }),
