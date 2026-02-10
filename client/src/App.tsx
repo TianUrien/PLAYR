@@ -25,6 +25,7 @@ import OfflinePage from '@/pages/OfflinePage'
 // Lazy load heavy components
 const CompleteProfile = lazy(() => import('@/pages/CompleteProfile'))
 const DashboardRouter = lazy(() => import('@/pages/DashboardRouter'))
+const HomePage = lazy(() => import('@/pages/HomePage'))
 const OpportunitiesPage = lazy(() => import('@/pages/OpportunitiesPage'))
 const OpportunityDetailPage = lazy(() => import('@/pages/OpportunityDetailPage'))
 const CommunityPage = lazy(() => import('@/pages/CommunityPage'))
@@ -40,7 +41,6 @@ const WorldCountryPage = lazy(() => import('@/pages/WorldCountryPage'))
 const WorldProvincePage = lazy(() => import('@/pages/WorldProvincePage'))
 
 // Brand pages
-const BrandsPage = lazy(() => import('@/pages/BrandsPage'))
 const BrandProfilePage = lazy(() => import('@/pages/BrandProfilePage'))
 const BrandOnboardingPage = lazy(() => import('@/pages/BrandOnboardingPage'))
 const BrandDashboardPage = lazy(() => import('@/pages/BrandDashboardPage'))
@@ -180,8 +180,8 @@ function App() {
                 <Route path="/world/:countrySlug" element={<WorldCountryPage />} />
                 <Route path="/world/:countrySlug/:provinceSlug" element={<WorldProvincePage />} />
 
-                {/* Brands Directory (public listing, auth for profile actions) */}
-                <Route path="/brands" element={<BrandsPage />} />
+                {/* Brands (redirect /brands to community tab, keep profile routes) */}
+                <Route path="/brands" element={<Navigate to="/community/brands" replace />} />
                 <Route path="/brands/onboarding" element={<BrandOnboardingPage />} />
                 <Route path="/brands/:slug" element={<BrandProfilePage />} />
                 <Route path="/dashboard/brand" element={<BrandDashboardPage />} />
@@ -191,8 +191,9 @@ function App() {
                 
                 {/* Protected Routes (require authentication) - Lazy loaded */}
                 <Route path="/complete-profile" element={<CompleteProfile />} />
+                <Route path="/home" element={<HomePage />} />
                 <Route path="/community" element={<CommunityPage />} />
-                <Route path="/community/questions" element={<CommunityPage />} />
+                <Route path="/community/:tab" element={<CommunityPage />} />
                 <Route path="/community/questions/:questionId" element={<QuestionDetailPage />} />
                 <Route path="/opportunities" element={<OpportunitiesPage />} />
                 <Route path="/opportunities/:id" element={<OpportunityDetailPage />} />

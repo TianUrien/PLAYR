@@ -47,7 +47,11 @@ interface CommunityFilters {
 
 const POSITIONS = ['goalkeeper', 'defender', 'midfielder', 'forward']
 
-export function PeopleListView() {
+interface PeopleListViewProps {
+  roleFilter?: 'player' | 'coach' | 'club'
+}
+
+export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
   const navigate = useNavigate()
   const { profile: currentUserProfile } = useAuthStore()
   const isCurrentUserTestAccount = currentUserProfile?.is_test_account ?? false
@@ -57,7 +61,7 @@ export function PeopleListView() {
   const [displayedMembers, setDisplayedMembers] = useState<Profile[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [filters, setFilters] = useState<CommunityFilters>({
-    role: 'all',
+    role: roleFilter || 'all',
     position: [],
     gender: 'all',
     location: '',
@@ -120,6 +124,11 @@ export function PeopleListView() {
       }
     })
   }, [pageSize, isCurrentUserTestAccount])
+
+  // Sync role filter when roleFilter prop changes
+  useEffect(() => {
+    setFilters(prev => ({ ...prev, role: roleFilter || 'all' }))
+  }, [roleFilter])
 
   // Initial load
   useEffect(() => {
@@ -337,7 +346,7 @@ export function PeopleListView() {
           }}
           onFocus={() => { if (searchQuery.trim()) setShowSuggestions(true) }}
           placeholder="Search by name, location, position, or club..."
-          className="w-full pl-12 pr-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          className="w-full pl-12 pr-4 py-2.5 sm:py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
           autoCapitalize="sentences"
           inputMode="search"
         />
@@ -383,36 +392,34 @@ export function PeopleListView() {
       </div>
 
       {/* Action Row: Availability toggle + Filters button */}
-      <div className="flex items-center justify-between mb-4 px-4 sm:px-0">
-        <div className="flex gap-1.5 sm:gap-2">
-          <button
-            type="button"
-            onClick={() => updateFilter('availability', 'all')}
-            className={`whitespace-nowrap px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-              filters.availability === 'all'
-                ? 'bg-gray-700 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            All Members
-          </button>
-          <button
-            type="button"
-            onClick={() => updateFilter('availability', 'open')}
-            className={`whitespace-nowrap px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
-              filters.availability === 'open'
-                ? 'bg-emerald-500 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0" />
-            Open to Opportunities
-          </button>
-        </div>
+      <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide">
+        <button
+          type="button"
+          onClick={() => updateFilter('availability', 'all')}
+          className={`whitespace-nowrap px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all flex-shrink-0 ${
+            filters.availability === 'all'
+              ? 'bg-gray-700 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          All Members
+        </button>
+        <button
+          type="button"
+          onClick={() => updateFilter('availability', 'open')}
+          className={`whitespace-nowrap px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 flex-shrink-0 ${
+            filters.availability === 'open'
+              ? 'bg-emerald-500 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-current flex-shrink-0" />
+          Open to Opportunities
+        </button>
         <button
           type="button"
           onClick={() => setShowFilters(!showFilters)}
-          className="md:hidden flex items-center gap-1.5 whitespace-nowrap px-3.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 active:bg-gray-300 transition-colors"
+          className="md:hidden flex items-center gap-1.5 whitespace-nowrap px-3.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 active:bg-gray-300 transition-colors flex-shrink-0 ml-auto"
         >
           <Filter className="w-3.5 h-3.5" />
           Filters
@@ -424,7 +431,7 @@ export function PeopleListView() {
 
       {/* Filtered results count — only when narrowing */}
       {(searchQuery.trim() || hasActiveFilters()) && (
-        <p className="text-sm text-gray-500 mb-4 px-4 sm:px-0">
+        <p className="text-sm text-gray-500 mb-4">
           Showing <span className="font-semibold text-gray-900">{filteredMembers.length}</span> members
         </p>
       )}
@@ -445,23 +452,25 @@ export function PeopleListView() {
               )}
             </div>
 
-            {/* Role */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
-              <div className="space-y-2">
-                {(['all', 'player', 'coach', 'club'] as const).map((role) => (
-                  <label key={role} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={filters.role === role}
-                      onChange={() => updateFilter('role', role)}
-                      className="w-4 h-4 text-purple-600"
-                    />
-                    <span className="text-sm text-gray-700 capitalize">{role === 'all' ? 'All' : role}</span>
-                  </label>
-                ))}
+            {/* Role — hidden when pre-filtered by tab */}
+            {!roleFilter && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+                <div className="space-y-2">
+                  {(['all', 'player', 'coach', 'club'] as const).map((role) => (
+                    <label key={role} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={filters.role === role}
+                        onChange={() => updateFilter('role', role)}
+                        className="w-4 h-4 text-purple-600"
+                      />
+                      <span className="text-sm text-gray-700 capitalize">{role === 'all' ? 'All' : role}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Position — hidden when role is club */}
             {filters.role !== 'club' && (
@@ -532,7 +541,7 @@ export function PeopleListView() {
         {/* Main Content */}
         <div className="flex-1">
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {[...Array(12)].map((_, i) => (
                 <ProfileCardSkeleton key={i} />
               ))}
@@ -560,7 +569,7 @@ export function PeopleListView() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                 {displayedMembers.map((member) => (
                   <MemberCard
                     key={member.id}

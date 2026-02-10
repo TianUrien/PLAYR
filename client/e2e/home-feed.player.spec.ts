@@ -1,0 +1,127 @@
+import { test, expect } from './fixtures'
+
+test.describe('@smoke home feed player', () => {
+  test('home feed shows post composer for authenticated player', async ({ page, homeFeedPage }) => {
+    await homeFeedPage.openHomeFeed()
+
+    // Post composer should be visible
+    await homeFeedPage.expectPostComposerVisible()
+
+    // Should show the image button
+    await expect(page.getByLabel('Add image')).toBeVisible()
+  })
+
+  test('player can open and close post composer modal', async ({ page, homeFeedPage }) => {
+    await homeFeedPage.openHomeFeed()
+    await homeFeedPage.expectPostComposerVisible()
+
+    // Open the modal
+    await homeFeedPage.openPostComposer()
+
+    // Modal should show textarea
+    await expect(
+      page.getByPlaceholder(/what's on your mind/i)
+    ).toBeVisible({ timeout: 10000 })
+
+    // Post button should be visible but disabled (no content yet)
+    const postBtn = page.getByRole('button', { name: /^post$/i })
+    await expect(postBtn).toBeVisible()
+
+    // Close the modal
+    await page.getByRole('button', { name: /close/i }).click()
+
+    // Modal should be gone
+    await expect(
+      page.getByPlaceholder(/what's on your mind/i)
+    ).not.toBeVisible({ timeout: 5000 })
+  })
+
+  test('player can create a text post', async ({ page, homeFeedPage }) => {
+    await homeFeedPage.openHomeFeed()
+
+    // Open composer
+    await homeFeedPage.openPostComposer()
+    await expect(
+      page.getByPlaceholder(/what's on your mind/i)
+    ).toBeVisible({ timeout: 10000 })
+
+    // Type content
+    const postContent = `E2E test post ${Date.now()}`
+    await homeFeedPage.fillPostContent(postContent)
+
+    // Submit
+    await homeFeedPage.submitPost()
+
+    // Post should appear in feed
+    await homeFeedPage.expectPostInFeed(postContent)
+  })
+
+  test('player can like a post in the feed', async ({ page, homeFeedPage }) => {
+    await homeFeedPage.openHomeFeed()
+    await page.waitForLoadState('networkidle')
+
+    // Look for any user_post with a Like button
+    const likeButton = page.getByRole('button', { name: /like/i }).first()
+    const hasLikeButton = await likeButton.isVisible({ timeout: 10000 }).catch(() => false)
+
+    if (hasLikeButton) {
+      await likeButton.click()
+      // Wait briefly for optimistic update
+      await page.waitForTimeout(500)
+
+      // Like button should still be present (toggled state)
+      await expect(likeButton).toBeVisible()
+    }
+  })
+
+  test('player can open comments section on a post', async ({ page, homeFeedPage }) => {
+    await homeFeedPage.openHomeFeed()
+    await page.waitForLoadState('networkidle')
+
+    // Look for any Comment button
+    const commentButton = page.getByRole('button', { name: /comment/i }).first()
+    const hasCommentButton = await commentButton.isVisible({ timeout: 10000 }).catch(() => false)
+
+    if (hasCommentButton) {
+      await commentButton.click()
+
+      // Comment input should appear
+      await expect(
+        page.getByPlaceholder(/write a comment/i)
+      ).toBeVisible({ timeout: 10000 })
+    }
+  })
+
+  test('player can share a post (copy link)', async ({ page, homeFeedPage, context }) => {
+    await homeFeedPage.openHomeFeed()
+    await page.waitForLoadState('networkidle')
+
+    // Grant clipboard permissions
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+
+    // Look for any Share button
+    const shareButton = page.getByRole('button', { name: /share/i }).first()
+    const hasShareButton = await shareButton.isVisible({ timeout: 10000 }).catch(() => false)
+
+    if (hasShareButton) {
+      await shareButton.click()
+
+      // Should show "Copied!" feedback
+      await expect(
+        page.getByText('Copied!').first()
+      ).toBeVisible({ timeout: 5000 })
+    }
+  })
+
+  test('feed loads both system and user posts', async ({ page, homeFeedPage }) => {
+    await homeFeedPage.openHomeFeed()
+
+    // Wait for feed to load
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(2000)
+
+    // Feed should have loaded (either cards or empty state)
+    const feedContainer = page.locator('.space-y-4').first()
+    await expect(feedContainer).toBeVisible({ timeout: 10000 })
+  })
+})

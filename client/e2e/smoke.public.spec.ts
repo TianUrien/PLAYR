@@ -29,21 +29,29 @@ test.describe('@smoke public', () => {
   test('brands directory loads (public)', async ({ page }) => {
     await page.goto('/brands')
 
-    // Should show the Feed or Directory toggle
+    // /brands redirects to /community/brands with the community tab switcher
     await expect(
-      page.getByRole('button', { name: /feed/i })
-        .or(page.getByRole('button', { name: /directory/i }))
+      page.getByRole('button', { name: /brands/i })
     ).toBeVisible({ timeout: 20000 })
+
+    // Should show the brand search or empty state
+    await expect(
+      page.getByPlaceholder(/search brands/i)
+        .or(page.getByText(/no brands found/i))
+    ).toBeVisible({ timeout: 10000 })
   })
 
   test('community page loads (public)', async ({ page }) => {
     await page.goto('/community')
+    await page.waitForLoadState('networkidle')
 
-    // Community should show People or Questions tab
+    // Community heading should be visible
     await expect(
-      page.getByRole('button', { name: /people/i })
-        .or(page.getByRole('button', { name: /questions/i }))
+      page.getByRole('heading', { name: /community/i })
     ).toBeVisible({ timeout: 20000 })
+
+    // Tab switcher should show Players as active tab
+    await expect(page.locator('button[aria-pressed="true"]')).toBeVisible()
   })
 
   test('world directory loads (public)', async ({ page }) => {

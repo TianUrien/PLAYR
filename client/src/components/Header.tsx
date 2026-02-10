@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { MessageCircle, Users, Briefcase, Bell, Globe, Store } from 'lucide-react'
+import { MessageCircle, Home, Users, Briefcase, Bell, Globe } from 'lucide-react'
 import { Avatar, NotificationBadge } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
@@ -125,10 +125,10 @@ export default function Header() {
               <>
                 {/* Primary nav links */}
                 {([
+                  { path: '/home', label: 'Home', icon: Home },
                   { path: '/community', label: 'Community', icon: Users },
                   { path: '/world', label: 'World', icon: Globe },
                   { path: '/opportunities', label: 'Opportunities', icon: Briefcase, badge: opportunityCount },
-                  { path: '/brands', label: 'Brands', icon: Store },
                 ] as const).map(({ path, label, icon: Icon, badge }) => (
                   <button
                     key={path}
@@ -199,7 +199,6 @@ export default function Header() {
                   { path: '/community', label: 'Community', icon: Users },
                   { path: '/world', label: 'World', icon: Globe },
                   { path: '/opportunities', label: 'Opportunities', icon: Briefcase, badge: opportunityCount },
-                  { path: '/brands', label: 'Brands', icon: Store },
                 ] as const).map(({ path, label, icon: Icon, badge }) => (
                   <button
                     key={path}

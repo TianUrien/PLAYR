@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Users, Briefcase, Store, Globe } from 'lucide-react'
+import { Home, Users, Briefcase, Globe } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { Avatar, NotificationBadge } from '@/components'
 import { useOpportunityNotifications } from '@/hooks/useOpportunityNotifications'
@@ -30,10 +30,10 @@ export default function MobileBottomNav() {
   // Navigation items
   const navItems: NavItem[] = [
     {
-      id: 'community',
-      label: 'Community',
-      path: '/community',
-      icon: Users,
+      id: 'home',
+      label: 'Home',
+      path: '/home',
+      icon: Home,
     },
     {
       id: 'world',
@@ -48,10 +48,10 @@ export default function MobileBottomNav() {
       icon: Briefcase,
     },
     {
-      id: 'brands',
-      label: 'Brands',
-      path: '/brands',
-      icon: Store,
+      id: 'community',
+      label: 'Community',
+      path: '/community',
+      icon: Users,
     },
   ]
 

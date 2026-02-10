@@ -117,9 +117,9 @@ export default function MemberCard({
   const joinedText = formatDistanceToNow(new Date(created_at), { addSuffix: true })
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow">
+    <div className="bg-white border border-gray-200 rounded-xl p-4 sm:p-6 hover:shadow-lg transition-shadow">
       {/* Avatar with lazy loading */}
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
         <Avatar
           src={avatar_url}
           alt={full_name}
@@ -139,7 +139,7 @@ export default function MemberCard({
       </div>
 
       {/* Details - Hide empty fields */}
-      <div className="space-y-2.5 mb-4 text-sm">
+      <div className="space-y-2 sm:space-y-2.5 mb-3 sm:mb-4 text-sm">
         {(nationality_country_id || nationality) && (
           <div className="flex items-start gap-2">
             <span className="text-xs font-semibold text-gray-400 min-w-[72px]">Nationality:</span>
@@ -175,7 +175,7 @@ export default function MemberCard({
       </div>
 
       {/* Join date */}
-      <p className="text-xs text-gray-400 mb-4">Joined {joinedText}</p>
+      <p className="text-xs text-gray-400 mb-3 sm:mb-4">Joined {joinedText}</p>
 
       {/* Action buttons */}
       <div className="flex gap-2">

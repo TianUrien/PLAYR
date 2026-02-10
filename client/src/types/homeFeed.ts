@@ -1,0 +1,147 @@
+// ============================================================================
+// HOME FEED TYPES
+// ============================================================================
+
+export type FeedItemType =
+  | 'member_joined'
+  | 'opportunity_posted'
+  | 'milestone_achieved'
+  | 'reference_received'
+  | 'brand_post'
+  | 'brand_product'
+  | 'user_post'
+
+export type MilestoneType =
+  | 'first_video'
+  | 'first_gallery_image'
+  | 'profile_60_percent'
+  | 'profile_80_percent'
+  | 'profile_100_percent'
+  | 'first_reference_received'
+
+// Base fields added by the RPC to every item
+interface BaseFeedItem {
+  feed_item_id: string
+  item_type: FeedItemType
+  created_at: string
+}
+
+// --- Individual feed item types ---
+
+export interface MemberJoinedFeedItem extends BaseFeedItem {
+  item_type: 'member_joined'
+  profile_id: string
+  full_name: string | null
+  role: 'player' | 'coach' | 'club'
+  avatar_url: string | null
+  nationality_country_id: number | null
+  base_location: string | null
+  position: string | null
+  current_club: string | null
+}
+
+export interface OpportunityPostedFeedItem extends BaseFeedItem {
+  item_type: 'opportunity_posted'
+  vacancy_id: string
+  title: string
+  opportunity_type: string | null
+  position: string | null
+  gender: string | null
+  location_city: string | null
+  location_country: string | null
+  club_id: string
+  club_name: string | null
+  club_logo: string | null
+  priority: string | null
+  start_date: string | null
+}
+
+export interface MilestoneAchievedFeedItem extends BaseFeedItem {
+  item_type: 'milestone_achieved'
+  milestone_type: MilestoneType
+  profile_id: string
+  full_name: string | null
+  avatar_url: string | null
+  role: 'player' | 'coach' | 'club'
+  video_url?: string | null
+  image_url?: string | null
+}
+
+export interface ReferenceReceivedFeedItem extends BaseFeedItem {
+  item_type: 'reference_received'
+  reference_record_id: string
+  profile_id: string
+  full_name: string | null
+  avatar_url: string | null
+  role: 'player' | 'coach' | 'club'
+  referee_id: string
+  referee_name: string | null
+  referee_avatar: string | null
+  referee_role: string | null
+  relationship_type: string | null
+  endorsement_text: string | null
+}
+
+export interface BrandPostFeedItem extends BaseFeedItem {
+  item_type: 'brand_post'
+  brand_id: string
+  brand_name: string | null
+  brand_slug: string
+  brand_logo_url: string | null
+  brand_category: string | null
+  brand_is_verified: boolean
+  post_id: string
+  post_content: string
+  post_image_url: string | null
+}
+
+export interface BrandProductFeedItem extends BaseFeedItem {
+  item_type: 'brand_product'
+  brand_id: string
+  brand_name: string | null
+  brand_slug: string
+  brand_logo_url: string | null
+  brand_category: string | null
+  brand_is_verified: boolean
+  product_id: string
+  product_name: string
+  product_description: string | null
+  product_images: Array<{ url: string; order: number }> | null
+  product_external_url: string | null
+}
+
+export interface UserPostFeedItem extends BaseFeedItem {
+  item_type: 'user_post'
+  post_id: string
+  author_id: string
+  author_name: string | null
+  author_avatar: string | null
+  author_role: 'player' | 'coach' | 'club' | 'brand'
+  content: string
+  images: Array<{ url: string; order: number }> | null
+  like_count: number
+  comment_count: number
+  has_liked: boolean
+}
+
+// Post comment type
+export interface PostComment {
+  id: string
+  post_id: string
+  author_id: string
+  author_name: string | null
+  author_avatar: string | null
+  author_role: string
+  content: string
+  created_at: string
+}
+
+// Union type for all feed items
+export type HomeFeedItem =
+  | MemberJoinedFeedItem
+  | OpportunityPostedFeedItem
+  | MilestoneAchievedFeedItem
+  | ReferenceReceivedFeedItem
+  | BrandPostFeedItem
+  | BrandProductFeedItem
+  | UserPostFeedItem

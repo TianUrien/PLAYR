@@ -369,6 +369,64 @@ export class QuestionsPage extends PlayrPage {
 }
 
 /**
+ * Page Object for Home Feed
+ */
+export class HomeFeedPage extends PlayrPage {
+  async openHomeFeed() {
+    await this.page.goto('/home')
+    await this.waitForLoadingToComplete()
+  }
+
+  async expectPostComposerVisible() {
+    await expect(this.page.getByText('Start a post...')).toBeVisible({ timeout: 10000 })
+  }
+
+  async expectPostComposerHidden() {
+    await expect(this.page.getByText('Start a post...')).not.toBeVisible({ timeout: 5000 })
+  }
+
+  async openPostComposer() {
+    await this.page.getByText('Start a post...').click()
+  }
+
+  async fillPostContent(content: string) {
+    await this.page.getByPlaceholder(/what's on your mind/i).fill(content)
+  }
+
+  async submitPost() {
+    await this.page.getByRole('button', { name: /^post$/i }).click()
+  }
+
+  async expectPostInFeed(content: string) {
+    await expect(this.page.getByText(content).first()).toBeVisible({ timeout: 15000 })
+  }
+
+  async clickLikeOnPost(content: string) {
+    const postCard = this.page.locator('div').filter({ hasText: content }).first()
+    await postCard.getByRole('button', { name: /like/i }).click()
+  }
+
+  async clickCommentOnPost(content: string) {
+    const postCard = this.page.locator('div').filter({ hasText: content }).first()
+    await postCard.getByRole('button', { name: /comment/i }).click()
+  }
+
+  async clickShareOnPost(content: string) {
+    const postCard = this.page.locator('div').filter({ hasText: content }).first()
+    await postCard.getByRole('button', { name: /share/i }).click()
+  }
+
+  async addCommentToPost(commentText: string) {
+    await this.page.getByPlaceholder(/write a comment/i).fill(commentText)
+    await this.page.getByRole('button', { name: /send/i }).click()
+  }
+
+  async expectCommentVisible(commentText: string) {
+    await expect(this.page.getByText(commentText)).toBeVisible({ timeout: 10000 })
+  }
+}
+
+/**
  * Page Object for Brand Dashboard & Brand Pages
  */
 export class BrandsPage extends PlayrPage {
@@ -436,6 +494,7 @@ export const test = base.extend<{
   communityPage: CommunityPage
   questionsPage: QuestionsPage
   brandsPage: BrandsPage
+  homeFeedPage: HomeFeedPage
 }>({
   authPage: async ({ page }, use) => {
     await use(new AuthPage(page))
@@ -457,6 +516,9 @@ export const test = base.extend<{
   },
   brandsPage: async ({ page }, use) => {
     await use(new BrandsPage(page))
+  },
+  homeFeedPage: async ({ page }, use) => {
+    await use(new HomeFeedPage(page))
   },
 })
 

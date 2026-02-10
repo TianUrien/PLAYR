@@ -72,12 +72,12 @@ test.describe('@questions public', () => {
       await expect(page.getByRole('heading', { name: 'Questions', exact: true })).toBeVisible()
     })
 
-    test('community mode switcher works without auth', async ({ page }) => {
+    test('community tab switcher works without auth', async ({ page }) => {
       await page.goto('/community')
       await page.waitForLoadState('networkidle')
 
-      // Should see mode switcher
-      await expect(page.getByRole('button', { name: /people/i })).toBeVisible({ timeout: 20000 })
+      // Should see tab switcher with Players and Questions tabs
+      await expect(page.getByRole('button', { name: /players/i })).toBeVisible({ timeout: 20000 })
       await expect(page.getByRole('button', { name: /questions/i })).toBeVisible()
 
       // Switch to Questions
@@ -85,8 +85,8 @@ test.describe('@questions public', () => {
       await page.waitForLoadState('networkidle')
       await expect(page.getByRole('heading', { name: 'Questions', exact: true })).toBeVisible()
 
-      // Switch back to People
-      await page.getByRole('button', { name: /people/i }).click()
+      // Switch back to Players
+      await page.getByRole('button', { name: /players/i }).click()
       await page.waitForLoadState('networkidle')
       await expect(page.getByRole('heading', { name: 'Questions', exact: true })).not.toBeVisible()
     })
