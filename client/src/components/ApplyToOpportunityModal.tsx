@@ -98,10 +98,10 @@ export default function ApplyToVacancyModal({
       if (insertError) {
         // Check for duplicate application error (code 23505 = unique violation)
         if (insertError.code === '23505') {
-          // User already applied - treat as success path
+          // User already applied - close modal and inform them
           onSuccess(vacancy.id)
           onClose()
-          addToast('Application confirmed!', 'success')
+          addToast('You have already applied to this opportunity.', 'info')
         } else if (insertError.code === '42501' || insertError.message?.includes('row-level security')) {
           // RLS policy blocked the insert - role mismatch
           logger.error('Role mismatch - RLS policy blocked application:', insertError)

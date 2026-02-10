@@ -53,14 +53,21 @@ export default function OpportunitiesPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [isSyncingNewVacancies, setIsSyncingNewVacancies] = useState(false)
   
-  const [filters, setFilters] = useState<FiltersState>({
-    opportunityType: 'all',
-    position: [],
-    gender: 'all',
-    location: '',
-    startDate: 'all',
-    benefits: [],
-    priority: 'all',
+  const [filters, setFilters] = useState<FiltersState>(() => {
+    // Default to showing opportunities matching the user's role
+    let defaultType: FiltersState['opportunityType'] = 'all'
+    if (profile?.role === 'player') defaultType = 'player'
+    else if (profile?.role === 'coach') defaultType = 'coach'
+
+    return {
+      opportunityType: defaultType,
+      position: [],
+      gender: 'all',
+      location: '',
+      startDate: 'all',
+      benefits: [],
+      priority: 'all',
+    }
   })
   const { count: opportunityCount, markSeen, refresh: refreshOpportunityNotifications } = useOpportunityNotifications()
 

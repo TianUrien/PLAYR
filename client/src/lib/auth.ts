@@ -238,16 +238,27 @@ const clearLocalSession = async (reason: string, options?: ClearSessionOptions) 
   Sentry.setUser(null)
 }
 
-const isInvalidRefreshTokenError = (error: AuthError | null): error is AuthApiError => {
+const isSessionExpiredError = (error: AuthError | null): error is AuthApiError => {
   if (!error) return false
   if (!(error instanceof AuthApiError)) return false
-  return error.message.toLowerCase().includes('invalid refresh token')
+  const msg = error.message.toLowerCase()
+  return (
+    msg.includes('invalid refresh token') ||
+    msg.includes('refresh token expired') ||
+    msg.includes('refresh token not found') ||
+    msg.includes('session expired') ||
+    msg.includes('session not found') ||
+    msg.includes('invalid claim') ||
+    msg.includes('token is expired') ||
+    error.status === 401 ||
+    error.status === 403
+  )
 }
 
 const handleSessionError = async (error: AuthError | null, context: string): Promise<boolean> => {
   if (!error) return false
 
-  if (isInvalidRefreshTokenError(error)) {
+  if (isSessionExpiredError(error)) {
     await clearLocalSession(context)
     return true
   }

@@ -11,7 +11,6 @@ import {
   Package,
   FileText,
   BadgeCheck,
-  TrendingUp,
   AlertTriangle,
   ExternalLink,
 } from 'lucide-react'

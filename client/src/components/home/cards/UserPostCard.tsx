@@ -10,7 +10,7 @@ import { FeedImageCarousel } from '../FeedImageCarousel'
 import { PostInteractionBar } from '../PostInteractionBar'
 import { PostCommentsSection } from '../PostCommentsSection'
 import { PostComposerModal } from '../PostComposerModal'
-import type { UserPostFeedItem, HomeFeedItem } from '@/types/homeFeed'
+import type { UserPostFeedItem } from '@/types/homeFeed'
 
 interface UserPostCardProps {
   item: UserPostFeedItem

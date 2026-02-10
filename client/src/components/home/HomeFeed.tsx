@@ -1,4 +1,6 @@
+import { useRef, useCallback } from 'react'
 import { Loader2, Rss } from 'lucide-react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { useHomeFeed } from '@/hooks/useHomeFeed'
 import { HomeFeedItemCard } from './HomeFeedItemCard'
 import { FeedSkeleton } from './FeedSkeleton'
@@ -6,6 +8,21 @@ import { PostComposer } from './PostComposer'
 
 export function HomeFeed() {
   const { items, isLoading, error, hasMore, loadMore, updateItemLike, removeItem, prependItem } = useHomeFeed()
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  const feedVirtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: () => 200,
+    overscan: 5,
+  })
+
+  const handleLoadMore = useCallback(() => {
+    void loadMore()
+  }, [loadMore])
+
+  // Non-virtualized layout when few items (simpler for empty/loading states)
+  const shouldVirtualize = items.length > 10
 
   return (
     <div className="space-y-4">
@@ -41,21 +58,60 @@ export function HomeFeed() {
         </div>
       )}
 
-      {/* Feed items */}
-      {items.map(item => (
-        <HomeFeedItemCard
-          key={item.feed_item_id}
-          item={item}
-          onLikeUpdate={updateItemLike}
-          onDelete={removeItem}
-        />
-      ))}
+      {/* Feed items — virtualized for large lists, plain map for small */}
+      {shouldVirtualize ? (
+        <div
+          ref={scrollContainerRef}
+          className="space-y-4"
+          style={{ height: '100%', overflow: 'auto' }}
+        >
+          <div
+            style={{
+              height: `${feedVirtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {feedVirtualizer.getVirtualItems().map(virtualItem => (
+              <div
+                key={items[virtualItem.index].feed_item_id}
+                data-index={virtualItem.index}
+                ref={feedVirtualizer.measureElement}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${virtualItem.start}px)`,
+                }}
+              >
+                <div className="pb-4">
+                  <HomeFeedItemCard
+                    item={items[virtualItem.index]}
+                    onLikeUpdate={updateItemLike}
+                    onDelete={removeItem}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        items.map(item => (
+          <HomeFeedItemCard
+            key={item.feed_item_id}
+            item={item}
+            onLikeUpdate={updateItemLike}
+            onDelete={removeItem}
+          />
+        ))
+      )}
 
       {/* Load more */}
       {hasMore && !isLoading && (
         <div className="text-center pt-4">
           <button
-            onClick={loadMore}
+            onClick={handleLoadMore}
             className="px-6 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
           >
             Load more

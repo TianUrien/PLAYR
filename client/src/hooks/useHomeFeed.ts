@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
 import type { HomeFeedItem } from '@/types/homeFeed'
 
 interface UseHomeFeedResult {
@@ -51,7 +52,7 @@ export function useHomeFeed(): UseHomeFeedResult {
 
       setTotal(result.total)
     } catch (err) {
-      console.error('[useHomeFeed] Error fetching feed:', err)
+      logger.error('[useHomeFeed] Error fetching feed:', err)
       setError(err instanceof Error ? err.message : 'Failed to load feed')
     } finally {
       setIsLoading(false)

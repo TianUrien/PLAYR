@@ -2,6 +2,16 @@ import { render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 
 // Mock dependencies before imports
+vi.mock('@/lib/supabase', () => ({
+  SUPABASE_URL: 'https://supabase.test',
+  supabase: {
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+    }),
+  },
+}))
+
 const navigateMock = vi.fn()
 vi.mock('react-router-dom', () => ({
   useNavigate: () => navigateMock,

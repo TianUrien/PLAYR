@@ -208,18 +208,22 @@ export default function OpportunityDetailPage() {
     if (!user) {
       // Not authenticated - show sign-in prompt
       setShowSignInPrompt(true)
-    } else if ((profile?.role === 'player' || profile?.role === 'coach') && !hasApplied) {
-      // Authenticated player/coach who hasn't applied - show apply modal
+    } else if (
+      ((profile?.role === 'player' && opportunity.opportunity_type === 'player') ||
+       (profile?.role === 'coach' && opportunity.opportunity_type === 'coach')) &&
+      !hasApplied
+    ) {
+      // Authenticated player/coach whose role matches the opportunity type - show apply modal
       setShowApplyModal(true)
     }
-    // Clubs or users who have already applied - button shouldn't be shown
+    // Clubs, role mismatches, or users who have already applied - button shouldn't be shown
   }
 
   // Determine if user can apply (or should see the apply button)
   const canShowApplyButton = !hasApplied && (
     !user || // Not logged in - show button to trigger sign-in prompt
-    profile?.role === 'player' || 
-    profile?.role === 'coach'
+    (profile?.role === 'player' && opportunity.opportunity_type === 'player') ||
+    (profile?.role === 'coach' && opportunity.opportunity_type === 'coach')
   )
 
   return (

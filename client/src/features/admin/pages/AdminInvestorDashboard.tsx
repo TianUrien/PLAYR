@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { RefreshCw, PieChart } from 'lucide-react'
+import { logger } from '@/lib/logger'
 import { ShareLinkManager } from '../components/ShareLinkManager'
 import { InvestorDashboardContent } from '../components/InvestorDashboardContent'
 import {
@@ -50,7 +51,7 @@ export function AdminInvestorDashboard() {
       const tokenList = await listInvestorTokens()
       setTokens(tokenList)
     } catch (err) {
-      console.error('Failed to load tokens:', err)
+      logger.error('Failed to load tokens:', err)
     } finally {
       setTokensLoading(false)
     }

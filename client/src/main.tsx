@@ -86,6 +86,26 @@ Sentry.init({
   tracesSampleRate: sentryEnvironment === 'production' ? 0.3 : 1.0,
   replaysSessionSampleRate: sentryEnvironment === 'production' ? 0.05 : 1.0,
   replaysOnErrorSampleRate: 1.0,
+  beforeSend(event) {
+    // Scrub PII from error events before sending to Sentry
+    if (event.user) {
+      delete event.user.email
+      delete event.user.ip_address
+      delete event.user.username
+    }
+    // Scrub email-like patterns from breadcrumb messages
+    if (event.breadcrumbs) {
+      for (const crumb of event.breadcrumbs) {
+        if (typeof crumb.message === 'string') {
+          crumb.message = crumb.message.replace(
+            /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+            '[REDACTED_EMAIL]'
+          )
+        }
+      }
+    }
+    return event
+  },
 })
 
 // Set up in-app browser context for all Sentry events

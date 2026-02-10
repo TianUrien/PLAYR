@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import type { HomeFeedItem } from '@/types/homeFeed'
 import {
   MemberJoinedCard,
@@ -15,7 +16,7 @@ interface HomeFeedItemCardProps {
   onDelete?: (feedItemId: string) => void
 }
 
-export function HomeFeedItemCard({ item, onLikeUpdate, onDelete }: HomeFeedItemCardProps) {
+export const HomeFeedItemCard = memo(function HomeFeedItemCard({ item, onLikeUpdate, onDelete }: HomeFeedItemCardProps) {
   switch (item.item_type) {
     case 'member_joined':
       return <MemberJoinedCard item={item} />
@@ -34,4 +35,4 @@ export function HomeFeedItemCard({ item, onLikeUpdate, onDelete }: HomeFeedItemC
     default:
       return null
   }
-}
+})
