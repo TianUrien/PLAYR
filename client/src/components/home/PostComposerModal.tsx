@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Search, Shield, X, ImagePlus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
@@ -8,7 +8,7 @@ import { validateImage, optimizeImage } from '@/lib/imageOptimization'
 import { logger } from '@/lib/logger'
 import { Avatar } from '@/components'
 import { PostImageUploader, type UploadedImage } from './PostImageUploader'
-import type { HomeFeedItem, UserPostFeedItem } from '@/types/homeFeed'
+import type { HomeFeedItem, UserPostFeedItem, TransferMetadata } from '@/types/homeFeed'
 
 interface PostComposerModalProps {
   isOpen: boolean
@@ -17,8 +17,27 @@ interface PostComposerModalProps {
   editingPost?: { id: string; content: string; images: PostImage[] | null } | null
 }
 
+interface ClubSearchResult {
+  id: string
+  name: string
+  country_id: number
+  country_code: string
+  country_name: string
+  flag_emoji: string
+  avatar_url: string | null
+  is_claimed: boolean
+  claimed_profile_id: string | null
+}
+
 const MAX_CONTENT_LENGTH = 2000
 const BUCKET = 'user-posts'
+
+function getFlagUrl(countryCode: string): string {
+  if (countryCode.toUpperCase() === 'XE') {
+    return 'https://flagcdn.com/w40/gb-eng.png'
+  }
+  return `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png`
+}
 
 export function PostComposerModal({
   isOpen,
@@ -27,18 +46,40 @@ export function PostComposerModal({
   editingPost,
 }: PostComposerModalProps) {
   const { user, profile } = useAuthStore()
-  const { createPost, updatePost } = useUserPosts()
+  const { createPost, createTransferPost, updatePost } = useUserPosts()
   const isEdit = Boolean(editingPost)
   const dialogRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useFocusTrap({ containerRef: dialogRef, isActive: isOpen })
 
+  // Common state
   const [content, setContent] = useState('')
   const [images, setImages] = useState<UploadedImage[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Transfer mode state
+  const [mode, setMode] = useState<'post' | 'transfer'>('post')
+  const [clubSearch, setClubSearch] = useState('')
+  const [clubResults, setClubResults] = useState<ClubSearchResult[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [selectedClub, setSelectedClub] = useState<ClubSearchResult | null>(null)
+  const [showUnknownClub, setShowUnknownClub] = useState(false)
+  const [customClubName, setCustomClubName] = useState('')
+  const [clubLogoUrl, setClubLogoUrl] = useState<string | null>(null)
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+
+  // Cleanup search timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Reset form when modal opens
   useEffect(() => {
@@ -56,17 +97,57 @@ export function PostComposerModal({
       setImages([])
     }
     setError(null)
+    setMode('post')
+    setClubSearch('')
+    setClubResults([])
+    setSelectedClub(null)
+    setShowUnknownClub(false)
+    setCustomClubName('')
+    setClubLogoUrl(null)
 
     // Auto-focus textarea
     setTimeout(() => textareaRef.current?.focus(), 100)
   }, [isOpen, editingPost])
+
+  // Debounced club search
+  const handleClubSearch = useCallback((query: string) => {
+    setClubSearch(query)
+    setError(null)
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    if (query.trim().length < 2) {
+      setClubResults([])
+      setIsSearching(false)
+      return
+    }
+
+    setIsSearching(true)
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data, error: rpcError } = await (supabase.rpc as any)(
+          'search_clubs_for_transfer',
+          { p_query: query.trim(), p_limit: 8 }
+        )
+        if (rpcError) throw rpcError
+        setClubResults(Array.isArray(data) ? data : [])
+      } catch (err) {
+        logger.error('[PostComposerModal] Club search error:', err)
+        setClubResults([])
+      } finally {
+        setIsSearching(false)
+      }
+    }, 300)
+  }, [])
 
   // Auto-resize textarea
   const handleContentChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value)
     setError(null)
 
-    // Auto-resize
     const textarea = e.target
     textarea.style.height = 'auto'
     textarea.style.height = `${textarea.scrollHeight}px`
@@ -124,9 +205,121 @@ export function PostComposerModal({
     )
   }, [])
 
+  // Club logo upload (for unknown clubs)
+  const handleLogoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    e.target.value = ''
+
+    setIsUploadingLogo(true)
+    setError(null)
+
+    try {
+      const validation = validateImage(file, { maxFileSizeMB: 5 })
+      if (!validation.valid) throw new Error(validation.error)
+
+      const optimized = await optimizeImage(file, {
+        maxWidth: 400,
+        maxHeight: 400,
+        maxSizeMB: 0.5,
+        quality: 0.85,
+      })
+
+      const ext = optimized.type === 'image/png' ? 'png' : 'jpg'
+      const random = Math.random().toString(36).slice(2, 8)
+      const fileName = `${user.id}/club-logo_${Date.now()}_${random}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET)
+        .upload(fileName, optimized, { contentType: optimized.type, upsert: false })
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(fileName)
+      setClubLogoUrl(urlData.publicUrl)
+    } catch (err) {
+      logger.error('[PostComposerModal] Logo upload error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to upload club logo')
+    } finally {
+      setIsUploadingLogo(false)
+    }
+  }, [user])
+
   const handleSubmit = useCallback(async () => {
     if (isSubmitting) return
 
+    // Transfer mode submit
+    if (mode === 'transfer') {
+      const clubName = selectedClub ? selectedClub.name : customClubName.trim()
+      if (!clubName) {
+        setError('Please select or enter a club name')
+        return
+      }
+
+      setIsSubmitting(true)
+      setError(null)
+
+      try {
+        const postImages = images.length > 0 ? images : null
+        const result = await createTransferPost(
+          clubName,
+          selectedClub?.country_id ?? null,
+          selectedClub?.id ?? null,
+          selectedClub ? selectedClub.avatar_url : clubLogoUrl,
+          content.trim() || null,
+          postImages
+        )
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to create transfer post')
+        }
+
+        // Build optimistic feed item
+        if (result.post_id && profile) {
+          const metadata: TransferMetadata = {
+            club_name: clubName,
+            club_country_id: selectedClub?.country_id ?? null,
+            club_country_code: selectedClub?.country_code ?? null,
+            club_country_name: selectedClub?.country_name ?? null,
+            club_avatar_url: selectedClub ? selectedClub.avatar_url : clubLogoUrl,
+            world_club_id: selectedClub?.id ?? null,
+            club_profile_id: selectedClub?.claimed_profile_id ?? null,
+            is_known_club: Boolean(selectedClub),
+          }
+
+          const newItem: UserPostFeedItem = {
+            feed_item_id: result.post_id,
+            item_type: 'user_post',
+            created_at: new Date().toISOString(),
+            post_id: result.post_id,
+            author_id: profile.id,
+            author_name: profile.full_name,
+            author_avatar: profile.avatar_url,
+            author_role: profile.role as 'player' | 'coach' | 'club' | 'brand',
+            content: content.trim() || `Joined ${clubName}!`,
+            images: postImages,
+            like_count: 0,
+            comment_count: 0,
+            has_liked: false,
+            post_type: 'transfer',
+            metadata,
+          }
+          onPostCreated(newItem)
+        }
+
+        setContent('')
+        setImages([])
+        onClose()
+      } catch (err) {
+        logger.error('[PostComposerModal] Transfer submit error:', err)
+        setError(err instanceof Error ? err.message : 'Failed to create transfer post')
+      } finally {
+        setIsSubmitting(false)
+      }
+      return
+    }
+
+    // Regular post submit
     const trimmed = content.trim()
 
     if (!trimmed) {
@@ -156,7 +349,6 @@ export function PostComposerModal({
           throw new Error(result.error || 'Failed to create post')
         }
 
-        // Create a local feed item for optimistic prepend
         if (result.post_id && profile) {
           const newItem: UserPostFeedItem = {
             feed_item_id: result.post_id,
@@ -186,9 +378,15 @@ export function PostComposerModal({
     } finally {
       setIsSubmitting(false)
     }
-  }, [content, images, isEdit, editingPost, createPost, updatePost, profile, onPostCreated, onClose, isSubmitting])
+  }, [content, images, mode, selectedClub, customClubName, clubLogoUrl, isEdit, editingPost, createPost, createTransferPost, updatePost, profile, onPostCreated, onClose, isSubmitting])
 
   if (!isOpen) return null
+
+  // Determine submit eligibility
+  const hasClub = selectedClub || customClubName.trim()
+  const canSubmitTransfer = Boolean(hasClub) && !isUploadingLogo
+  const canSubmitPost = content.trim().length > 0
+  const canSubmit = mode === 'transfer' ? canSubmitTransfer : canSubmitPost
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -205,7 +403,7 @@ export function PostComposerModal({
           {/* Header */}
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
             <h2 id="post-composer-title" className="text-xl font-semibold text-gray-900">
-              {isEdit ? 'Edit Post' : 'Create Post'}
+              {isEdit ? 'Edit Post' : mode === 'transfer' ? 'Announce Transfer' : 'Create Post'}
             </h2>
             <button
               type="button"
@@ -236,10 +434,222 @@ export function PostComposerModal({
               </div>
             )}
 
+            {/* Mode toggle — hidden when editing */}
+            {!isEdit && (
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  type="button"
+                  onClick={() => setMode('post')}
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    mode === 'post'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Post
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('transfer')}
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    mode === 'transfer'
+                      ? 'bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Transfer
+                </button>
+              </div>
+            )}
+
             {/* Error */}
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                 {error}
+              </div>
+            )}
+
+            {/* Transfer: Club selection */}
+            {mode === 'transfer' && !isEdit && (
+              <div className="space-y-3">
+                {!selectedClub && !showUnknownClub && (
+                  <>
+                    {/* Club search */}
+                    <div className="relative">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          value={clubSearch}
+                          onChange={(e) => handleClubSearch(e.target.value)}
+                          placeholder="Search for a club..."
+                          className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8026FA]/30 focus:border-[#8026FA]"
+                        />
+                        {isSearching && (
+                          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+                        )}
+                      </div>
+
+                      {/* Search results dropdown */}
+                      {clubResults.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          {clubResults.map((club) => (
+                            <button
+                              key={club.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedClub(club)
+                                setClubSearch('')
+                                setClubResults([])
+                              }}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors text-left"
+                            >
+                              <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                {club.avatar_url ? (
+                                  <img src={club.avatar_url} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <Shield className="w-4 h-4 text-gray-400" />
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-gray-900 truncate">{club.name}</p>
+                                <div className="flex items-center gap-1">
+                                  <img
+                                    src={getFlagUrl(club.country_code)}
+                                    alt=""
+                                    className="w-3.5 h-2.5 object-cover rounded-sm"
+                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                  />
+                                  <span className="text-xs text-gray-500">{club.country_name}</span>
+                                </div>
+                              </div>
+                              {club.is_claimed && (
+                                <span className="text-[10px] font-medium text-[#8026FA] bg-[#8026FA]/10 px-1.5 py-0.5 rounded flex-shrink-0">
+                                  On PLAYR
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* No results state */}
+                      {clubSearch.trim().length >= 2 && !isSearching && clubResults.length === 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                          <p className="text-sm text-gray-500 text-center">No clubs found</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Club not listed link */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowUnknownClub(true)
+                        setClubSearch('')
+                        setClubResults([])
+                      }}
+                      className="text-sm text-[#8026FA] hover:text-[#924CEC] font-medium"
+                    >
+                      Club not listed? Enter manually
+                    </button>
+                  </>
+                )}
+
+                {/* Selected club display */}
+                {selectedClub && (
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="w-10 h-10 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {selectedClub.avatar_url ? (
+                        <img src={selectedClub.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <Shield className="w-5 h-5 text-gray-400" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">{selectedClub.name}</p>
+                      <div className="flex items-center gap-1">
+                        <img
+                          src={getFlagUrl(selectedClub.country_code)}
+                          alt=""
+                          className="w-3.5 h-2.5 object-cover rounded-sm"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                        />
+                        <span className="text-xs text-gray-500">{selectedClub.country_name}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedClub(null)}
+                      className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                      aria-label="Remove selected club"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Unknown club form */}
+                {showUnknownClub && !selectedClub && (
+                  <div className="space-y-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-gray-700">Enter club details</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowUnknownClub(false)
+                          setCustomClubName('')
+                          setClubLogoUrl(null)
+                        }}
+                        className="text-xs text-[#8026FA] hover:text-[#924CEC] font-medium"
+                      >
+                        Back to search
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={customClubName}
+                      onChange={(e) => setCustomClubName(e.target.value)}
+                      placeholder="Club name"
+                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8026FA]/30 focus:border-[#8026FA]"
+                    />
+
+                    {/* Logo upload */}
+                    <div className="flex items-center gap-3">
+                      {clubLogoUrl ? (
+                        <div className="relative">
+                          <div className="w-12 h-12 rounded-full bg-gray-100 border border-gray-200 overflow-hidden">
+                            <img src={clubLogoUrl} alt="Club logo" className="w-full h-full object-cover" />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setClubLogoUrl(null)}
+                            className="absolute -top-1 -right-1 p-0.5 bg-red-500 rounded-full text-white"
+                            aria-label="Remove club logo"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 cursor-pointer">
+                          {isUploadingLogo ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <ImagePlus className="w-4 h-4" />
+                          )}
+                          <span>Add club logo (optional)</span>
+                          <input
+                            type="file"
+                            accept=".jpg,.jpeg,.png"
+                            onChange={handleLogoUpload}
+                            className="hidden"
+                            disabled={isUploadingLogo}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -249,11 +659,11 @@ export function PostComposerModal({
                 ref={textareaRef}
                 value={content}
                 onChange={handleContentChange}
-                placeholder="What's on your mind?"
-                rows={4}
+                placeholder={mode === 'transfer' ? 'Share something about your transfer... (optional)' : "What's on your mind?"}
+                rows={mode === 'transfer' ? 3 : 4}
                 maxLength={MAX_CONTENT_LENGTH}
                 className="w-full px-0 py-2 text-gray-900 text-base placeholder-gray-400 border-0 focus:outline-none focus:ring-0 resize-none"
-                style={{ minHeight: '100px' }}
+                style={{ minHeight: mode === 'transfer' ? '60px' : '100px' }}
               />
               <div className="flex justify-end">
                 <span className={`text-xs ${content.length > MAX_CONTENT_LENGTH - 200 ? 'text-amber-600' : 'text-gray-400'}`}>
@@ -274,11 +684,18 @@ export function PostComposerModal({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting || isUploading || !content.trim()}
+              disabled={isSubmitting || isUploading || isUploadingLogo || !canSubmit}
               className="w-full py-2.5 px-4 bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white rounded-lg font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isSubmitting ? 'Posting...' : isEdit ? 'Save Changes' : 'Post'}
+              {isSubmitting
+                ? (mode === 'transfer' ? 'Announcing...' : 'Posting...')
+                : isEdit
+                  ? 'Save Changes'
+                  : mode === 'transfer'
+                    ? 'Announce Transfer'
+                    : 'Post'
+              }
             </button>
           </div>
         </div>

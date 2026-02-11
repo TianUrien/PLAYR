@@ -99,5 +99,40 @@ export function useUserPosts() {
     }
   }, [])
 
-  return { createPost, updatePost, deletePost }
+  const createTransferPost = useCallback(async (
+    clubName: string,
+    clubCountryId: number | null,
+    worldClubId: string | null,
+    clubAvatarUrl: string | null,
+    content?: string | null,
+    images?: PostImage[] | null
+  ): Promise<PostResult> => {
+    try {
+      const { data, error } = await withTimeout(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        async () => await (supabase.rpc as any)('create_transfer_post', {
+          p_club_name: clubName,
+          p_club_country_id: clubCountryId,
+          p_world_club_id: worldClubId,
+          p_club_avatar_url: clubAvatarUrl,
+          p_content: content || null,
+          p_images: images && images.length > 0 ? images : null,
+        }),
+        15_000
+      )
+
+      if (error) throw error
+
+      const result = data as unknown as PostResult
+      return result
+    } catch (err) {
+      logger.error('[useUserPosts] createTransferPost error:', err)
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Failed to create transfer post',
+      }
+    }
+  }, [])
+
+  return { createPost, createTransferPost, updatePost, deletePost }
 }
