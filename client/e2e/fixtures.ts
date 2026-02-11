@@ -394,7 +394,8 @@ export class HomeFeedPage extends PlayrPage {
   }
 
   async submitPost() {
-    await this.page.getByRole('button', { name: /^post$/i }).click()
+    // Target the full-width submit button (not the mode toggle "Post" tab)
+    await this.page.locator('button.w-full', { hasText: /^post$/i }).click()
   }
 
   async expectPostInFeed(content: string) {

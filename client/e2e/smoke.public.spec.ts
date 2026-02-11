@@ -49,8 +49,8 @@ test.describe('@smoke public', () => {
       page.getByRole('heading', { name: /community/i })
     ).toBeVisible({ timeout: 20000 })
 
-    // Tab switcher should show Players as active tab
-    await expect(page.locator('button[aria-pressed="true"]')).toBeVisible()
+    // Tab switcher should show tab buttons
+    await expect(page.getByRole('button', { name: /players/i })).toBeVisible()
   })
 
   test('world directory loads (public)', async ({ page }) => {

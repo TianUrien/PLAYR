@@ -23,8 +23,8 @@ test.describe('@smoke home feed player', () => {
       page.getByPlaceholder(/what's on your mind/i)
     ).toBeVisible({ timeout: 10000 })
 
-    // Post button should be visible but disabled (no content yet)
-    const postBtn = page.getByRole('button', { name: /^post$/i })
+    // Submit button should be visible but disabled (no content yet)
+    const postBtn = page.locator('button.w-full', { hasText: /^post$/i })
     await expect(postBtn).toBeVisible()
 
     // Close the modal (exact match avoids "Close notifications" button)
