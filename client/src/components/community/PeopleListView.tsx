@@ -317,12 +317,14 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
   }
 
   const clearFilters = () => {
-    setFilters({ role: 'all', position: [], gender: 'all', location: '', nationality: '', availability: 'all' })
+    setFilters({ role: roleFilter || 'all', position: [], gender: 'all', location: '', nationality: '', availability: 'all' })
   }
 
   const hasActiveFilters = () => {
+    // When role is driven by the tab switcher (roleFilter prop), don't count it
+    const expectedRole = roleFilter || 'all'
     return (
-      filters.role !== 'all' ||
+      filters.role !== expectedRole ||
       filters.position.length > 0 ||
       filters.gender !== 'all' ||
       filters.location.trim() !== '' ||
@@ -392,21 +394,10 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
       </div>
 
       {/* Action Row: Availability toggle + Filters button */}
-      <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-hide">
+      <div className="flex items-center justify-center gap-2 mb-4">
         <button
           type="button"
-          onClick={() => updateFilter('availability', 'all')}
-          className={`whitespace-nowrap px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all flex-shrink-0 ${
-            filters.availability === 'all'
-              ? 'bg-gray-700 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          All Members
-        </button>
-        <button
-          type="button"
-          onClick={() => updateFilter('availability', 'open')}
+          onClick={() => updateFilter('availability', filters.availability === 'open' ? 'all' : 'open')}
           className={`whitespace-nowrap px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 flex-shrink-0 ${
             filters.availability === 'open'
               ? 'bg-emerald-500 text-white'
@@ -419,7 +410,7 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
         <button
           type="button"
           onClick={() => setShowFilters(!showFilters)}
-          className="md:hidden flex items-center gap-1.5 whitespace-nowrap px-3.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 active:bg-gray-300 transition-colors flex-shrink-0 ml-auto"
+          className="md:hidden flex items-center gap-1.5 whitespace-nowrap px-3.5 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 rounded-full hover:bg-gray-200 active:bg-gray-300 transition-colors flex-shrink-0"
         >
           <Filter className="w-3.5 h-3.5" />
           Filters
