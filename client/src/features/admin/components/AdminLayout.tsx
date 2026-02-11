@@ -186,9 +186,11 @@ export function AdminLayout() {
                         <p className="text-xs text-gray-500 truncate">{profile.email}</p>
                       </div>
                       <span className={`px-2 py-0.5 text-xs font-medium rounded-full flex-shrink-0 ${
-                        profile.role === 'player' ? 'bg-blue-100 text-blue-700' :
-                        profile.role === 'coach' ? 'bg-green-100 text-green-700' :
-                        'bg-amber-100 text-amber-700'
+                        profile.role === 'player' ? 'bg-[#EFF6FF] text-[#2563EB]' :
+                        profile.role === 'coach' ? 'bg-[#F0FDFA] text-[#0D9488]' :
+                        profile.role === 'club' ? 'bg-[#FFF7ED] text-[#EA580C]' :
+                        profile.role === 'brand' ? 'bg-[#FFF1F2] text-[#E11D48]' :
+                        'bg-gray-100 text-gray-600'
                       }`}>
                         {profile.role}
                       </span>

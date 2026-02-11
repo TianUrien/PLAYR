@@ -6,10 +6,10 @@ type RoleBadgeProps = {
 }
 
 const roleStyles: Record<string, string> = {
-  player: 'bg-blue-100 text-blue-700',
-  coach: 'bg-purple-100 text-purple-700',
-  club: 'bg-orange-100 text-orange-700',
-  brand: 'bg-amber-100 text-amber-700',
+  player: 'bg-[#EFF6FF] text-[#2563EB]',
+  coach: 'bg-[#F0FDFA] text-[#0D9488]',
+  club: 'bg-[#FFF7ED] text-[#EA580C]',
+  brand: 'bg-[#FFF1F2] text-[#E11D48]',
 }
 
 const formatRoleLabel = (value: string) => {

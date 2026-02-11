@@ -123,7 +123,7 @@ export default function ApplicantsList() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-300 border-t-blue-600 mb-4"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-gray-200 border-t-[#8026FA] mb-4"></div>
           <p className="text-gray-600">Loading applicants...</p>
         </div>
       </div>
@@ -139,7 +139,7 @@ export default function ApplicantsList() {
           <p className="text-gray-600 mb-6">{error || 'Opportunity not found.'}</p>
           <button
             onClick={() => navigate('/dashboard/profile')}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white rounded-lg hover:opacity-90 transition-opacity"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard

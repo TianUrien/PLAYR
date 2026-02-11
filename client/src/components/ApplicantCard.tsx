@@ -49,10 +49,10 @@ export default function ApplicantCard({ application }: ApplicantCardProps) {
             <img
               src={applicant.avatar_url}
               alt={displayName}
-              className="h-14 w-14 rounded-full object-cover ring-2 ring-gray-200 transition-all group-hover:ring-blue-500 sm:h-16 sm:w-16"
+              className="h-14 w-14 rounded-full object-cover ring-2 ring-gray-200 transition-all group-hover:ring-[#8026FA] sm:h-16 sm:w-16"
             />
           ) : (
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 ring-2 ring-gray-200 transition-all group-hover:ring-blue-500 sm:h-16 sm:w-16">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#8026FA] to-[#924CEC] ring-2 ring-gray-200 transition-all group-hover:ring-[#8026FA] sm:h-16 sm:w-16">
               <span className="text-base font-bold text-white sm:text-lg">
                 {getInitials(displayName)}
               </span>
@@ -66,7 +66,7 @@ export default function ApplicantCard({ application }: ApplicantCardProps) {
             onClick={handleViewProfile}
             className="text-left group"
           >
-            <h3 className="text-base font-semibold text-gray-900 transition-colors group-hover:text-blue-600 sm:text-lg">
+            <h3 className="text-base font-semibold text-gray-900 transition-colors group-hover:text-[#8026FA] sm:text-lg">
               {displayName}
             </h3>
           </button>
@@ -90,7 +90,7 @@ export default function ApplicantCard({ application }: ApplicantCardProps) {
         {/* View Profile Button */}
         <button
           onClick={handleViewProfile}
-          className="inline-flex w-full items-center justify-center rounded-lg border border-blue-200 px-4 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 sm:w-auto sm:px-6 sm:py-2.5"
+          className="inline-flex w-full items-center justify-center rounded-lg border border-[#8026FA]/20 px-4 py-2 text-sm font-medium text-[#8026FA] transition-colors hover:bg-[#8026FA]/5 sm:w-auto sm:px-6 sm:py-2.5"
         >
           View Profile
         </button>

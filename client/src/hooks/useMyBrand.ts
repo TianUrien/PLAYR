@@ -92,12 +92,14 @@ export function useMyBrand(): UseMyBrandResult {
 
       const response = result as { success: boolean; brand_id: string; slug: string }
 
-      // Sync logo to profile avatar_url so it shows in Community listings
-      if (data.logo_url && user) {
-        await supabase
-          .from('profiles')
-          .update({ avatar_url: data.logo_url })
-          .eq('id', user.id)
+      // Sync brand identity to profile so it shows in Community, Messages, Header, etc.
+      if (user) {
+        const profileUpdate: Record<string, string> = {}
+        if (data.name) profileUpdate.full_name = data.name
+        if (data.logo_url) profileUpdate.avatar_url = data.logo_url
+        if (Object.keys(profileUpdate).length > 0) {
+          await supabase.from('profiles').update(profileUpdate).eq('id', user.id)
+        }
       }
 
       // Refetch to get the full brand data
@@ -129,12 +131,14 @@ export function useMyBrand(): UseMyBrandResult {
         throw rpcError
       }
 
-      // Sync logo to profile avatar_url so it shows in Community listings
-      if (data.logo_url && user) {
-        await supabase
-          .from('profiles')
-          .update({ avatar_url: data.logo_url })
-          .eq('id', user.id)
+      // Sync brand identity to profile so it stays consistent everywhere
+      if (user) {
+        const profileUpdate: Record<string, string> = {}
+        if (data.name) profileUpdate.full_name = data.name
+        if (data.logo_url) profileUpdate.avatar_url = data.logo_url
+        if (Object.keys(profileUpdate).length > 0) {
+          await supabase.from('profiles').update(profileUpdate).eq('id', user.id)
+        }
       }
 
       // Refetch to get the updated data

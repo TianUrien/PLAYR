@@ -1,4 +1,4 @@
-import { MapPin, Calendar, Clock, Eye, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap } from 'lucide-react'
+import { MapPin, Calendar, Clock, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, AlertTriangle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Vacancy } from '../lib/supabase'
 import { Avatar } from './index'
@@ -42,7 +42,8 @@ export default function VacancyCard({
 }: VacancyCardProps) {
   const navigate = useNavigate()
 
-  const handleApplyClick = () => {
+  const handleApplyClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
     if (!onApply) return
     onApply()
   }
@@ -58,20 +59,6 @@ export default function VacancyCard({
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
   }
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-100 text-red-700'
-      case 'medium': return 'bg-blue-100 text-blue-700'
-      case 'low': return 'bg-gray-100 text-gray-700'
-      default: return 'bg-gray-100 text-gray-700'
-    }
-  }
-
-  const getPriorityLabel = (priority: string) => {
-    if (priority === 'high') return 'Urgent'
-    return priority.charAt(0).toUpperCase() + priority.slice(1)
-  }
-
   const isImmediate = !vacancy.start_date || vacancy.start_date === null
 
   const visibleBenefits = vacancy.benefits?.slice(0, 3) || []
@@ -81,12 +68,28 @@ export default function VacancyCard({
   const countryColor = getCountryColor(vacancy.location_country)
   const countryBannerText = formatCountryBanner(vacancy.location_country)
 
+  // Build compound badge text: "Player · Men" or "Coach"
+  const badgeParts: string[] = []
+  badgeParts.push(vacancy.opportunity_type === 'player' ? 'Player' : 'Coach')
+  if (vacancy.opportunity_type === 'player' && vacancy.gender) {
+    badgeParts.push(vacancy.gender === 'Men' ? "Men's" : "Women's")
+  }
+  if (vacancy.position) {
+    badgeParts.push(vacancy.position.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))
+  }
+  const roleBadgeStyle = vacancy.opportunity_type === 'player'
+    ? 'bg-[#EFF6FF] text-[#2563EB]'
+    : 'bg-[#F0FDFA] text-[#0D9488]'
+
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow relative group">
-      {/* Country Banner */}
+    <div
+      onClick={onViewDetails}
+      className="bg-white border border-gray-200 rounded-xl overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 group"
+    >
+      {/* 1. Country Banner */}
       {countryBannerText && (
         <div
-          className="w-full py-2 px-4 text-center text-sm font-semibold tracking-wide"
+          className="w-full py-1.5 px-4 text-center text-xs font-semibold tracking-wide"
           style={{ backgroundColor: countryColor.bg, color: countryColor.text }}
         >
           {countryBannerText}
@@ -94,109 +97,95 @@ export default function VacancyCard({
       )}
 
       {/* Card Content */}
-      <div className="p-5 sm:p-6">
-      {/* Club Header */}
-      <div className="flex items-start justify-between mb-4">
-        <button
-          onClick={handleClubClick}
-          className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer min-h-[44px]"
-        >
-          <Avatar
-            src={clubLogo}
-            initials={clubName.split(' ').map(n => n[0]).join('')}
-            size="md"
-          />
-          <div className="text-left">
-            <h3 className="font-semibold text-gray-900 hover:text-purple-600 transition-colors">
-              {clubName}
-            </h3>
-            {publisherRole && (
-              <p className="text-xs text-gray-500 mt-0.5">
-                {publisherRole === 'coach'
-                  ? publisherOrganization
-                    ? `Coach · ${publisherOrganization}`
-                    : 'Coach'
-                  : 'Club'}
-              </p>
-            )}
-          </div>
-        </button>
-      </div>
-
-      {/* Badges */}
-      <div className="flex items-center flex-wrap gap-2 mb-3">
-        <span className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold ${
-          vacancy.opportunity_type === 'player' ? 'bg-blue-600 text-white' : 'bg-purple-600 text-white'
-        }`}>
-          {vacancy.opportunity_type === 'player' ? 'Player' : 'Coach'}
-        </span>
-        {vacancy.opportunity_type === 'player' && vacancy.gender && (
-          <span className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-medium ${
-            vacancy.gender === 'Men' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'
-          }`}>
-            <span className="leading-none">{vacancy.gender === 'Men' ? 'Men' : 'Women'}</span>
-          </span>
-        )}
-        {vacancy.priority === 'high' && (
-          <span className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-medium ${getPriorityColor(vacancy.priority)}`}>
-            <span className="mr-1">⚠️</span>
-            {getPriorityLabel(vacancy.priority)}
-          </span>
-        )}
-      </div>
-
-      {/* Title */}
-      <h2 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">
-        {vacancy.title}
-      </h2>
-
-      {/* Position */}
-      {vacancy.position && (
-        <div className="mb-4 rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5">
-          <span className="block text-[11px] uppercase tracking-wider text-gray-500 font-medium">Position</span>
-          <span className="block text-sm font-semibold text-gray-900 capitalize">{vacancy.position.replace(/_/g, ' ')}</span>
-        </div>
-      )}
-
-      {/* Location & Timeline */}
-      <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-sm text-gray-600 mb-4">
-        <div className="flex items-center gap-1.5">
-          <MapPin className="w-4 h-4 flex-shrink-0" />
-          <span>{vacancy.location_city}</span>
-        </div>
-        <span className="text-gray-300">·</span>
-        <div className="flex items-center gap-1.5">
-          <Calendar className="w-4 h-4" />
-          <span>{isImmediate ? 'Immediate' : formatDate(vacancy.start_date)}</span>
-        </div>
-        {vacancy.duration_text && (
-          <>
-            <span className="text-gray-300">·</span>
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4" />
-              <span>{vacancy.duration_text}</span>
+      <div className="p-5">
+        {/* 2. Club + Timestamp row */}
+        <div className="flex items-center gap-2.5 mb-3">
+          <button
+            type="button"
+            onClick={handleClubClick}
+            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity min-w-0"
+          >
+            <Avatar
+              src={clubLogo}
+              initials={clubName.split(' ').map(n => n[0]).join('')}
+              size="sm"
+            />
+            <div className="min-w-0 text-left">
+              <span className="text-sm font-medium text-gray-700 truncate block hover:text-[#8026FA] transition-colors">
+                {clubName}
+              </span>
+              {publisherRole && (
+                <span className="text-[11px] text-gray-400">
+                  {publisherRole === 'coach'
+                    ? publisherOrganization
+                      ? `Coach · ${publisherOrganization}`
+                      : 'Coach'
+                    : 'Club'}
+                </span>
+              )}
             </div>
-          </>
+          </button>
+          <span className="ml-auto text-[11px] text-gray-400 flex-shrink-0">
+            {getTimeAgo(vacancy.created_at || new Date().toISOString())}
+          </span>
+        </div>
+
+        {/* 3. Title */}
+        <h2 className="text-base font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-[#8026FA] transition-colors">
+          {vacancy.title}
+        </h2>
+
+        {/* 4. Compound badge + Priority */}
+        <div className="flex items-center flex-wrap gap-1.5 mb-3">
+          <span className={`inline-flex h-6 items-center rounded-full px-2.5 text-[11px] font-semibold ${roleBadgeStyle}`}>
+            {badgeParts.join(' · ')}
+          </span>
+          {vacancy.priority === 'high' && (
+            <span className="inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-[11px] font-medium bg-red-50 text-red-600">
+              <AlertTriangle className="w-3 h-3" />
+              Urgent
+            </span>
+          )}
+        </div>
+
+        {/* 5. Key metadata row */}
+        <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[13px] text-gray-500 mb-3">
+          <div className="flex items-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>{vacancy.location_city}</span>
+          </div>
+          <span className="text-gray-300">·</span>
+          <div className="flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{isImmediate ? 'Immediate' : formatDate(vacancy.start_date)}</span>
+          </div>
+          {vacancy.duration_text && (
+            <>
+              <span className="text-gray-300">·</span>
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                <span>{vacancy.duration_text}</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* 6. Description Snippet */}
+        {vacancy.description && (
+          <p className="text-sm text-gray-500 mb-4 line-clamp-2 leading-relaxed">
+            {vacancy.description}
+          </p>
         )}
-      </div>
 
-      {/* Description Snippet */}
-      {vacancy.description && (
-        <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-          {vacancy.description}
-        </p>
-      )}
-
-      {/* Benefits */}
-      {vacancy.benefits && vacancy.benefits.length > 0 && (
-        <div className="mb-4">
-          <div className="flex flex-wrap gap-2">
+        {/* 7. Benefits (compact) */}
+        {vacancy.benefits && vacancy.benefits.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
             {visibleBenefits.map((benefit) => {
               const Icon = BENEFIT_ICONS[benefit.toLowerCase()]
               return (
                 <span
                   key={benefit}
-                  className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded text-xs"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 bg-gray-50 text-gray-600 rounded text-[11px]"
                 >
                   {Icon && <Icon className="w-3 h-3" />}
                   {benefit.charAt(0).toUpperCase() + benefit.slice(1)}
@@ -204,52 +193,31 @@ export default function VacancyCard({
               )
             })}
             {additionalBenefitsCount > 0 && (
-              <span className="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
-                +{additionalBenefitsCount}
+              <span className="inline-flex items-center px-2 py-0.5 bg-gray-50 text-gray-500 rounded text-[11px]">
+                +{additionalBenefitsCount} more
               </span>
             )}
           </div>
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
-        {hasApplied ? (
-          <button
-            disabled
-            className="flex-1 px-4 py-2 rounded-lg font-semibold min-h-[44px] border border-[#e3d6ff] bg-gradient-to-r from-[#ede8ff] via-[#f6edff] to-[#fbf2ff] text-[#7c3aed] shadow-[0_12px_30px_rgba(124,58,237,0.18)]"
-          >
-            ✓ Applied
-          </button>
-        ) : onApply ? (
-          <Button
-            onClick={handleApplyClick}
-            className="flex-1 bg-gradient-to-r from-[#8026FA] to-[#924CEC] hover:opacity-90"
-          >
-            Apply Now
-          </Button>
-        ) : (
-          <Button
-            onClick={onViewDetails}
-            className="flex-1 bg-gradient-to-r from-[#8026FA] to-[#924CEC] hover:opacity-90"
-          >
-            View Details
-          </Button>
         )}
-        <button
-          onClick={onViewDetails}
-          className="p-3 min-w-[44px] min-h-[44px] border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center"
-          title="View details"
-          aria-label={`View details for ${vacancy.title} position at ${clubName}`}
-        >
-          <Eye className="w-4 h-4 text-gray-600" />
-        </button>
-      </div>
 
-      {/* Timestamp */}
-      <div className="mt-3 text-xs text-gray-500 text-right">
-        {getTimeAgo(vacancy.created_at || new Date().toISOString())}
-      </div>
+        {/* 8. Action */}
+        <div onClick={(e) => e.stopPropagation()}>
+          {hasApplied ? (
+            <div className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg font-semibold text-sm min-h-[44px] border border-[#8026FA]/15 bg-[#8026FA]/5 text-[#8026FA]">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+              </svg>
+              Applied
+            </div>
+          ) : onApply ? (
+            <Button
+              onClick={handleApplyClick}
+              className="w-full bg-gradient-to-r from-[#8026FA] to-[#924CEC] hover:opacity-90"
+            >
+              Apply Now
+            </Button>
+          ) : null}
+        </div>
       </div>
     </div>
   )

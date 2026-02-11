@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { Plus, Edit2, Copy, Archive, MapPin, Calendar, Users, Eye, Rocket, Trash2, Loader2, MoreHorizontal } from 'lucide-react'
+import { Plus, Edit2, Copy, Archive, MapPin, Calendar, Users, Eye, Rocket, Trash2, Loader2, MoreHorizontal, CheckCircle, AlertCircle, XCircle, Briefcase } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
@@ -9,7 +9,6 @@ import { useAuthStore } from '../lib/auth'
 import { useToastStore } from '@/lib/toast'
 import type { Vacancy } from '../lib/supabase'
 import Button from './Button'
-import RoleBadge from './RoleBadge'
 import CreateOpportunityModal from './CreateOpportunityModal'
 import ApplyToOpportunityModal from './ApplyToOpportunityModal'
 import OpportunityDetailView from './OpportunityDetailView'
@@ -181,7 +180,9 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
   const [editingVacancy, setEditingVacancy] = useState<Vacancy | null>(null)
   type VacancyAction = 'publish' | 'close' | 'delete' | 'duplicate'
   const [actionLoading, setActionLoading] = useState<{ id: string; action: VacancyAction } | null>(null)
-  
+  type StatusFilter = 'all' | 'draft' | 'open' | 'closed'
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+
   // Apply modal state
   const [showApplyModal, setShowApplyModal] = useState(false)
   const [selectedVacancy, setSelectedVacancy] = useState<Vacancy | null>(null)
@@ -518,22 +519,19 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
 
   const getStatusBadge = (status: Vacancy['status']) => {
     if (!status) return null
-    
-    const styles: Record<string, string> = {
-      draft: 'bg-amber-100 text-amber-700 border border-amber-300',
-      open: 'bg-green-100 text-green-700 border border-green-300',
-      closed: 'bg-red-100 text-red-700 border border-red-300',
+
+    const config: Record<string, { style: string; icon: React.ComponentType<{ className?: string }>; label: string }> = {
+      draft: { style: 'bg-amber-50 text-amber-700 border border-amber-200', icon: AlertCircle, label: 'Draft' },
+      open: { style: 'bg-[#8026FA]/5 text-[#8026FA] border border-[#8026FA]/15', icon: CheckCircle, label: 'Published' },
+      closed: { style: 'bg-gray-100 text-gray-500 border border-gray-200', icon: XCircle, label: 'Closed' },
     }
-    
-    const labels: Record<string, string> = {
-      draft: '⚠️ Draft',
-      open: '✓ Published',
-      closed: 'Closed',
-    }
-    
+
+    const { style, icon: Icon, label } = config[status] || config.draft
+
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-bold ${styles[status]}`}>
-        {labels[status]}
+      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${style}`}>
+        <Icon className="w-3.5 h-3.5" />
+        {label}
       </span>
     )
   }
@@ -567,27 +565,60 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
   return (
     <div className="space-y-8">
       {/* Section Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-white/80 px-4 py-4 shadow-sm">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Opportunities</p>
-          <h2 className="text-2xl font-bold text-gray-900">
-            {readOnly ? 'Open opportunities' : 'Manage openings'}
-          </h2>
-          <p className="text-sm text-gray-500">
-            {readOnly
-              ? `${vacancies.length} live role${vacancies.length === 1 ? '' : 's'}`
-              : `${vacancies.length} total opportunit${vacancies.length === 1 ? 'y' : 'ies'}`}
-          </p>
+      <div className="rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold text-gray-900">
+              {readOnly ? 'Open Opportunities' : 'Manage Opportunities'}
+            </h2>
+            <p className="text-sm text-gray-500">
+              {readOnly
+                ? `${vacancies.length} live role${vacancies.length === 1 ? '' : 's'}`
+                : `${vacancies.length} total opportunit${vacancies.length === 1 ? 'y' : 'ies'}`}
+            </p>
+          </div>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={handleCreateNew}
+              className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+            >
+              <Plus className="w-4 h-4" />
+              Add
+            </button>
+          )}
         </div>
-        {!readOnly && (
-          <button
-            type="button"
-            onClick={handleCreateNew}
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm transition hover:bg-white"
-          >
-            <Plus className="w-4 h-4" />
-            Add
-          </button>
+
+        {/* Status Filter Tabs (owner only) */}
+        {!readOnly && vacancies.length > 0 && (
+          <div className="flex gap-1 border-t border-gray-100 pt-3">
+            {([
+              { key: 'all' as StatusFilter, label: 'All' },
+              { key: 'draft' as StatusFilter, label: 'Drafts' },
+              { key: 'open' as StatusFilter, label: 'Published' },
+              { key: 'closed' as StatusFilter, label: 'Closed' },
+            ]).map(({ key, label }) => {
+              const count = key === 'all' ? vacancies.length : vacancies.filter(v => v.status === key).length
+              if (key !== 'all' && count === 0) return null
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setStatusFilter(key)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    statusFilter === key
+                      ? 'bg-[#8026FA]/10 text-[#8026FA]'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {label}
+                  <span className={`ml-1.5 text-xs ${statusFilter === key ? 'text-[#8026FA]/60' : 'text-gray-400'}`}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         )}
       </div>
 
@@ -595,8 +626,8 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       {vacancies.length === 0 && !readOnly && (
         <div className="rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
           <div className="mb-4 flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-              <span className="text-3xl">💼</span>
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#8026FA]/10">
+              <Briefcase className="w-8 h-8 text-[#8026FA]" />
             </div>
           </div>
           <h3 className="mb-2 text-lg font-semibold text-gray-900">No Opportunities Yet</h3>
@@ -605,7 +636,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
           </p>
           <Button
             onClick={handleCreateNew}
-            className="mx-auto flex items-center gap-2 bg-[#10b981] hover:bg-[#059669]"
+            className="mx-auto flex items-center gap-2 bg-gradient-to-r from-[#8026FA] to-[#924CEC] hover:opacity-90"
           >
             <Plus className="h-4 w-4" />
             Create First Opportunity
@@ -630,27 +661,37 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
       {/* Vacancies Grid */}
       {vacancies.length > 0 && (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          {vacancies.map((vacancy) => {
-            const positionLabel = vacancy.position ? vacancy.position.charAt(0).toUpperCase() + vacancy.position.slice(1) : null
-            const genderLabel = vacancy.gender ? vacancy.gender.charAt(0).toUpperCase() + vacancy.gender.slice(1) : null
+          {vacancies.filter(v => statusFilter === 'all' || v.status === statusFilter).map((vacancy) => {
             const locationLabel = [vacancy.location_city, vacancy.location_country].filter(Boolean).join(', ')
-            const details = [positionLabel, genderLabel, locationLabel].filter(Boolean).join(' • ')
+
+            // Compound badge: "Player · Men's · Forward" (same pattern as public cards)
+            const badgeParts: string[] = []
+            badgeParts.push(vacancy.opportunity_type === 'player' ? 'Player' : 'Coach')
+            if (vacancy.opportunity_type === 'player' && vacancy.gender) {
+              badgeParts.push(vacancy.gender === 'Men' ? "Men's" : "Women's")
+            }
+            if (vacancy.position) {
+              badgeParts.push(vacancy.position.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))
+            }
+            const roleBadgeStyle = vacancy.opportunity_type === 'player'
+              ? 'bg-[#EFF6FF] text-[#2563EB]'
+              : 'bg-[#F0FDFA] text-[#0D9488]'
 
             return (
               <div
                 key={vacancy.id}
-                className="rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_10px_30px_rgba(15,23,42,0.05)] transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)] active:scale-[0.99]"
+                onClick={() => handleViewDetails(vacancy)}
+                className="rounded-xl border border-gray-200 bg-white p-5 cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 group"
               >
                 {/* Card Header */}
                 <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <RoleBadge
-                      role={vacancy.opportunity_type ?? undefined}
-                      className="px-3 py-1 text-xs"
-                    />
-                    <h3 className="text-lg font-semibold text-gray-900">{vacancy.title}</h3>
+                  <div className="space-y-2 min-w-0 flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 group-hover:text-[#8026FA] transition-colors">{vacancy.title}</h3>
+                    <span className={`inline-flex h-6 items-center rounded-full px-2.5 text-[11px] font-semibold ${roleBadgeStyle}`}>
+                      {badgeParts.join(' · ')}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                     {getStatusBadge(vacancy.status)}
                     {!readOnly && (
                       <VacancyActionMenu
@@ -666,21 +707,16 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
                   </div>
                 </div>
 
-                {/* Details */}
-                <div className="mt-4 space-y-3">
-                  {details && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Users className="w-4 h-4 text-gray-400" />
-                      <span>{details}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <MapPin className="w-4 h-4 text-gray-400" />
+                {/* Details - single location + date row */}
+                <div className="mt-3 flex items-center flex-wrap gap-x-3 gap-y-1 text-[13px] text-gray-500">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>{locationLabel || 'Location TBD'}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                    <span>Start {formatDate(vacancy.start_date)}</span>
+                  <span className="text-gray-300">·</span>
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>{vacancy.start_date ? formatDate(vacancy.start_date) : 'Start TBD'}</span>
                   </div>
                 </div>
 
@@ -688,18 +724,18 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
                 {!readOnly && (vacancy.status === 'open' || vacancy.status === 'closed') && (
                   <button
                     type="button"
-                    onClick={() => navigate(`/dashboard/opportunities/${vacancy.id}/applicants`)}
-                    className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-[0_6px_15px_rgba(16,185,129,0.2)] hover:border-emerald-300 hover:bg-emerald-100"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/dashboard/opportunities/${vacancy.id}/applicants`) }}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
                   >
-                    <Users className="w-4 h-4 text-emerald-600" />
+                    <Users className="w-3.5 h-3.5" />
                     {applicantCounts[vacancy.id] || 0} applicant{applicantCounts[vacancy.id] === 1 ? '' : 's'}
                   </button>
                 )}
 
                 {/* Draft hint */}
                 {!readOnly && vacancy.status === 'draft' && (
-                  <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                    Draft only — publish when you’re ready to go live.
+                  <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+                    Draft — publish when you're ready to go live.
                   </p>
                 )}
 

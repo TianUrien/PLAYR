@@ -67,7 +67,7 @@ export function ConversationSkeleton() {
 // Opportunity Card Skeleton (formerly VacancyCardSkeleton)
 export function OpportunityCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 space-y-4">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex-1 space-y-3">

@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { X, MapPin, Calendar, Clock, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, Mail, Phone, CheckCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { X, MapPin, Calendar, Clock, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, Mail, Phone, CheckCircle, AlertTriangle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Vacancy } from '../lib/supabase'
 import { Avatar } from './index'
@@ -93,10 +93,14 @@ export default function VacancyDetailView({
     return genderMap[gender] || gender
   }
 
-  // Lock body scroll when modal is open
+  const [isVisible, setIsVisible] = useState(false)
+
+  // Lock body scroll and trigger enter animation
   useEffect(() => {
     const originalOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    // Trigger enter animation on next frame
+    requestAnimationFrame(() => setIsVisible(true))
 
     return () => {
       document.body.style.overflow = originalOverflow
@@ -108,9 +112,14 @@ export default function VacancyDetailView({
   const countryBannerText = formatCountryBanner(vacancy.location_country)
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
+    <div
+      className={`fixed inset-0 z-50 overflow-y-auto transition-opacity duration-200 ease-out ${isVisible ? 'bg-black/50' : 'bg-black/0'}`}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
       <div className="min-h-screen px-4 py-8 flex items-center justify-center">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full relative overflow-hidden">
+        <div
+          className={`bg-white rounded-2xl shadow-2xl max-w-4xl w-full relative overflow-hidden transition-all duration-200 ease-out ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}
+        >
           {/* Country Banner - Context only, no buttons */}
           {countryBannerText && (
             <div
@@ -183,27 +192,19 @@ export default function VacancyDetailView({
 
                 {/* Secondary Tags Row - Role, Gender, Priority */}
                 <div className="flex flex-wrap gap-2 mb-4">
-                  <span className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold ${
-                    vacancy.opportunity_type === 'player' ? 'bg-blue-600 text-white' : 'bg-purple-600 text-white'
-                  }`}>
+                  <span className="inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold bg-[#8026FA]/10 text-[#8026FA]">
                     {vacancy.opportunity_type === 'player' ? 'Player' : 'Coach'}
+                    {vacancy.opportunity_type === 'player' && vacancy.gender && ` · ${formatGender(vacancy.gender)}`}
+                    {vacancy.position && ` · ${vacancy.position.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}`}
                   </span>
-                  {vacancy.opportunity_type === 'player' && vacancy.gender && (
-                    <span
-                      className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-medium ${
-                        vacancy.gender === 'Men' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'
-                      }`}
-                    >
-                      <span className="leading-none">{formatGender(vacancy.gender)}</span>
-                    </span>
-                  )}
                   {vacancy.priority && vacancy.priority !== 'low' && (
-                    <span className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-medium ${getPriorityColor(vacancy.priority)}`}>
-                      {vacancy.priority === 'high' ? <span className="mr-1">🔥</span> : null} {getPriorityLabel(vacancy.priority)}
+                    <span className={`inline-flex h-8 items-center gap-1 rounded-full px-3 text-xs font-medium ${getPriorityColor(vacancy.priority)}`}>
+                      {vacancy.priority === 'high' && <AlertTriangle className="w-3.5 h-3.5" />}
+                      {getPriorityLabel(vacancy.priority)}
                     </span>
                   )}
                   {hasApplied && (
-                    <span className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold border border-[#e3d6ff] bg-gradient-to-r from-[#ede8ff] via-[#f6edff] to-[#fbf2ff] text-[#7c3aed]">
+                    <span className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold border border-[#8026FA]/15 bg-[#8026FA]/5 text-[#8026FA]">
                       <CheckCircle className="w-3.5 h-3.5" />
                       <span className="leading-none">Applied</span>
                     </span>
@@ -255,7 +256,7 @@ export default function VacancyDetailView({
                     return (
                       <div
                         key={benefit}
-                        className="flex items-center gap-2 px-4 py-3 bg-green-50 text-green-700 rounded-lg border border-green-200"
+                        className="flex items-center gap-2 px-4 py-3 bg-gray-50 text-gray-700 rounded-lg border border-gray-200"
                       >
                         {Icon && <Icon className="w-5 h-5 flex-shrink-0" />}
                         <span className="text-sm font-medium capitalize">{benefit}</span>
@@ -273,7 +274,7 @@ export default function VacancyDetailView({
                 <ul className="space-y-2">
                   {vacancy.custom_benefits.map((benefit, index) => (
                     <li key={index} className="flex items-start gap-2 text-gray-700">
-                      <span className="text-green-600 mt-1">✓</span>
+                      <span className="text-[#8026FA] mt-1">✓</span>
                       <span>{benefit}</span>
                     </li>
                   ))}
@@ -288,7 +289,7 @@ export default function VacancyDetailView({
                 <ul className="space-y-2">
                   {vacancy.requirements.map((requirement, index) => (
                     <li key={index} className="flex items-start gap-2 text-gray-700">
-                      <span className="text-purple-600 mt-1">•</span>
+                      <span className="text-[#8026FA] mt-1">•</span>
                       <span>{requirement}</span>
                     </li>
                   ))}
@@ -317,7 +318,7 @@ export default function VacancyDetailView({
                       <Mail className="w-5 h-5 text-gray-500" />
                       <a 
                         href={`mailto:${vacancy.contact_email}`}
-                        className="hover:text-purple-600 transition-colors"
+                        className="hover:text-[#8026FA] transition-colors"
                       >
                         {vacancy.contact_email}
                       </a>
@@ -328,7 +329,7 @@ export default function VacancyDetailView({
                       <Phone className="w-5 h-5 text-gray-500" />
                       <a 
                         href={`tel:${vacancy.contact_phone}`}
-                        className="hover:text-purple-600 transition-colors"
+                        className="hover:text-[#8026FA] transition-colors"
                       >
                         {vacancy.contact_phone}
                       </a>

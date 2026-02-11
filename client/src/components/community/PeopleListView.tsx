@@ -21,7 +21,7 @@ interface Profile {
   id: string
   avatar_url: string | null
   full_name: string
-  role: 'player' | 'coach' | 'club'
+  role: 'player' | 'coach' | 'club' | 'brand'
   nationality: string | null
   nationality_country_id: number | null
   nationality2_country_id: number | null
@@ -34,10 +34,12 @@ interface Profile {
   is_test_account?: boolean
   open_to_play?: boolean
   open_to_coach?: boolean
+  brand_slug?: string | null
+  brand_category?: string | null
 }
 
 interface CommunityFilters {
-  role: 'all' | 'player' | 'coach' | 'club'
+  role: 'all' | 'player' | 'coach' | 'club' | 'brand'
   position: string[]
   gender: 'all' | 'Men' | 'Women'
   location: string
@@ -96,7 +98,6 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
               .from('profiles')
               .select('id, avatar_url, full_name, role, nationality, nationality_country_id, nationality2_country_id, base_location, position, secondary_position, current_club, gender, created_at, is_test_account, open_to_play, open_to_coach')
               .eq('onboarding_completed', true) // Only show fully onboarded users
-              .neq('role', 'brand') // Brands have their own section
 
             // If current user is NOT a test account, exclude test accounts from results
             if (!isCurrentUserTestAccount) {
@@ -108,7 +109,29 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
               .limit(200) // Load reasonable batch for client-side filtering
 
             if (error) throw error
-            return (data || []) as Profile[]
+            const members = (data || []) as Profile[]
+
+            // Resolve brand slugs for navigation
+            const brandIds = members.filter(m => m.role === 'brand').map(m => m.id)
+            if (brandIds.length > 0) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const { data: brands } = await (supabase as any)
+                .from('brands')
+                .select('profile_id, slug, category')
+                .in('profile_id', brandIds)
+              if (brands) {
+                const brandMap = new Map((brands as { profile_id: string; slug: string; category: string }[]).map((b) => [b.profile_id, b]))
+                members.forEach(m => {
+                  if (m.role === 'brand') {
+                    const brand = brandMap.get(m.id)
+                    m.brand_slug = brand?.slug || null
+                    m.brand_category = brand?.category || null
+                  }
+                })
+              }
+            }
+
+            return members
           },
           30000 // 30 second cache for community members
         )
@@ -154,7 +177,6 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
               .from('profiles')
               .select('id, avatar_url, full_name, role, nationality, nationality_country_id, nationality2_country_id, base_location, position, secondary_position, current_club, gender, created_at, is_test_account, open_to_play, open_to_coach')
               .eq('onboarding_completed', true) // Only show fully onboarded users
-              .neq('role', 'brand') // Brands have their own section
               .or(
                 `full_name.ilike.${searchTerm},nationality.ilike.${searchTerm},base_location.ilike.${searchTerm},position.ilike.${searchTerm},secondary_position.ilike.${searchTerm},current_club.ilike.${searchTerm}`
               )
@@ -169,7 +191,29 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
               .limit(200)
 
             if (error) throw error
-            return (data || []) as Profile[]
+            const members = (data || []) as Profile[]
+
+            // Resolve brand slugs for navigation
+            const brandIds = members.filter(m => m.role === 'brand').map(m => m.id)
+            if (brandIds.length > 0) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const { data: brands } = await (supabase as any)
+                .from('brands')
+                .select('profile_id, slug, category')
+                .in('profile_id', brandIds)
+              if (brands) {
+                const brandMap = new Map((brands as { profile_id: string; slug: string; category: string }[]).map((b) => [b.profile_id, b]))
+                members.forEach(m => {
+                  if (m.role === 'brand') {
+                    const brand = brandMap.get(m.id)
+                    m.brand_slug = brand?.slug || null
+                    m.brand_category = brand?.category || null
+                  }
+                })
+              }
+            }
+
+            return members
           },
           20000 // 20 second cache for searches
         )
@@ -288,7 +332,9 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
 
   const handleSuggestionClick = (member: Profile) => {
     setShowSuggestions(false)
-    if (member.role === 'club') {
+    if (member.role === 'brand') {
+      navigate(member.brand_slug ? `/brands/${member.brand_slug}` : '/brands')
+    } else if (member.role === 'club') {
       navigate(`/clubs/id/${member.id}`)
     } else {
       navigate(`/players/id/${member.id}`)
@@ -448,7 +494,7 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
                 <div className="space-y-2">
-                  {(['all', 'player', 'coach', 'club'] as const).map((role) => (
+                  {(['all', 'player', 'coach', 'club', 'brand'] as const).map((role) => (
                     <label key={role} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="radio"
@@ -463,8 +509,8 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
               </div>
             )}
 
-            {/* Position — hidden when role is club */}
-            {filters.role !== 'club' && (
+            {/* Position — hidden when role is club or brand */}
+            {filters.role !== 'club' && filters.role !== 'brand' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Position</label>
                 <div className="space-y-2">
@@ -483,8 +529,8 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
               </div>
             )}
 
-            {/* Gender — hidden when role is club */}
-            {filters.role !== 'club' && (
+            {/* Gender — hidden when role is club or brand */}
+            {filters.role !== 'club' && filters.role !== 'brand' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
                 <div className="space-y-2">
@@ -568,6 +614,8 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
                     avatar_url={member.avatar_url}
                     full_name={member.full_name}
                     role={member.role}
+                    brandSlug={member.brand_slug ?? undefined}
+                    brandCategory={member.brand_category ?? undefined}
                     nationality={member.nationality}
                     nationality_country_id={member.nationality_country_id}
                     nationality2_country_id={member.role === 'club' ? null : member.nationality2_country_id}

@@ -30,7 +30,8 @@ test.describe('@smoke player', () => {
     const card = await getE2EVacancyCard(page)
     await expect(card).toBeVisible({ timeout: 20000 })
 
-    await card.getByRole('button', { name: new RegExp(`View details for ${E2E_VACANCY_TITLE}`, 'i') }).click()
+    // Cards are now fully clickable — click the card to open detail view
+    await card.click()
 
     await expect(page.getByRole('heading', { level: 1, name: E2E_VACANCY_TITLE })).toBeVisible({ timeout: 20000 })
     await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible({ timeout: 20000 })

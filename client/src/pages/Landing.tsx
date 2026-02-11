@@ -263,7 +263,7 @@ export default function Landing() {
       </div>
 
       {/* ===== MOBILE LAYOUT (< lg) ===== */}
-      <div className="lg:hidden absolute inset-0 z-10 flex flex-col pt-6">
+      <div className="lg:hidden absolute inset-0 z-10 flex flex-col pt-6 overflow-y-auto">
         <PublicNav transparent />
 
         {/* Hero Zone - Swipeable Carousel */}

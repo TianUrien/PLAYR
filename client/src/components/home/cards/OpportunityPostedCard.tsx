@@ -17,8 +17,8 @@ export function OpportunityPostedCard({ item }: OpportunityPostedCardProps) {
       <div className="p-5">
         {/* Header */}
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-            <Briefcase className="w-4 h-4 text-purple-600" />
+          <div className="w-8 h-8 rounded-full bg-[#8026FA]/10 flex items-center justify-center flex-shrink-0">
+            <Briefcase className="w-4 h-4 text-[#8026FA]" />
           </div>
           <div className="flex items-center gap-1.5 text-sm text-gray-500">
             <span className="font-medium text-gray-700">New Opportunity posted</span>
@@ -64,7 +64,7 @@ export function OpportunityPostedCard({ item }: OpportunityPostedCardProps) {
               size="sm"
               className="flex-shrink-0"
             />
-            <span className="text-sm font-medium text-gray-700 group-hover:text-indigo-600 transition-colors">
+            <span className="text-sm font-medium text-gray-700 group-hover:text-[#8026FA] transition-colors">
               {item.club_name}
             </span>
           </Link>
