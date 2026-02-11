@@ -29,7 +29,7 @@ export function useUserPosts() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         async () => await (supabase.rpc as any)('create_user_post', {
           p_content: content,
-          p_images: images && images.length > 0 ? JSON.stringify(images) : null,
+          p_images: images && images.length > 0 ? images : null,
         }),
         15_000
       )
@@ -58,7 +58,7 @@ export function useUserPosts() {
         async () => await (supabase.rpc as any)('update_user_post', {
           p_post_id: postId,
           p_content: content,
-          p_images: images && images.length > 0 ? JSON.stringify(images) : null,
+          p_images: images && images.length > 0 ? images : null,
         }),
         15_000
       )
