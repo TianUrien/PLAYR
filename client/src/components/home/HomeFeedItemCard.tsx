@@ -8,6 +8,7 @@ import {
   BrandPostCard,
   BrandProductCard,
   UserPostCard,
+  TransferAnnouncementCard,
 } from './cards'
 
 interface HomeFeedItemCardProps {
@@ -31,6 +32,9 @@ export const HomeFeedItemCard = memo(function HomeFeedItemCard({ item, onLikeUpd
     case 'brand_product':
       return <BrandProductCard item={item} />
     case 'user_post':
+      if (item.post_type === 'transfer' && item.metadata) {
+        return <TransferAnnouncementCard item={item} onLikeUpdate={onLikeUpdate} onDelete={onDelete} />
+      }
       return <UserPostCard item={item} onLikeUpdate={onLikeUpdate} onDelete={onDelete} />
     default:
       return null

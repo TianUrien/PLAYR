@@ -110,6 +110,19 @@ export interface BrandProductFeedItem extends BaseFeedItem {
   product_external_url: string | null
 }
 
+export type PostType = 'text' | 'transfer'
+
+export interface TransferMetadata {
+  club_name: string
+  club_country_id: number | null
+  club_country_code: string | null
+  club_country_name: string | null
+  club_avatar_url: string | null
+  world_club_id: string | null
+  club_profile_id: string | null
+  is_known_club: boolean
+}
+
 export interface UserPostFeedItem extends BaseFeedItem {
   item_type: 'user_post'
   post_id: string
@@ -122,6 +135,8 @@ export interface UserPostFeedItem extends BaseFeedItem {
   like_count: number
   comment_count: number
   has_liked: boolean
+  post_type?: PostType
+  metadata?: TransferMetadata | null
 }
 
 // Post comment type

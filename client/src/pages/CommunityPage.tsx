@@ -19,16 +19,16 @@ import {
 } from '@/components/community'
 import type { CommunityTab } from '@/components/community'
 
-const VALID_TABS: CommunityTab[] = ['players', 'coaches', 'clubs', 'brands', 'questions']
+const VALID_TABS: CommunityTab[] = ['all', 'players', 'coaches', 'clubs', 'brands', 'questions']
 
 export default function CommunityPage() {
   const { tab } = useParams<{ tab?: string }>()
 
-  // Determine active tab from URL param — default to 'players'
+  // Determine active tab from URL param — default to 'all' (open ecosystem view)
   const activeTab: CommunityTab =
     tab && VALID_TABS.includes(tab as CommunityTab)
       ? (tab as CommunityTab)
-      : 'players'
+      : 'all'
 
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden">
@@ -52,6 +52,7 @@ export default function CommunityPage() {
 
         {/* Content based on active tab */}
         <div key={activeTab} className="mt-6 sm:mt-10 animate-fade-in">
+          {activeTab === 'all' && <PeopleListView />}
           {activeTab === 'players' && <PeopleListView roleFilter="player" />}
           {activeTab === 'coaches' && <PeopleListView roleFilter="coach" />}
           {activeTab === 'clubs' && <PeopleListView roleFilter="club" />}
