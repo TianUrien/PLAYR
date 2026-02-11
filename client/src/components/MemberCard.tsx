@@ -13,7 +13,9 @@ interface MemberCardProps {
   id: string
   avatar_url: string | null
   full_name: string
-  role: 'player' | 'coach' | 'club'
+  role: 'player' | 'coach' | 'club' | 'brand'
+  brandSlug?: string
+  brandCategory?: string
   nationality: string | null
   nationality_country_id?: number | null
   nationality2_country_id?: number | null
@@ -31,6 +33,8 @@ export default function MemberCard({
   avatar_url,
   full_name,
   role,
+  brandSlug,
+  brandCategory,
   nationality,
   nationality_country_id,
   nationality2_country_id,
@@ -105,7 +109,9 @@ export default function MemberCard({
       return
     }
     // Navigate to correct public profile based on role
-    if (role === 'club') {
+    if (role === 'brand') {
+      navigate(brandSlug ? `/brands/${brandSlug}` : '/brands')
+    } else if (role === 'club') {
       navigate(`/clubs/id/${id}`)
     } else {
       // Players and Coaches use player profile route
@@ -132,6 +138,9 @@ export default function MemberCard({
           <h3 className="font-semibold text-gray-900 truncate">{full_name}</h3>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <RoleBadge role={role} />
+            {role === 'brand' && brandCategory && (
+              <span className="text-xs text-gray-500 capitalize">{brandCategory}</span>
+            )}
             {role === 'player' && open_to_play && <AvailabilityPill variant="play" size="sm" />}
             {role === 'coach' && open_to_coach && <AvailabilityPill variant="coach" size="sm" />}
           </div>

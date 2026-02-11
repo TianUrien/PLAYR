@@ -125,17 +125,17 @@ export default function Header() {
               <>
                 {/* Primary nav links */}
                 {([
-                  { path: '/home', label: 'Home', icon: Home },
-                  { path: '/community', label: 'Community', icon: Users },
-                  { path: '/world', label: 'World', icon: Globe },
-                  { path: '/opportunities', label: 'Opportunities', icon: Briefcase, badge: opportunityCount },
-                ] as const).map(({ path, label, icon: Icon, badge }) => (
+                  { path: '/home', label: 'Home', icon: Home, badge: undefined as number | undefined },
+                  { path: '/world', label: 'World', icon: Globe, badge: undefined as number | undefined },
+                  { path: '/opportunities', label: 'Opportunities', icon: Briefcase, badge: opportunityCount as number | undefined },
+                  { path: '/community', label: 'Community', icon: Users, badge: undefined as number | undefined },
+                ]).map(({ path, label, icon: Icon, badge }) => (
                   <button
                     key={path}
                     onClick={() => handleNavigate(path)}
                     className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       isActive(path)
-                        ? 'text-[#8026FA] bg-indigo-50'
+                        ? 'text-[#8026FA] bg-[#8026FA]/10'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                     aria-current={isActive(path) ? 'page' : undefined}
@@ -156,7 +156,7 @@ export default function Header() {
                   onClick={() => handleNavigate('/messages')}
                   className={`relative p-2 rounded-lg transition-colors ${
                     isActive('/messages')
-                      ? 'text-[#8026FA] bg-indigo-50'
+                      ? 'text-[#8026FA] bg-[#8026FA]/10'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
                   aria-label="Messages"
@@ -196,16 +196,16 @@ export default function Header() {
               <>
                 {/* Unauthenticated primary nav links */}
                 {([
-                  { path: '/community', label: 'Community', icon: Users },
-                  { path: '/world', label: 'World', icon: Globe },
-                  { path: '/opportunities', label: 'Opportunities', icon: Briefcase, badge: opportunityCount },
-                ] as const).map(({ path, label, icon: Icon, badge }) => (
+                  { path: '/world', label: 'World', icon: Globe, badge: undefined as number | undefined },
+                  { path: '/opportunities', label: 'Opportunities', icon: Briefcase, badge: opportunityCount as number | undefined },
+                  { path: '/community', label: 'Community', icon: Users, badge: undefined as number | undefined },
+                ]).map(({ path, label, icon: Icon, badge }) => (
                   <button
                     key={path}
                     onClick={() => handleNavigate(path)}
                     className={`relative px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                       isActive(path)
-                        ? 'text-[#8026FA] bg-indigo-50'
+                        ? 'text-[#8026FA] bg-[#8026FA]/10'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                     aria-current={isActive(path) ? 'page' : undefined}

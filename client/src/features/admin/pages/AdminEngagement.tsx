@@ -137,9 +137,11 @@ export function AdminEngagement() {
       label: 'Role',
       render: (_value, row) => (
         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-          row.role === 'player' ? 'bg-purple-100 text-purple-800' :
-          row.role === 'club' ? 'bg-blue-100 text-blue-800' :
-          'bg-green-100 text-green-800'
+          row.role === 'player' ? 'bg-[#EFF6FF] text-[#2563EB]' :
+          row.role === 'coach' ? 'bg-[#F0FDFA] text-[#0D9488]' :
+          row.role === 'club' ? 'bg-[#FFF7ED] text-[#EA580C]' :
+          row.role === 'brand' ? 'bg-[#FFF1F2] text-[#E11D48]' :
+          'bg-gray-100 text-gray-600'
         }`}>
           {row.role}
         </span>

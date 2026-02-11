@@ -298,7 +298,7 @@ export default function NotificationsDrawer() {
       <aside
         ref={drawerRef}
         role="dialog"
-        aria-modal="true"
+        aria-modal={isOpen || undefined}
         aria-label="Notifications"
         tabIndex={-1}
         className={cn(

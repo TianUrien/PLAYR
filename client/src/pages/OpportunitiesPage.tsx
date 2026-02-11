@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Grid, List, ChevronDown, Filter } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Grid, List, ChevronDown, Filter, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
 // Vacancy is a legacy alias for Opportunity - keeping for compatibility during migration
@@ -31,11 +31,16 @@ interface FiltersState {
 const POSITIONS = ['goalkeeper', 'defender', 'midfielder', 'forward']
 const BENEFITS = ['housing', 'car', 'visa', 'flights', 'meals', 'job', 'insurance', 'education', 'bonuses', 'equipment']
 
+// Valid sort values for type checking URL params
+const VALID_SORTS = ['newest', 'deadline', 'priority', 'location'] as const
+type SortBy = (typeof VALID_SORTS)[number]
+
 export default function OpportunitiesPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user, profile } = useAuthStore()
   const isCurrentUserTestAccount = profile?.is_test_account ?? false
-  
+
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
   const [filteredVacancies, setFilteredVacancies] = useState<Vacancy[]>([])
   const [clubs, setClubs] = useState<Record<string, { id: string; full_name: string; avatar_url: string | null; role: string | null; current_club: string | null }>>({})
@@ -45,44 +50,76 @@ export default function OpportunitiesPage() {
   const [showSignInPrompt, setShowSignInPrompt] = useState(false)
   const [showDetailView, setShowDetailView] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     const saved = localStorage.getItem('opp-view-mode')
     return saved === 'list' ? 'list' : 'grid'
   })
-  const [sortBy, setSortBy] = useState<'newest'>('newest')
+  const [sortBy, setSortBy] = useState<SortBy>(() => {
+    const param = searchParams.get('sort')
+    return param && VALID_SORTS.includes(param as SortBy) ? (param as SortBy) : 'newest'
+  })
   const [showFilters, setShowFilters] = useState(false)
   const [isSyncingNewVacancies, setIsSyncingNewVacancies] = useState(false)
-  
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '')
+
   const [filters, setFilters] = useState<FiltersState>(() => {
-    // Default to showing opportunities matching the user's role
+    // Initialize from URL params, falling back to role-based defaults
     let defaultType: FiltersState['opportunityType'] = 'all'
-    if (profile?.role === 'player') defaultType = 'player'
-    else if (profile?.role === 'coach') defaultType = 'coach'
+    const typeParam = searchParams.get('type')
+    if (typeParam === 'player' || typeParam === 'coach') {
+      defaultType = typeParam
+    } else if (profile?.role === 'player') {
+      defaultType = 'player'
+    } else if (profile?.role === 'coach') {
+      defaultType = 'coach'
+    }
+
+    const genderParam = searchParams.get('gender')
+    const startParam = searchParams.get('start')
+    const priorityParam = searchParams.get('priority')
 
     return {
       opportunityType: defaultType,
-      position: [],
-      gender: 'all',
-      location: '',
-      startDate: 'all',
-      benefits: [],
-      priority: 'all',
+      position: searchParams.get('position')?.split(',').filter(Boolean) || [],
+      gender: (genderParam === 'Men' || genderParam === 'Women') ? genderParam : 'all',
+      location: searchParams.get('location') || '',
+      startDate: (startParam === 'immediate' || startParam === 'specific') ? startParam : 'all',
+      benefits: searchParams.get('benefits')?.split(',').filter(Boolean) || [],
+      priority: (priorityParam === 'high' || priorityParam === 'medium' || priorityParam === 'low') ? priorityParam : 'all',
     }
   })
+
+  // Sync filter/search/sort state to URL (replaceState, no history entries)
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (searchQuery) params.set('q', searchQuery)
+    if (sortBy !== 'newest') params.set('sort', sortBy)
+    if (filters.opportunityType !== 'all') params.set('type', filters.opportunityType)
+    if (filters.position.length > 0) params.set('position', filters.position.join(','))
+    if (filters.gender !== 'all') params.set('gender', filters.gender)
+    if (filters.location) params.set('location', filters.location)
+    if (filters.startDate !== 'all') params.set('start', filters.startDate)
+    if (filters.benefits.length > 0) params.set('benefits', filters.benefits.join(','))
+    if (filters.priority !== 'all') params.set('priority', filters.priority)
+
+    setSearchParams(params, { replace: true })
+  }, [filters, searchQuery, sortBy, setSearchParams])
   const { count: opportunityCount, markSeen, refresh: refreshOpportunityNotifications } = useOpportunityNotifications()
 
   const fetchVacancies = useCallback(async (options?: { skipCache?: boolean; silent?: boolean }) => {
     if (!options?.silent) {
       setIsLoading(true)
     }
+    setFetchError(null)
 
     // Cache key includes test account status to separate results
     const cacheKey = isCurrentUserTestAccount ? 'open-vacancies-test' : 'open-vacancies'
-    
+
     if (options?.skipCache) {
       requestCache.invalidate(cacheKey)
     }
-    
+
     await monitor.measure('fetch_vacancies', async () => {
       try {
         const { vacanciesData, clubsMap } = await requestCache.dedupe(
@@ -114,7 +151,7 @@ export default function OpportunitiesPage() {
             // Filter out test vacancies for non-test users
             type VacancyWithClub = Vacancy & { club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean; role?: string | null; current_club?: string | null } }
             let filteredVacancies = vacanciesData as VacancyWithClub[]
-            
+
             if (!isCurrentUserTestAccount) {
               filteredVacancies = filteredVacancies.filter((vacancy) => {
                 // Exclude vacancies where the club is a test account
@@ -148,6 +185,7 @@ export default function OpportunitiesPage() {
         setClubs(clubsMap)
       } catch (error) {
         logger.error('Error fetching vacancies:', error)
+        setFetchError('Could not load opportunities. Please check your connection and try again.')
       } finally {
         if (!options?.silent) {
           setIsLoading(false)
@@ -271,9 +309,23 @@ export default function OpportunitiesPage() {
     return false
   }
 
-  // Apply filters
+  // Apply search + filters
   useEffect(() => {
     let filtered = [...vacancies]
+
+    // Search query filter (title, description, club name, location)
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      filtered = filtered.filter(v => {
+        const title = v.title?.toLowerCase() ?? ''
+        const description = v.description?.toLowerCase() ?? ''
+        const city = v.location_city?.toLowerCase() ?? ''
+        const country = v.location_country?.toLowerCase() ?? ''
+        const club = clubs[v.club_id]?.full_name?.toLowerCase() ?? ''
+        const position = v.position?.toLowerCase() ?? ''
+        return title.includes(q) || description.includes(q) || city.includes(q) || country.includes(q) || club.includes(q) || position.includes(q)
+      })
+    }
 
     // Opportunity type filter
     if (filters.opportunityType !== 'all') {
@@ -324,16 +376,40 @@ export default function OpportunitiesPage() {
     }
 
     // Sort
-    if (sortBy === 'newest') {
-      filtered.sort((a, b) => {
-        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
-        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
-        return dateB - dateA
-      })
+    const PRIORITY_WEIGHT: Record<string, number> = { high: 3, medium: 2, low: 1 }
+    switch (sortBy) {
+      case 'newest':
+        filtered.sort((a, b) => {
+          const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
+          const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
+          return dateB - dateA
+        })
+        break
+      case 'deadline':
+        filtered.sort((a, b) => {
+          // Opportunities with deadlines first, sorted soonest-first
+          if (!a.application_deadline && !b.application_deadline) return 0
+          if (!a.application_deadline) return 1
+          if (!b.application_deadline) return -1
+          return new Date(a.application_deadline).getTime() - new Date(b.application_deadline).getTime()
+        })
+        break
+      case 'priority':
+        filtered.sort((a, b) => {
+          return (PRIORITY_WEIGHT[b.priority || 'low'] || 0) - (PRIORITY_WEIGHT[a.priority || 'low'] || 0)
+        })
+        break
+      case 'location':
+        filtered.sort((a, b) => {
+          const cityA = a.location_city?.toLowerCase() ?? ''
+          const cityB = b.location_city?.toLowerCase() ?? ''
+          return cityA.localeCompare(cityB)
+        })
+        break
     }
 
     setFilteredVacancies(filtered)
-  }, [vacancies, filters, sortBy])
+  }, [vacancies, clubs, filters, searchQuery, sortBy])
 
   const updateFilter = <K extends keyof FiltersState>(key: K, value: FiltersState[K]) => {
     setFilters(prev => {
@@ -403,86 +479,101 @@ export default function OpportunitiesPage() {
 
         <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-12">
           {/* Page Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+          <div className="mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
               Opportunities
             </h1>
-            <p className="text-gray-600">
+            <p className="text-sm text-gray-500">
               Discover field hockey opportunities from clubs around the world
             </p>
           </div>
 
+          {/* Search Bar */}
+          <div className="relative mb-6">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by title, club, position, or location..."
+              className="w-full h-12 pl-12 pr-4 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#8026FA]/30 focus:border-[#8026FA] transition-colors"
+            />
+          </div>
+
           {opportunityCount > 0 && (
-            <div className="bg-blue-50 border border-blue-100 text-blue-900 rounded-xl p-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="bg-[#8026FA]/5 border border-[#8026FA]/10 text-gray-900 rounded-xl p-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <p className="font-semibold">{opportunityCount === 1 ? 'New opportunity available' : `${opportunityCount} new opportunities available`}</p>
-                <p className="text-sm text-blue-900/80">
+                <p className="font-semibold text-sm">{opportunityCount === 1 ? 'New opportunity available' : `${opportunityCount} new opportunities available`}</p>
+                <p className="text-sm text-gray-600">
                   {opportunityCount === 1 ? 'A new opportunity was just published.' : 'Fresh opportunities were published since you opened this page.'}
                 </p>
               </div>
               <div className="flex items-center gap-3">
                 <Button
                   variant="outline"
-                className="border-blue-300 text-blue-700 bg-white hover:bg-blue-100 disabled:opacity-60"
-                disabled={isSyncingNewVacancies}
-                onClick={handleSyncNewVacancies}
-              >
-                {isSyncingNewVacancies ? 'Updating…' : 'View latest'}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Controls Bar */}
-        <div className="bg-white rounded-xl p-4 mb-6 shadow-sm">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            {/* Results & Filters Toggle */}
-            <div className="flex items-center gap-4">
-              <p className="text-sm text-gray-600">
-                Showing <span className="font-semibold text-gray-900">{filteredVacancies.length}</span> opportunities
-              </p>
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className="md:hidden flex items-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors"
-              >
-                <Filter className="w-4 h-4" />
-                Filters
-                {hasActiveFilters() && (
-                  <span className="w-2 h-2 bg-blue-600 rounded-full" />
-                )}
-              </button>
-            </div>
-
-            {/* Sort & View Toggle */}
-            <div className="flex items-center gap-3">
-              {/* Sort */}
-              <div className="relative">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as 'newest')}
-                  className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  title="Sort by"
+                  className="border-[#8026FA]/20 text-[#8026FA] bg-white hover:bg-[#8026FA]/5 disabled:opacity-60"
+                  disabled={isSyncingNewVacancies}
+                  onClick={handleSyncNewVacancies}
                 >
-                  <option value="newest">Newest</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                  {isSyncingNewVacancies ? 'Updating…' : 'View latest'}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Controls Bar */}
+          <div className="bg-white rounded-xl p-4 mb-6 shadow-sm">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              {/* Results & Filters Toggle */}
+              <div className="flex items-center gap-4">
+                <p className="text-sm text-gray-600">
+                  Showing <span className="font-semibold text-gray-900">{filteredVacancies.length}</span> opportunities
+                </p>
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="lg:hidden flex items-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                >
+                  <Filter className="w-4 h-4" />
+                  Filters
+                  {hasActiveFilters() && (
+                    <span className="w-2 h-2 bg-[#8026FA] rounded-full" />
+                  )}
+                </button>
               </div>
 
-              {/* View Toggle */}
-              <div className="hidden md:flex items-center border border-gray-300 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => { setViewMode('grid'); localStorage.setItem('opp-view-mode', 'grid') }}
-                  className={`p-2 ${viewMode === 'grid' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
-                  title="Grid view"
-                >
-                  <Grid className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => { setViewMode('list'); localStorage.setItem('opp-view-mode', 'list') }}
-                  className={`p-2 ${viewMode === 'list' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}
-                  title="List view"
-                >
-                  <List className="w-4 h-4" />
+              {/* Sort & View Toggle */}
+              <div className="flex items-center gap-3">
+                {/* Sort */}
+                <div className="relative">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                    className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#8026FA]/30"
+                    title="Sort by"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="deadline">Ending Soon</option>
+                    <option value="priority">Priority</option>
+                    <option value="location">Location A-Z</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                </div>
+
+                {/* View Toggle */}
+                <div className="hidden md:flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => { setViewMode('grid'); localStorage.setItem('opp-view-mode', 'grid') }}
+                    className={`p-2 ${viewMode === 'grid' ? 'bg-[#8026FA]/10 text-[#8026FA]' : 'text-gray-600 hover:bg-gray-50'}`}
+                    title="Grid view"
+                  >
+                    <Grid className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => { setViewMode('list'); localStorage.setItem('opp-view-mode', 'list') }}
+                    className={`p-2 ${viewMode === 'list' ? 'bg-[#8026FA]/10 text-[#8026FA]' : 'text-gray-600 hover:bg-gray-50'}`}
+                    title="List view"
+                  >
+                    <List className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -491,14 +582,14 @@ export default function OpportunitiesPage() {
 
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* Filters Panel - Desktop */}
-          <aside className={`${showFilters ? 'block' : 'hidden'} md:block w-full lg:w-72 flex-shrink-0`}>
+          <aside className={`${showFilters ? 'block' : 'hidden'} lg:block w-full lg:w-72 flex-shrink-0`}>
             <div className="bg-white rounded-xl p-6 shadow-sm sticky top-24 space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-900">Filters</h2>
                 {hasActiveFilters() && (
                   <button
                     onClick={clearFilters}
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-sm text-[#8026FA] hover:text-[#6b1de0] font-medium"
                   >
                     Clear all
                   </button>
@@ -517,7 +608,7 @@ export default function OpportunitiesPage() {
                         type="radio"
                         checked={filters.opportunityType === type}
                         onChange={() => updateFilter('opportunityType', type)}
-                        className="w-4 h-4 text-blue-600"
+                        className="w-4 h-4 accent-[#8026FA]"
                       />
                       <span className="text-sm text-gray-700 capitalize">{type === 'all' ? 'All' : type}</span>
                     </label>
@@ -538,7 +629,7 @@ export default function OpportunitiesPage() {
                           type="checkbox"
                           checked={filters.position.includes(position)}
                           onChange={() => togglePosition(position)}
-                          className="w-4 h-4 text-blue-600 rounded"
+                          className="w-4 h-4 accent-[#8026FA] rounded"
                         />
                         <span className="text-sm text-gray-700 capitalize">{position}</span>
                       </label>
@@ -560,7 +651,7 @@ export default function OpportunitiesPage() {
                           type="radio"
                           checked={filters.gender === gender}
                           onChange={() => updateFilter('gender', gender)}
-                          className="w-4 h-4 text-blue-600"
+                          className="w-4 h-4 accent-[#8026FA]"
                         />
                         <span className="text-sm text-gray-700">{gender === 'all' ? 'All' : gender}</span>
                       </label>
@@ -579,7 +670,7 @@ export default function OpportunitiesPage() {
                   value={filters.location}
                   onChange={(e) => updateFilter('location', e.target.value)}
                   placeholder="City or Country"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#8026FA]/30 focus:border-[#8026FA] focus:outline-none transition-colors"
                 />
               </div>
 
@@ -595,7 +686,7 @@ export default function OpportunitiesPage() {
                         type="radio"
                         checked={filters.startDate === start}
                         onChange={() => updateFilter('startDate', start)}
-                        className="w-4 h-4 text-blue-600"
+                        className="w-4 h-4 accent-[#8026FA]"
                       />
                       <span className="text-sm text-gray-700 capitalize">
                         {start === 'all' ? 'All' : start === 'immediate' ? 'Immediate' : 'Scheduled'}
@@ -617,7 +708,7 @@ export default function OpportunitiesPage() {
                         type="checkbox"
                         checked={filters.benefits.includes(benefit)}
                         onChange={() => toggleBenefit(benefit)}
-                        className="w-4 h-4 text-blue-600 rounded"
+                        className="w-4 h-4 accent-[#8026FA] rounded"
                       />
                       <span className="text-sm text-gray-700 capitalize">{benefit}</span>
                     </label>
@@ -637,7 +728,7 @@ export default function OpportunitiesPage() {
                         type="radio"
                         checked={filters.priority === priority}
                         onChange={() => updateFilter('priority', priority)}
-                        className="w-4 h-4 text-blue-600"
+                        className="w-4 h-4 accent-[#8026FA]"
                       />
                       <span className="text-sm text-gray-700 capitalize">{priority === 'all' ? 'All' : priority}</span>
                     </label>
@@ -654,6 +745,26 @@ export default function OpportunitiesPage() {
                 {[1, 2, 3, 4, 5, 6].map(i => (
                   <OpportunityCardSkeleton key={i} />
                 ))}
+              </div>
+            ) : fetchError ? (
+              <div className="bg-white rounded-xl p-12 text-center border border-red-100">
+                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Something went wrong
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  {fetchError}
+                </p>
+                <Button
+                  onClick={() => { fetchVacancies({ skipCache: true }) }}
+                  className="mx-auto bg-gradient-to-r from-[#8026FA] to-[#924CEC]"
+                >
+                  Try Again
+                </Button>
               </div>
             ) : filteredVacancies.length === 0 ? (
               <div className="bg-white rounded-xl p-12 text-center">
@@ -738,7 +849,6 @@ export default function OpportunitiesPage() {
                   if (!user) {
                     setShowSignInPrompt(true)
                   } else {
-                    setShowDetailView(false)
                     setShowApplyModal(true)
                   }
                 }
@@ -762,11 +872,12 @@ export default function OpportunitiesPage() {
           isOpen={showApplyModal}
           onClose={() => {
             setShowApplyModal(false)
-            // Don't clear selectedVacancy immediately - let it persist for the render
-            setTimeout(() => setSelectedVacancy(null), 100)
           }}
           vacancy={selectedVacancy}
           onSuccess={(vacancyId) => {
+            setShowApplyModal(false)
+            setShowDetailView(false)
+            setSelectedVacancy(null)
             setUserApplications(prev => {
               if (prev.includes(vacancyId)) {
                 return prev

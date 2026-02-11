@@ -26,7 +26,7 @@ test.describe('Opportunities - Public', () => {
 test.describe('Opportunities - Accessibility', () => {
   test('opportunities page is keyboard navigable', async ({ page }) => {
     await page.goto('/opportunities')
-    await expect(page.getByRole('main')).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Opportunities' })).toBeVisible({ timeout: 10000 })
 
     await page.keyboard.press('Tab')
     await page.keyboard.press('Tab')
@@ -37,20 +37,14 @@ test.describe('Opportunities - Accessibility', () => {
 
   test('opportunity action buttons are focusable', async ({ page }) => {
     await page.goto('/opportunities')
-    await expect(page.getByRole('main')).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Opportunities' })).toBeVisible({ timeout: 10000 })
 
+    // Apply Now is the primary action button on opportunity cards
     const applyButton = page.getByRole('button', { name: 'Apply Now' }).first()
-    const viewDetailsButton = page.getByRole('button', { name: 'View Details' }).first()
 
     if (await applyButton.isVisible().catch(() => false)) {
       await applyButton.focus()
       await expect(applyButton).toBeFocused()
-      return
-    }
-
-    if (await viewDetailsButton.isVisible().catch(() => false)) {
-      await viewDetailsButton.focus()
-      await expect(viewDetailsButton).toBeFocused()
     }
   })
 })
@@ -60,20 +54,20 @@ test.describe('Responsive Vacancy Display', () => {
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/opportunities')
     await expect(page).toHaveURL('/opportunities')
-    await expect(page.getByRole('main')).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Opportunities' })).toBeVisible({ timeout: 10000 })
   })
 
   test('opportunities page works on tablet', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 })
     await page.goto('/opportunities')
     await expect(page).toHaveURL('/opportunities')
-    await expect(page.getByRole('main')).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Opportunities' })).toBeVisible({ timeout: 10000 })
   })
 
   test('opportunities page works on desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/opportunities')
     await expect(page).toHaveURL('/opportunities')
-    await expect(page.getByRole('main')).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Opportunities' })).toBeVisible({ timeout: 10000 })
   })
 })

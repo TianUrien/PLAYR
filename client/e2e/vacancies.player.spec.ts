@@ -26,6 +26,16 @@ test.describe('Vacancy Application Flow - Player', () => {
     await opportunitiesPage.openOpportunitiesPage()
     await opportunitiesPage.waitForLoadingToComplete()
 
+    // On mobile (< lg), open the filter panel first
+    const sidebar = page.getByRole('complementary')
+    if (!(await sidebar.isVisible().catch(() => false))) {
+      const filtersToggle = page.getByRole('button', { name: /filters/i })
+      if (await filtersToggle.isVisible().catch(() => false)) {
+        await filtersToggle.click()
+        await expect(sidebar).toBeVisible({ timeout: 5000 })
+      }
+    }
+
     // Position filter: midfielder should keep our vacancy visible
     await page.getByRole('checkbox', { name: 'midfielder' }).check()
     await expect(page.getByRole('heading', { level: 2, name: E2E_VACANCY_TITLE })).toBeVisible({ timeout: 20000 })
@@ -46,10 +56,11 @@ test.describe('Vacancy Application Flow - Player', () => {
     const card = await getE2EVacancyCard(page)
     await expect(card).toBeVisible({ timeout: 20000 })
 
-    await card.getByRole('button', { name: new RegExp(`View details for ${E2E_VACANCY_TITLE}`, 'i') }).click()
+    // Cards are now fully clickable — click the card to open detail view
+    await card.click()
 
     // Detail view uses a fixed overlay (not role=dialog), but it has a close button and an H1 title.
-      await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible({ timeout: 20000 })
+    await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible({ timeout: 20000 })
     await expect(page.getByRole('heading', { level: 1, name: E2E_VACANCY_TITLE })).toBeVisible({ timeout: 20000 })
     await expect(page.getByRole('heading', { level: 2, name: 'About This Opportunity' })).toBeVisible()
 
@@ -69,9 +80,10 @@ test.describe('Vacancy Application Flow - Player', () => {
     await expect(card).toBeVisible({ timeout: 20000 })
 
     // If the player has already applied (e.g. from a previous run), we're done.
-    const appliedButton = card.getByRole('button', { name: /applied/i })
-    if (await appliedButton.isVisible().catch(() => false)) {
-      await expect(appliedButton).toBeVisible()
+    // "Applied" state is rendered as a styled div (not a button)
+    const appliedBadge = card.getByText(/^Applied$/i)
+    if (await appliedBadge.isVisible().catch(() => false)) {
+      await expect(appliedBadge).toBeVisible()
       return
     }
 
@@ -87,7 +99,7 @@ test.describe('Vacancy Application Flow - Player', () => {
 
     await opportunitiesPage.expectToast(/Application (submitted successfully|confirmed)!/i)
 
-    // Card should flip into "Applied" state after success
-    await expect(card.getByRole('button', { name: /applied/i })).toBeVisible({ timeout: 20000 })
+    // Card should flip into "Applied" state after success (rendered as a styled div)
+    await expect(card.getByText(/^Applied$/i)).toBeVisible({ timeout: 20000 })
   })
 })

@@ -14,7 +14,7 @@ export function HomeFeed() {
   const feedVirtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => 200,
+    estimateSize: () => 220,
     overscan: 5,
     getItemKey: (index) => items[index]?.feed_item_id ?? index,
   })
@@ -35,9 +35,11 @@ export function HomeFeed() {
   const shouldVirtualize = items.length > 10
 
   return (
-    <div className="space-y-4">
-      {/* Post composer (only shown when authenticated, handled internally) */}
-      <PostComposer onPostCreated={prependItem} />
+    <div>
+      {/* Post composer — visually separated from feed */}
+      <div className="mb-8">
+        <PostComposer onPostCreated={prependItem} />
+      </div>
 
       {/* Loading state */}
       {isLoading && items.length === 0 && (
@@ -50,7 +52,7 @@ export function HomeFeed() {
 
       {/* Error state */}
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-600">
+        <div className="p-4 mb-6 bg-red-50 border border-red-200 rounded-lg text-red-600">
           <p>{error}</p>
           <button
             type="button"
@@ -79,7 +81,6 @@ export function HomeFeed() {
       {shouldVirtualize ? (
         <div
           ref={scrollContainerRef}
-          className="space-y-4"
           style={{ height: '100%', overflow: 'auto' }}
         >
           <div
@@ -102,7 +103,7 @@ export function HomeFeed() {
                   transform: `translateY(${virtualItem.start}px)`,
                 }}
               >
-                <div className="pb-4">
+                <div className="pb-6">
                   <HomeFeedItemCard
                     item={items[virtualItem.index]}
                     onLikeUpdate={updateItemLike}
@@ -114,22 +115,24 @@ export function HomeFeed() {
           </div>
         </div>
       ) : (
-        items.map(item => (
-          <HomeFeedItemCard
-            key={item.feed_item_id}
-            item={item}
-            onLikeUpdate={updateItemLike}
-            onDelete={removeItem}
-          />
-        ))
+        <div className="space-y-6">
+          {items.map(item => (
+            <HomeFeedItemCard
+              key={item.feed_item_id}
+              item={item}
+              onLikeUpdate={updateItemLike}
+              onDelete={removeItem}
+            />
+          ))}
+        </div>
       )}
 
       {/* Load more */}
       {hasMore && !isLoading && (
-        <div className="text-center pt-4">
+        <div className="text-center pt-6">
           <button
             onClick={handleLoadMore}
-            className="px-6 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            className="px-6 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
           >
             Load more
           </button>
@@ -138,8 +141,8 @@ export function HomeFeed() {
 
       {/* Pagination loading */}
       {isLoading && items.length > 0 && (
-        <div className="flex items-center justify-center py-4">
-          <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+        <div className="flex items-center justify-center py-6">
+          <Loader2 className="w-6 h-6 text-[#8026FA] animate-spin" />
         </div>
       )}
     </div>
