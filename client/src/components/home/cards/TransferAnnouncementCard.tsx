@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, MoreHorizontal, Pencil, Trash2, Shield } from 'lucide-react'
+import { ArrowRight, MoreHorizontal, Trash2, Shield } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { usePostInteractions } from '@/hooks/usePostInteractions'
 import { useUserPosts } from '@/hooks/useUserPosts'

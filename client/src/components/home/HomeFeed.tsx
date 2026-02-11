@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useEffect } from 'react'
 import { Loader2, Rss } from 'lucide-react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useHomeFeed } from '@/hooks/useHomeFeed'
@@ -9,13 +9,23 @@ import { PostComposer } from './PostComposer'
 export function HomeFeed() {
   const { items, isLoading, error, refetch, hasMore, loadMore, updateItemLike, removeItem, prependItem } = useHomeFeed()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const prevItemCountRef = useRef(items.length)
 
   const feedVirtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => scrollContainerRef.current,
     estimateSize: () => 200,
     overscan: 5,
+    getItemKey: (index) => items[index]?.feed_item_id ?? index,
   })
+
+  // Recalculate virtualizer measurements when items are added/removed
+  useEffect(() => {
+    if (items.length !== prevItemCountRef.current) {
+      prevItemCountRef.current = items.length
+      feedVirtualizer.measure()
+    }
+  }, [items.length, feedVirtualizer])
 
   const handleLoadMore = useCallback(() => {
     void loadMore()
