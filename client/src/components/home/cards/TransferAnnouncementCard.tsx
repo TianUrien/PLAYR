@@ -6,7 +6,7 @@ import { usePostInteractions } from '@/hooks/usePostInteractions'
 import { useUserPosts } from '@/hooks/useUserPosts'
 import { Avatar, RoleBadge } from '@/components'
 import { getTimeAgo } from '@/lib/utils'
-import { FeedImageCarousel } from '../FeedImageCarousel'
+import { FeedMediaGrid } from '../FeedMediaGrid'
 import { PostInteractionBar } from '../PostInteractionBar'
 import { PostCommentsSection } from '../PostCommentsSection'
 import type { UserPostFeedItem, TransferMetadata } from '@/types/homeFeed'
@@ -189,9 +189,11 @@ export function TransferAnnouncementCard({ item, onLikeUpdate, onDelete }: Trans
         )}
       </div>
 
-      {/* Images if any */}
+      {/* Media grid */}
       {sortedImages.length > 0 && (
-        <FeedImageCarousel images={sortedImages} altPrefix="Transfer" />
+        <div className="px-4 pb-2">
+          <FeedMediaGrid media={sortedImages} />
+        </div>
       )}
 
       {/* Interaction bar */}

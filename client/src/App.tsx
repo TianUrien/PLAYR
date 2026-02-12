@@ -5,6 +5,7 @@ import { logger } from '@/lib/logger'
 import { initGA, trackPageView } from '@/lib/analytics'
 import { ProtectedRoute, ErrorBoundary, Layout, SentryTestButton } from '@/components'
 import ToastContainer from '@/components/ToastContainer'
+import UploadIndicator from '@/components/UploadIndicator'
 import { ProfileImagePreviewProvider } from '@/components/ProfileImagePreviewProvider'
 import InstallPrompt from '@/components/InstallPrompt'
 import { useEngagementTracking } from '@/hooks/useEngagementTracking'
@@ -34,6 +35,7 @@ const ApplicantsList = lazy(() => import('@/pages/ApplicantsList'))
 const PublicPlayerProfile = lazy(() => import('@/pages/PublicPlayerProfile'))
 const PublicClubProfile = lazy(() => import('@/pages/PublicClubProfile'))
 const MessagesPage = lazy(() => import('@/pages/MessagesPage'))
+const SearchPage = lazy(() => import('@/pages/SearchPage'))
 
 // World directory pages
 const WorldPage = lazy(() => import('@/pages/WorldPage'))
@@ -176,6 +178,7 @@ function App() {
       <BrowserRouter>
         <ProfileImagePreviewProvider>
           <ToastContainer />
+          <UploadIndicator />
           <InstallPrompt />
           <EngagementTracker />
           <AnalyticsTracker />
@@ -215,6 +218,7 @@ function App() {
                 {/* Protected Routes (require authentication) - Lazy loaded */}
                 <Route path="/complete-profile" element={<CompleteProfile />} />
                 <Route path="/home" element={<ErrorBoundary fallback={<RouteErrorFallback />}><HomePage /></ErrorBoundary>} />
+                <Route path="/search" element={<ErrorBoundary fallback={<RouteErrorFallback />}><SearchPage /></ErrorBoundary>} />
                 <Route path="/community" element={<ErrorBoundary fallback={<RouteErrorFallback />}><CommunityPage /></ErrorBoundary>} />
                 <Route path="/community/:tab" element={<ErrorBoundary fallback={<RouteErrorFallback />}><CommunityPage /></ErrorBoundary>} />
                 <Route path="/community/questions/:questionId" element={<ErrorBoundary fallback={<RouteErrorFallback />}><QuestionDetailPage /></ErrorBoundary>} />

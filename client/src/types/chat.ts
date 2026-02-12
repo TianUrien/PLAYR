@@ -2,6 +2,19 @@ export type NullableDate = string | null
 
 export type MessageDeliveryStatus = 'sending' | 'sent' | 'delivered' | 'failed'
 
+export interface SharedPostMetadata {
+  type: 'shared_post'
+  post_id: string
+  author_id: string
+  author_name: string | null
+  author_avatar: string | null
+  author_role: 'player' | 'coach' | 'club' | 'brand'
+  content_preview: string
+  thumbnail_url: string | null
+}
+
+export type MessageMetadata = SharedPostMetadata
+
 export interface Message {
   id: string
   conversation_id: string
@@ -9,6 +22,7 @@ export interface Message {
   content: string
   sent_at: string
   read_at: NullableDate
+  metadata?: MessageMetadata | null
 }
 
 export interface ChatMessage extends Message {

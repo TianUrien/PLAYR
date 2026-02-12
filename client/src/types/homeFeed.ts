@@ -123,6 +123,16 @@ export interface TransferMetadata {
   is_known_club: boolean
 }
 
+export interface PostMediaItem {
+  url: string
+  thumb_url?: string | null
+  media_type?: 'image' | 'video'
+  width?: number | null
+  height?: number | null
+  duration?: number | null
+  order: number
+}
+
 export interface UserPostFeedItem extends BaseFeedItem {
   item_type: 'user_post'
   post_id: string
@@ -131,7 +141,7 @@ export interface UserPostFeedItem extends BaseFeedItem {
   author_avatar: string | null
   author_role: 'player' | 'coach' | 'club' | 'brand'
   content: string
-  images: Array<{ url: string; order: number }> | null
+  images: PostMediaItem[] | null
   like_count: number
   comment_count: number
   has_liked: boolean

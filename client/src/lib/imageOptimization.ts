@@ -144,6 +144,46 @@ export async function optimizeImage(
   }
 }
 
+/**
+ * Generate a small square thumbnail for timeline/list views.
+ * Center-crops to square and resizes to the given size (default 128px).
+ */
+export async function generateThumbnail(
+  file: File,
+  options: { size?: number; quality?: number; mimeType?: string } = {}
+): Promise<File> {
+  const size = options.size ?? 128
+  const quality = options.quality ?? 0.7
+  const mimeType = options.mimeType ?? (file.type === 'image/png' ? 'image/png' : 'image/jpeg')
+
+  try {
+    const img = await loadImage(file)
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = size
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) throw new Error('Failed to get canvas context')
+
+    // Center-crop to square
+    const sourceSide = Math.min(img.width, img.height)
+    const sx = (img.width - sourceSide) / 2
+    const sy = (img.height - sourceSide) / 2
+
+    ctx.drawImage(img, sx, sy, sourceSide, sourceSide, 0, 0, size, size)
+
+    const blob = await canvasToBlob(canvas, mimeType, quality)
+    const ext = mimeType === 'image/png' ? 'png' : 'jpg'
+
+    logger.debug(`Thumbnail generated: ${size}x${size}, ${(blob.size / 1024).toFixed(1)} KB`)
+
+    return new File([blob], `thumb.${ext}`, { type: mimeType })
+  } catch (error) {
+    logger.error('Error generating thumbnail:', error)
+    throw error
+  }
+}
+
 export async function optimizeAvatarImage(file: File): Promise<File> {
   const isPng = file.type === 'image/png'
   return optimizeImage(file, {
@@ -156,6 +196,171 @@ export async function optimizeAvatarImage(file: File): Promise<File> {
     squareSize: 512,
   })
 }
+
+// ============================================================================
+// VIDEO UTILITIES
+// ============================================================================
+
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm']
+const MAX_VIDEO_SIZE_MB = 100
+const MAX_VIDEO_DURATION_SECONDS = 180
+
+export function validateVideo(file: File): { valid: boolean; error?: string } {
+  if (!file.name || file.name.length > 255) {
+    return { valid: false, error: 'Invalid file name' }
+  }
+
+  const normalizedName = file.name.toLowerCase()
+  const hasValidExtension =
+    normalizedName.endsWith('.mp4') ||
+    normalizedName.endsWith('.mov') ||
+    normalizedName.endsWith('.webm')
+  const hasValidMime = ALLOWED_VIDEO_TYPES.includes(file.type.toLowerCase())
+
+  if (!hasValidExtension || !hasValidMime) {
+    return { valid: false, error: 'Only MP4, MOV, or WebM videos are allowed.' }
+  }
+
+  const maxBytes = MAX_VIDEO_SIZE_MB * 1024 * 1024
+  if (file.size > maxBytes) {
+    return {
+      valid: false,
+      error: `Video is too large. Max ${MAX_VIDEO_SIZE_MB}MB.`,
+    }
+  }
+
+  return { valid: true }
+}
+
+export function getVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    video.preload = 'metadata'
+    const url = URL.createObjectURL(file)
+
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url)
+      if (!isFinite(video.duration) || video.duration <= 0) {
+        reject(new Error('Could not determine video duration'))
+        return
+      }
+      resolve(video.duration)
+    }
+
+    video.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Failed to load video metadata'))
+    }
+
+    video.src = url
+  })
+}
+
+export function getVideoDimensions(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    video.preload = 'metadata'
+    const url = URL.createObjectURL(file)
+
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(url)
+      resolve({ width: video.videoWidth, height: video.videoHeight })
+    }
+
+    video.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Failed to load video metadata'))
+    }
+
+    video.src = url
+  })
+}
+
+export async function extractVideoThumbnail(
+  file: File,
+  options: { seekTime?: number; quality?: number } = {}
+): Promise<File> {
+  const seekTime = options.seekTime ?? 1
+  const quality = options.quality ?? 0.8
+
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video')
+    video.preload = 'auto'
+    video.muted = true
+    video.playsInline = true
+    const url = URL.createObjectURL(file)
+
+    video.onloadeddata = () => {
+      // Seek to the target time (or midpoint if video is shorter)
+      video.currentTime = Math.min(seekTime, video.duration / 2)
+    }
+
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          URL.revokeObjectURL(url)
+          reject(new Error('Failed to get canvas context'))
+          return
+        }
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        URL.revokeObjectURL(url)
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              logger.debug(`Video thumbnail extracted: ${canvas.width}x${canvas.height}, ${(blob.size / 1024).toFixed(1)} KB`)
+              resolve(new File([blob], 'poster.jpg', { type: 'image/jpeg' }))
+            } else {
+              reject(new Error('Failed to create thumbnail blob'))
+            }
+          },
+          'image/jpeg',
+          quality
+        )
+      } catch (err) {
+        URL.revokeObjectURL(url)
+        reject(err)
+      }
+    }
+
+    video.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Failed to load video for thumbnail extraction'))
+    }
+
+    video.src = url
+  })
+}
+
+export async function validateVideoFull(file: File): Promise<{ valid: boolean; error?: string; duration?: number; width?: number; height?: number }> {
+  const basic = validateVideo(file)
+  if (!basic.valid) return basic
+
+  try {
+    const [duration, dimensions] = await Promise.all([
+      getVideoDuration(file),
+      getVideoDimensions(file),
+    ])
+
+    if (duration > MAX_VIDEO_DURATION_SECONDS) {
+      return { valid: false, error: `Video must be ${MAX_VIDEO_DURATION_SECONDS / 60} minutes or less. Current: ${Math.ceil(duration)}s.` }
+    }
+
+    return { valid: true, duration, width: dimensions.width, height: dimensions.height }
+  } catch {
+    return { valid: false, error: 'Could not read video metadata. The file may be corrupted.' }
+  }
+}
+
+// ============================================================================
+// INTERNAL HELPERS
+// ============================================================================
 
 /**
  * Load image from file

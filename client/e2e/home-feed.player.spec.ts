@@ -92,23 +92,34 @@ test.describe('@smoke home feed player', () => {
     }
   })
 
-  test('player can share a post (copy link)', async ({ page, homeFeedPage, context }) => {
+  test('player can share a post (share sheet with copy link)', async ({ page, homeFeedPage, context }) => {
     await homeFeedPage.openHomeFeed()
     await page.waitForLoadState('networkidle')
 
     // Grant clipboard permissions
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
 
-    // Look for any Share button
+    // Look for any Share button on a post card
     const shareButton = page.getByRole('button', { name: /share/i }).first()
     const hasShareButton = await shareButton.isVisible({ timeout: 10000 }).catch(() => false)
 
     if (hasShareButton) {
       await shareButton.click()
 
-      // Should show "Copied!" feedback
+      // Share sheet should open with "Share post" heading and Copy link button
       await expect(
-        page.getByText('Copied!').first()
+        page.getByText('Share post')
+      ).toBeVisible({ timeout: 5000 })
+
+      await expect(
+        page.getByText('Copy link')
+      ).toBeVisible({ timeout: 5000 })
+
+      // Click Copy link and verify toast feedback
+      await page.getByText('Copy link').click()
+
+      await expect(
+        page.getByText(/link copied/i).first()
       ).toBeVisible({ timeout: 5000 })
     }
   })
