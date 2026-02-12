@@ -10,7 +10,7 @@ import { useToastStore } from '@/lib/toast'
 import { useUnreadStore } from '@/lib/unread'
 import { loadMessageDraft, saveMessageDraft, clearMessageDraft } from '@/lib/messageDrafts'
 import { reportSupabaseError } from '@/lib/sentryHelpers'
-import type { ChatMessage, Message, Conversation, ChatMessageEvent, MessageDeliveryStatus } from '@/types/chat'
+import type { ChatMessage, Message, Conversation, ChatMessageEvent, MessageDeliveryStatus, MessageMetadata } from '@/types/chat'
 
 const MESSAGES_PAGE_SIZE = 50
 
@@ -456,7 +456,7 @@ export function useChat({
     syncMessagesState(prev => prev.filter(msg => msg.id !== messageId))
   }, [syncMessagesState])
 
-  const sendMessage = useCallback(async (content: string, options?: { reuseOptimisticId?: string }) => {
+  const sendMessage = useCallback(async (content: string, options?: { reuseOptimisticId?: string; metadata?: MessageMetadata | null }) => {
     if (!content.trim() || sending) return false
 
     const messageContent = content.trim()
@@ -579,7 +579,8 @@ export function useChat({
           content: messageContent,
           sent_at: new Date().toISOString(),
           read_at: null,
-          status: 'sending'
+          status: 'sending',
+          metadata: options?.metadata ?? null,
         }
 
         syncMessagesState(prev => [...prev, optimisticMessage!])
@@ -608,7 +609,8 @@ export function useChat({
                 conversation_id: conversationIdForMetrics,
                 sender_id: currentUserId,
                 content: messageContent,
-                idempotency_key: idempotencyKey
+                idempotency_key: idempotencyKey,
+                ...(options?.metadata ? { metadata: options.metadata } : {}),
               })
               .select()
 
@@ -704,7 +706,7 @@ export function useChat({
       return
     }
 
-    void sendMessage(failedMessage.content, { reuseOptimisticId: messageId })
+    void sendMessage(failedMessage.content, { reuseOptimisticId: messageId, metadata: failedMessage.metadata ?? null })
   }, [sendMessage])
 
   // Realtime subscription
