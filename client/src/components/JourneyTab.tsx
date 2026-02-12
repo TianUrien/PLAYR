@@ -20,7 +20,7 @@ import { differenceInMonths, format } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
-import { optimizeImage, validateImage } from '@/lib/imageOptimization'
+import { optimizeImage, generateThumbnail, validateImage } from '@/lib/imageOptimization'
 import type { CareerHistory } from '@/lib/supabase'
 import { deleteStorageObject, extractStoragePath } from '@/lib/storage'
 import { logger } from '@/lib/logger'
@@ -127,6 +127,13 @@ const MONTH_OPTIONS = [
 const CURRENT_YEAR = new Date().getUTCFullYear()
 const YEAR_OPTIONS = Array.from({ length: 70 }, (_, index) => CURRENT_YEAR + 5 - index).map(year => String(year))
 const JOURNEY_BUCKET = 'journey'
+
+/** Derive the thumbnail URL from a full image URL using naming convention: foo.jpg → foo_thumb.jpg */
+const deriveThumbUrl = (imageUrl: string): string => {
+  const lastDot = imageUrl.lastIndexOf('.')
+  if (lastDot === -1) return imageUrl
+  return `${imageUrl.slice(0, lastDot)}_thumb${imageUrl.slice(lastDot)}`
+}
 
 const createEmptyJourneyEntry = (userId: string): EditableJourneyEntry => ({
   id: `temp-${Date.now()}`,
@@ -505,21 +512,33 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
     setUploadingImageId(activeEntryDraft.id)
 
     try {
+      const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
       const optimizedFile = await optimizeImage(file, {
         maxWidth: 800,
         maxHeight: 800,
         maxSizeMB: 1,
-        mimeType: file.type === 'image/png' ? 'image/png' : 'image/jpeg',
+        mimeType,
       })
 
       const extension = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-      const fileName = `${user.id}/journey/${Date.now()}_${Math.random().toString(36).slice(2)}.${extension}`
+      const baseName = `${Date.now()}_${Math.random().toString(36).slice(2)}`
+      const fileName = `${user.id}/journey/${baseName}.${extension}`
+      const thumbName = `${user.id}/journey/${baseName}_thumb.${extension}`
 
+      // Upload full image with long-lived cache header
       const { error: uploadError } = await supabase.storage
         .from(JOURNEY_BUCKET)
-        .upload(fileName, optimizedFile, { upsert: true })
+        .upload(fileName, optimizedFile, { upsert: true, cacheControl: '31536000' })
 
       if (uploadError) throw uploadError
+
+      // Generate and upload 128px thumbnail (best-effort, non-blocking for save)
+      generateThumbnail(file, { size: 128, quality: 0.7, mimeType }).then(async (thumbFile) => {
+        const { error: thumbError } = await supabase.storage
+          .from(JOURNEY_BUCKET)
+          .upload(thumbName, thumbFile, { upsert: true, cacheControl: '31536000' })
+        if (thumbError) logger.error('Thumbnail upload failed (non-critical):', thumbError)
+      }).catch((err) => logger.error('Thumbnail generation failed (non-critical):', err))
 
       const { data } = supabase.storage.from(JOURNEY_BUCKET).getPublicUrl(fileName)
 
@@ -527,7 +546,12 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       updateField('image_url', data.publicUrl as EditableJourneyEntry['image_url'])
 
       if (previousUrl && previousUrl !== data.publicUrl) {
+        // Clean up old full image + old thumbnail
         await deleteStorageObject({ bucket: JOURNEY_BUCKET, publicUrl: previousUrl, context: 'journey:replace-image' })
+        const oldThumbUrl = deriveThumbUrl(previousUrl)
+        if (oldThumbUrl !== previousUrl) {
+          deleteStorageObject({ bucket: JOURNEY_BUCKET, publicUrl: oldThumbUrl, context: 'journey:replace-thumb' })
+        }
       }
 
       addToast('Image uploaded successfully.', 'success')
@@ -553,6 +577,11 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
     try {
       if (activeEntryDraft.image_url) {
         await deleteStorageObject({ bucket: JOURNEY_BUCKET, publicUrl: activeEntryDraft.image_url, context: 'journey:remove-image' })
+        // Best-effort thumbnail cleanup
+        const thumbUrl = deriveThumbUrl(activeEntryDraft.image_url)
+        if (thumbUrl !== activeEntryDraft.image_url) {
+          deleteStorageObject({ bucket: JOURNEY_BUCKET, publicUrl: thumbUrl, context: 'journey:remove-thumb' })
+        }
       }
 
       updateField('image_url', null as EditableJourneyEntry['image_url'])
@@ -1005,12 +1034,12 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       return (
         <div className="space-y-6">
           {Array.from({ length: 3 }).map((_, idx) => (
-            <div key={idx} className="flex gap-4">
+            <div key={idx} className="flex gap-3 md:gap-4">
               <div className="flex flex-col items-center">
                 <div className="h-10 w-10 rounded-full bg-gray-200" />
                 <div className="w-px flex-1 bg-gray-200" />
               </div>
-              <div className="flex-1 space-y-4 rounded-2xl border border-gray-100 bg-white p-6">
+              <div className="flex-1 space-y-4 rounded-2xl border border-gray-100 bg-white p-3 sm:p-6">
                 <Skeleton height={24} width="55%" />
                 <Skeleton height={16} width="35%" />
                 <Skeleton height={80} width="100%" />
@@ -1105,7 +1134,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
             <div className="pointer-events-none absolute left-5 top-5 bottom-5 w-0.5 bg-gradient-to-b from-indigo-200 via-gray-200 to-gray-100 md:left-6" />
             
             <div className="space-y-6">
-              {ordered.map((entry) => {
+              {ordered.map((entry, entryIndex) => {
                 const meta = entry.entry_type ? entryTypeMeta[entry.entry_type] : entryTypeMeta.club
                 const Icon = meta.icon
                 const startLabel = formatMonthLabel(entry.start_date)
@@ -1117,7 +1146,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
                 const isEditingEntry = activeFormType === entry.id && Boolean(activeEntryDraft)
 
                 return (
-                  <div key={entry.id} className="relative flex gap-4 md:gap-5">
+                  <div key={entry.id} className="relative flex gap-3 md:gap-5">
                     {/* Timeline anchor icon */}
                     <div className="relative z-10 flex-shrink-0">
                       <div
@@ -1130,61 +1159,63 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
                     {/* Entry card */}
                     <div className="flex-1 min-w-0 pb-2">
                       {isEditingEntry && activeEntryDraft ? (
-                        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                        <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm sm:p-4">
                           {renderEntryForm(activeEntryDraft, 'edit')}
                         </div>
                       ) : (
-                        <div className="group rounded-xl border border-gray-100 bg-white p-4 transition-shadow hover:shadow-md">
-                          {/* Header row: Logo + Title + Actions */}
-                          <div className="flex items-start gap-3">
-                            {/* Club/Event logo */}
+                        <div className="group relative rounded-xl border border-gray-100 bg-white p-3 transition-shadow hover:shadow-md sm:p-4">
+                          {/* Action icons — absolutely positioned so they don't consume text width */}
+                          {!readOnly && (
+                            <div className="absolute right-2 top-2 z-10 flex items-center gap-0.5 rounded-lg bg-white/90 opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100">
+                              <button
+                                type="button"
+                                onClick={() => startEditEntry(entry)}
+                                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                                title="Edit entry"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteEntry(entry.id)}
+                                className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-500"
+                                title="Delete entry"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Header row: Logo + Title */}
+                          <div className="flex items-start gap-2.5 sm:gap-3">
+                            {/* Club/Event logo — use thumbnail with full image fallback */}
                             <StorageImage
-                              src={entry.image_url}
+                              src={entry.image_url ? deriveThumbUrl(entry.image_url) : null}
+                              fallbackSrc={entry.image_url}
                               alt="Journey logo"
                               className="h-full w-full object-cover rounded-xl"
-                              containerClassName="h-12 w-12 min-w-[3rem] rounded-xl"
-                              fallbackClassName="h-12 w-12 rounded-xl bg-gray-50"
+                              containerClassName="h-10 w-10 min-w-[2.5rem] rounded-xl sm:h-12 sm:w-12 sm:min-w-[3rem]"
+                              fallbackClassName="h-10 w-10 rounded-xl bg-gray-50 sm:h-12 sm:w-12"
                               fallback={<ImageIcon className="h-4 w-4 text-gray-300" />}
+                              fetchPriority={entryIndex < 3 ? 'high' : undefined}
                             />
 
                             {/* Title & context */}
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-gray-900 leading-tight">{entry.club_name}</h3>
+                              <h3 className="font-semibold leading-snug text-gray-900">{entry.club_name}</h3>
                               {location && (
-                                <p className="mt-0.5 text-sm text-gray-500">{location}</p>
+                                <p className="mt-0.5 text-sm leading-normal text-gray-500">{location}</p>
                               )}
                               {(entry.position_role || entry.division_league) && (
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm leading-normal text-gray-500">
                                   {[entry.position_role, entry.division_league].filter(Boolean).join(' · ')}
                                 </p>
                               )}
                             </div>
-
-                            {/* Action icons - subtle, right-aligned */}
-                            {!readOnly && (
-                              <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                                <button
-                                  type="button"
-                                  onClick={() => startEditEntry(entry)}
-                                  className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                                  title="Edit entry"
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteEntry(entry.id)}
-                                  className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-500"
-                                  title="Delete entry"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            )}
                           </div>
 
                           {/* Meta row: Badge + Dates + Duration */}
-                          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs text-gray-500 sm:mt-3 sm:gap-2">
                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium ${meta.badgeClass}`}>
                               {meta.label}
                             </span>

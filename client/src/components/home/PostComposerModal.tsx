@@ -5,9 +5,10 @@ import { useAuthStore } from '@/lib/auth'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { useUserPosts, type PostImage } from '@/hooks/useUserPosts'
 import { validateImage, optimizeImage } from '@/lib/imageOptimization'
+import { useUploadManager } from '@/lib/uploadManager'
 import { logger } from '@/lib/logger'
 import { Avatar } from '@/components'
-import { PostImageUploader, type UploadedImage } from './PostImageUploader'
+import { PostMediaUploader, type UploadedMedia } from './PostMediaUploader'
 import type { HomeFeedItem, UserPostFeedItem, TransferMetadata } from '@/types/homeFeed'
 
 interface PostComposerModalProps {
@@ -56,8 +57,9 @@ export function PostComposerModal({
 
   // Common state
   const [content, setContent] = useState('')
-  const [images, setImages] = useState<UploadedImage[]>([])
+  const [media, setMedia] = useState<UploadedMedia[]>([])
   const [isUploading, setIsUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -72,7 +74,7 @@ export function PostComposerModal({
   const [clubLogoUrl, setClubLogoUrl] = useState<string | null>(null)
   const [isUploadingLogo, setIsUploadingLogo] = useState(false)
 
-  // Cleanup search timeout on unmount
+  // Cleanup search timeout on unmount (uploads survive modal close via global store)
   useEffect(() => {
     return () => {
       if (searchTimeoutRef.current) {
@@ -87,14 +89,22 @@ export function PostComposerModal({
 
     if (editingPost) {
       setContent(editingPost.content)
-      setImages(
+      setMedia(
         editingPost.images
-          ? editingPost.images.map((img, i) => ({ url: img.url, order: i }))
+          ? editingPost.images.map((img, i) => ({
+              url: img.url,
+              thumb_url: (img as UploadedMedia).thumb_url ?? null,
+              media_type: (img as UploadedMedia).media_type ?? 'image',
+              width: (img as UploadedMedia).width ?? null,
+              height: (img as UploadedMedia).height ?? null,
+              duration: (img as UploadedMedia).duration ?? null,
+              order: i,
+            }))
           : []
       )
     } else {
       setContent('')
-      setImages([])
+      setMedia([])
     }
     setError(null)
     setMode('post')
@@ -104,6 +114,26 @@ export function PostComposerModal({
     setShowUnknownClub(false)
     setCustomClubName('')
     setClubLogoUrl(null)
+
+    // Consume any uploads that completed while modal was closed
+    const { uploads, dismissUpload } = useUploadManager.getState()
+    for (const entry of Object.values(uploads)) {
+      if (entry.status === 'completed' && entry.result) {
+        setMedia((prev) => [
+          ...prev,
+          {
+            url: entry.result!.videoUrl,
+            thumb_url: entry.result!.thumbUrl,
+            media_type: 'video' as const,
+            width: entry.result!.width,
+            height: entry.result!.height,
+            duration: entry.result!.duration,
+            order: prev.length,
+          },
+        ])
+        dismissUpload(entry.id)
+      }
+    }
 
     // Auto-focus textarea
     setTimeout(() => textareaRef.current?.focus(), 100)
@@ -153,7 +183,7 @@ export function PostComposerModal({
     textarea.style.height = `${textarea.scrollHeight}px`
   }, [])
 
-  const handleImageAdd = useCallback(async (file: File) => {
+  const handleMediaAddImage = useCallback(async (file: File) => {
     if (!user) return
 
     setIsUploading(true)
@@ -181,6 +211,7 @@ export function PostComposerModal({
         .upload(fileName, optimized, {
           contentType: optimized.type,
           upsert: false,
+          cacheControl: '31536000',
         })
 
       if (uploadError) throw uploadError
@@ -189,7 +220,11 @@ export function PostComposerModal({
         .from(BUCKET)
         .getPublicUrl(fileName)
 
-      setImages(prev => [...prev, { url: urlData.publicUrl, order: prev.length }])
+      setMedia(prev => [...prev, {
+        url: urlData.publicUrl,
+        media_type: 'image' as const,
+        order: prev.length,
+      }])
     } catch (err) {
       logger.error('[PostComposerModal] Image upload error:', err)
       setError(err instanceof Error ? err.message : 'Failed to upload image')
@@ -198,10 +233,70 @@ export function PostComposerModal({
     }
   }, [user])
 
-  const handleImageRemove = useCallback((index: number) => {
-    setImages(prev => prev
+  const handleMediaAddVideo = useCallback((file: File) => {
+    if (!user) return
+
+    setIsUploading(true)
+    setUploadProgress(0)
+    setError(null)
+
+    // Dispatch to global upload manager — survives modal close, tab switch, navigation
+    const uploadId = useUploadManager.getState().startVideoUpload({
+      file,
+      userId: user.id,
+      onComplete: (result) => {
+        setMedia((prev) => [
+          ...prev,
+          {
+            url: result.videoUrl,
+            thumb_url: result.thumbUrl,
+            media_type: 'video' as const,
+            width: result.width,
+            height: result.height,
+            duration: result.duration,
+            order: prev.length,
+          },
+        ])
+        setIsUploading(false)
+        setUploadProgress(null)
+      },
+    })
+
+    // Mirror store progress into local state while modal is open
+    const unsubscribe = useUploadManager.subscribe((state) => {
+      const entry = state.uploads[uploadId]
+      if (!entry) {
+        unsubscribe()
+        return
+      }
+      setUploadProgress(entry.progress)
+      if (entry.status === 'error') {
+        setError(entry.error)
+        setIsUploading(false)
+        setUploadProgress(null)
+        unsubscribe()
+      }
+      if (entry.status === 'cancelled' || entry.status === 'completed') {
+        setIsUploading(false)
+        setUploadProgress(null)
+        unsubscribe()
+      }
+    })
+  }, [user])
+
+  const handleCancelUpload = useCallback(() => {
+    const { uploads, cancelUpload } = useUploadManager.getState()
+    for (const entry of Object.values(uploads)) {
+      if (entry.status === 'uploading' || entry.status === 'validating' || entry.status === 'paused') {
+        cancelUpload(entry.id)
+      }
+    }
+  }, [])
+
+  const handleMediaRemove = useCallback((index: number) => {
+    setMedia(prev => prev
       .filter((_, i) => i !== index)
-      .map((img, i) => ({ ...img, order: i }))
+      .map((item, i) => ({ ...item, order: i }))
     )
   }, [])
 
@@ -260,14 +355,14 @@ export function PostComposerModal({
       setError(null)
 
       try {
-        const postImages = images.length > 0 ? images : null
+        const postMedia = media.length > 0 ? media : null
         const result = await createTransferPost(
           clubName,
           selectedClub?.country_id ?? null,
           selectedClub?.id ?? null,
           selectedClub ? selectedClub.avatar_url : clubLogoUrl,
           content.trim() || null,
-          postImages
+          postMedia
         )
 
         if (!result.success) {
@@ -276,7 +371,7 @@ export function PostComposerModal({
 
         // Build optimistic feed item
         if (result.post_id && profile) {
-          const metadata: TransferMetadata = {
+          const transferMetadata: TransferMetadata = {
             club_name: clubName,
             club_country_id: selectedClub?.country_id ?? null,
             club_country_code: selectedClub?.country_code ?? null,
@@ -297,18 +392,18 @@ export function PostComposerModal({
             author_avatar: profile.avatar_url,
             author_role: profile.role as 'player' | 'coach' | 'club' | 'brand',
             content: content.trim() || `Joined ${clubName}!`,
-            images: postImages,
+            images: postMedia,
             like_count: 0,
             comment_count: 0,
             has_liked: false,
             post_type: 'transfer',
-            metadata,
+            metadata: transferMetadata,
           }
           onPostCreated(newItem)
         }
 
         setContent('')
-        setImages([])
+        setMedia([])
         onClose()
       } catch (err) {
         logger.error('[PostComposerModal] Transfer submit error:', err)
@@ -336,15 +431,15 @@ export function PostComposerModal({
     setError(null)
 
     try {
-      const postImages = images.length > 0 ? images : null
+      const postMedia = media.length > 0 ? media : null
 
       if (isEdit && editingPost) {
-        const result = await updatePost(editingPost.id, trimmed, postImages)
+        const result = await updatePost(editingPost.id, trimmed, postMedia)
         if (!result.success) {
           throw new Error(result.error || 'Failed to update post')
         }
       } else {
-        const result = await createPost(trimmed, postImages)
+        const result = await createPost(trimmed, postMedia)
         if (!result.success) {
           throw new Error(result.error || 'Failed to create post')
         }
@@ -360,7 +455,7 @@ export function PostComposerModal({
             author_avatar: profile.avatar_url,
             author_role: profile.role as 'player' | 'coach' | 'club' | 'brand',
             content: trimmed,
-            images: postImages,
+            images: postMedia,
             like_count: 0,
             comment_count: 0,
             has_liked: false,
@@ -370,7 +465,7 @@ export function PostComposerModal({
       }
 
       setContent('')
-      setImages([])
+      setMedia([])
       onClose()
     } catch (err) {
       logger.error('[PostComposerModal] Submit error:', err)
@@ -378,7 +473,7 @@ export function PostComposerModal({
     } finally {
       setIsSubmitting(false)
     }
-  }, [content, images, mode, selectedClub, customClubName, clubLogoUrl, isEdit, editingPost, createPost, createTransferPost, updatePost, profile, onPostCreated, onClose, isSubmitting])
+  }, [content, media, mode, selectedClub, customClubName, clubLogoUrl, isEdit, editingPost, createPost, createTransferPost, updatePost, profile, onPostCreated, onClose, isSubmitting])
 
   if (!isOpen) return null
 
@@ -672,12 +767,16 @@ export function PostComposerModal({
               </div>
             </div>
 
-            {/* Image uploader */}
-            <PostImageUploader
-              images={images}
-              onAdd={handleImageAdd}
-              onRemove={handleImageRemove}
+            {/* Media uploader (images + video) */}
+            <PostMediaUploader
+              media={media}
+              onAddImage={handleMediaAddImage}
+              onAddVideo={handleMediaAddVideo}
+              onRemove={handleMediaRemove}
+              onCancelUpload={handleCancelUpload}
               isUploading={isUploading}
+              uploadProgress={uploadProgress}
+              maxItems={5}
             />
 
             {/* Submit */}
