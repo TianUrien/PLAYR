@@ -81,18 +81,20 @@ test.describe('Messages Navigation', () => {
   test('can navigate to messages from header', async ({ page }) => {
     await page.goto('/dashboard/profile')
     await page.waitForLoadState('networkidle')
-    
-    // Find and click messages link in header
-    const messagesLink = page.getByRole('link', { name: /messages/i })
-      .or(page.locator('[href="/messages"]'))
-      .or(page.locator('[aria-label*="messages"]'))
-    
-    if (await messagesLink.first().isVisible({ timeout: 5000 }).catch(() => false)) {
-      await messagesLink.first().click()
-      await page.waitForURL(/messages/)
-      
-      // Should be on messages page
-      await expect(page).toHaveURL(/messages/)
+
+    // Dismiss the notifications drawer if it's truly open (not just rendered off-screen)
+    // When open, aria-modal="true" blocks all Playwright role queries outside the dialog
+    const notifDialog = page.locator('[role="dialog"][aria-label="Notifications"]')
+    if (await notifDialog.count() > 0 && await notifDialog.getAttribute('aria-modal') === 'true') {
+      await page.getByRole('button', { name: 'Close notifications' }).click()
+      await expect(notifDialog).not.toHaveAttribute('aria-modal', 'true', { timeout: 5000 })
     }
+
+    // The header messages button is a <button> with aria-label="Messages"
+    const messagesButton = page.getByRole('button', { name: 'Messages', exact: true }).first()
+    await expect(messagesButton).toBeVisible({ timeout: 10000 })
+
+    await messagesButton.click()
+    await expect(page).toHaveURL(/\/messages/, { timeout: 20000 })
   })
 })

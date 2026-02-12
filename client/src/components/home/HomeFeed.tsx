@@ -1,6 +1,5 @@
-import { useRef, useCallback, useEffect } from 'react'
+import { useCallback } from 'react'
 import { Loader2, Rss } from 'lucide-react'
-import { useVirtualizer } from '@tanstack/react-virtual'
 import { useHomeFeed } from '@/hooks/useHomeFeed'
 import { HomeFeedItemCard } from './HomeFeedItemCard'
 import { FeedSkeleton } from './FeedSkeleton'
@@ -8,31 +7,10 @@ import { PostComposer } from './PostComposer'
 
 export function HomeFeed() {
   const { items, isLoading, error, refetch, hasMore, loadMore, updateItemLike, removeItem, prependItem } = useHomeFeed()
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const prevItemCountRef = useRef(items.length)
-
-  const feedVirtualizer = useVirtualizer({
-    count: items.length,
-    getScrollElement: () => scrollContainerRef.current,
-    estimateSize: () => 220,
-    overscan: 5,
-    getItemKey: (index) => items[index]?.feed_item_id ?? index,
-  })
-
-  // Recalculate virtualizer measurements when items are added/removed
-  useEffect(() => {
-    if (items.length !== prevItemCountRef.current) {
-      prevItemCountRef.current = items.length
-      feedVirtualizer.measure()
-    }
-  }, [items.length, feedVirtualizer])
 
   const handleLoadMore = useCallback(() => {
     void loadMore()
   }, [loadMore])
-
-  // Non-virtualized layout when few items (simpler for empty/loading states)
-  const shouldVirtualize = items.length > 10
 
   return (
     <div>
@@ -77,44 +55,8 @@ export function HomeFeed() {
         </div>
       )}
 
-      {/* Feed items — virtualized for large lists, plain map for small */}
-      {shouldVirtualize ? (
-        <div
-          ref={scrollContainerRef}
-          style={{ height: '100%', overflow: 'auto' }}
-        >
-          <div
-            style={{
-              height: `${feedVirtualizer.getTotalSize()}px`,
-              width: '100%',
-              position: 'relative',
-            }}
-          >
-            {feedVirtualizer.getVirtualItems().map(virtualItem => (
-              <div
-                key={items[virtualItem.index].feed_item_id}
-                data-index={virtualItem.index}
-                ref={feedVirtualizer.measureElement}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  transform: `translateY(${virtualItem.start}px)`,
-                }}
-              >
-                <div className="pb-6">
-                  <HomeFeedItemCard
-                    item={items[virtualItem.index]}
-                    onLikeUpdate={updateItemLike}
-                    onDelete={removeItem}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
+      {/* Feed items */}
+      {items.length > 0 && (
         <div className="space-y-6">
           {items.map(item => (
             <HomeFeedItemCard

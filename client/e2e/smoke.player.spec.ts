@@ -72,13 +72,15 @@ test.describe('@smoke player', () => {
 
   test('player cannot access club dashboard applicants', async ({ page }) => {
     await page.goto('/dashboard/opportunities/some-fake-id/applicants')
-    await page.waitForTimeout(3000)
 
-    // Player should NOT see applicants management UI — expect redirect or error
-    const url = page.url()
-    const isRedirected = !url.includes('/applicants')
-    const showsError = await page.getByRole('heading', { name: /error/i }).isVisible().catch(() => false)
-    const showsFailure = await page.getByText(/failed to load applicants/i).isVisible().catch(() => false)
-    expect(isRedirected || showsError || showsFailure).toBe(true)
+    // Player should NOT see applicants management UI — wait for redirect or error
+    // Use Playwright's toPass polling to avoid hardcoded timeouts
+    await expect(async () => {
+      const url = page.url()
+      const isRedirected = !url.includes('/applicants')
+      const showsError = await page.getByRole('heading', { name: /error/i }).isVisible().catch(() => false)
+      const showsFailure = await page.getByText(/failed to load applicants/i).isVisible().catch(() => false)
+      expect(isRedirected || showsError || showsFailure).toBe(true)
+    }).toPass({ timeout: 15000, intervals: [500, 1000, 2000] })
   })
 })

@@ -87,8 +87,10 @@ test.describe('Vacancy Application Flow - Player', () => {
       return
     }
 
-    // Open apply modal
-    await card.getByRole('button', { name: 'Apply Now' }).click()
+    // Open apply modal (retry if the card re-renders and detaches the button mid-click)
+    await expect(async () => {
+      await card.getByRole('button', { name: 'Apply Now' }).click({ timeout: 5000 })
+    }).toPass({ timeout: 15000, intervals: [500, 1000, 2000] })
 
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByRole('heading', { level: 2, name: 'Apply to Position' })).toBeVisible()

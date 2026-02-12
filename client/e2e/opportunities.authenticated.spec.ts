@@ -9,6 +9,14 @@ import { test, expect } from './fixtures'
 
 // Helper: open filter panel on viewports where it's hidden (< lg / 1024px)
 async function ensureFiltersVisible(page: import('@playwright/test').Page) {
+  // Dismiss the notifications drawer if it's truly open (not just rendered off-screen)
+  // When open, aria-modal="true" blocks all Playwright role queries outside the dialog
+  const notifDialog = page.locator('[role="dialog"][aria-label="Notifications"]')
+  if (await notifDialog.count() > 0 && await notifDialog.getAttribute('aria-modal') === 'true') {
+    await page.getByRole('button', { name: 'Close notifications' }).click()
+    await expect(notifDialog).not.toHaveAttribute('aria-modal', 'true', { timeout: 5000 })
+  }
+
   const sidebar = page.getByRole('complementary')
   const isVisible = await sidebar.isVisible().catch(() => false)
   if (!isVisible) {
@@ -107,17 +115,16 @@ test.describe('Opportunities Page - Authenticated Player', () => {
     const initialCount = parseInt(countText?.match(/\d+/)?.[0] || '0')
 
     // Apply goalkeeper filter using checkbox role
-    await page.getByRole('checkbox', { name: /goalkeeper/i }).click()
+    const goalkeeperCheckbox = page.getByRole('checkbox', { name: /goalkeeper/i })
+    await expect(goalkeeperCheckbox).toBeVisible({ timeout: 5000 })
+    await goalkeeperCheckbox.click()
 
-    // Wait for filter to apply
-    await page.waitForTimeout(500)
-
-    // Count should change (unless all are goalkeepers or none are)
-    const newCountText = await page.getByText(/showing \d+ opportunities/i).textContent()
-    const newCount = parseInt(newCountText?.match(/\d+/)?.[0] || '0')
-
-    // The count changed or stayed the same - either way, filter was applied
-    expect(newCount).toBeLessThanOrEqual(initialCount)
+    // Wait for filter to apply by polling (replaces fragile waitForTimeout)
+    await expect(async () => {
+      const newCountText = await page.getByText(/showing \d+ opportunities/i).textContent()
+      const newCount = parseInt(newCountText?.match(/\d+/)?.[0] || '0')
+      expect(newCount).toBeLessThanOrEqual(initialCount)
+    }).toPass({ timeout: 10000, intervals: [500, 1000, 2000] })
   })
 
   test('shows empty state when no vacancies match filter', async ({ page }) => {

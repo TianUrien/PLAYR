@@ -80,22 +80,30 @@ test.describe('Messaging - Full Flow', () => {
     const composer = page.getByPlaceholder(/type a message/i)
     await expect(composer).toBeVisible({ timeout: 20000 })
 
+    // Ensure composer is focused and ready
+    await composer.click()
+
     const message = `Enter key test ${Date.now()}`
     await composer.fill(message)
 
     // Verify composer has content before sending
     await expect(composer).toHaveValue(message)
 
-    // Send with Enter
+    // Send with Enter and wait for the Supabase insert response
+    const sendPromise = page.waitForResponse(
+      resp => resp.url().includes('rest/v1') && resp.request().method() === 'POST' && resp.status() < 400,
+      { timeout: 20000 }
+    )
     await page.keyboard.press('Enter')
+    await sendPromise
 
-    // Composer should be cleared
+    // Composer should be cleared after send completes
     await expect(composer).toHaveValue('', { timeout: 10000 })
 
-    // Message should appear in the chat
+    // Message should appear in the chat (give realtime subscription time to deliver)
     await expect(
       page.getByTestId('chat-message-list').getByText(message)
-    ).toBeVisible({ timeout: 20000 })
+    ).toBeVisible({ timeout: 30000 })
   })
 })
 

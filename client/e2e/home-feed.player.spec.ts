@@ -121,8 +121,6 @@ test.describe('@smoke home feed player', () => {
     await page.waitForTimeout(2000)
 
     // Feed should have loaded — either feed content (Like buttons on cards) or empty state
-    // Note: when items > 10 the feed virtualizes and .space-y-6 disappears,
-    // so we detect feed content via action buttons instead.
     const feedItem = page.getByRole('button', { name: /like/i }).first()
     const emptyState = page.getByText(/no activity yet/i)
     await expect(feedItem.or(emptyState)).toBeVisible({ timeout: 10000 })

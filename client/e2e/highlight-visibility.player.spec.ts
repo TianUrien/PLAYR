@@ -59,6 +59,12 @@ test.describe('highlight video visibility toggle', () => {
   })
 
   test('visibility toggle persists after page reload', async ({ page }) => {
+    // Skip on mobile to avoid race with desktop worker modifying the same profile state
+    if ((page.viewportSize()?.width ?? 1280) < 768) {
+      test.skip()
+      return
+    }
+
     const hasVideo = await page.getByTitle('Highlight video player').isVisible().catch(() => false)
     if (!hasVideo) {
       test.skip()
@@ -68,28 +74,40 @@ test.describe('highlight video visibility toggle', () => {
     const toggle = page.getByLabel(/recruiters only/i)
     const wasChecked = await toggle.isChecked()
 
-    // Toggle the state
+    // Toggle the state and wait for the API response to confirm persistence
+    const updatePromise = page.waitForResponse(
+      resp => resp.url().includes('rest/v1/profiles') && resp.request().method() === 'PATCH' && resp.status() < 400,
+      { timeout: 15000 }
+    )
     await toggle.click()
+    await updatePromise
+
+    // Wait for the success toast to confirm UI update
     await expect(
       page.locator('[role="status"], [role="alert"]').filter({ hasText: wasChecked ? /visible to everyone/i : /restricted to recruiters/i })
     ).toBeVisible({ timeout: 10000 })
 
     // Reload the page
     await page.reload()
-    await page.waitForSelector('.animate-spin', { state: 'hidden', timeout: 30000 }).catch(() => {})
+    await page.waitForLoadState('networkidle')
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20000 })
 
     // Toggle should reflect the new state
     const toggleAfterReload = page.getByLabel(/recruiters only/i)
+    await expect(toggleAfterReload).toBeVisible({ timeout: 15000 })
     if (wasChecked) {
       await expect(toggleAfterReload).not.toBeChecked({ timeout: 10000 })
     } else {
       await expect(toggleAfterReload).toBeChecked({ timeout: 10000 })
     }
 
-    // Restore original state
+    // Restore original state and wait for persistence
+    const restorePromise = page.waitForResponse(
+      resp => resp.url().includes('rest/v1/profiles') && resp.request().method() === 'PATCH' && resp.status() < 400,
+      { timeout: 15000 }
+    )
     await toggleAfterReload.click()
-    await page.waitForTimeout(1000)
+    await restorePromise
   })
 
   test('player can switch back to public visibility', async ({ page }) => {
