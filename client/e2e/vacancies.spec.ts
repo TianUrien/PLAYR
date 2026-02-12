@@ -6,13 +6,13 @@ test.describe('Opportunities - Public', () => {
 
     // Should stay on opportunities page (publicly accessible)
     await expect(page).toHaveURL('/opportunities')
-    await expect(page.getByRole('main')).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Opportunities' })).toBeVisible({ timeout: 10000 })
   })
 
   test('shows sign-in prompt when unauthenticated user tries to apply', async ({ page }) => {
     await page.goto('/opportunities')
     await expect(page).toHaveURL('/opportunities')
-    await expect(page.getByRole('main')).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Opportunities' })).toBeVisible({ timeout: 10000 })
 
     // If there is at least one vacancy card rendered, clicking Apply opens the sign-in prompt modal
     const applyButtons = page.getByRole('button', { name: 'Apply Now' })

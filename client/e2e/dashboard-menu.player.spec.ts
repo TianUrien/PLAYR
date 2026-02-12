@@ -7,6 +7,14 @@ test.describe('Dashboard Menu - Mobile', () => {
 
     await page.goto('/dashboard/profile')
     await page.waitForLoadState('networkidle')
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20000 })
+
+    // Dismiss the notifications drawer if it's truly open
+    const notifDialog = page.locator('[role="dialog"][aria-label="Notifications"]')
+    if (await notifDialog.count() > 0 && await notifDialog.getAttribute('aria-modal') === 'true') {
+      await page.getByRole('button', { name: 'Close notifications' }).click()
+      await expect(notifDialog).not.toHaveAttribute('aria-modal', 'true', { timeout: 5000 })
+    }
 
     // Open the hamburger menu
     await page.getByRole('button', { name: 'Open menu' }).click()
