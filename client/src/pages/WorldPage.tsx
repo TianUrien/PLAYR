@@ -8,7 +8,7 @@
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Globe, Building2, MapPin, Trophy } from 'lucide-react'
+import { Search, Globe, Building2, MapPin, Trophy, RefreshCw } from 'lucide-react'
 import { Header } from '@/components'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
@@ -28,6 +28,7 @@ export default function WorldPage() {
   const navigate = useNavigate()
   const [countries, setCountries] = useState<CountryWithStats[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
@@ -35,49 +36,51 @@ export default function WorldPage() {
     fetchCountries()
   }, [])
 
+  // Daily shuffle: deterministic seed from today's date so order is
+  // stable within a day but rotates across days.
+  const dailyShuffle = <T,>(arr: T[]): T[] => {
+    const today = new Date().toISOString().slice(0, 10) // "2026-02-13"
+    let seed = 0
+    for (let i = 0; i < today.length; i++) seed = (seed * 31 + today.charCodeAt(i)) | 0
+
+    const shuffled = [...arr]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      seed = (seed * 16807 + 0) % 2147483647 // LCG
+      const j = ((seed < 0 ? -seed : seed) % (i + 1))
+      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    return shuffled
+  }
+
   const fetchCountries = async () => {
     try {
-      // Fetch from the unified view that lists all countries with World directory support
-      const { data, error } = await supabase
+      setError(false)
+      setLoading(true)
+
+      // The view already provides total_clubs and total_leagues — no extra queries needed
+      const { data, error: fetchErr } = await supabase
         .from('world_countries_with_directory')
         .select('*')
-        .order('country_name')
-      
-      if (error) throw error
 
-      // Transform and enrich with club counts
-      const enrichedCountries: CountryWithStats[] = []
-      
-      for (const row of data || []) {
-        if (!row.country_id) continue
-        
-        // Get club count for this country
-        const { count: clubCount } = await supabase
-          .from('world_clubs')
-          .select('*', { count: 'exact', head: true })
-          .eq('country_id', row.country_id)
+      if (fetchErr) throw fetchErr
 
-        // Get league count for this country
-        const { count: leagueCount } = await supabase
-          .from('world_leagues')
-          .select('*', { count: 'exact', head: true })
-          .eq('country_id', row.country_id)
-        
-        enrichedCountries.push({
+      const mapped: CountryWithStats[] = (data || [])
+        .filter(row => row.country_id)
+        .map(row => ({
           country_id: row.country_id ?? 0,
           country_code: row.country_code ?? '',
           country_name: row.country_name ?? '',
           flag_emoji: row.flag_emoji ?? '🏳️',
           region: row.region ?? '',
           has_regions: row.has_regions ?? false,
-          total_clubs: clubCount ?? 0,
-          league_count: leagueCount ?? 0,
-        })
-      }
+          total_clubs: row.total_clubs ?? 0,
+          league_count: row.total_leagues ?? 0,
+        }))
 
-      setCountries(enrichedCountries)
+      setCountries(dailyShuffle(mapped))
     } catch (err) {
       logger.error('[WorldPage] Failed to fetch countries:', err)
+      setError(true)
     } finally {
       setLoading(false)
     }
@@ -125,7 +128,7 @@ export default function WorldPage() {
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">World Hockey Directory</h1>
           <p className="text-gray-600 max-w-2xl mx-auto">
-            Explore clubs and members from hockey communities around the world
+            Explore clubs and leagues from hockey communities around the world
           </p>
         </div>
 
@@ -160,6 +163,20 @@ export default function WorldPage() {
               </div>
             ))}
           </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <Globe className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-700 font-medium mb-1">Unable to load countries</p>
+            <p className="text-sm text-gray-500 mb-4">Check your connection and try again</p>
+            <button
+              type="button"
+              onClick={() => fetchCountries()}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Retry
+            </button>
+          </div>
         ) : filteredCountries.length === 0 ? (
           <div className="text-center py-12">
             <Globe className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -170,9 +187,10 @@ export default function WorldPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredCountries.map((country) => (
-              <div
+              <button
+                type="button"
                 key={country.country_id}
-                className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer group"
+                className="bg-white rounded-2xl border border-gray-200 p-6 hover:shadow-lg hover:border-blue-200 transition-all cursor-pointer group text-left w-full"
                 onClick={() => handleCountryClick(country.country_code)}
               >
                 <div className="flex items-start justify-between mb-4">
@@ -181,6 +199,7 @@ export default function WorldPage() {
                       <img
                         src={getFlagUrl(country.country_code)}
                         alt={`${country.country_name} flag`}
+                        loading="lazy"
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           // Fallback to emoji if image fails
@@ -197,7 +216,7 @@ export default function WorldPage() {
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-900 text-lg">{country.country_name}</h3>
-                      <p className="text-sm text-gray-500">Explore clubs & members</p>
+                      <p className="text-sm text-gray-500">Explore clubs & leagues</p>
                     </div>
                   </div>
                   <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
@@ -231,14 +250,14 @@ export default function WorldPage() {
                   </div>
                 </div>
 
-                {/* CTA Button */}
-                <button
+                {/* CTA */}
+                <div
                   className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-medium flex items-center justify-center gap-2 group-hover:from-blue-600 group-hover:to-cyan-600 transition-all"
                 >
                   View Country
                   <span className="text-lg">→</span>
-                </button>
-              </div>
+                </div>
+              </button>
             ))}
           </div>
         )}
