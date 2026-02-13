@@ -8,7 +8,11 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 // Load environment variables from multiple sources
-// Priority: .env.local > .env (in both client and root directories)
+// Priority: .env.staging (when staging mode) > .env.local > .env
+// dotenv does NOT override already-set vars, so first-loaded wins.
+if (process.env.E2E_STAGING_MODE === '1') {
+  dotenv.config({ path: path.join(__dirname, '.env.staging') })
+}
 dotenv.config({ path: path.join(__dirname, '.env.local') })
 dotenv.config({ path: path.join(__dirname, '.env') })
 dotenv.config({ path: path.join(__dirname, '..', '.env.local') })
@@ -66,7 +70,7 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: /.*\.authenticated\.spec\.ts|.*\.player\.spec\.ts|.*\.club\.spec\.ts|.*\.coach\.spec\.ts|.*\.brand\.spec\.ts/,
+      testIgnore: /.*\.authenticated\.spec\.ts|.*\.player\.spec\.ts|.*\.club\.spec\.ts|.*\.coach\.spec\.ts|.*\.brand\.spec\.ts|.*\.staging\.spec\.ts/,
     },
 
     // Authenticated as Player - for player-specific flows
@@ -113,6 +117,14 @@ export default defineConfig({
       testMatch: /.*\.brand\.spec\.ts/,
     },
 
+    // Staging-only tests (notification system E2E, multi-role flows)
+    {
+      name: 'staging',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+      testMatch: /.*\.staging\.spec\.ts/,
+    },
+
     // Mobile viewport - authenticated as Player (catches responsive regressions)
     {
       name: 'mobile-player',
@@ -145,11 +157,14 @@ export default defineConfig({
       : []),
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: true,
-    timeout: 120 * 1000,
-  },
+  /* Run your local dev server before starting the tests.
+     Skip when PLAYWRIGHT_BASE_URL points to a remote deployment. */
+  webServer: (process.env.PLAYWRIGHT_BASE_URL && !process.env.PLAYWRIGHT_BASE_URL.includes('localhost'))
+    ? undefined
+    : {
+        command: 'npm run dev',
+        url: 'http://localhost:5173',
+        reuseExistingServer: true,
+        timeout: 120 * 1000,
+      },
 })

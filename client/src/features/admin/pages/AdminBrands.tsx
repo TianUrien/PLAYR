@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
+import { formatAdminDate } from '../utils/formatDate'
 import {
   Store,
   RefreshCw,
@@ -114,7 +115,7 @@ export function AdminBrands() {
       label: 'Created',
       render: (value) => (
         <span className="text-sm text-gray-600">
-          {value ? new Date(String(value)).toLocaleDateString() : '—'}
+          {formatAdminDate(value as string)}
         </span>
       ),
     },
@@ -123,7 +124,7 @@ export function AdminBrands() {
       label: 'Last Activity',
       render: (value) => (
         <span className="text-sm text-gray-600">
-          {value ? new Date(String(value)).toLocaleDateString() : '—'}
+          {formatAdminDate(value as string)}
         </span>
       ),
     },

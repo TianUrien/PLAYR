@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, MapPin, Building2, Trophy, CheckCircle, Clock } from 'lucide-react'
+import { ArrowLeft, MapPin, Building2, Trophy, CheckCircle, Clock, RefreshCw } from 'lucide-react'
 import { Header } from '@/components'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
@@ -50,95 +50,117 @@ interface Country {
   region: string | null
 }
 
+interface RawLeague {
+  id: number
+  name: string
+  slug: string | null
+  tier: number | null
+  display_order: number | null
+}
+
+interface ClubLeagueRow {
+  id: string
+  women_league_id: number | null
+  men_league_id: number | null
+}
+
 export default function WorldCountryPage() {
   const { countrySlug } = useParams<{ countrySlug: string }>()
   const navigate = useNavigate()
   const [country, setCountry] = useState<Country | null>(null)
   const [hasRegions, setHasRegions] = useState<boolean | null>(null)
   const [provinces, setProvinces] = useState<Province[]>([])
-  const [leagues, setLeagues] = useState<League[]>([])
+  const [rawLeagues, setRawLeagues] = useState<RawLeague[]>([])
+  const [allClubData, setAllClubData] = useState<ClubLeagueRow[]>([])
   const [selectedLeague, setSelectedLeague] = useState<League | null>(null)
   const [clubs, setClubs] = useState<Club[]>([])
   const [clubsLoading, setClubsLoading] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
   const [genderFilter, setGenderFilter] = useState<'women' | 'men'>('women')
 
   // Compute the correct flag URL based on country code
   const flagUrl = useMemo(() => {
     if (!country) return ''
-    // England uses XE code but needs gb-eng for flagcdn
-    if (country.code === 'XE') {
-      return 'https://flagcdn.com/w160/gb-eng.png'
-    }
+    if (country.code === 'XE') return 'https://flagcdn.com/w160/gb-eng.png'
     return `https://flagcdn.com/w160/${country.code.toLowerCase()}.png`
   }, [country])
+
+  // Derive league counts from cached club data — no refetch on gender toggle
+  const leagues = useMemo(() => {
+    const col = genderFilter === 'women' ? 'women_league_id' : 'men_league_id'
+    const counts = new Map<number, number>()
+    for (const club of allClubData) {
+      const lid = club[col]
+      if (lid) counts.set(lid, (counts.get(lid) || 0) + 1)
+    }
+    return rawLeagues.map(l => ({ ...l, club_count: counts.get(l.id) || 0 }))
+  }, [rawLeagues, allClubData, genderFilter])
+
+  // Auto-select first league with clubs when leagues change (gender toggle or initial load)
+  useEffect(() => {
+    if (leagues.length === 0) {
+      setSelectedLeague(null)
+      setClubs([])
+      return
+    }
+    const firstWithClubs = leagues.find(l => l.club_count > 0)
+    setSelectedLeague(firstWithClubs || leagues[0])
+  }, [leagues])
 
   useEffect(() => {
     if (!countrySlug) return
 
     const fetchCountryData = async () => {
       try {
-        // Get country by code
-        const { data: countryData, error: countryError } = await supabase
-          .from('countries')
-          .select('id, code, name, flag_emoji, region')
-          .eq('code', countrySlug.toUpperCase())
+        setError(false)
+        setLoading(true)
+
+        // Single query: country info + has_regions + counts from the view
+        const { data, error: fetchErr } = await supabase
+          .from('world_countries_with_directory')
+          .select('*')
+          .eq('country_code', countrySlug.toUpperCase())
           .single()
 
-        if (countryError) throw countryError
+        if (fetchErr) throw fetchErr
+
+        const cid = data.country_id ?? 0
+        const countryData: Country = {
+          id: cid,
+          code: data.country_code ?? '',
+          name: data.country_name ?? '',
+          flag_emoji: data.flag_emoji,
+          region: data.region,
+        }
         setCountry(countryData)
+        setHasRegions(data.has_regions ?? false)
         document.title = `${countryData.name} | World | PLAYR`
 
-        // Check if country has regions from the view
-        const { data: countryInfo, error: infoError } = await supabase
-          .from('world_countries_with_directory')
-          .select('has_regions')
-          .eq('country_id', countryData.id)
-          .single()
-
-        if (infoError) {
-          // Fallback: check if there are any provinces
-          const { count } = await supabase
-            .from('world_provinces')
-            .select('*', { count: 'exact', head: true })
-            .eq('country_id', countryData.id)
-          setHasRegions((count ?? 0) > 0)
-        } else {
-          setHasRegions(countryInfo?.has_regions ?? false)
-        }
-
-        if (countryInfo?.has_regions !== false) {
-          // Fetch provinces with stats
+        if (data.has_regions) {
           const { data: provinceData, error: provinceError } = await supabase
             .from('world_province_stats')
             .select('*')
-            .eq('country_id', countryData.id)
+            .eq('country_id', cid)
             .order('display_order')
 
           if (provinceError) throw provinceError
           setProvinces(provinceData || [])
         } else {
-          // Fetch leagues directly for country-only structure
-          await fetchLeaguesForCountry(countryData.id)
+          // Fetch leagues + all club league assignments in parallel (once)
+          await fetchLeaguesAndClubData(cid)
         }
       } catch (err) {
         logger.error('[WorldCountryPage] Failed to fetch data:', err)
+        setError(true)
       } finally {
         setLoading(false)
       }
     }
 
     fetchCountryData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [countrySlug])
-
-  // Refetch leagues when gender filter changes (only for country-only mode)
-  useEffect(() => {
-    if (country && hasRegions === false) {
-      fetchLeaguesForCountry(country.id)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [genderFilter])
+  }, [countrySlug, retryCount])
 
   // Fetch clubs when selected league changes
   useEffect(() => {
@@ -146,57 +168,28 @@ export default function WorldCountryPage() {
       fetchClubsForLeague(country.id, selectedLeague.id)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLeague])
+  }, [selectedLeague, genderFilter])
 
-  const fetchLeaguesForCountry = async (countryId: number) => {
+  const fetchLeaguesAndClubData = async (countryId: number) => {
     try {
-      // Fetch leagues directly for this country (where province_id is null)
-      const { data: leagueData, error: leagueError } = await supabase
-        .from('world_leagues')
-        .select('id, name, slug, tier, display_order')
-        .eq('country_id', countryId)
-        .is('province_id', null)
-        .order('tier')
-        .order('display_order')
+      // Parallel: leagues + all club league assignments (both genders)
+      const [leagueRes, clubRes] = await Promise.all([
+        supabase
+          .from('world_leagues')
+          .select('id, name, slug, tier, display_order')
+          .eq('country_id', countryId)
+          .is('province_id', null)
+          .order('tier')
+          .order('display_order'),
+        supabase
+          .from('world_clubs')
+          .select('id, women_league_id, men_league_id')
+          .eq('country_id', countryId),
+      ])
 
-      if (leagueError) throw leagueError
-
-      // Get club counts per league for the selected gender
-      const leagueColumn = genderFilter === 'women' ? 'women_league_id' : 'men_league_id'
-
-      const { data: clubsData } = await supabase
-        .from('world_clubs')
-        .select(`id, ${leagueColumn}`)
-        .eq('country_id', countryId)
-
-      // Count clubs per league
-      const leagueClubCounts = new Map<number, number>()
-      for (const club of clubsData || []) {
-        const leagueId = (club as Record<string, unknown>)[leagueColumn] as number | null
-        if (leagueId) {
-          leagueClubCounts.set(leagueId, (leagueClubCounts.get(leagueId) || 0) + 1)
-        }
-      }
-
-      // Merge counts into league data
-      const leaguesWithCounts = (leagueData || []).map(league => ({
-        id: league.id,
-        name: league.name,
-        slug: league.slug,
-        tier: league.tier,
-        display_order: league.display_order,
-        club_count: leagueClubCounts.get(league.id) || 0
-      }))
-
-      setLeagues(leaguesWithCounts)
-
-      // Auto-select first league with clubs, or first league
-      const firstWithClubs = leaguesWithCounts.find(l => l.club_count > 0)
-      const autoSelect = firstWithClubs || leaguesWithCounts[0] || null
-      setSelectedLeague(autoSelect)
-      if (!autoSelect) {
-        setClubs([])
-      }
+      if (leagueRes.error) throw leagueRes.error
+      setRawLeagues(leagueRes.data || [])
+      setAllClubData((clubRes.data as ClubLeagueRow[]) || [])
     } catch (err) {
       logger.error('[WorldCountryPage] Failed to fetch leagues:', err)
     }
@@ -288,6 +281,34 @@ export default function WorldCountryPage() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main className="mx-auto max-w-7xl px-4 pt-24 pb-12 md:px-6">
+          <div className="text-center py-12">
+            <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-700 font-medium mb-1">Unable to load country data</p>
+            <p className="text-sm text-gray-500 mb-4">Check your connection and try again</p>
+            <div className="flex items-center justify-center gap-3">
+              <Link to="/world" className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                Back to World
+              </Link>
+              <button
+                type="button"
+                onClick={() => setRetryCount(c => c + 1)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Retry
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   if (!country) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -311,6 +332,7 @@ export default function WorldCountryPage() {
       <main className="mx-auto max-w-7xl px-4 pt-24 pb-12 md:px-6">
         {/* Back Button */}
         <button
+          type="button"
           onClick={() => navigate('/world')}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
         >
@@ -325,6 +347,7 @@ export default function WorldCountryPage() {
               <img
                 src={flagUrl}
                 alt={`${country.name} flag`}
+                loading="lazy"
                 className="w-full h-full object-cover"
                 onError={(e) => {
                   const target = e.currentTarget;
@@ -412,6 +435,7 @@ export default function WorldCountryPage() {
               {/* Gender Toggle */}
               <div className="inline-flex bg-gray-100 rounded-full p-1 flex-shrink-0">
                 <button
+                  type="button"
                   onClick={() => setGenderFilter('women')}
                   className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
                     genderFilter === 'women'
@@ -422,6 +446,7 @@ export default function WorldCountryPage() {
                   Women
                 </button>
                 <button
+                  type="button"
                   onClick={() => setGenderFilter('men')}
                   className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
                     genderFilter === 'men'
@@ -437,6 +462,7 @@ export default function WorldCountryPage() {
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {leagues.map((league) => (
                   <button
+                    type="button"
                     key={league.id}
                     onClick={() => setSelectedLeague(league)}
                     className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all border ${

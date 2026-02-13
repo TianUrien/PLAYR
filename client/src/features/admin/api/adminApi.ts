@@ -28,6 +28,9 @@ import type {
   EngagementTrend,
   UserEngagementDetail,
   UserEngagementSearchParams,
+  MessagingMetrics,
+  FriendshipMetrics,
+  ReferenceMetrics,
 } from '../types'
 
 // Helper to call RPC functions that aren't in generated types yet
@@ -1236,5 +1239,60 @@ export async function getPublicInvestorSignupTrends(
   })
   if (error) throw new Error(`Invalid or expired token`)
   return data as unknown as InvestorSignupTrend[]
+}
+
+// ============================================================================
+// NETWORKING ANALYTICS
+// ============================================================================
+
+/**
+ * Get messaging analytics (admin only)
+ */
+export async function getMessagingMetrics(
+  days?: number,
+  excludeTest?: boolean,
+  role?: string,
+): Promise<MessagingMetrics> {
+  const { data, error } = await adminRpc('admin_get_messaging_metrics', {
+    p_days: days ?? 30,
+    p_exclude_test: excludeTest ?? true,
+    p_role: role || null,
+  })
+  if (error) throw new Error(`Failed to get messaging metrics: ${error.message}`)
+  return data as MessagingMetrics
+}
+
+/**
+ * Get friendship analytics (admin only)
+ */
+export async function getFriendshipMetrics(
+  days?: number,
+  excludeTest?: boolean,
+  role?: string,
+): Promise<FriendshipMetrics> {
+  const { data, error } = await adminRpc('admin_get_friendship_metrics', {
+    p_days: days ?? 30,
+    p_exclude_test: excludeTest ?? true,
+    p_role: role || null,
+  })
+  if (error) throw new Error(`Failed to get friendship metrics: ${error.message}`)
+  return data as FriendshipMetrics
+}
+
+/**
+ * Get reference/endorsement analytics (admin only)
+ */
+export async function getReferenceMetrics(
+  days?: number,
+  excludeTest?: boolean,
+  role?: string,
+): Promise<ReferenceMetrics> {
+  const { data, error } = await adminRpc('admin_get_reference_metrics', {
+    p_days: days ?? 30,
+    p_exclude_test: excludeTest ?? true,
+    p_role: role || null,
+  })
+  if (error) throw new Error(`Failed to get reference metrics: ${error.message}`)
+  return data as ReferenceMetrics
 }
 

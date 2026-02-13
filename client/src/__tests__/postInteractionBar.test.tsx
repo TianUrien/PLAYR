@@ -6,10 +6,21 @@ const user = userEvent.setup()
 
 const authState = vi.hoisted(() => ({
   user: { id: 'user-1' } as { id: string } | null,
+  profile: { role: 'player' } as { role: string } | null,
 }))
 
 vi.mock('@/lib/auth', () => ({
   useAuthStore: () => authState,
+}))
+
+// Mock SharePostSheet to avoid Supabase calls in unit tests
+vi.mock('@/components/home/SharePostSheet', () => ({
+  SharePostSheet: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) =>
+    isOpen ? (
+      <div data-testid="share-post-sheet">
+        <button type="button" onClick={onClose}>Close share sheet</button>
+      </div>
+    ) : null,
 }))
 
 import { PostInteractionBar } from '@/components/home/PostInteractionBar'
@@ -22,6 +33,12 @@ const defaultProps = {
   onToggleLike: vi.fn().mockResolvedValue(undefined),
   onToggleComments: vi.fn(),
   showComments: false,
+  authorId: 'author-1',
+  authorName: 'Test Author',
+  authorAvatar: null as string | null,
+  authorRole: 'player' as const,
+  content: 'Test post content',
+  thumbnailUrl: null as string | null,
 }
 
 // Helper: action buttons use exact text "Like", "Comment", "Share"
@@ -35,14 +52,14 @@ function getCommentActionButton() {
 }
 
 function getShareActionButton() {
-  // Share button text is either "Share" or "Copied!"
-  return screen.getByRole('button', { name: /^(Share|Copied!)$/ })
+  return screen.getByRole('button', { name: 'Share' })
 }
 
 describe('PostInteractionBar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     authState.user = { id: 'user-1' }
+    authState.profile = { role: 'player' }
   })
 
   it('renders like, comment, and share buttons', () => {
@@ -104,22 +121,33 @@ describe('PostInteractionBar', () => {
     expect(getLikeActionButton()).toBeDisabled()
   })
 
-  it('shows "Copied!" after share is clicked', async () => {
-    // Mock clipboard using defineProperty since it's a read-only getter in jsdom
-    const writeTextMock = vi.fn().mockResolvedValue(undefined)
-    Object.defineProperty(navigator, 'clipboard', {
-      value: { writeText: writeTextMock },
-      writable: true,
-      configurable: true,
-    })
-
+  it('opens share sheet when Share is clicked', async () => {
     render(<PostInteractionBar {...defaultProps} />)
 
-    await user.click(screen.getByRole('button', { name: 'Share' }))
+    // Share sheet should not be visible initially
+    expect(screen.queryByTestId('share-post-sheet')).not.toBeInTheDocument()
+
+    // Click Share button
+    await user.click(getShareActionButton())
+
+    // Share sheet should open
+    await waitFor(() => {
+      expect(screen.getByTestId('share-post-sheet')).toBeInTheDocument()
+    })
+  })
+
+  it('closes share sheet when onClose is called', async () => {
+    render(<PostInteractionBar {...defaultProps} />)
+
+    // Open the share sheet
+    await user.click(getShareActionButton())
+    expect(screen.getByTestId('share-post-sheet')).toBeInTheDocument()
+
+    // Close it
+    await user.click(screen.getByRole('button', { name: 'Close share sheet' }))
 
     await waitFor(() => {
-      expect(screen.getByText('Copied!')).toBeInTheDocument()
+      expect(screen.queryByTestId('share-post-sheet')).not.toBeInTheDocument()
     })
-    expect(writeTextMock).toHaveBeenCalled()
   })
 })

@@ -22,7 +22,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:db": "vitest run --config vitest.db.config.ts",
-    "test:e2e:debug": "playwright test --debug"
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:staging": "E2E_STAGING_MODE=1 playwright test --project=setup --project=staging"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -40,6 +41,7 @@
     "react-hook-form": "^7.64.0",
     "react-router-dom": "^7.9.4",
     "tslib": "^2.8.1",
+    "tus-js-client": "^4.3.1",
     "web-vitals": "^5.1.0",
     "zod": "^4.1.12",
     "zustand": "^5.0.8"

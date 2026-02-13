@@ -51,6 +51,11 @@ const opportunityApplicantsRoute = (notification: NotificationRecord) => {
   return opportunityId ? `/dashboard/opportunities/${opportunityId}/applicants` : '/dashboard?tab=vacancies'
 }
 
+const opportunityDetailRoute = (notification: NotificationRecord) => {
+  const opportunityId = getMetadataString(notification, 'opportunity_id')
+  return opportunityId ? `/opportunities/${opportunityId}` : '/opportunities'
+}
+
 const defaultConfig: NotificationRenderConfig = {
   icon: Bell,
   badgeText: 'Notification',
@@ -158,6 +163,27 @@ const notificationConfigs: Partial<Record<NotificationKind, NotificationRenderCo
     getTitle: (notification) => `${getActorName(notification)} started a conversation`,
     getDescription: (notification) => getMetadataString(notification, 'subject'),
     getRoute: conversationRoute,
+  },
+  opportunity_published: {
+    icon: Briefcase,
+    badgeText: 'New opportunity',
+    accentClassName: 'bg-orange-50 text-orange-600',
+    getTitle: (notification) => {
+      const title = getMetadataString(notification, 'opportunity_title')
+      const clubName = getMetadataString(notification, 'club_name')
+      return title
+        ? `${clubName || 'A club'} published: ${title}`
+        : 'A new opportunity was published'
+    },
+    getDescription: (notification) => {
+      const position = getMetadataString(notification, 'position')
+      const city = getMetadataString(notification, 'location_city')
+      const country = getMetadataString(notification, 'location_country')
+      const location = [city, country].filter(Boolean).join(', ')
+      const parts = [position ? position.charAt(0).toUpperCase() + position.slice(1) : null, location || null].filter(Boolean)
+      return parts.length > 0 ? parts.join(' \u2022 ') : null
+    },
+    getRoute: opportunityDetailRoute,
   },
   vacancy_application_received: {
     icon: Briefcase,

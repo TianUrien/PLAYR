@@ -10,6 +10,7 @@ interface RoleBreakdownChartProps {
   players: number
   coaches: number
   clubs: number
+  brands?: number
   loading?: boolean
 }
 
@@ -17,15 +18,17 @@ const COLORS = {
   players: '#8b5cf6', // Purple
   coaches: '#3b82f6', // Blue
   clubs: '#f59e0b', // Amber
+  brands: '#e11d48', // Rose
 }
 
 export function RoleBreakdownChart({
   players,
   coaches,
   clubs,
+  brands = 0,
   loading = false,
 }: RoleBreakdownChartProps) {
-  const total = players + coaches + clubs
+  const total = players + coaches + clubs + brands
 
   const chartData = useMemo(() => {
     if (total === 0) return []
@@ -34,6 +37,7 @@ export function RoleBreakdownChart({
       { label: 'Players', value: players, color: COLORS.players, percentage: (players / total) * 100 },
       { label: 'Coaches', value: coaches, color: COLORS.coaches, percentage: (coaches / total) * 100 },
       { label: 'Clubs', value: clubs, color: COLORS.clubs, percentage: (clubs / total) * 100 },
+      { label: 'Brands', value: brands, color: COLORS.brands, percentage: (brands / total) * 100 },
     ].filter((d) => d.value > 0)
 
     // Calculate SVG arc segments
@@ -75,14 +79,14 @@ export function RoleBreakdownChart({
 
       return { ...item, path }
     })
-  }, [players, coaches, clubs, total])
+  }, [players, coaches, clubs, brands, total])
 
   if (loading) {
     return (
       <div className="flex items-center gap-6">
         <div className="w-32 h-32 bg-gray-100 rounded-full animate-pulse" />
         <div className="space-y-3 flex-1">
-          {[1, 2, 3].map((i) => (
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="flex items-center gap-2 animate-pulse">
               <div className="w-3 h-3 bg-gray-200 rounded-full" />
               <div className="flex-1 h-4 bg-gray-200 rounded" />

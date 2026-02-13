@@ -43,6 +43,9 @@ export default function SettingsPage() {
   // Notification preferences state
   const [notifyOpportunities, setNotifyOpportunities] = useState(true)
   const [notifyApplications, setNotifyApplications] = useState(true)
+  const [notifyFriends, setNotifyFriends] = useState(true)
+  const [notifyReferences, setNotifyReferences] = useState(true)
+  const [notifyMessages, setNotifyMessages] = useState(true)
   const [notificationLoading, setNotificationLoading] = useState(false)
   const [notificationSuccess, setNotificationSuccess] = useState(false)
 
@@ -54,6 +57,9 @@ export default function SettingsPage() {
     if (profile) {
       setNotifyOpportunities(profile.notify_opportunities ?? true)
       setNotifyApplications(profile.notify_applications ?? true)
+      setNotifyFriends(profile.notify_friends ?? true)
+      setNotifyReferences(profile.notify_references ?? true)
+      setNotifyMessages(profile.notify_messages ?? true)
     }
   }, [profile])
 
@@ -108,6 +114,90 @@ export default function SettingsPage() {
     } catch (error) {
       logger.error('Failed to update notification preferences:', error)
       setNotifyApplications(!newValue)
+    } finally {
+      setNotificationLoading(false)
+    }
+  }
+
+  const handleFriendNotificationToggle = async () => {
+    if (!user) return
+
+    const newValue = !notifyFriends
+    setNotificationLoading(true)
+    setNotificationSuccess(false)
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ notify_friends: newValue })
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      setNotifyFriends(newValue)
+      setNotificationSuccess(true)
+
+      await refreshProfile()
+      setTimeout(() => setNotificationSuccess(false), 3000)
+    } catch (error) {
+      logger.error('Failed to update notification preferences:', error)
+      setNotifyFriends(!newValue)
+    } finally {
+      setNotificationLoading(false)
+    }
+  }
+
+  const handleReferenceNotificationToggle = async () => {
+    if (!user) return
+
+    const newValue = !notifyReferences
+    setNotificationLoading(true)
+    setNotificationSuccess(false)
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ notify_references: newValue })
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      setNotifyReferences(newValue)
+      setNotificationSuccess(true)
+
+      await refreshProfile()
+      setTimeout(() => setNotificationSuccess(false), 3000)
+    } catch (error) {
+      logger.error('Failed to update notification preferences:', error)
+      setNotifyReferences(!newValue)
+    } finally {
+      setNotificationLoading(false)
+    }
+  }
+
+  const handleMessageNotificationToggle = async () => {
+    if (!user) return
+
+    const newValue = !notifyMessages
+    setNotificationLoading(true)
+    setNotificationSuccess(false)
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ notify_messages: newValue })
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      setNotifyMessages(newValue)
+      setNotificationSuccess(true)
+
+      await refreshProfile()
+      setTimeout(() => setNotificationSuccess(false), 3000)
+    } catch (error) {
+      logger.error('Failed to update notification preferences:', error)
+      setNotifyMessages(!newValue)
     } finally {
       setNotificationLoading(false)
     }
@@ -447,6 +537,87 @@ export default function SettingsPage() {
                     </button>
                   </div>
                 )}
+
+                {/* Friend Request Notifications -- All roles */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex-1 pr-4">
+                    <p className="text-gray-900 font-medium text-sm">Friend Request Emails</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Email when someone sends you a friend request
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleFriendNotificationToggle}
+                    disabled={notificationLoading}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                      notifyFriends ? 'bg-indigo-600' : 'bg-gray-300'
+                    } ${notificationLoading ? 'opacity-50' : ''}`}
+                  >
+                    {notificationLoading ? (
+                      <Loader2 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-white animate-spin" />
+                    ) : (
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          notifyFriends ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    )}
+                  </button>
+                </div>
+
+                {/* Reference Request Notifications -- All roles */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex-1 pr-4">
+                    <p className="text-gray-900 font-medium text-sm">Reference Request Emails</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Email when someone requests a reference from you
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleReferenceNotificationToggle}
+                    disabled={notificationLoading}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                      notifyReferences ? 'bg-indigo-600' : 'bg-gray-300'
+                    } ${notificationLoading ? 'opacity-50' : ''}`}
+                  >
+                    {notificationLoading ? (
+                      <Loader2 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-white animate-spin" />
+                    ) : (
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          notifyReferences ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    )}
+                  </button>
+                </div>
+
+                {/* Message Digest Notifications -- All roles */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex-1 pr-4">
+                    <p className="text-gray-900 font-medium text-sm">Message Email Digests</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Email digest for unread messages (max once every 6 hours)
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleMessageNotificationToggle}
+                    disabled={notificationLoading}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                      notifyMessages ? 'bg-indigo-600' : 'bg-gray-300'
+                    } ${notificationLoading ? 'opacity-50' : ''}`}
+                  >
+                    {notificationLoading ? (
+                      <Loader2 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-white animate-spin" />
+                    ) : (
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          notifyMessages ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    )}
+                  </button>
+                </div>
 
                 {notificationSuccess && (
                   <p className="text-xs text-green-600 flex items-center gap-1 px-4">

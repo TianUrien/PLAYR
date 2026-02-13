@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
+import { formatAdminDate } from '../utils/formatDate'
 import { Link } from 'react-router-dom'
 import {
   Building2,
@@ -117,7 +118,7 @@ export function AdminClubs() {
       label: 'Last Posted',
       render: (value) => (
         <span className="text-sm text-gray-600">
-          {value ? new Date(String(value)).toLocaleDateString() : '—'}
+          {formatAdminDate(value as string)}
         </span>
       ),
     },

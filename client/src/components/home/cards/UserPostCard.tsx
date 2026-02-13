@@ -6,7 +6,7 @@ import { usePostInteractions } from '@/hooks/usePostInteractions'
 import { useUserPosts } from '@/hooks/useUserPosts'
 import { Avatar, RoleBadge } from '@/components'
 import { getTimeAgo } from '@/lib/utils'
-import { FeedImageCarousel } from '../FeedImageCarousel'
+import { FeedMediaGrid } from '../FeedMediaGrid'
 import { PostInteractionBar } from '../PostInteractionBar'
 import { PostCommentsSection } from '../PostCommentsSection'
 import { PostComposerModal } from '../PostComposerModal'
@@ -158,9 +158,11 @@ export function UserPostCard({ item, onLikeUpdate, onDelete }: UserPostCardProps
           )}
         </div>
 
-        {/* Image carousel */}
+        {/* Media grid */}
         {sortedImages.length > 0 && (
-          <FeedImageCarousel images={sortedImages} altPrefix="Post" />
+          <div className="px-4 pb-2">
+            <FeedMediaGrid media={sortedImages} />
+          </div>
         )}
 
         {/* Interaction bar */}
@@ -172,6 +174,12 @@ export function UserPostCard({ item, onLikeUpdate, onDelete }: UserPostCardProps
           onToggleLike={handleToggleLike}
           onToggleComments={() => setShowComments(!showComments)}
           showComments={showComments}
+          authorId={item.author_id}
+          authorName={item.author_name}
+          authorAvatar={item.author_avatar}
+          authorRole={item.author_role}
+          content={item.content}
+          thumbnailUrl={sortedImages[0]?.thumb_url || sortedImages[0]?.url || null}
         />
 
         {/* Comments section */}

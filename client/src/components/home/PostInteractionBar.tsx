@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Heart, MessageCircle, Share2 } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
+import { SharePostSheet } from './SharePostSheet'
 
 interface PostInteractionBarProps {
   postId: string
@@ -10,6 +11,12 @@ interface PostInteractionBarProps {
   onToggleLike: () => Promise<void>
   onToggleComments: () => void
   showComments: boolean
+  authorId: string
+  authorName: string | null
+  authorAvatar: string | null
+  authorRole: 'player' | 'coach' | 'club' | 'brand'
+  content: string
+  thumbnailUrl: string | null
 }
 
 export function PostInteractionBar({
@@ -20,10 +27,16 @@ export function PostInteractionBar({
   onToggleLike,
   onToggleComments,
   showComments,
+  authorId,
+  authorName,
+  authorAvatar,
+  authorRole,
+  content,
+  thumbnailUrl,
 }: PostInteractionBarProps) {
   const { user } = useAuthStore()
   const [isLiking, setIsLiking] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [showShareSheet, setShowShareSheet] = useState(false)
 
   const handleLike = useCallback(async () => {
     if (!user || isLiking) return
@@ -34,25 +47,6 @@ export function PostInteractionBar({
       setIsLiking(false)
     }
   }, [user, isLiking, onToggleLike])
-
-  const handleShare = useCallback(async () => {
-    const url = `${window.location.origin}/home?post=${postId}`
-    try {
-      await navigator.clipboard.writeText(url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Fallback for older browsers
-      const input = document.createElement('input')
-      input.value = url
-      document.body.appendChild(input)
-      input.select()
-      document.execCommand('copy')
-      document.body.removeChild(input)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
-  }, [postId])
 
   return (
     <div>
@@ -105,13 +99,26 @@ export function PostInteractionBar({
 
         <button
           type="button"
-          onClick={handleShare}
+          onClick={() => setShowShareSheet(true)}
           className="flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
         >
           <Share2 className="w-4.5 h-4.5" />
-          <span>{copied ? 'Copied!' : 'Share'}</span>
+          <span>Share</span>
         </button>
       </div>
+
+      {/* Share sheet */}
+      <SharePostSheet
+        isOpen={showShareSheet}
+        onClose={() => setShowShareSheet(false)}
+        postId={postId}
+        authorId={authorId}
+        authorName={authorName}
+        authorAvatar={authorAvatar}
+        authorRole={authorRole}
+        content={content}
+        thumbnailUrl={thumbnailUrl}
+      />
     </div>
   )
 }

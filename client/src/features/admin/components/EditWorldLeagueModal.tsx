@@ -12,6 +12,7 @@ import type {
   WorldProvince,
 } from '../types'
 import { logger } from '@/lib/logger'
+import { formatAdminDate } from '../utils/formatDate'
 
 interface EditWorldLeagueModalProps {
   isOpen: boolean
@@ -303,10 +304,10 @@ export function EditWorldLeagueModal({
                 </p>
               )}
               <p className="text-xs text-gray-500 mb-1">
-                <strong>Created:</strong> {new Date(league.created_at).toLocaleDateString()}
+                <strong>Created:</strong> {formatAdminDate(league.created_at)}
               </p>
               <p className="text-xs text-gray-500">
-                <strong>Last Updated:</strong> {new Date(league.updated_at).toLocaleDateString()}
+                <strong>Last Updated:</strong> {formatAdminDate(league.updated_at)}
               </p>
             </div>
           )}

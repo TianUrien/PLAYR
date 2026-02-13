@@ -16,7 +16,7 @@ interface StatCardProps {
     label: string
     direction: 'up' | 'down' | 'neutral'
   }
-  color?: 'purple' | 'blue' | 'green' | 'amber' | 'red' | 'gray'
+  color?: 'purple' | 'blue' | 'green' | 'amber' | 'red' | 'gray' | 'rose'
   loading?: boolean
 }
 
@@ -50,6 +50,11 @@ const colorClasses = {
     bg: 'bg-gray-50',
     icon: 'text-gray-600',
     trend: 'text-gray-600',
+  },
+  rose: {
+    bg: 'bg-rose-50',
+    icon: 'text-rose-600',
+    trend: 'text-rose-600',
   },
 }
 

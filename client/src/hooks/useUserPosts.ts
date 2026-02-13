@@ -5,6 +5,11 @@ import { withTimeout } from '@/lib/retry'
 
 export interface PostImage {
   url: string
+  thumb_url?: string | null
+  media_type?: 'image' | 'video'
+  width?: number | null
+  height?: number | null
+  duration?: number | null
   order: number
 }
 

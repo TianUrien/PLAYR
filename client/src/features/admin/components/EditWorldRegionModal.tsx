@@ -10,6 +10,7 @@ import type {
   WorldCountry,
 } from '../types'
 import { logger } from '@/lib/logger'
+import { formatAdminDate } from '../utils/formatDate'
 
 interface EditWorldRegionModalProps {
   isOpen: boolean
@@ -230,10 +231,10 @@ export function EditWorldRegionModal({
           {!isCreating && region && (
             <div className="pt-3 border-t border-gray-200">
               <p className="text-xs text-gray-500 mb-1">
-                <strong>Created:</strong> {new Date(region.created_at).toLocaleDateString()}
+                <strong>Created:</strong> {formatAdminDate(region.created_at)}
               </p>
               <p className="text-xs text-gray-500">
-                <strong>Last Updated:</strong> {new Date(region.updated_at).toLocaleDateString()}
+                <strong>Last Updated:</strong> {formatAdminDate(region.updated_at)}
               </p>
             </div>
           )}

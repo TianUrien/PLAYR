@@ -7,8 +7,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { X, Save, Loader2, Plus, AlertTriangle } from 'lucide-react'
-import { 
-  getWorldCountries, 
+import { formatAdminDate } from '../utils/formatDate'
+import {
+  getWorldCountries,
   getWorldProvinces, 
   getWorldLeagues,
   createWorldClub,
@@ -396,10 +397,10 @@ export function EditWorldClubModal({
           {!isCreating && club && (
             <div className="pt-3 border-t border-gray-200">
               <p className="text-xs text-gray-500 mb-1">
-                <strong>Created:</strong> {new Date(club.created_at).toLocaleDateString()} ({club.created_from})
+                <strong>Created:</strong> {formatAdminDate(club.created_at)} ({club.created_from})
               </p>
               <p className="text-xs text-gray-500">
-                <strong>Last Updated:</strong> {new Date(club.updated_at).toLocaleDateString()}
+                <strong>Last Updated:</strong> {formatAdminDate(club.updated_at)}
               </p>
             </div>
           )}

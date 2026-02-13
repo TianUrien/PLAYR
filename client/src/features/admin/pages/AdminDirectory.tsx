@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
+import { formatAdminDate, formatAdminDateTime } from '../utils/formatDate'
 import { useSearchParams } from 'react-router-dom'
 import {
   Search,
@@ -75,7 +76,7 @@ export function AdminDirectory() {
     try {
       const params: ProfileSearchParams = {
         query: searchQuery || undefined,
-        role: roleFilter as 'player' | 'coach' | 'club' | undefined,
+        role: roleFilter as 'player' | 'coach' | 'club' | 'brand' | undefined,
         is_blocked: blockedFilter === 'blocked' ? true : blockedFilter === 'active' ? false : undefined,
         is_test_account: testFilter === 'test' ? true : testFilter === 'real' ? false : undefined,
         limit: PAGE_SIZE,
@@ -211,19 +212,23 @@ export function AdminDirectory() {
     {
       key: 'role',
       label: 'Role',
-      render: (value) => (
-        <span
-          className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full capitalize ${
-            value === 'club'
-              ? 'bg-amber-100 text-amber-700'
-              : value === 'coach'
-              ? 'bg-green-100 text-green-700'
-              : 'bg-blue-100 text-blue-700'
-          }`}
-        >
-          {String(value)}
-        </span>
-      ),
+      render: (value) => {
+        const roleColors: Record<string, string> = {
+          player: 'bg-[#EFF6FF] text-[#2563EB]',
+          coach: 'bg-[#F0FDFA] text-[#0D9488]',
+          club: 'bg-[#FFF7ED] text-[#EA580C]',
+          brand: 'bg-[#FFF1F2] text-[#E11D48]',
+        }
+        return (
+          <span
+            className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full capitalize ${
+              roleColors[String(value)] || 'bg-gray-100 text-gray-600'
+            }`}
+          >
+            {String(value)}
+          </span>
+        )
+      },
     },
     {
       key: 'nationality',
@@ -285,7 +290,7 @@ export function AdminDirectory() {
       label: 'Joined',
       render: (value) => (
         <span className="text-sm text-gray-500">
-          {new Date(String(value)).toLocaleDateString()}
+          {formatAdminDate(String(value))}
         </span>
       ),
     },
@@ -379,6 +384,7 @@ export function AdminDirectory() {
             <option value="player">Players</option>
             <option value="coach">Coaches</option>
             <option value="club">Clubs</option>
+            <option value="brand">Brands</option>
           </select>
 
           <select
@@ -501,17 +507,23 @@ export function AdminDirectory() {
                       @{selectedProfile.profile.username || 'no-username'}
                     </p>
                     <div className="flex items-center gap-2 mt-2">
-                      <span
-                        className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full capitalize ${
-                          selectedProfile.profile.role === 'club'
-                            ? 'bg-amber-100 text-amber-700'
-                            : selectedProfile.profile.role === 'coach'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-blue-100 text-blue-700'
-                        }`}
-                      >
-                        {selectedProfile.profile.role}
-                      </span>
+                      {(() => {
+                        const roleColors: Record<string, string> = {
+                          player: 'bg-[#EFF6FF] text-[#2563EB]',
+                          coach: 'bg-[#F0FDFA] text-[#0D9488]',
+                          club: 'bg-[#FFF7ED] text-[#EA580C]',
+                          brand: 'bg-[#FFF1F2] text-[#E11D48]',
+                        }
+                        return (
+                          <span
+                            className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full capitalize ${
+                              roleColors[selectedProfile.profile.role] || 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            {selectedProfile.profile.role}
+                          </span>
+                        )
+                      })()}
                       {selectedProfile.profile.is_blocked && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-red-100 text-red-700 rounded-full">
                           <Ban className="w-3 h-3" /> Blocked
@@ -562,7 +574,7 @@ export function AdminDirectory() {
                         <Calendar className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">Created:</span>
                         <span className="text-gray-900">
-                          {new Date(selectedProfile.auth_user.created_at).toLocaleString()}
+                          {formatAdminDateTime(selectedProfile.auth_user.created_at)}
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-sm">
@@ -570,7 +582,7 @@ export function AdminDirectory() {
                         <span className="text-gray-600">Last sign in:</span>
                         <span className="text-gray-900">
                           {selectedProfile.auth_user.last_sign_in_at
-                            ? new Date(selectedProfile.auth_user.last_sign_in_at).toLocaleString()
+                            ? formatAdminDateTime(selectedProfile.auth_user.last_sign_in_at)
                             : 'Never'}
                         </span>
                       </div>
@@ -613,7 +625,7 @@ export function AdminDirectory() {
                     </h4>
                     {selectedProfile.profile.blocked_at && (
                       <p className="text-sm text-red-600">
-                        Blocked on: {new Date(selectedProfile.profile.blocked_at).toLocaleString()}
+                        Blocked on: {formatAdminDateTime(selectedProfile.profile.blocked_at)}
                       </p>
                     )}
                     {selectedProfile.profile.blocked_reason && (

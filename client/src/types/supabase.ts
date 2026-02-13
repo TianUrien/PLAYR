@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -10,7 +11,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.1"
   }
   graphql_public: {
     Tables: {
@@ -114,6 +115,235 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_posts: {
+        Row: {
+          brand_id: string
+          content: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          image_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand_id: string
+          content: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          image_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand_id?: string
+          content?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          image_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_posts_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_products: {
+        Row: {
+          brand_id: string
+          created_at: string | null
+          deleted_at: string | null
+          description: string | null
+          external_url: string | null
+          id: string
+          images: Json | null
+          name: string
+          sort_order: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          images?: Json | null
+          name: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          external_url?: string | null
+          id?: string
+          images?: Json | null
+          name?: string
+          sort_order?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_products_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brands: {
+        Row: {
+          bio: string | null
+          category: string
+          cover_url: string | null
+          created_at: string | null
+          deleted_at: string | null
+          id: string
+          instagram_url: string | null
+          is_verified: boolean | null
+          logo_url: string | null
+          name: string
+          profile_id: string
+          slug: string
+          updated_at: string | null
+          website_url: string | null
+        }
+        Insert: {
+          bio?: string | null
+          category?: string
+          cover_url?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string
+          instagram_url?: string | null
+          is_verified?: boolean | null
+          logo_url?: string | null
+          name: string
+          profile_id: string
+          slug: string
+          updated_at?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          bio?: string | null
+          category?: string
+          cover_url?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          id?: string
+          instagram_url?: string | null
+          is_verified?: boolean | null
+          logo_url?: string | null
+          name?: string
+          profile_id?: string
+          slug?: string
+          updated_at?: string | null
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brands_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brands_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      career_history: {
+        Row: {
+          badge_label: string | null
+          club_name: string
+          created_at: string
+          description: string | null
+          display_order: number
+          division_league: string
+          end_date: string | null
+          entry_type: Database["public"]["Enums"]["journey_entry_type"]
+          highlights: string[]
+          id: string
+          image_url: string | null
+          location_city: string | null
+          location_country: string | null
+          position_role: string
+          start_date: string | null
+          updated_at: string
+          user_id: string
+          years: string
+        }
+        Insert: {
+          badge_label?: string | null
+          club_name: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          division_league: string
+          end_date?: string | null
+          entry_type?: Database["public"]["Enums"]["journey_entry_type"]
+          highlights?: string[]
+          id?: string
+          image_url?: string | null
+          location_city?: string | null
+          location_country?: string | null
+          position_role: string
+          start_date?: string | null
+          updated_at?: string
+          user_id: string
+          years: string
+        }
+        Update: {
+          badge_label?: string | null
+          club_name?: string
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          division_league?: string
+          end_date?: string | null
+          entry_type?: Database["public"]["Enums"]["journey_entry_type"]
+          highlights?: string[]
+          id?: string
+          image_url?: string | null
+          location_city?: string | null
+          location_country?: string | null
+          position_role?: string
+          start_date?: string | null
+          updated_at?: string
+          user_id?: string
+          years?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "career_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       club_media: {
         Row: {
           alt_text: string | null
@@ -165,6 +395,115 @@ export type Database = {
           {
             foreignKeyName: "club_media_club_id_fkey"
             columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_answers: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          is_test_content: boolean
+          question_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_test_content?: boolean
+          question_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_test_content?: boolean
+          question_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_answers_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_answers_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "community_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_questions: {
+        Row: {
+          answer_count: number
+          author_id: string
+          body: string | null
+          category: Database["public"]["Enums"]["question_category"]
+          created_at: string
+          deleted_at: string | null
+          id: string
+          is_test_content: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          answer_count?: number
+          author_id: string
+          body?: string | null
+          category?: Database["public"]["Enums"]["question_category"]
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_test_content?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          answer_count?: number
+          author_id?: string
+          body?: string | null
+          category?: Database["public"]["Enums"]["question_category"]
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_test_content?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_questions_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_questions_author_id_fkey"
+            columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles_pending_country_review"
             referencedColumns: ["id"]
@@ -296,6 +635,145 @@ export type Database = {
             referencedRelation: "countries"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "country_text_aliases_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+        ]
+      }
+      error_logs: {
+        Row: {
+          correlation_id: string | null
+          created_at: string
+          error_code: string | null
+          error_message: string
+          error_type: string
+          function_name: string | null
+          id: string
+          metadata: Json | null
+          request_body: Json | null
+          request_method: string | null
+          request_path: string | null
+          severity: string
+          source: string
+          stack_trace: string | null
+          user_id: string | null
+        }
+        Insert: {
+          correlation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message: string
+          error_type: string
+          function_name?: string | null
+          id?: string
+          metadata?: Json | null
+          request_body?: Json | null
+          request_method?: string | null
+          request_path?: string | null
+          severity?: string
+          source: string
+          stack_trace?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          correlation_id?: string | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string
+          error_type?: string
+          function_name?: string | null
+          id?: string
+          metadata?: Json | null
+          request_body?: Json | null
+          request_method?: string | null
+          request_path?: string | null
+          severity?: string
+          source?: string
+          stack_trace?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "error_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "error_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          error_code: string | null
+          error_message: string | null
+          event_name: string
+          id: string
+          ip_hash: string | null
+          properties: Json | null
+          role: string | null
+          session_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          event_name: string
+          id?: string
+          ip_hash?: string | null
+          properties?: Json | null
+          role?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          event_name?: string
+          id?: string
+          ip_hash?: string | null
+          properties?: Json | null
+          role?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
         ]
       }
       gallery_photos: {
@@ -337,12 +815,139 @@ export type Database = {
         }
         Relationships: []
       }
+      home_feed_items: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          id: string
+          is_test_account: boolean
+          item_type: string
+          metadata: Json
+          source_id: string
+          source_type: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_test_account?: boolean
+          item_type: string
+          metadata?: Json
+          source_id: string
+          source_type: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          is_test_account?: boolean
+          item_type?: string
+          metadata?: Json
+          source_id?: string
+          source_type?: string
+        }
+        Relationships: []
+      }
+      investor_share_tokens: {
+        Row: {
+          access_count: number
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          last_accessed_at: string | null
+          name: string
+          revoked_at: string | null
+          token: string
+        }
+        Insert: {
+          access_count?: number
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          token: string
+        }
+        Update: {
+          access_count?: number
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          name?: string
+          revoked_at?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "investor_share_tokens_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "investor_share_tokens_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_digest_queue: {
+        Row: {
+          batch_ts: string
+          created_at: string
+          id: string
+          notification_ids: string[]
+          processed_at: string | null
+          recipient_id: string
+        }
+        Insert: {
+          batch_ts?: string
+          created_at?: string
+          id?: string
+          notification_ids: string[]
+          processed_at?: string | null
+          recipient_id: string
+        }
+        Update: {
+          batch_ts?: string
+          created_at?: string
+          id?: string
+          notification_ids?: string[]
+          processed_at?: string | null
+          recipient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_digest_queue_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_digest_queue_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
           conversation_id: string
           id: string
           idempotency_key: string | null
+          metadata: Json | null
           read_at: string | null
           sender_id: string
           sent_at: string
@@ -352,6 +957,7 @@ export type Database = {
           conversation_id: string
           id?: string
           idempotency_key?: string | null
+          metadata?: Json | null
           read_at?: string | null
           sender_id: string
           sent_at?: string
@@ -361,6 +967,7 @@ export type Database = {
           conversation_id?: string
           id?: string
           idempotency_key?: string | null
+          metadata?: Json | null
           read_at?: string | null
           sender_id?: string
           sent_at?: string
@@ -385,6 +992,167 @@ export type Database = {
             columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opportunities: {
+        Row: {
+          application_deadline: string | null
+          benefits: string[]
+          closed_at: string | null
+          club_id: string
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          custom_benefits: string[]
+          description: string | null
+          duration_text: string | null
+          gender: Database["public"]["Enums"]["opportunity_gender"] | null
+          id: string
+          location_city: string
+          location_country: string
+          opportunity_type: Database["public"]["Enums"]["opportunity_type"]
+          organization_name: string | null
+          position: Database["public"]["Enums"]["opportunity_position"] | null
+          priority: Database["public"]["Enums"]["opportunity_priority"] | null
+          published_at: string | null
+          requirements: string[]
+          start_date: string | null
+          status: Database["public"]["Enums"]["opportunity_status"]
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          application_deadline?: string | null
+          benefits?: string[]
+          closed_at?: string | null
+          club_id: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          custom_benefits?: string[]
+          description?: string | null
+          duration_text?: string | null
+          gender?: Database["public"]["Enums"]["opportunity_gender"] | null
+          id?: string
+          location_city: string
+          location_country: string
+          opportunity_type?: Database["public"]["Enums"]["opportunity_type"]
+          organization_name?: string | null
+          position?: Database["public"]["Enums"]["opportunity_position"] | null
+          priority?: Database["public"]["Enums"]["opportunity_priority"] | null
+          published_at?: string | null
+          requirements?: string[]
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["opportunity_status"]
+          title: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          application_deadline?: string | null
+          benefits?: string[]
+          closed_at?: string | null
+          club_id?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          custom_benefits?: string[]
+          description?: string | null
+          duration_text?: string | null
+          gender?: Database["public"]["Enums"]["opportunity_gender"] | null
+          id?: string
+          location_city?: string
+          location_country?: string
+          opportunity_type?: Database["public"]["Enums"]["opportunity_type"]
+          organization_name?: string | null
+          position?: Database["public"]["Enums"]["opportunity_position"] | null
+          priority?: Database["public"]["Enums"]["opportunity_priority"] | null
+          published_at?: string | null
+          requirements?: string[]
+          start_date?: string | null
+          status?: Database["public"]["Enums"]["opportunity_status"]
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunities_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_club_id_fkey"
+            columns: ["club_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opportunity_applications: {
+        Row: {
+          applicant_id: string
+          applied_at: string
+          cover_letter: string | null
+          id: string
+          metadata: Json
+          opportunity_id: string
+          status: Database["public"]["Enums"]["application_status"]
+          updated_at: string
+        }
+        Insert: {
+          applicant_id: string
+          applied_at?: string
+          cover_letter?: string | null
+          id?: string
+          metadata?: Json
+          opportunity_id: string
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+        }
+        Update: {
+          applicant_id?: string
+          applied_at?: string
+          cover_letter?: string | null
+          id?: string
+          metadata?: Json
+          opportunity_id?: string
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_applications_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_applications_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_applications_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_applications_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "public_opportunities"
             referencedColumns: ["id"]
           },
         ]
@@ -422,77 +1190,91 @@ export type Database = {
           },
         ]
       }
-      playing_history: {
+      post_comments: {
         Row: {
-          badge_label: string | null
-          club_name: string
+          author_id: string
+          content: string
           created_at: string
-          description: string | null
-          display_order: number
-          division_league: string
-          end_date: string | null
-          entry_type: Database["public"]["Enums"]["journey_entry_type"]
-          highlights: string[]
+          deleted_at: string | null
           id: string
-          image_url: string | null
-          location_city: string | null
-          location_country: string | null
-          position_role: string
-          start_date: string | null
-          updated_at: string
-          user_id: string
-          years: string
+          post_id: string
         }
         Insert: {
-          badge_label?: string | null
-          club_name: string
+          author_id: string
+          content: string
           created_at?: string
-          description?: string | null
-          display_order?: number
-          division_league: string
-          end_date?: string | null
-          entry_type?: Database["public"]["Enums"]["journey_entry_type"]
-          highlights?: string[]
+          deleted_at?: string | null
           id?: string
-          image_url?: string | null
-          location_city?: string | null
-          location_country?: string | null
-          position_role: string
-          start_date?: string | null
-          updated_at?: string
-          user_id: string
-          years: string
+          post_id: string
         }
         Update: {
-          badge_label?: string | null
-          club_name?: string
+          author_id?: string
+          content?: string
           created_at?: string
-          description?: string | null
-          display_order?: number
-          division_league?: string
-          end_date?: string | null
-          entry_type?: Database["public"]["Enums"]["journey_entry_type"]
-          highlights?: string[]
+          deleted_at?: string | null
           id?: string
-          image_url?: string | null
-          location_city?: string | null
-          location_country?: string | null
-          position_role?: string
-          start_date?: string | null
-          updated_at?: string
-          user_id?: string
-          years?: string
+          post_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "playing_history_user_id_fkey"
+            foreignKeyName: "post_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "user_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "user_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_likes_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "playing_history_user_id_fkey"
+            foreignKeyName: "post_likes_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles_pending_country_review"
@@ -644,11 +1426,48 @@ export type Database = {
           },
         ]
       }
+      profile_milestones: {
+        Row: {
+          achieved_at: string
+          id: string
+          milestone_type: string
+          profile_id: string
+        }
+        Insert: {
+          achieved_at?: string
+          id?: string
+          milestone_type: string
+          profile_id: string
+        }
+        Update: {
+          achieved_at?: string
+          id?: string
+          milestone_type?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_milestones_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_milestones_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_notifications: {
         Row: {
           actor_profile_id: string | null
           cleared_at: string | null
           created_at: string
+          emailed_at: string | null
           id: string
           kind: Database["public"]["Enums"]["profile_notification_kind"]
           metadata: Json
@@ -663,6 +1482,7 @@ export type Database = {
           actor_profile_id?: string | null
           cleared_at?: string | null
           created_at?: string
+          emailed_at?: string | null
           id?: string
           kind: Database["public"]["Enums"]["profile_notification_kind"]
           metadata?: Json
@@ -677,6 +1497,7 @@ export type Database = {
           actor_profile_id?: string | null
           cleared_at?: string | null
           created_at?: string
+          emailed_at?: string | null
           id?: string
           kind?: Database["public"]["Enums"]["profile_notification_kind"]
           metadata?: Json
@@ -818,6 +1639,7 @@ export type Database = {
           blocked_at: string | null
           blocked_by: string | null
           blocked_reason: string | null
+          brand_representation: string | null
           club_bio: string | null
           club_history: string | null
           contact_email: string | null
@@ -833,14 +1655,24 @@ export type Database = {
           id: string
           is_blocked: boolean
           is_test_account: boolean
+          last_active_at: string | null
+          last_message_email_at: string | null
           league_division: string | null
+          mens_league_division: string | null
+          mens_league_id: number | null
           nationality: string | null
           nationality_country_id: number | null
           nationality2_country_id: number | null
           notify_applications: boolean
+          notify_friends: boolean
+          notify_messages: boolean
           notify_opportunities: boolean
+          notify_references: boolean
           onboarding_completed: boolean
+          onboarding_completed_at: string | null
+          onboarding_started_at: string | null
           open_to_coach: boolean
+          open_to_opportunities: boolean
           open_to_play: boolean
           passport_1: string | null
           passport_2: string | null
@@ -848,12 +1680,16 @@ export type Database = {
           passport2_country_id: number | null
           position: string | null
           role: string
+          search_vector: unknown
           secondary_position: string | null
           social_links: Json | null
           updated_at: string
           username: string | null
           version: number
           website: string | null
+          womens_league_division: string | null
+          womens_league_id: number | null
+          world_region_id: number | null
           year_founded: number | null
         }
         Insert: {
@@ -864,6 +1700,7 @@ export type Database = {
           blocked_at?: string | null
           blocked_by?: string | null
           blocked_reason?: string | null
+          brand_representation?: string | null
           club_bio?: string | null
           club_history?: string | null
           contact_email?: string | null
@@ -879,14 +1716,24 @@ export type Database = {
           id: string
           is_blocked?: boolean
           is_test_account?: boolean
+          last_active_at?: string | null
+          last_message_email_at?: string | null
           league_division?: string | null
+          mens_league_division?: string | null
+          mens_league_id?: number | null
           nationality?: string | null
           nationality_country_id?: number | null
           nationality2_country_id?: number | null
           notify_applications?: boolean
+          notify_friends?: boolean
+          notify_messages?: boolean
           notify_opportunities?: boolean
+          notify_references?: boolean
           onboarding_completed?: boolean
+          onboarding_completed_at?: string | null
+          onboarding_started_at?: string | null
           open_to_coach?: boolean
+          open_to_opportunities?: boolean
           open_to_play?: boolean
           passport_1?: string | null
           passport_2?: string | null
@@ -894,12 +1741,16 @@ export type Database = {
           passport2_country_id?: number | null
           position?: string | null
           role: string
+          search_vector?: unknown
           secondary_position?: string | null
           social_links?: Json | null
           updated_at?: string
           username?: string | null
           version?: number
           website?: string | null
+          womens_league_division?: string | null
+          womens_league_id?: number | null
+          world_region_id?: number | null
           year_founded?: number | null
         }
         Update: {
@@ -910,6 +1761,7 @@ export type Database = {
           blocked_at?: string | null
           blocked_by?: string | null
           blocked_reason?: string | null
+          brand_representation?: string | null
           club_bio?: string | null
           club_history?: string | null
           contact_email?: string | null
@@ -925,14 +1777,24 @@ export type Database = {
           id?: string
           is_blocked?: boolean
           is_test_account?: boolean
+          last_active_at?: string | null
+          last_message_email_at?: string | null
           league_division?: string | null
+          mens_league_division?: string | null
+          mens_league_id?: number | null
           nationality?: string | null
           nationality_country_id?: number | null
           nationality2_country_id?: number | null
           notify_applications?: boolean
+          notify_friends?: boolean
+          notify_messages?: boolean
           notify_opportunities?: boolean
+          notify_references?: boolean
           onboarding_completed?: boolean
+          onboarding_completed_at?: string | null
+          onboarding_started_at?: string | null
           open_to_coach?: boolean
+          open_to_opportunities?: boolean
           open_to_play?: boolean
           passport_1?: string | null
           passport_2?: string | null
@@ -940,12 +1802,16 @@ export type Database = {
           passport2_country_id?: number | null
           position?: string | null
           role?: string
+          search_vector?: unknown
           secondary_position?: string | null
           social_links?: Json | null
           updated_at?: string
           username?: string | null
           version?: number
           website?: string | null
+          womens_league_division?: string | null
+          womens_league_id?: number | null
+          world_region_id?: number | null
           year_founded?: number | null
         }
         Relationships: [
@@ -957,11 +1823,32 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "profiles_base_country_id_fkey"
+            columns: ["base_country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
+            foreignKeyName: "profiles_mens_league_id_fkey"
+            columns: ["mens_league_id"]
+            isOneToOne: false
+            referencedRelation: "world_leagues"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "profiles_nationality_country_id_fkey"
             columns: ["nationality_country_id"]
             isOneToOne: false
             referencedRelation: "countries"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_nationality_country_id_fkey"
+            columns: ["nationality_country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
           },
           {
             foreignKeyName: "profiles_nationality2_country_id_fkey"
@@ -971,11 +1858,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "profiles_nationality2_country_id_fkey"
+            columns: ["nationality2_country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
             foreignKeyName: "profiles_passport1_country_id_fkey"
             columns: ["passport1_country_id"]
             isOneToOne: false
             referencedRelation: "countries"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_passport1_country_id_fkey"
+            columns: ["passport1_country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
           },
           {
             foreignKeyName: "profiles_passport2_country_id_fkey"
@@ -984,7 +1885,56 @@ export type Database = {
             referencedRelation: "countries"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "profiles_passport2_country_id_fkey"
+            columns: ["passport2_country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
+            foreignKeyName: "profiles_womens_league_id_fkey"
+            columns: ["womens_league_id"]
+            isOneToOne: false
+            referencedRelation: "world_leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_world_region_id_fkey"
+            columns: ["world_region_id"]
+            isOneToOne: false
+            referencedRelation: "world_province_stats"
+            referencedColumns: ["province_id"]
+          },
+          {
+            foreignKeyName: "profiles_world_region_id_fkey"
+            columns: ["world_region_id"]
+            isOneToOne: false
+            referencedRelation: "world_provinces"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      rate_limits: {
+        Row: {
+          action_type: string
+          created_at: string
+          id: string
+          identifier: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          id?: string
+          identifier: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          id?: string
+          identifier?: string
+        }
+        Relationships: []
       }
       storage_cleanup_queue: {
         Row: {
@@ -1021,6 +1971,153 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      user_engagement_daily: {
+        Row: {
+          created_at: string
+          date: string
+          first_heartbeat_at: string | null
+          heartbeat_count: number
+          last_heartbeat_at: string | null
+          session_count: number
+          total_seconds: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          first_heartbeat_at?: string | null
+          heartbeat_count?: number
+          last_heartbeat_at?: string | null
+          session_count?: number
+          total_seconds?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          first_heartbeat_at?: string | null
+          heartbeat_count?: number
+          last_heartbeat_at?: string | null
+          session_count?: number
+          total_seconds?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_engagement_daily_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_engagement_daily_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_engagement_heartbeats: {
+        Row: {
+          created_at: string
+          id: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_engagement_heartbeats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_engagement_heartbeats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_posts: {
+        Row: {
+          author_id: string
+          comment_count: number
+          content: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          images: Json | null
+          like_count: number
+          metadata: Json | null
+          post_type: string
+          search_vector: unknown
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          comment_count?: number
+          content: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          images?: Json | null
+          like_count?: number
+          metadata?: Json | null
+          post_type?: string
+          search_vector?: unknown
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          comment_count?: number
+          content?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          images?: Json | null
+          like_count?: number
+          metadata?: Json | null
+          post_type?: string
+          search_vector?: unknown
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_unread_counters: {
         Row: {
@@ -1105,161 +2202,230 @@ export type Database = {
           },
         ]
       }
-      vacancies: {
+      world_clubs: {
         Row: {
-          application_deadline: string | null
-          benefits: string[]
-          closed_at: string | null
+          claimed_at: string | null
+          claimed_profile_id: string | null
           club_id: string
-          contact_email: string | null
-          contact_phone: string | null
+          club_name: string
+          club_name_normalized: string
+          country_id: number
           created_at: string
-          custom_benefits: string[]
-          description: string | null
-          duration_text: string | null
-          gender: Database["public"]["Enums"]["vacancy_gender"] | null
+          created_from: string
           id: string
-          location_city: string
-          location_country: string
-          opportunity_type: Database["public"]["Enums"]["opportunity_type"]
-          position: Database["public"]["Enums"]["vacancy_position"] | null
-          priority: Database["public"]["Enums"]["vacancy_priority"] | null
-          published_at: string | null
-          requirements: string[]
-          start_date: string | null
-          status: Database["public"]["Enums"]["vacancy_status"]
-          title: string
+          is_claimed: boolean
+          men_league_id: number | null
+          province_id: number | null
           updated_at: string
-          version: number
+          women_league_id: number | null
         }
         Insert: {
-          application_deadline?: string | null
-          benefits?: string[]
-          closed_at?: string | null
+          claimed_at?: string | null
+          claimed_profile_id?: string | null
           club_id: string
-          contact_email?: string | null
-          contact_phone?: string | null
+          club_name: string
+          club_name_normalized: string
+          country_id: number
           created_at?: string
-          custom_benefits?: string[]
-          description?: string | null
-          duration_text?: string | null
-          gender?: Database["public"]["Enums"]["vacancy_gender"] | null
+          created_from?: string
           id?: string
-          location_city: string
-          location_country: string
-          opportunity_type?: Database["public"]["Enums"]["opportunity_type"]
-          position?: Database["public"]["Enums"]["vacancy_position"] | null
-          priority?: Database["public"]["Enums"]["vacancy_priority"] | null
-          published_at?: string | null
-          requirements?: string[]
-          start_date?: string | null
-          status?: Database["public"]["Enums"]["vacancy_status"]
-          title: string
+          is_claimed?: boolean
+          men_league_id?: number | null
+          province_id?: number | null
           updated_at?: string
-          version?: number
+          women_league_id?: number | null
         }
         Update: {
-          application_deadline?: string | null
-          benefits?: string[]
-          closed_at?: string | null
+          claimed_at?: string | null
+          claimed_profile_id?: string | null
           club_id?: string
-          contact_email?: string | null
-          contact_phone?: string | null
+          club_name?: string
+          club_name_normalized?: string
+          country_id?: number
           created_at?: string
-          custom_benefits?: string[]
-          description?: string | null
-          duration_text?: string | null
-          gender?: Database["public"]["Enums"]["vacancy_gender"] | null
+          created_from?: string
           id?: string
-          location_city?: string
-          location_country?: string
-          opportunity_type?: Database["public"]["Enums"]["opportunity_type"]
-          position?: Database["public"]["Enums"]["vacancy_position"] | null
-          priority?: Database["public"]["Enums"]["vacancy_priority"] | null
-          published_at?: string | null
-          requirements?: string[]
-          start_date?: string | null
-          status?: Database["public"]["Enums"]["vacancy_status"]
-          title?: string
+          is_claimed?: boolean
+          men_league_id?: number | null
+          province_id?: number | null
           updated_at?: string
-          version?: number
+          women_league_id?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "vacancies_club_id_fkey"
-            columns: ["club_id"]
+            foreignKeyName: "world_clubs_claimed_profile_id_fkey"
+            columns: ["claimed_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "vacancies_club_id_fkey"
-            columns: ["club_id"]
+            foreignKeyName: "world_clubs_claimed_profile_id_fkey"
+            columns: ["claimed_profile_id"]
             isOneToOne: false
             referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_clubs_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_clubs_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
+            foreignKeyName: "world_clubs_men_league_id_fkey"
+            columns: ["men_league_id"]
+            isOneToOne: false
+            referencedRelation: "world_leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_clubs_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "world_province_stats"
+            referencedColumns: ["province_id"]
+          },
+          {
+            foreignKeyName: "world_clubs_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "world_provinces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_clubs_women_league_id_fkey"
+            columns: ["women_league_id"]
+            isOneToOne: false
+            referencedRelation: "world_leagues"
             referencedColumns: ["id"]
           },
         ]
       }
-      vacancy_applications: {
+      world_leagues: {
         Row: {
-          applied_at: string
-          cover_letter: string | null
-          id: string
-          metadata: Json
-          player_id: string
-          status: Database["public"]["Enums"]["application_status"]
+          country_id: number | null
+          created_at: string
+          display_order: number | null
+          id: number
+          logical_id: string | null
+          name: string
+          province_id: number | null
+          slug: string | null
+          tier: number | null
           updated_at: string
-          vacancy_id: string
         }
         Insert: {
-          applied_at?: string
-          cover_letter?: string | null
-          id?: string
-          metadata?: Json
-          player_id: string
-          status?: Database["public"]["Enums"]["application_status"]
+          country_id?: number | null
+          created_at?: string
+          display_order?: number | null
+          id?: number
+          logical_id?: string | null
+          name: string
+          province_id?: number | null
+          slug?: string | null
+          tier?: number | null
           updated_at?: string
-          vacancy_id: string
         }
         Update: {
-          applied_at?: string
-          cover_letter?: string | null
-          id?: string
-          metadata?: Json
-          player_id?: string
-          status?: Database["public"]["Enums"]["application_status"]
+          country_id?: number | null
+          created_at?: string
+          display_order?: number | null
+          id?: number
+          logical_id?: string | null
+          name?: string
+          province_id?: number | null
+          slug?: string | null
+          tier?: number | null
           updated_at?: string
-          vacancy_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "vacancy_applications_player_id_fkey"
-            columns: ["player_id"]
+            foreignKeyName: "world_leagues_country_id_fkey"
+            columns: ["country_id"]
             isOneToOne: false
-            referencedRelation: "profiles"
+            referencedRelation: "countries"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "vacancy_applications_player_id_fkey"
-            columns: ["player_id"]
+            foreignKeyName: "world_leagues_country_id_fkey"
+            columns: ["country_id"]
             isOneToOne: false
-            referencedRelation: "profiles_pending_country_review"
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
+            foreignKeyName: "world_leagues_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "world_province_stats"
+            referencedColumns: ["province_id"]
+          },
+          {
+            foreignKeyName: "world_leagues_province_id_fkey"
+            columns: ["province_id"]
+            isOneToOne: false
+            referencedRelation: "world_provinces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      world_provinces: {
+        Row: {
+          country_id: number
+          created_at: string
+          description: string | null
+          display_order: number | null
+          id: number
+          logical_id: string | null
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          country_id: number
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: number
+          logical_id?: string | null
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          country_id?: number
+          created_at?: string
+          description?: string | null
+          display_order?: number | null
+          id?: number
+          logical_id?: string | null
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_provinces_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "vacancy_applications_vacancy_id_fkey"
-            columns: ["vacancy_id"]
+            foreignKeyName: "world_provinces_country_id_fkey"
+            columns: ["country_id"]
             isOneToOne: false
-            referencedRelation: "public_opportunities"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vacancy_applications_vacancy_id_fkey"
-            columns: ["vacancy_id"]
-            isOneToOne: false
-            referencedRelation: "vacancies"
-            referencedColumns: ["id"]
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
           },
         ]
       }
@@ -1325,8 +2491,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "profiles_nationality_country_id_fkey"
+            columns: ["nationality_country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
             foreignKeyName: "profiles_passport1_country_id_fkey"
             columns: ["passport1_country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_passport1_country_id_fkey"
+            columns: ["passport1_country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+          {
+            foreignKeyName: "profiles_passport2_country_id_fkey"
+            columns: ["passport2_country_id"]
             isOneToOne: false
             referencedRelation: "countries"
             referencedColumns: ["id"]
@@ -1335,8 +2522,8 @@ export type Database = {
             foreignKeyName: "profiles_passport2_country_id_fkey"
             columns: ["passport2_country_id"]
             isOneToOne: false
-            referencedRelation: "countries"
-            referencedColumns: ["id"]
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
           },
         ]
       }
@@ -1352,16 +2539,19 @@ export type Database = {
           custom_benefits: string[] | null
           description: string | null
           duration_text: string | null
-          gender: Database["public"]["Enums"]["vacancy_gender"] | null
+          gender: Database["public"]["Enums"]["opportunity_gender"] | null
           id: string | null
           location_city: string | null
           location_country: string | null
           opportunity_type:
             | Database["public"]["Enums"]["opportunity_type"]
             | null
-          position: Database["public"]["Enums"]["vacancy_position"] | null
-          priority: Database["public"]["Enums"]["vacancy_priority"] | null
+          organization_name: string | null
+          position: Database["public"]["Enums"]["opportunity_position"] | null
+          priority: Database["public"]["Enums"]["opportunity_priority"] | null
           published_at: string | null
+          publisher_current_club: string | null
+          publisher_role: string | null
           requirements: string[] | null
           start_date: string | null
           title: string | null
@@ -1434,11 +2624,63 @@ export type Database = {
           },
         ]
       }
+      world_countries_with_directory: {
+        Row: {
+          country_code: string | null
+          country_id: number | null
+          country_name: string | null
+          flag_emoji: string | null
+          has_regions: boolean | null
+          region: string | null
+          total_clubs: number | null
+          total_leagues: number | null
+        }
+        Relationships: []
+      }
+      world_province_stats: {
+        Row: {
+          claimed_clubs: number | null
+          country_code: string | null
+          country_id: number | null
+          country_name: string | null
+          description: string | null
+          display_order: number | null
+          province_id: number | null
+          province_name: string | null
+          slug: string | null
+          total_clubs: number | null
+          total_leagues: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "world_provinces_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "world_provinces_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "world_countries_with_directory"
+            referencedColumns: ["country_id"]
+          },
+        ]
+      }
     }
     Functions: {
+      _enqueue_user_post_media: {
+        Args: { p_images: Json; p_post_id: string; p_reason: string }
+        Returns: undefined
+      }
       acquire_profile_lock: { Args: { profile_id: string }; Returns: boolean }
       admin_block_user: {
         Args: { p_profile_id: string; p_reason?: string }
+        Returns: Json
+      }
+      admin_create_investor_token: {
+        Args: { p_expires_in_days?: number; p_name?: string }
         Returns: Json
       }
       admin_delete_orphan_profile: {
@@ -1479,8 +2721,177 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_get_brand_activity: {
+        Args: { p_days?: number; p_limit?: number; p_offset?: number }
+        Returns: {
+          brand_id: string
+          brand_name: string
+          category: string
+          created_at: string
+          is_verified: boolean
+          last_activity_at: string
+          logo_url: string
+          onboarding_completed: boolean
+          post_count: number
+          product_count: number
+          slug: string
+          total_count: number
+        }[]
+      }
+      admin_get_brand_summary: { Args: never; Returns: Json }
       admin_get_broken_references: { Args: never; Returns: Json }
+      admin_get_club_activity: {
+        Args: { p_days?: number; p_limit?: number; p_offset?: number }
+        Returns: {
+          avatar_url: string
+          avg_apps_per_vacancy: number
+          base_location: string
+          club_id: string
+          club_name: string
+          last_posted_at: string
+          onboarding_completed: boolean
+          open_vacancy_count: number
+          total_applications: number
+          total_count: number
+          vacancy_count: number
+        }[]
+      }
+      admin_get_club_summary: { Args: never; Returns: Json }
       admin_get_dashboard_stats: { Args: never; Returns: Json }
+      admin_get_engagement_summary: { Args: never; Returns: Json }
+      admin_get_engagement_trends: {
+        Args: { p_days?: number }
+        Returns: {
+          active_users: number
+          date: string
+          total_minutes: number
+          total_sessions: number
+        }[]
+      }
+      admin_get_extended_dashboard_stats: { Args: never; Returns: Json }
+      admin_get_investor_metrics: { Args: { p_days?: number }; Returns: Json }
+      admin_get_investor_signup_trends: {
+        Args: { p_days?: number }
+        Returns: {
+          clubs: number
+          coaches: number
+          cumulative_total: number
+          date: string
+          players: number
+          total_signups: number
+        }[]
+      }
+      admin_get_opportunities:
+        | {
+            Args: {
+              p_limit?: number
+              p_offset?: number
+              p_search?: string
+              p_sort?: string
+              p_status?: Database["public"]["Enums"]["opportunity_status"]
+            }
+            Returns: {
+              application_count: number
+              club_avatar_url: string
+              club_id: string
+              club_name: string
+              created_at: string
+              gender: Database["public"]["Enums"]["opportunity_gender"]
+              id: string
+              location_city: string
+              location_country: string
+              opportunity_type: string
+              position: Database["public"]["Enums"]["opportunity_position"]
+              priority: Database["public"]["Enums"]["opportunity_priority"]
+              published_at: string
+              status: Database["public"]["Enums"]["opportunity_status"]
+              title: string
+              total_count: number
+              updated_at: string
+            }[]
+          }
+        | {
+            Args: {
+              p_club_id?: string
+              p_days?: number
+              p_limit?: number
+              p_offset?: number
+              p_status?: Database["public"]["Enums"]["opportunity_status"]
+            }
+            Returns: {
+              application_count: number
+              application_deadline: string
+              club_avatar_url: string
+              club_id: string
+              club_name: string
+              created_at: string
+              first_application_at: string
+              id: string
+              location_city: string
+              location_country: string
+              opportunity_type: Database["public"]["Enums"]["opportunity_type"]
+              pending_count: number
+              position: Database["public"]["Enums"]["opportunity_position"]
+              published_at: string
+              shortlisted_count: number
+              status: Database["public"]["Enums"]["opportunity_status"]
+              time_to_first_app_minutes: number
+              title: string
+              total_count: number
+            }[]
+          }
+      admin_get_opportunity_applicants: {
+        Args: { p_limit?: number; p_offset?: number; p_opportunity_id: string }
+        Returns: {
+          applicant_avatar_url: string
+          applicant_id: string
+          applicant_name: string
+          applicant_role: string
+          application_id: string
+          application_message: string
+          application_status: string
+          applied_at: string
+          total_count: number
+        }[]
+      }
+      admin_get_opportunity_detail: {
+        Args: { p_opportunity_id: string }
+        Returns: {
+          application_count: number
+          benefits: string[]
+          closed_at: string
+          club_avatar_url: string
+          club_id: string
+          club_name: string
+          created_at: string
+          description: string
+          gender: Database["public"]["Enums"]["opportunity_gender"]
+          id: string
+          location_city: string
+          location_country: string
+          opportunity_type: string
+          pending_count: number
+          position: Database["public"]["Enums"]["opportunity_position"]
+          priority: Database["public"]["Enums"]["opportunity_priority"]
+          published_at: string
+          rejected_count: number
+          requirements: string[]
+          shortlisted_count: number
+          start_date: string
+          status: Database["public"]["Enums"]["opportunity_status"]
+          title: string
+          updated_at: string
+        }[]
+      }
+      admin_get_player_funnel: { Args: { p_days?: number }; Returns: Json }
+      admin_get_profile_completeness_distribution: {
+        Args: { p_role?: string }
+        Returns: {
+          bucket: string
+          count: number
+          percentage: number
+        }[]
+      }
       admin_get_profile_details: {
         Args: { p_profile_id: string }
         Returns: Json
@@ -1498,6 +2909,7 @@ export type Database = {
       admin_get_signup_trends: {
         Args: { p_days?: number }
         Returns: {
+          brands: number
           clubs: number
           coaches: number
           date: string
@@ -1510,6 +2922,103 @@ export type Database = {
         Returns: {
           country: string
           user_count: number
+        }[]
+      }
+      admin_get_user_engagement: {
+        Args: {
+          p_days?: number
+          p_limit?: number
+          p_offset?: number
+          p_sort_by?: string
+          p_sort_dir?: string
+        }
+        Returns: {
+          active_days: number
+          avatar_url: string
+          avg_session_minutes: number
+          display_name: string
+          email: string
+          last_active_at: string
+          role: string
+          total_count: number
+          total_sessions: number
+          total_time_minutes: number
+          user_id: string
+        }[]
+      }
+      admin_get_user_engagement_detail: {
+        Args: { p_days?: number; p_user_id: string }
+        Returns: Json
+      }
+      admin_get_vacancies: {
+        Args: {
+          p_club_id?: string
+          p_days?: number
+          p_limit?: number
+          p_offset?: number
+          p_status?: Database["public"]["Enums"]["opportunity_status"]
+        }
+        Returns: {
+          application_count: number
+          application_deadline: string
+          club_avatar_url: string
+          club_id: string
+          club_name: string
+          created_at: string
+          first_application_at: string
+          id: string
+          location_city: string
+          location_country: string
+          opportunity_type: Database["public"]["Enums"]["opportunity_type"]
+          pending_count: number
+          position: Database["public"]["Enums"]["opportunity_position"]
+          published_at: string
+          shortlisted_count: number
+          status: Database["public"]["Enums"]["opportunity_status"]
+          time_to_first_app_minutes: number
+          title: string
+          total_count: number
+        }[]
+      }
+      admin_get_vacancy_applicants: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_status?: Database["public"]["Enums"]["application_status"]
+          p_vacancy_id: string
+        }
+        Returns: {
+          application_id: string
+          applied_at: string
+          avatar_url: string
+          cover_letter: string
+          highlight_video_url: string
+          nationality: string
+          onboarding_completed: boolean
+          player_email: string
+          player_id: string
+          player_name: string
+          position: string
+          status: Database["public"]["Enums"]["application_status"]
+          total_count: number
+        }[]
+      }
+      admin_get_vacancy_detail: {
+        Args: { p_vacancy_id: string }
+        Returns: Json
+      }
+      admin_list_investor_tokens: {
+        Args: never
+        Returns: {
+          access_count: number
+          created_at: string
+          expires_at: string
+          id: string
+          is_active: boolean
+          last_accessed_at: string
+          name: string
+          revoked_at: string
+          token: string
         }[]
       }
       admin_log_action: {
@@ -1527,34 +3036,66 @@ export type Database = {
         Args: { p_country_id: number; p_field: string; p_profile_id: string }
         Returns: undefined
       }
-      admin_search_profiles: {
-        Args: {
-          p_is_blocked?: boolean
-          p_is_test_account?: boolean
-          p_limit?: number
-          p_offset?: number
-          p_onboarding_completed?: boolean
-          p_query?: string
-          p_role?: string
-        }
-        Returns: {
-          avatar_url: string
-          base_location: string
-          created_at: string
-          email: string
-          full_name: string
-          id: string
-          is_blocked: boolean
-          is_test_account: boolean
-          nationality: string
-          nationality2: string
-          onboarding_completed: boolean
-          role: string
-          total_count: number
-          updated_at: string
-          username: string
-        }[]
+      admin_revoke_investor_token: {
+        Args: { p_token_id: string }
+        Returns: boolean
       }
+      admin_search_profiles:
+        | {
+            Args: {
+              p_country?: string
+              p_is_blocked?: boolean
+              p_is_test?: boolean
+              p_limit?: number
+              p_offset?: number
+              p_query?: string
+              p_role?: string
+              p_sort?: string
+            }
+            Returns: {
+              avatar_url: string
+              country: string
+              created_at: string
+              email: string
+              full_name: string
+              id: string
+              is_blocked: boolean
+              is_platform_admin: boolean
+              is_test_account: boolean
+              onboarding_completed: boolean
+              role: string
+              total_count: number
+              username: string
+            }[]
+          }
+        | {
+            Args: {
+              p_is_blocked?: boolean
+              p_is_test_account?: boolean
+              p_limit?: number
+              p_offset?: number
+              p_onboarding_completed?: boolean
+              p_query?: string
+              p_role?: string
+            }
+            Returns: {
+              avatar_url: string
+              base_location: string
+              created_at: string
+              email: string
+              full_name: string
+              id: string
+              is_blocked: boolean
+              is_test_account: boolean
+              nationality: string
+              nationality2: string
+              onboarding_completed: boolean
+              role: string
+              total_count: number
+              updated_at: string
+              username: string
+            }[]
+          }
       admin_set_test_account: {
         Args: { p_is_test: boolean; p_profile_id: string }
         Returns: Json
@@ -1568,6 +3109,39 @@ export type Database = {
         Args: { p_batch?: number; p_retention_days?: number }
         Returns: number
       }
+      check_application_rate_limit: {
+        Args: { p_user_id: string }
+        Returns: Json
+      }
+      check_login_rate_limit: { Args: { p_ip: string }; Returns: Json }
+      check_password_reset_rate_limit: {
+        Args: { p_email: string }
+        Returns: Json
+      }
+      check_rate_limit: {
+        Args: {
+          p_action_type: string
+          p_identifier: string
+          p_max_requests?: number
+          p_window_seconds?: number
+        }
+        Returns: Json
+      }
+      check_signup_rate_limit: { Args: { p_ip: string }; Returns: Json }
+      check_user_post_rate_limit: { Args: { p_user_id: string }; Returns: Json }
+      claim_world_club: {
+        Args: {
+          p_men_league_id?: number
+          p_profile_id: string
+          p_women_league_id?: number
+          p_world_club_id: string
+        }
+        Returns: Json
+      }
+      cleanup_rate_limits: {
+        Args: { p_max_age_hours?: number }
+        Returns: number
+      }
       cleanup_stale_locks: { Args: never; Returns: undefined }
       clear_profile_notifications: {
         Args: {
@@ -1576,81 +3150,234 @@ export type Database = {
         }
         Returns: number
       }
-      complete_user_profile: {
+      club_has_applicant: {
+        Args: { p_club_id: string; p_player_id: string }
+        Returns: boolean
+      }
+      complete_user_profile:
+        | {
+            Args: {
+              p_base_location: string
+              p_bio?: string
+              p_club_bio?: string
+              p_club_history?: string
+              p_contact_email?: string
+              p_contact_email_public?: boolean
+              p_current_club?: string
+              p_date_of_birth?: string
+              p_full_name: string
+              p_gender?: string
+              p_highlight_video_url?: string
+              p_league_division?: string
+              p_nationality: string
+              p_passport_1?: string
+              p_passport_2?: string
+              p_position?: string
+              p_role: string
+              p_secondary_position?: string
+              p_user_id: string
+              p_website?: string
+              p_year_founded?: number
+            }
+            Returns: {
+              avatar_url: string | null
+              base_country_id: number | null
+              base_location: string | null
+              bio: string | null
+              blocked_at: string | null
+              blocked_by: string | null
+              blocked_reason: string | null
+              brand_representation: string | null
+              club_bio: string | null
+              club_history: string | null
+              contact_email: string | null
+              contact_email_public: boolean
+              created_at: string
+              current_club: string | null
+              date_of_birth: string | null
+              email: string
+              full_name: string | null
+              gender: string | null
+              highlight_video_url: string | null
+              highlight_visibility: string
+              id: string
+              is_blocked: boolean
+              is_test_account: boolean
+              last_active_at: string | null
+              last_message_email_at: string | null
+              league_division: string | null
+              mens_league_division: string | null
+              mens_league_id: number | null
+              nationality: string | null
+              nationality_country_id: number | null
+              nationality2_country_id: number | null
+              notify_applications: boolean
+              notify_friends: boolean
+              notify_messages: boolean
+              notify_opportunities: boolean
+              notify_references: boolean
+              onboarding_completed: boolean
+              onboarding_completed_at: string | null
+              onboarding_started_at: string | null
+              open_to_coach: boolean
+              open_to_opportunities: boolean
+              open_to_play: boolean
+              passport_1: string | null
+              passport_2: string | null
+              passport1_country_id: number | null
+              passport2_country_id: number | null
+              position: string | null
+              role: string
+              search_vector: unknown
+              secondary_position: string | null
+              social_links: Json | null
+              updated_at: string
+              username: string | null
+              version: number
+              website: string | null
+              womens_league_division: string | null
+              womens_league_id: number | null
+              world_region_id: number | null
+              year_founded: number | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "profiles"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_base_location: string
+              p_bio?: string
+              p_club_bio?: string
+              p_club_history?: string
+              p_contact_email?: string
+              p_current_club?: string
+              p_date_of_birth?: string
+              p_full_name: string
+              p_gender?: string
+              p_highlight_video_url?: string
+              p_league_division?: string
+              p_nationality: string
+              p_passport_1?: string
+              p_passport_2?: string
+              p_position?: string
+              p_role: string
+              p_secondary_position?: string
+              p_user_id: string
+              p_website?: string
+              p_year_founded?: number
+            }
+            Returns: {
+              avatar_url: string | null
+              base_country_id: number | null
+              base_location: string | null
+              bio: string | null
+              blocked_at: string | null
+              blocked_by: string | null
+              blocked_reason: string | null
+              brand_representation: string | null
+              club_bio: string | null
+              club_history: string | null
+              contact_email: string | null
+              contact_email_public: boolean
+              created_at: string
+              current_club: string | null
+              date_of_birth: string | null
+              email: string
+              full_name: string | null
+              gender: string | null
+              highlight_video_url: string | null
+              highlight_visibility: string
+              id: string
+              is_blocked: boolean
+              is_test_account: boolean
+              last_active_at: string | null
+              last_message_email_at: string | null
+              league_division: string | null
+              mens_league_division: string | null
+              mens_league_id: number | null
+              nationality: string | null
+              nationality_country_id: number | null
+              nationality2_country_id: number | null
+              notify_applications: boolean
+              notify_friends: boolean
+              notify_messages: boolean
+              notify_opportunities: boolean
+              notify_references: boolean
+              onboarding_completed: boolean
+              onboarding_completed_at: string | null
+              onboarding_started_at: string | null
+              open_to_coach: boolean
+              open_to_opportunities: boolean
+              open_to_play: boolean
+              passport_1: string | null
+              passport_2: string | null
+              passport1_country_id: number | null
+              passport2_country_id: number | null
+              position: string | null
+              role: string
+              search_vector: unknown
+              secondary_position: string | null
+              social_links: Json | null
+              updated_at: string
+              username: string | null
+              version: number
+              website: string | null
+              womens_league_division: string | null
+              womens_league_id: number | null
+              world_region_id: number | null
+              year_founded: number | null
+            }
+            SetofOptions: {
+              from: "*"
+              to: "profiles"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+      create_and_claim_world_club: {
         Args: {
-          p_base_location: string
+          p_club_name: string
+          p_country_id: number
+          p_men_league_id?: number
+          p_profile_id?: string
+          p_province_id?: number
+          p_women_league_id?: number
+        }
+        Returns: Json
+      }
+      create_brand: {
+        Args: {
           p_bio?: string
-          p_club_bio?: string
-          p_club_history?: string
-          p_contact_email?: string
-          p_current_club?: string
-          p_date_of_birth?: string
-          p_full_name: string
-          p_gender?: string
-          p_highlight_video_url?: string
-          p_league_division?: string
-          p_nationality: string
-          p_passport_1?: string
-          p_passport_2?: string
-          p_position?: string
-          p_role: string
-          p_secondary_position?: string
-          p_user_id: string
-          p_website?: string
-          p_year_founded?: number
+          p_category: string
+          p_instagram_url?: string
+          p_logo_url?: string
+          p_name: string
+          p_slug: string
+          p_website_url?: string
         }
-        Returns: {
-          avatar_url: string | null
-          base_country_id: number | null
-          base_location: string | null
-          bio: string | null
-          blocked_at: string | null
-          blocked_by: string | null
-          blocked_reason: string | null
-          club_bio: string | null
-          club_history: string | null
-          contact_email: string | null
-          contact_email_public: boolean
-          created_at: string
-          current_club: string | null
-          date_of_birth: string | null
-          email: string
-          full_name: string | null
-          gender: string | null
-          highlight_video_url: string | null
-          highlight_visibility: string
-          id: string
-          is_blocked: boolean
-          is_test_account: boolean
-          league_division: string | null
-          nationality: string | null
-          nationality_country_id: number | null
-          nationality2_country_id: number | null
-          notify_applications: boolean
-          notify_opportunities: boolean
-          onboarding_completed: boolean
-          open_to_coach: boolean
-          open_to_play: boolean
-          passport_1: string | null
-          passport_2: string | null
-          passport1_country_id: number | null
-          passport2_country_id: number | null
-          position: string | null
-          role: string
-          secondary_position: string | null
-          social_links: Json | null
-          updated_at: string
-          username: string | null
-          version: number
-          website: string | null
-          year_founded: number | null
+        Returns: Json
+      }
+      create_brand_post: {
+        Args: { p_brand_id: string; p_content: string; p_image_url?: string }
+        Returns: Json
+      }
+      create_brand_product: {
+        Args: {
+          p_brand_id: string
+          p_description?: string
+          p_external_url?: string
+          p_images?: Json
+          p_name: string
         }
-        SetofOptions: {
-          from: "*"
-          to: "profiles"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+        Returns: Json
+      }
+      create_post_comment: {
+        Args: { p_content: string; p_post_id: string }
+        Returns: Json
       }
       create_profile_for_new_user: {
         Args: { user_email: string; user_id: string; user_role?: string }
@@ -1662,6 +3389,7 @@ export type Database = {
           blocked_at: string | null
           blocked_by: string | null
           blocked_reason: string | null
+          brand_representation: string | null
           club_bio: string | null
           club_history: string | null
           contact_email: string | null
@@ -1677,14 +3405,24 @@ export type Database = {
           id: string
           is_blocked: boolean
           is_test_account: boolean
+          last_active_at: string | null
+          last_message_email_at: string | null
           league_division: string | null
+          mens_league_division: string | null
+          mens_league_id: number | null
           nationality: string | null
           nationality_country_id: number | null
           nationality2_country_id: number | null
           notify_applications: boolean
+          notify_friends: boolean
+          notify_messages: boolean
           notify_opportunities: boolean
+          notify_references: boolean
           onboarding_completed: boolean
+          onboarding_completed_at: string | null
+          onboarding_started_at: string | null
           open_to_coach: boolean
+          open_to_opportunities: boolean
           open_to_play: boolean
           passport_1: string | null
           passport_2: string | null
@@ -1692,12 +3430,16 @@ export type Database = {
           passport2_country_id: number | null
           position: string | null
           role: string
+          search_vector: unknown
           secondary_position: string | null
           social_links: Json | null
           updated_at: string
           username: string | null
           version: number
           website: string | null
+          womens_league_division: string | null
+          womens_league_id: number | null
+          world_region_id: number | null
           year_founded: number | null
         }
         SetofOptions: {
@@ -1707,7 +3449,25 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_transfer_post: {
+        Args: {
+          p_club_avatar_url?: string
+          p_club_country_id?: number
+          p_club_name: string
+          p_content?: string
+          p_images?: Json
+          p_world_club_id?: string
+        }
+        Returns: Json
+      }
+      create_user_post: {
+        Args: { p_content: string; p_images?: Json }
+        Returns: Json
+      }
       current_profile_role: { Args: never; Returns: string }
+      delete_brand_post: { Args: { p_post_id: string }; Returns: Json }
+      delete_brand_product: { Args: { p_product_id: string }; Returns: Json }
+      delete_post_comment: { Args: { p_comment_id: string }; Returns: Json }
       delete_rows_where_clause: {
         Args: {
           p_batch?: number
@@ -1717,6 +3477,33 @@ export type Database = {
         }
         Returns: number
       }
+      delete_user_post: { Args: { p_post_id: string }; Returns: Json }
+      edit_endorsement: {
+        Args: { p_endorsement: string; p_reference_id: string }
+        Returns: {
+          accepted_at: string | null
+          created_at: string
+          endorsement_text: string | null
+          id: string
+          reference_id: string
+          relationship_type: string
+          request_note: string | null
+          requester_id: string
+          responded_at: string | null
+          revoked_at: string | null
+          revoked_by: string | null
+          status: Database["public"]["Enums"]["profile_reference_status"]
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "profile_references"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      engagement_heartbeat_interval_seconds: { Args: never; Returns: number }
+      enqueue_message_digests: { Args: never; Returns: undefined }
       enqueue_notification: {
         Args: {
           p_actor_profile_id: string
@@ -1740,6 +3527,29 @@ export type Database = {
         Args: { p_bucket: string; p_url: string }
         Returns: string
       }
+      fetch_club_opportunities_with_counts: {
+        Args: {
+          p_club_id: string
+          p_include_closed?: boolean
+          p_limit?: number
+        }
+        Returns: {
+          applicant_count: number
+          created_at: string
+          gender: Database["public"]["Enums"]["opportunity_gender"]
+          id: string
+          location_city: string
+          location_country: string
+          opportunity_type: Database["public"]["Enums"]["opportunity_type"]
+          pending_count: number
+          position: Database["public"]["Enums"]["opportunity_position"]
+          priority: Database["public"]["Enums"]["opportunity_priority"]
+          published_at: string
+          status: Database["public"]["Enums"]["opportunity_status"]
+          title: string
+          updated_at: string
+        }[]
+      }
       fetch_club_vacancies_with_counts: {
         Args: {
           p_club_id: string
@@ -1758,17 +3568,17 @@ export type Database = {
           custom_benefits: string[]
           description: string
           duration_text: string
-          gender: Database["public"]["Enums"]["vacancy_gender"]
+          gender: Database["public"]["Enums"]["opportunity_gender"]
           id: string
           location_city: string
           location_country: string
           opportunity_type: Database["public"]["Enums"]["opportunity_type"]
-          position: Database["public"]["Enums"]["vacancy_position"]
-          priority: Database["public"]["Enums"]["vacancy_priority"]
+          position: Database["public"]["Enums"]["opportunity_position"]
+          priority: Database["public"]["Enums"]["opportunity_priority"]
           published_at: string
           requirements: string[]
           start_date: string
-          status: Database["public"]["Enums"]["vacancy_status"]
+          status: Database["public"]["Enums"]["opportunity_status"]
           title: string
           updated_at: string
           version: number
@@ -1786,10 +3596,41 @@ export type Database = {
           user_id: string
         }[]
       }
+      generate_brand_slug: { Args: { p_name: string }; Returns: string }
+      get_brand_by_slug: { Args: { p_slug: string }; Returns: Json }
+      get_brand_feed: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      get_brand_posts: { Args: { p_brand_id: string }; Returns: Json }
+      get_brand_products: { Args: { p_brand_id: string }; Returns: Json }
+      get_brands: {
+        Args: {
+          p_category?: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+        }
+        Returns: Json
+      }
+      get_home_feed: {
+        Args: { p_item_type?: string; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      get_leagues_for_location: {
+        Args: { p_country_id: number; p_region_id?: number }
+        Returns: {
+          id: number
+          logical_id: string
+          name: string
+          tier: number
+        }[]
+      }
       get_message_recipient: {
         Args: { p_conversation_id: string; p_sender_id: string }
         Returns: string
       }
+      get_my_brand: { Args: never; Returns: Json }
       get_my_reference_requests: {
         Args: never
         Returns: {
@@ -1847,6 +3688,10 @@ export type Database = {
         }[]
       }
       get_opportunity_alerts: { Args: never; Returns: number }
+      get_post_comments: {
+        Args: { p_limit?: number; p_offset?: number; p_post_id: string }
+        Returns: Json
+      }
       get_profile_references: {
         Args: { p_profile_id: string }
         Returns: {
@@ -1900,9 +3745,27 @@ export type Database = {
         Args: { p_batch?: number; p_user_id: string }
         Returns: Json
       }
+      health_check: { Args: never; Returns: boolean }
       is_current_user_test_account: { Args: never; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
-      is_test_vacancy: { Args: { vacancy_club_id: string }; Returns: boolean }
+      is_test_opportunity: {
+        Args: { opportunity_club_id: string }
+        Returns: boolean
+      }
+      log_error: {
+        Args: {
+          p_correlation_id?: string
+          p_error_code?: string
+          p_error_message: string
+          p_error_type: string
+          p_function_name?: string
+          p_metadata?: Json
+          p_severity?: string
+          p_source: string
+          p_stack_trace?: string
+        }
+        Returns: string
+      }
       mark_all_notifications_read: {
         Args: {
           p_kind?: Database["public"]["Enums"]["profile_notification_kind"]
@@ -1930,7 +3793,11 @@ export type Database = {
         }[]
       }
       process_storage_cleanup_queue: {
-        Args: { p_batch?: number }
+        Args: { p_batch?: number; p_grace_period?: unknown }
+        Returns: number
+      }
+      prune_old_heartbeats: {
+        Args: { p_days_to_keep?: number }
         Returns: number
       }
       prune_profile_notifications: {
@@ -1940,6 +3807,34 @@ export type Database = {
           p_visible_days?: number
         }
         Returns: number
+      }
+      public_get_investor_metrics: {
+        Args: { p_days?: number; p_token: string }
+        Returns: Json
+      }
+      public_get_investor_signup_trends: {
+        Args: { p_days?: number; p_token: string }
+        Returns: {
+          clubs: number
+          coaches: number
+          cumulative_total: number
+          date: string
+          players: number
+          total_signups: number
+        }[]
+      }
+      record_engagement_heartbeat: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
+      record_milestone: {
+        Args: {
+          p_is_test_account: boolean
+          p_metadata: Json
+          p_milestone_type: string
+          p_profile_id: string
+        }
+        Returns: boolean
       }
       recover_zombie_accounts: {
         Args: never
@@ -2029,6 +3924,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      search_clubs_for_transfer: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: Json
+      }
+      search_content: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_query: string
+          p_type?: string
+        }
+        Returns: Json
+      }
       set_profile_comment_status: {
         Args: {
           p_comment_id: string
@@ -2053,9 +3961,51 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      toggle_post_like: { Args: { p_post_id: string }; Returns: Json }
+      track_event: {
+        Args: {
+          p_entity_id?: string
+          p_entity_type?: string
+          p_error_code?: string
+          p_error_message?: string
+          p_event_name: string
+          p_properties?: Json
+        }
+        Returns: string
+      }
       try_parse_years_component: {
         Args: { component: string; years: string }
         Returns: string
+      }
+      update_brand: {
+        Args: {
+          p_bio?: string
+          p_category?: string
+          p_cover_url?: string
+          p_instagram_url?: string
+          p_logo_url?: string
+          p_name?: string
+          p_website_url?: string
+        }
+        Returns: Json
+      }
+      update_brand_post: {
+        Args: { p_content?: string; p_image_url?: string; p_post_id: string }
+        Returns: Json
+      }
+      update_brand_product: {
+        Args: {
+          p_description?: string
+          p_external_url?: string
+          p_images?: Json
+          p_name?: string
+          p_product_id: string
+        }
+        Returns: Json
+      }
+      update_user_post: {
+        Args: { p_content: string; p_images?: Json; p_post_id: string }
+        Returns: Json
       }
       user_in_conversation: {
         Args: { p_conversation_id: string; p_user_id: string }
@@ -2112,6 +4062,17 @@ export type Database = {
         | "milestone"
         | "academy"
         | "other"
+      opportunity_gender: "Men" | "Women"
+      opportunity_position:
+        | "goalkeeper"
+        | "defender"
+        | "midfielder"
+        | "forward"
+        | "head_coach"
+        | "assistant_coach"
+        | "youth_coach"
+      opportunity_priority: "low" | "medium" | "high"
+      opportunity_status: "draft" | "open" | "closed"
       opportunity_type: "player" | "coach"
       profile_notification_kind:
         | "friend_request_received"
@@ -2130,11 +4091,17 @@ export type Database = {
         | "account_verified"
         | "system_announcement"
         | "reference_request_rejected"
+        | "opportunity_published"
       profile_reference_status: "pending" | "accepted" | "declined" | "revoked"
-      vacancy_gender: "Men" | "Women"
-      vacancy_position: "goalkeeper" | "defender" | "midfielder" | "forward"
-      vacancy_priority: "low" | "medium" | "high"
-      vacancy_status: "draft" | "open" | "closed"
+      question_category:
+        | "trials_club_selection"
+        | "visas_moving_abroad"
+        | "scholarships_universities"
+        | "highlights_visibility"
+        | "training_performance"
+        | "coaching_development"
+        | "lifestyle_adaptation"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2292,6 +4259,18 @@ export const Constants = {
         "academy",
         "other",
       ],
+      opportunity_gender: ["Men", "Women"],
+      opportunity_position: [
+        "goalkeeper",
+        "defender",
+        "midfielder",
+        "forward",
+        "head_coach",
+        "assistant_coach",
+        "youth_coach",
+      ],
+      opportunity_priority: ["low", "medium", "high"],
+      opportunity_status: ["draft", "open", "closed"],
       opportunity_type: ["player", "coach"],
       profile_notification_kind: [
         "friend_request_received",
@@ -2310,12 +4289,19 @@ export const Constants = {
         "account_verified",
         "system_announcement",
         "reference_request_rejected",
+        "opportunity_published",
       ],
       profile_reference_status: ["pending", "accepted", "declined", "revoked"],
-      vacancy_gender: ["Men", "Women"],
-      vacancy_position: ["goalkeeper", "defender", "midfielder", "forward"],
-      vacancy_priority: ["low", "medium", "high"],
-      vacancy_status: ["draft", "open", "closed"],
+      question_category: [
+        "trials_club_selection",
+        "visas_moving_abroad",
+        "scholarships_universities",
+        "highlights_visibility",
+        "training_performance",
+        "coaching_development",
+        "lifestyle_adaptation",
+        "other",
+      ],
     },
   },
 } as const

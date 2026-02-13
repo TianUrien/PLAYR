@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
+import { formatAdminDate } from '../utils/formatDate'
 import { Link } from 'react-router-dom'
 import {
   Briefcase,
@@ -149,7 +150,7 @@ export function AdminOpportunities() {
       label: 'Created',
       render: (value) => (
         <span className="text-sm text-gray-600">
-          {new Date(String(value)).toLocaleDateString()}
+          {formatAdminDate(String(value))}
         </span>
       ),
     },

@@ -202,7 +202,7 @@ export interface AuditLogEntry {
 
 export interface ProfileSearchParams {
   query?: string
-  role?: 'player' | 'coach' | 'club'
+  role?: 'player' | 'coach' | 'club' | 'brand'
   is_blocked?: boolean
   is_test_account?: boolean
   onboarding_completed?: boolean
@@ -687,6 +687,7 @@ export interface InvestorMetrics {
   total_players: number
   total_coaches: number
   total_clubs: number
+  total_brands: number
 
   // Signups by period
   signups_7d: number
@@ -733,5 +734,84 @@ export interface InvestorShareToken {
   last_accessed_at: string | null
   access_count: number
   is_active: boolean
+}
+
+// ============================================================================
+// NETWORKING ANALYTICS TYPES
+// ============================================================================
+
+export interface MessagingTrendItem {
+  date: string
+  message_count: number
+}
+
+export interface TopMessager {
+  id: string
+  name: string | null
+  role: string
+  message_count: number
+}
+
+export interface ConversationDetail {
+  participant_one_name: string | null
+  participant_one_role: string
+  participant_two_name: string | null
+  participant_two_role: string
+  message_count: number
+  last_message_at: string
+}
+
+export interface MessagingMetrics {
+  total_conversations: number
+  active_conversations_7d: number
+  active_conversations_30d: number
+  total_messages: number
+  messages_7d: number
+  messages_30d: number
+  avg_messages_per_conversation: number
+  users_who_messaged_30d: number
+  users_never_messaged: number
+  message_read_rate: number
+  messaging_trend: MessagingTrendItem[] | null
+  top_messagers: TopMessager[] | null
+  top_conversations: ConversationDetail[] | null
+  period_days: number | null
+  generated_at: string
+}
+
+export interface FriendshipTrendItem {
+  date: string
+  friendship_count: number
+}
+
+export interface TopConnector {
+  id: string
+  name: string | null
+  role: string
+  friend_count: number
+}
+
+export interface FriendshipMetrics {
+  total_friendships: number
+  pending_requests: number
+  friendships_7d: number
+  friendships_30d: number
+  acceptance_rate: number
+  avg_friends_per_user: number
+  users_with_zero_friends: number
+  friendship_trend: FriendshipTrendItem[] | null
+  top_connectors: TopConnector[] | null
+  period_days: number | null
+  generated_at: string
+}
+
+export interface ReferenceMetrics {
+  total_references: number
+  pending_references: number
+  reference_acceptance_rate: number
+  references_30d: number
+  users_with_references: number
+  period_days: number | null
+  generated_at: string
 }
 

@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
+import { formatAdminDateTime } from '../utils/formatDate'
 import {
   RefreshCw,
   AlertTriangle,
@@ -220,7 +221,7 @@ export function AdminAuditLog() {
                       </div>
                       <div className="text-sm text-gray-500 mt-1">
                         by {log.admin_name || log.admin_email || 'Unknown admin'} •{' '}
-                        {new Date(log.created_at).toLocaleString()}
+                        {formatAdminDateTime(log.created_at)}
                       </div>
                     </div>
 

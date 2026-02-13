@@ -5,6 +5,7 @@
  */
 
 import { useEffect } from 'react'
+import { formatAdminDateTime } from '../utils/formatDate'
 import { Link } from 'react-router-dom'
 import {
   Users,
@@ -365,7 +366,7 @@ export function AdminOverview() {
       {/* Last updated */}
       {stats?.generated_at && (
         <p className="text-xs text-gray-400 text-center">
-          Last updated: {new Date(stats.generated_at).toLocaleString()}
+          Last updated: {formatAdminDateTime(stats.generated_at)}
         </p>
       )}
     </div>

@@ -2,6 +2,7 @@ import { format } from 'date-fns'
 import { AlertCircle, Check, CheckCheck, Loader2, Trash2 } from 'lucide-react'
 import type { ChatMessage, MessageDeliveryStatus } from '@/types/chat'
 import { cn } from '@/lib/utils'
+import { SharedPostCard } from './SharedPostCard'
 
 interface MessageBubbleProps {
   message: ChatMessage
@@ -61,7 +62,19 @@ export function MessageBubble({
               : isGroupedWithPrevious ? 'rounded-tl-md' : ''
           )}
         >
-          <p className="whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>{message.content}</p>
+          {message.metadata?.type === 'shared_post' ? (
+            <SharedPostCard
+              postId={message.metadata.post_id}
+              authorName={message.metadata.author_name}
+              authorAvatar={message.metadata.author_avatar}
+              authorRole={message.metadata.author_role}
+              contentPreview={message.metadata.content_preview}
+              thumbnailUrl={message.metadata.thumbnail_url}
+              isMine={isMine}
+            />
+          ) : (
+            <p className="whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>{message.content}</p>
+          )}
           <div className={cn(
             'mt-1 flex items-center gap-1.5 text-[11px]',
             isMine ? 'justify-end' : ''
