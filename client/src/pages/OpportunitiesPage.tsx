@@ -64,16 +64,10 @@ export default function OpportunitiesPage() {
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '')
 
   const [filters, setFilters] = useState<FiltersState>(() => {
-    // Initialize from URL params, falling back to role-based defaults
-    let defaultType: FiltersState['opportunityType'] = 'all'
+    // Initialize from URL params only — no role-based defaults
     const typeParam = searchParams.get('type')
-    if (typeParam === 'player' || typeParam === 'coach') {
-      defaultType = typeParam
-    } else if (profile?.role === 'player') {
-      defaultType = 'player'
-    } else if (profile?.role === 'coach') {
-      defaultType = 'coach'
-    }
+    const defaultType: FiltersState['opportunityType'] =
+      (typeParam === 'player' || typeParam === 'coach') ? typeParam : 'all'
 
     const genderParam = searchParams.get('gender')
     const startParam = searchParams.get('start')

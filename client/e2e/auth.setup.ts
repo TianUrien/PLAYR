@@ -10,6 +10,10 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 // Load environment variables from multiple sources
+// Priority: .env.staging (when staging mode) > .env.local > .env
+if (process.env.E2E_STAGING_MODE === '1') {
+  dotenv.config({ path: path.join(__dirname, '..', '.env.staging') })
+}
 dotenv.config({ path: path.join(__dirname, '..', '.env.local') })
 dotenv.config({ path: path.join(__dirname, '..', '.env') })
 dotenv.config({ path: path.join(__dirname, '..', '..', '.env.local') })
@@ -79,6 +83,18 @@ function assertSafeE2EEnvironment() {
 assertSafeE2EEnvironment()
 
 /**
+ * Staging mode: set is_test_account=false so edge functions and DB triggers
+ * treat test users as real users. EMAIL_ALLOWED_RECIPIENTS whitelist on staging
+ * prevents emails from leaking to unintended recipients.
+ */
+const isStagingMode = process.env.E2E_STAGING_MODE === '1'
+const testAccountFlag = !isStagingMode
+
+if (isStagingMode) {
+  console.log('[Auth Setup] STAGING MODE — is_test_account will be set to false')
+}
+
+/**
  * Authentication Setup for E2E Tests
  * 
  * This script authenticates test users via Supabase API and saves their
@@ -122,7 +138,7 @@ const TEST_PLAYER = {
     date_of_birth: '1995-05-15',
     bio: 'E2E test player account for automated testing',
     onboarding_completed: true,
-    is_test_account: true,
+    is_test_account: testAccountFlag,
   },
 }
 
@@ -140,7 +156,7 @@ const TEST_CLUB = {
     contact_email: 'contact@e2e-test-fc.playr.test',
     year_founded: 2020,
     onboarding_completed: true,
-    is_test_account: true,
+    is_test_account: testAccountFlag,
   },
 }
 
@@ -156,7 +172,7 @@ const TEST_COACH = {
     bio: 'E2E test coach account for automated testing',
     position: 'Head Coach',
     onboarding_completed: true,
-    is_test_account: true,
+    is_test_account: testAccountFlag,
   },
 }
 
@@ -170,7 +186,7 @@ const TEST_BRAND = {
     base_location: 'London, UK',
     bio: 'E2E test brand account for automated testing',
     onboarding_completed: true,
-    is_test_account: true,
+    is_test_account: testAccountFlag,
   },
 }
 
@@ -298,18 +314,19 @@ async function authenticateUser(
     } else {
       console.log(`[Auth Setup] Profile already complete for ${email}`)
 
-      // Always ensure is_test_account is set, even for already-complete profiles.
-      // This handles accounts created manually through the UI.
-      if (!existingProfile.is_test_account && profileData.is_test_account) {
+      // Sync is_test_account flag to match the desired state.
+      // In staging mode (testAccountFlag=false), flip TO false for email testing.
+      // In normal mode (testAccountFlag=true), flip TO true for safety.
+      if (existingProfile.is_test_account !== profileData.is_test_account) {
         const { error: flagError } = await authSupabase
           .from('profiles')
-          .update({ is_test_account: true, updated_at: new Date().toISOString() })
+          .update({ is_test_account: testAccountFlag, updated_at: new Date().toISOString() })
           .eq('id', data.user.id)
 
         if (flagError) {
-          console.warn(`[Auth Setup] Error setting is_test_account: ${flagError.message}`)
+          console.warn(`[Auth Setup] Error setting is_test_account=${testAccountFlag}: ${flagError.message}`)
         } else {
-          console.log(`[Auth Setup] Marked ${email} as test account`)
+          console.log(`[Auth Setup] Set is_test_account=${testAccountFlag} for ${email}`)
         }
       }
     }

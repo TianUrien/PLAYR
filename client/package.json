@@ -22,7 +22,8 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:db": "vitest run --config vitest.db.config.ts",
-    "test:e2e:debug": "playwright test --debug"
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:staging": "E2E_STAGING_MODE=1 playwright test --project=setup --project=staging"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

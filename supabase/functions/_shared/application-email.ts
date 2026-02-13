@@ -114,7 +114,7 @@ export function generateEmailHtml(
   // Generate avatar HTML - use table-based layout for email compatibility
   const avatarHtml = applicant.avatar_url 
     ? `<img src="${applicant.avatar_url}" alt="${displayName}" style="width: 48px; height: 48px; border-radius: 24px;" />`
-    : `<table cellpadding="0" cellspacing="0" border="0" style="width: 48px; height: 48px; border-radius: 24px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);">
+    : `<table cellpadding="0" cellspacing="0" border="0" style="width: 48px; height: 48px; border-radius: 24px; background: linear-gradient(135deg, #8026FA 0%, #924CEC 100%);">
         <tr>
           <td align="center" valign="middle" style="width: 48px; height: 48px; color: white; font-weight: bold; font-size: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">${initials}</td>
         </tr>
@@ -131,8 +131,8 @@ export function generateEmailHtml(
 <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
   
   <!-- Header -->
-  <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); padding: 32px 24px; border-radius: 16px 16px 0 0; text-align: center;">
-    <img src="https://www.oplayr.com/playr-logo-white.png" alt="PLAYR" width="120" height="29" style="height: 29px; width: 120px;" />
+  <div style="background: linear-gradient(135deg, #8026FA 0%, #924CEC 100%); padding: 32px 24px; border-radius: 16px 16px 0 0; text-align: center;">
+    <img src="https://oplayr.com/playr-logo-white.png" alt="PLAYR" width="120" height="29" style="height: 29px; width: 120px;" />
   </div>
   
   <!-- Main Content -->
@@ -166,7 +166,7 @@ export function generateEmailHtml(
     
     <!-- CTA Button -->
     <div style="text-align: center;">
-      <a href="${profileUrl}" style="display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+      <a href="${profileUrl}" style="display: inline-block; background: linear-gradient(135deg, #8026FA 0%, #924CEC 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
         View Profile
       </a>
     </div>
@@ -182,7 +182,7 @@ export function generateEmailHtml(
       You're receiving this because you're on PLAYR.
     </p>
     <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-      <a href="${PLAYR_BASE_URL}/settings" style="color: #6366f1; text-decoration: none;">Manage notification preferences</a>
+      <a href="${PLAYR_BASE_URL}/settings" style="color: #8026FA; text-decoration: none;">Manage notification preferences</a>
     </p>
   </div>
   
@@ -268,6 +268,27 @@ export function createLogger(prefix: string, correlationId: string): Logger {
 }
 
 /**
+ * Recipient whitelist guard for safe email testing.
+ * Set EMAIL_ALLOWED_RECIPIENTS env var to a comma-separated list of emails.
+ * When set, only those addresses receive emails. When unset, all recipients are allowed.
+ */
+function isRecipientAllowed(to: string, logger: Logger): boolean {
+  const allowedRecipients = Deno.env.get('EMAIL_ALLOWED_RECIPIENTS')
+  if (!allowedRecipients || allowedRecipients.trim() === '') {
+    return true
+  }
+  const allowedList = allowedRecipients.split(',').map(e => e.trim().toLowerCase())
+  const isAllowed = allowedList.includes(to.toLowerCase())
+  if (!isAllowed) {
+    logger.info('Recipient not on whitelist, skipping email', {
+      recipient: to,
+      whitelistCount: allowedList.length,
+    })
+  }
+  return isAllowed
+}
+
+/**
  * Maximum retry attempts for transient failures
  */
 const MAX_RETRIES = 2
@@ -296,6 +317,10 @@ export async function sendEmail(
   logger: Logger,
   retryCount = 0
 ): Promise<{ success: boolean; error?: string; retried?: boolean }> {
+  if (retryCount === 0 && !isRecipientAllowed(to, logger)) {
+    return { success: true }
+  }
+
   try {
     const response = await fetch(RESEND_API_URL, {
       method: 'POST',

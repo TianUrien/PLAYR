@@ -428,6 +428,68 @@ export class HomeFeedPage extends PlayrPage {
 }
 
 /**
+ * Page Object for Notification Drawer
+ *
+ * The drawer uses CSS transforms (translate-x-0 / translate-x-full) to show/hide,
+ * so Playwright's isVisible() always returns true since the element is in the DOM
+ * with non-zero dimensions. We check the `translate-x-0` class instead.
+ */
+export class NotificationsPage extends PlayrPage {
+  get drawer() {
+    return this.page.locator('[role="dialog"][aria-label="Notifications"]')
+  }
+
+  /** The drawer element with the "open" transform class. */
+  get openDrawerLocator() {
+    return this.page.locator('[role="dialog"][aria-label="Notifications"].translate-x-0')
+  }
+
+  get bellButton() {
+    // exact:true prevents matching "Search notifications" / "Close notifications"
+    return this.page.getByRole('button', { name: 'Notifications', exact: true })
+  }
+
+  /** Check if the drawer is currently in the open (translate-x-0) state. */
+  async isDrawerOpen(): Promise<boolean> {
+    const count = await this.openDrawerLocator.count()
+    return count > 0
+  }
+
+  async openDrawer() {
+    // Drawer may already be open (e.g. auto-opened by unread notifications)
+    if (await this.isDrawerOpen()) return
+    await this.bellButton.click()
+    await expect(this.openDrawerLocator).toBeVisible({ timeout: 5000 })
+  }
+
+  async closeDrawer() {
+    if (!(await this.isDrawerOpen())) return
+    // Use Escape key — the close button can be outside viewport in fixed drawers
+    await this.page.keyboard.press('Escape')
+    await expect(this.openDrawerLocator).not.toBeVisible({ timeout: 5000 })
+  }
+
+  async expectNotification(textPattern: string | RegExp, options?: { timeout?: number }) {
+    // Use .first() because multiple notifications may match (e.g. from previous runs)
+    await expect(this.openDrawerLocator.getByText(textPattern).first()).toBeVisible({
+      timeout: options?.timeout ?? 15000,
+    })
+  }
+
+  async expectNoNotification(textPattern: string | RegExp) {
+    await expect(this.openDrawerLocator.getByText(textPattern)).not.toBeVisible({ timeout: 5000 })
+  }
+
+  async clickNotification(textPattern: string | RegExp) {
+    await this.openDrawerLocator.locator('[role="button"]').filter({ hasText: textPattern }).click()
+  }
+
+  async expectBadgeVisible() {
+    await expect(this.page.locator('[role="status"]')).toBeVisible({ timeout: 10000 })
+  }
+}
+
+/**
  * Page Object for Brand Dashboard & Brand Pages
  */
 export class BrandsPage extends PlayrPage {
@@ -496,6 +558,7 @@ export const test = base.extend<{
   questionsPage: QuestionsPage
   brandsPage: BrandsPage
   homeFeedPage: HomeFeedPage
+  notificationsPage: NotificationsPage
 }>({
   authPage: async ({ page }, use) => {
     await use(new AuthPage(page))
@@ -520,6 +583,9 @@ export const test = base.extend<{
   },
   homeFeedPage: async ({ page }, use) => {
     await use(new HomeFeedPage(page))
+  },
+  notificationsPage: async ({ page }, use) => {
+    await use(new NotificationsPage(page))
   },
 })
 
