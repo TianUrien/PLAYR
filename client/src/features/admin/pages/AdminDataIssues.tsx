@@ -18,6 +18,7 @@ import type { Column, Action } from '../components'
 import { useDataIssues } from '../hooks/useDataIssues'
 import type { AuthOrphan, ProfileOrphan } from '../types'
 import { deleteAuthUser, deleteOrphanProfile } from '../api/adminApi'
+import { formatAdminDate } from '../utils/formatDate'
 
 type TabType = 'auth-orphans' | 'profile-orphans' | 'broken-refs'
 
@@ -75,7 +76,7 @@ export function AdminDataIssues() {
     {
       key: 'created_at',
       label: 'Created',
-      render: (value) => new Date(String(value)).toLocaleDateString(),
+      render: (value) => formatAdminDate(String(value)),
     },
     {
       key: 'email_confirmed_at',
@@ -91,7 +92,7 @@ export function AdminDataIssues() {
       key: 'last_sign_in_at',
       label: 'Last Sign In',
       render: (value) =>
-        value ? new Date(String(value)).toLocaleDateString() : 'Never',
+        value ? formatAdminDate(String(value)) : 'Never',
     },
   ]
 
@@ -128,7 +129,7 @@ export function AdminDataIssues() {
     {
       key: 'created_at',
       label: 'Created',
-      render: (value) => new Date(String(value)).toLocaleDateString(),
+      render: (value) => formatAdminDate(String(value)),
     },
   ]
 

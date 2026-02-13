@@ -5,6 +5,7 @@
  */
 
 import { useMemo, useState } from 'react'
+import { formatAdminDate, formatAdminDateShort } from '../utils/formatDate'
 import type { InvestorSignupTrend } from '../types'
 
 interface UserGrowthChartProps {
@@ -176,7 +177,7 @@ export function UserGrowthChart({ trends, loading = false }: UserGrowthChartProp
               transform: 'translate(-50%, -120%)',
             }}
           >
-            <div className="font-medium">{new Date(hoveredPoint.date).toLocaleDateString()}</div>
+            <div className="font-medium">{formatAdminDate(hoveredPoint.date)}</div>
             <div className="text-gray-300">
               {hoveredPoint.cumulative_total.toLocaleString()} total users
             </div>
@@ -189,9 +190,9 @@ export function UserGrowthChart({ trends, loading = false }: UserGrowthChartProp
 
       {/* X-axis labels */}
       <div className="ml-14 flex justify-between text-xs text-gray-500 mt-2">
-        <span>{trends && trends.length > 0 ? new Date(trends[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
-        <span>{trends && trends.length > 0 ? new Date(trends[Math.floor(trends.length / 2)].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
-        <span>{trends && trends.length > 0 ? new Date(trends[trends.length - 1].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''}</span>
+        <span>{trends && trends.length > 0 ? formatAdminDateShort(trends[0].date) : ''}</span>
+        <span>{trends && trends.length > 0 ? formatAdminDateShort(trends[Math.floor(trends.length / 2)].date) : ''}</span>
+        <span>{trends && trends.length > 0 ? formatAdminDateShort(trends[trends.length - 1].date) : ''}</span>
       </div>
     </div>
   )

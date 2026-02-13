@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
+import { formatAdminDate } from '../utils/formatDate'
 import { Link } from 'react-router-dom'
 import {
   Clock,
@@ -104,7 +105,7 @@ export function AdminEngagement() {
     if (diffDays === 0) return 'Today'
     if (diffDays === 1) return 'Yesterday'
     if (diffDays < 7) return `${diffDays} days ago`
-    return date.toLocaleDateString()
+    return formatAdminDate(date)
   }
 
   // Table columns
@@ -329,7 +330,7 @@ export function AdminEngagement() {
                   {/* Tooltip on hover */}
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
                     <div className="bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
-                      <div>{new Date(day.date).toLocaleDateString()}</div>
+                      <div>{formatAdminDate(day.date)}</div>
                       <div>{day.active_users} users</div>
                       <div>{formatTime(day.total_minutes)}</div>
                     </div>
@@ -341,7 +342,7 @@ export function AdminEngagement() {
         )}
         
         <div className="flex justify-between mt-2 text-xs text-gray-500">
-          <span>{trends[0]?.date ? new Date(trends[0].date).toLocaleDateString() : ''}</span>
+          <span>{trends[0]?.date ? formatAdminDate(trends[0].date) : ''}</span>
           <span>Today</span>
         </div>
       </div>

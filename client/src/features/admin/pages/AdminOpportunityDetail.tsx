@@ -5,6 +5,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react'
+import { formatAdminDate } from '../utils/formatDate'
 import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -158,7 +159,7 @@ export function AdminOpportunityDetail() {
       label: 'Applied',
       render: (value) => (
         <span className="text-sm text-gray-600">
-          {new Date(String(value)).toLocaleDateString()}
+          {formatAdminDate(String(value))}
         </span>
       ),
     },
@@ -276,14 +277,14 @@ export function AdminOpportunityDetail() {
             <div className="flex items-center gap-3">
               <Calendar className="w-4 h-4 text-gray-400" />
               <span className="text-sm text-gray-600">
-                Posted {new Date(vacancy.created_at).toLocaleDateString()}
+                Posted {formatAdminDate(vacancy.created_at)}
               </span>
             </div>
             {vacancy.application_deadline && (
               <div className="flex items-center gap-3">
                 <Clock className="w-4 h-4 text-gray-400" />
                 <span className="text-sm text-gray-600">
-                  Deadline: {new Date(vacancy.application_deadline).toLocaleDateString()}
+                  Deadline: {formatAdminDate(vacancy.application_deadline)}
                 </span>
               </div>
             )}
@@ -315,8 +316,8 @@ export function AdminOpportunityDetail() {
           <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="text-sm font-medium text-gray-900">
-                {stats.first_application_at 
-                  ? new Date(stats.first_application_at).toLocaleDateString()
+                {stats.first_application_at
+                  ? formatAdminDate(stats.first_application_at)
                   : '—'}
               </p>
               <p className="text-xs text-gray-500">First Application</p>

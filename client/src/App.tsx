@@ -61,6 +61,7 @@ const AdminClubs = lazy(() => import('@/features/admin/pages/AdminClubs').then(m
 const AdminBrands = lazy(() => import('@/features/admin/pages/AdminBrands').then(m => ({ default: m.AdminBrands })))
 const AdminPlayers = lazy(() => import('@/features/admin/pages/AdminPlayers').then(m => ({ default: m.AdminPlayers })))
 const AdminEngagement = lazy(() => import('@/features/admin/pages/AdminEngagement').then(m => ({ default: m.AdminEngagement })))
+const AdminNetworking = lazy(() => import('@/features/admin/pages/AdminNetworking').then(m => ({ default: m.AdminNetworking })))
 const AdminInvestorDashboard = lazy(() => import('@/features/admin/pages/AdminInvestorDashboard').then(m => ({ default: m.AdminInvestorDashboard })))
 const AdminWorld = lazy(() => import('@/features/admin/pages/AdminWorld'))
 
@@ -249,6 +250,7 @@ function App() {
                   <Route path="brands" element={<AdminBrands />} />
                   <Route path="players" element={<AdminPlayers />} />
                   <Route path="engagement" element={<AdminEngagement />} />
+                  <Route path="networking" element={<AdminNetworking />} />
                   <Route path="investors" element={<AdminInvestorDashboard />} />
                   <Route path="world" element={<AdminWorld />} />
                   <Route path="data-issues" element={<AdminDataIssues />} />

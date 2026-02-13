@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react'
+import { formatAdminDate } from '../utils/formatDate'
 import { Link2, Copy, Trash2, Plus, Check, ExternalLink } from 'lucide-react'
 import type { InvestorShareToken } from '../types'
 
@@ -52,11 +53,7 @@ export function ShareLinkManager({
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return 'Never'
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
+    return formatAdminDate(dateStr)
   }
 
   if (loading) {

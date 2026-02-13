@@ -6,7 +6,8 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Users, TrendingUp, Briefcase, MessageSquare, Globe, UserCheck } from 'lucide-react'
+import { formatAdminDateTime } from '../utils/formatDate'
+import { Users, TrendingUp, Briefcase, MessageSquare, Globe, UserCheck, GraduationCap, Store } from 'lucide-react'
 import { StatCard } from './StatCard'
 import { UserGrowthChart } from './UserGrowthChart'
 import { RoleBreakdownChart } from './RoleBreakdownChart'
@@ -42,7 +43,7 @@ export function InvestorDashboardContent({
       } else if (diffMinutes < 60) {
         setLastUpdated(`${diffMinutes} min ago`)
       } else {
-        setLastUpdated(date.toLocaleString())
+        setLastUpdated(formatAdminDateTime(date))
       }
     }
   }, [metrics?.generated_at])
@@ -90,7 +91,7 @@ export function InvestorDashboardContent({
       {/* Headline Metrics */}
       <section>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Key Metrics</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <StatCard
             label="Total Users"
             value={metrics?.total_users ?? 0}
@@ -127,6 +128,22 @@ export function InvestorDashboardContent({
             loading={loading}
           />
           <StatCard
+            label="Coaches"
+            value={metrics?.total_coaches ?? 0}
+            icon={GraduationCap}
+            color="green"
+            trend={
+              metrics?.total_users
+                ? {
+                    value: Math.round((metrics.total_coaches / metrics.total_users) * 100),
+                    label: '% of users',
+                    direction: 'neutral',
+                  }
+                : undefined
+            }
+            loading={loading}
+          />
+          <StatCard
             label="Clubs"
             value={metrics?.total_clubs ?? 0}
             icon={Briefcase}
@@ -135,6 +152,22 @@ export function InvestorDashboardContent({
               metrics?.total_users
                 ? {
                     value: Math.round((metrics.total_clubs / metrics.total_users) * 100),
+                    label: '% of users',
+                    direction: 'neutral',
+                  }
+                : undefined
+            }
+            loading={loading}
+          />
+          <StatCard
+            label="Brands"
+            value={metrics?.total_brands ?? 0}
+            icon={Store}
+            color="rose"
+            trend={
+              metrics?.total_users
+                ? {
+                    value: Math.round(((metrics.total_brands ?? 0) / metrics.total_users) * 100),
                     label: '% of users',
                     direction: 'neutral',
                   }
@@ -211,6 +244,7 @@ export function InvestorDashboardContent({
             players={metrics?.total_players ?? 0}
             coaches={metrics?.total_coaches ?? 0}
             clubs={metrics?.total_clubs ?? 0}
+            brands={metrics?.total_brands ?? 0}
             loading={loading}
           />
         </div>

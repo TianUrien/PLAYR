@@ -1,10 +1,10 @@
 /**
  * AdminPlayers Page
- * 
+ *
  * Player analytics dashboard showing journey funnel and profile completeness.
  */
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   Users,
   RefreshCw,
@@ -14,13 +14,59 @@ import {
   UserCheck,
   AlertTriangle,
   TrendingUp,
+  Lightbulb,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { StatCard } from '../components/StatCard'
 import { getPlayerFunnel, getProfileCompletenessDistribution, getExtendedDashboardStats } from '../api/adminApi'
 import type { PlayerFunnel, ProfileCompletenessDistribution, ExtendedDashboardStats } from '../types'
 import { logger } from '@/lib/logger'
 
 type DaysFilter = 7 | 30 | 90 | null
+
+// Static color maps — Tailwind JIT requires full class names at build time
+const FUNNEL_COLORS: Record<string, { bar: string; icon: string }> = {
+  purple: { bar: 'bg-purple-500', icon: 'text-purple-600' },
+  blue: { bar: 'bg-blue-500', icon: 'text-blue-600' },
+  indigo: { bar: 'bg-indigo-500', icon: 'text-indigo-600' },
+  violet: { bar: 'bg-violet-500', icon: 'text-violet-600' },
+  pink: { bar: 'bg-pink-500', icon: 'text-pink-600' },
+  rose: { bar: 'bg-rose-500', icon: 'text-rose-600' },
+  green: { bar: 'bg-green-500', icon: 'text-green-600' },
+  amber: { bar: 'bg-amber-500', icon: 'text-amber-600' },
+}
+
+const COMPLETENESS_COLORS: Record<string, string> = {
+  red: 'bg-red-500',
+  amber: 'bg-amber-500',
+  blue: 'bg-blue-500',
+  green: 'bg-green-500',
+  gray: 'bg-gray-400',
+}
+
+const COMPLETENESS_COLOR_MAP: Record<string, string> = {
+  '0-25%': 'red',
+  '26-50%': 'amber',
+  '51-75%': 'blue',
+  '76-100%': 'green',
+}
+
+interface FunnelStep {
+  key: keyof PlayerFunnel
+  label: string
+  icon: LucideIcon
+  color: string
+}
+
+const FUNNEL_STEPS: FunnelStep[] = [
+  { key: 'signed_up', label: 'Signed Up', icon: Users, color: 'purple' },
+  { key: 'onboarding_completed', label: 'Onboarding Complete', icon: UserCheck, color: 'blue' },
+  { key: 'has_avatar', label: 'Has Avatar', icon: Image, color: 'indigo' },
+  { key: 'has_video', label: 'Has Video Highlight', icon: Video, color: 'violet' },
+  { key: 'has_journey_entry', label: 'Has Journey Entry', icon: FileText, color: 'pink' },
+  { key: 'has_gallery_photo', label: 'Has Gallery Photo', icon: Image, color: 'rose' },
+  { key: 'applied_to_vacancy', label: 'Applied to Vacancy', icon: FileText, color: 'green' },
+]
 
 export function AdminPlayers() {
   const [funnel, setFunnel] = useState<PlayerFunnel | null>(null)
@@ -33,14 +79,14 @@ export function AdminPlayers() {
   const fetchData = useCallback(async () => {
     setIsLoading(true)
     setError(null)
-    
+
     try {
       const [funnelData, distData, statsData] = await Promise.all([
         getPlayerFunnel(daysFilter ?? undefined),
         getProfileCompletenessDistribution('player'),
         getExtendedDashboardStats(),
       ])
-      
+
       setFunnel(funnelData)
       setDistribution(distData)
       setStats(statsData)
@@ -57,10 +103,60 @@ export function AdminPlayers() {
     fetchData()
   }, [fetchData])
 
-  const getFunnelPercentage = (value: number, total: number): number => {
-    if (!total) return 0
-    return Math.round((value / total) * 100)
-  }
+  const signedUp = funnel?.signed_up ?? 0
+
+  // Compute insights dynamically from funnel data
+  const insights = useMemo(() => {
+    if (!funnel || signedUp === 0) return []
+
+    const steps = FUNNEL_STEPS.map((step, i) => {
+      const value = Number(funnel[step.key]) || 0
+      const prevValue = i > 0 ? Number(funnel[FUNNEL_STEPS[i - 1].key]) || 1 : value
+      const conversion = prevValue > 0 ? Math.round((value / prevValue) * 100) : 0
+      return { ...step, value, conversion }
+    })
+
+    // Find biggest drop-off (lowest step-to-step conversion, skip first step)
+    const worstStep = steps.slice(1).reduce((worst, step) =>
+      step.conversion < worst.conversion ? step : worst
+    )
+
+    const onboardingDropoff = Math.round(((funnel.signed_up - funnel.onboarding_completed) / funnel.signed_up) * 100)
+    const applicationRate = funnel.onboarding_completed > 0
+      ? Math.round((funnel.applied_to_vacancy / funnel.onboarding_completed) * 100)
+      : 0
+
+    const result: { value: string; label: string; color: string }[] = [
+      {
+        value: `${worstStep.conversion}%`,
+        label: `conversion at "${worstStep.label}" — biggest bottleneck`,
+        color: 'text-red-600',
+      },
+      {
+        value: `${onboardingDropoff}%`,
+        label: 'drop off before completing onboarding',
+        color: 'text-amber-600',
+      },
+      {
+        value: `${applicationRate}%`,
+        label: 'of onboarded players applied to a vacancy',
+        color: 'text-green-600',
+      },
+    ]
+
+    if (funnel.open_to_opportunities !== undefined) {
+      const openRate = funnel.onboarding_completed > 0
+        ? Math.round((funnel.open_to_opportunities / funnel.onboarding_completed) * 100)
+        : 0
+      result.push({
+        value: `${openRate}%`,
+        label: 'of onboarded players are open to opportunities',
+        color: 'text-blue-600',
+      })
+    }
+
+    return result
+  }, [funnel, signedUp])
 
   if (error) {
     return (
@@ -77,8 +173,6 @@ export function AdminPlayers() {
       </div>
     )
   }
-
-  const signedUp = funnel?.signed_up ?? 0
 
   return (
     <div className="space-y-6">
@@ -160,63 +254,66 @@ export function AdminPlayers() {
       {/* Journey Funnel */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-6">Player Journey Funnel</h2>
-        
+
         {isLoading ? (
-          <div className="space-y-4">
-            {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="h-12 bg-gray-100 rounded-lg animate-pulse" />
+          <div className="space-y-6">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="space-y-2 animate-pulse">
+                <div className="flex justify-between">
+                  <div className="h-4 w-32 bg-gray-200 rounded" />
+                  <div className="h-4 w-20 bg-gray-200 rounded" />
+                </div>
+                <div className="h-8 bg-gray-100 rounded-lg" />
+              </div>
             ))}
           </div>
         ) : (
-          <div className="space-y-4">
-            {[
-              { label: 'Signed Up', value: funnel?.signed_up ?? 0, icon: Users, color: 'purple' },
-              { label: 'Onboarding Complete', value: funnel?.onboarding_completed ?? 0, icon: UserCheck, color: 'blue' },
-              { label: 'Has Avatar', value: funnel?.has_avatar ?? 0, icon: Image, color: 'indigo' },
-              { label: 'Has Video Highlight', value: funnel?.has_video ?? 0, icon: Video, color: 'violet' },
-              { label: 'Has Journey Entry', value: funnel?.has_journey_entry ?? 0, icon: FileText, color: 'pink' },
-              { label: 'Has Gallery Photo', value: funnel?.has_gallery_photo ?? 0, icon: Image, color: 'rose' },
-              { label: 'Applied to Vacancy', value: funnel?.applied_to_vacancy ?? 0, icon: FileText, color: 'green' },
-            ].map(({ label, value, icon: Icon, color }, index) => {
-              const percentage = getFunnelPercentage(value, signedUp)
-              const widthPct = Math.max(percentage, 5) // Minimum 5% width for visibility
-              
+          <div className="space-y-5">
+            {FUNNEL_STEPS.map((step, index) => {
+              const value = Number(funnel?.[step.key]) || 0
+              const percentage = signedUp > 0 ? Math.round((value / signedUp) * 100) : 0
+              const widthPct = Math.max(percentage, 4)
+              const colors = FUNNEL_COLORS[step.color] || FUNNEL_COLORS.purple
+              const Icon = step.icon
+
+              // Step-to-step conversion
+              const prevValue = index > 0
+                ? Number(funnel?.[FUNNEL_STEPS[index - 1].key]) || 0
+                : value
+              const stepConversion = prevValue > 0
+                ? Math.round((value / prevValue) * 100)
+                : 0
+
               return (
-                <div key={label} className="relative">
-                  <div className="flex items-center gap-4">
-                    <div className="w-40 flex items-center gap-2">
-                      <Icon className={`w-4 h-4 text-${color}-600`} />
-                      <span className="text-sm font-medium text-gray-700">{label}</span>
+                <div key={step.key} className="space-y-1.5">
+                  {/* Step header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                    <div className="flex items-center gap-2">
+                      <Icon className={`w-4 h-4 flex-shrink-0 ${colors.icon}`} />
+                      <span className="text-sm font-medium text-gray-700">{step.label}</span>
                     </div>
-                    <div className="flex-1">
-                      <div className="relative h-10 bg-gray-100 rounded-lg overflow-hidden">
-                        {/* Dynamic width required for data visualization */}
-                        <div
-                          className={`absolute left-0 top-0 h-full bg-${color}-500 transition-all duration-500`}
-                          style={{ width: `${widthPct}%` }}
-                        />
-                        <div className="absolute inset-0 flex items-center justify-between px-3">
-                          <span className="text-sm font-bold text-white mix-blend-difference">
-                            {value.toLocaleString()}
-                          </span>
-                          <span className="text-sm font-medium text-gray-600">
-                            {percentage}%
-                          </span>
-                        </div>
-                      </div>
+                    <div className="flex items-center gap-3 pl-6 sm:pl-0">
+                      <span className="text-sm font-bold text-gray-900">{value.toLocaleString()}</span>
+                      <span className="text-xs text-gray-500">{percentage}% of total</span>
                     </div>
                   </div>
+
+                  {/* Progress bar */}
+                  <div className="h-7 bg-gray-100 rounded-lg overflow-hidden">
+                    <div
+                      className={`h-full rounded-lg transition-all duration-500 ${colors.bar}`}
+                      style={{ width: `${widthPct}%` }}
+                    />
+                  </div>
+
+                  {/* Drop-off indicator */}
                   {index > 0 && (
-                    <div className="absolute -top-2 left-20 text-xs text-gray-400">
-                      ↓ {getFunnelPercentage(value, [
-                        funnel?.signed_up ?? 0,
-                        funnel?.onboarding_completed ?? 0,
-                        funnel?.has_avatar ?? 0,
-                        funnel?.has_video ?? 0,
-                        funnel?.has_journey_entry ?? 0,
-                        funnel?.has_gallery_photo ?? 0,
-                      ][index - 1] || 1)}% conversion
-                    </div>
+                    <p className="text-xs text-gray-400 pl-6">
+                      {stepConversion}% from {FUNNEL_STEPS[index - 1].label}
+                      {stepConversion < 100 && (
+                        <span className="text-gray-300"> &middot; {100 - stepConversion}% drop-off</span>
+                      )}
+                    </p>
                   )}
                 </div>
               )
@@ -228,52 +325,52 @@ export function AdminPlayers() {
       {/* Profile Completeness Distribution */}
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-6">Profile Completeness Distribution</h2>
-        
+
         {isLoading ? (
-          <div className="space-y-4">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-10 bg-gray-100 rounded-lg animate-pulse" />
-            ))}
+          <div className="space-y-4 animate-pulse">
+            <div className="h-10 bg-gray-100 rounded-lg" />
+            <div className="flex gap-6">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-4 w-20 bg-gray-200 rounded" />
+              ))}
+            </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            {distribution.map(({ bucket, count, percentage }) => {
-              const colorMap: Record<string, string> = {
-                '0-25%': 'red',
-                '26-50%': 'amber',
-                '51-75%': 'blue',
-                '76-100%': 'green',
-              }
-              const color = colorMap[bucket] || 'gray'
-              
-              return (
-                <div key={bucket} className="flex items-center gap-4">
-                  <div className="w-24">
-                    <span className="text-sm font-medium text-gray-700">{bucket}</span>
+          <>
+            {/* Stacked horizontal bar */}
+            <div className="h-10 bg-gray-100 rounded-lg overflow-hidden flex">
+              {distribution.map(({ bucket, percentage }) => {
+                const colorKey = COMPLETENESS_COLOR_MAP[bucket] || 'gray'
+                const barClass = COMPLETENESS_COLORS[colorKey] || COMPLETENESS_COLORS.gray
+                return (
+                  <div
+                    key={bucket}
+                    className={`${barClass} transition-all duration-500 first:rounded-l-lg last:rounded-r-lg`}
+                    style={{ width: `${Math.max(percentage, 1)}%` }}
+                    title={`${bucket}: ${percentage}%`}
+                  />
+                )
+              })}
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4">
+              {distribution.map(({ bucket, count, percentage }) => {
+                const colorKey = COMPLETENESS_COLOR_MAP[bucket] || 'gray'
+                const dotClass = COMPLETENESS_COLORS[colorKey] || COMPLETENESS_COLORS.gray
+                return (
+                  <div key={bucket} className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-sm flex-shrink-0 ${dotClass}`} />
+                    <span className="text-sm text-gray-600">{bucket}</span>
+                    <span className="text-sm font-semibold text-gray-900">{count.toLocaleString()}</span>
+                    <span className="text-xs text-gray-400">({percentage}%)</span>
                   </div>
-                  <div className="flex-1">
-                    <div className="relative h-8 bg-gray-100 rounded-lg overflow-hidden">
-                      {/* Dynamic width required for data visualization */}
-                      <div
-                        className={`absolute left-0 top-0 h-full bg-${color}-500 transition-all duration-500`}
-                        style={{ width: `${Math.max(percentage, 2)}%` }}
-                      />
-                      <div className="absolute inset-0 flex items-center justify-between px-3">
-                        <span className="text-sm font-bold text-white mix-blend-difference">
-                          {count.toLocaleString()} players
-                        </span>
-                        <span className="text-sm font-medium text-gray-600">
-                          {percentage}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                )
+              })}
+            </div>
+          </>
         )}
-        
+
         {/* Summary */}
         <div className="mt-6 pt-4 border-t border-gray-100">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
@@ -298,55 +395,24 @@ export function AdminPlayers() {
       </div>
 
       {/* Key Insights */}
-      <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border border-purple-100 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Key Insights</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-white/80 rounded-lg p-4">
-            <p className="text-sm text-gray-600 mb-1">Video Upload Rate</p>
-            <p className="text-2xl font-bold text-purple-600">
-              {funnel && funnel.signed_up > 0 
-                ? Math.round((funnel.has_video / funnel.signed_up) * 100)
-                : 0}%
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              of signed up players have added a highlight video
-            </p>
+      {insights.length > 0 && (
+        <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl border border-purple-100 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Lightbulb className="w-5 h-5 text-purple-500" />
+            <h2 className="text-lg font-semibold text-gray-900">Key Insights</h2>
           </div>
-          <div className="bg-white/80 rounded-lg p-4">
-            <p className="text-sm text-gray-600 mb-1">Application Rate</p>
-            <p className="text-2xl font-bold text-green-600">
-              {funnel && funnel.onboarding_completed > 0 
-                ? Math.round((funnel.applied_to_vacancy / funnel.onboarding_completed) * 100)
-                : 0}%
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              of onboarded players have applied to at least one vacancy
-            </p>
-          </div>
-          <div className="bg-white/80 rounded-lg p-4">
-            <p className="text-sm text-gray-600 mb-1">Onboarding Drop-off</p>
-            <p className="text-2xl font-bold text-amber-600">
-              {funnel && funnel.signed_up > 0 
-                ? Math.round(((funnel.signed_up - funnel.onboarding_completed) / funnel.signed_up) * 100)
-                : 0}%
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              of players signed up but didn't complete onboarding
-            </p>
-          </div>
-          <div className="bg-white/80 rounded-lg p-4">
-            <p className="text-sm text-gray-600 mb-1">Journey Completion</p>
-            <p className="text-2xl font-bold text-blue-600">
-              {funnel && funnel.onboarding_completed > 0 
-                ? Math.round((funnel.has_journey_entry / funnel.onboarding_completed) * 100)
-                : 0}%
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              of onboarded players have added journey entries
-            </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {insights.map((insight, i) => (
+              <div key={i} className="flex items-baseline gap-2 bg-white/80 rounded-lg px-4 py-3">
+                <span className={`text-xl font-bold flex-shrink-0 ${insight.color}`}>
+                  {insight.value}
+                </span>
+                <span className="text-sm text-gray-600">{insight.label}</span>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
