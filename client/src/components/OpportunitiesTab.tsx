@@ -118,10 +118,10 @@ function VacancyActionMenu({ vacancy, disabled, onEdit, onDuplicate, onPublish, 
     }
   )
 
-  if (vacancy.status === 'closed') {
+  if (vacancy.status === 'closed' || vacancy.status === 'draft') {
     menuItems.push({
       key: 'delete',
-      label: 'Delete permanently',
+      label: vacancy.status === 'draft' ? 'Delete draft' : 'Delete permanently',
       icon: <Trash2 className="w-4 h-4 text-red-600" />,
       onClick: () => {
         closeMenu()
@@ -359,10 +359,11 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
     setActionLoading({ id: vacancy.id, action: 'duplicate' })
     try {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { id, created_at, updated_at, published_at, closed_at, ...duplicateData } = vacancy
+      const { id, created_at, updated_at, published_at, closed_at, applicant_count, pending_count, ...duplicateData } = vacancy as Vacancy & { applicant_count?: number; pending_count?: number }
       
       const newVacancy = {
         ...duplicateData,
+        club_id: user.id,
         title: `${vacancy.title} (Copy)`,
         status: 'draft' as const,
       }
@@ -807,7 +808,10 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
           setShowModal(false)
           setEditingVacancy(null)
         }}
-        onSuccess={fetchVacancies}
+        onSuccess={() => {
+          fetchVacancies()
+          if (!editingVacancy) setStatusFilter('draft')
+        }}
         editingVacancy={editingVacancy}
       />
 
@@ -883,6 +887,7 @@ export default function VacanciesTab({ profileId, readOnly = false, triggerCreat
           onConfirm={handleDelete}
           vacancyTitle={vacancyToDelete.title}
           isLoading={actionLoading?.id === vacancyToDelete.id && actionLoading.action === 'delete'}
+          isDraft={vacancyToDelete.status === 'draft'}
         />
       )}
     </div>

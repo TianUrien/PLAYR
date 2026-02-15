@@ -3219,6 +3219,7 @@ export type Database = {
         | "pending"
         | "reviewed"
         | "shortlisted"
+        | "maybe"
         | "interview"
         | "accepted"
         | "rejected"
@@ -3405,6 +3406,7 @@ export const Constants = {
         "pending",
         "reviewed",
         "shortlisted",
+        "maybe",
         "interview",
         "accepted",
         "rejected",
