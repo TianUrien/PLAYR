@@ -6,7 +6,7 @@
  * Navigation: /world → /world/:countrySlug → /world/:countrySlug/:regionSlug (or direct to leagues)
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, Globe, Building2, MapPin, Trophy, RefreshCw } from 'lucide-react'
 import { Header } from '@/components'
@@ -24,6 +24,22 @@ interface CountryWithStats {
   league_count: number
 }
 
+// Daily shuffle: deterministic seed from today's date so order is
+// stable within a day but rotates across days.
+function dailyShuffle<T>(arr: T[]): T[] {
+  const today = new Date().toISOString().slice(0, 10) // "2026-02-13"
+  let seed = 0
+  for (let i = 0; i < today.length; i++) seed = (seed * 31 + today.charCodeAt(i)) | 0
+
+  const shuffled = [...arr]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    seed = (seed * 16807 + 0) % 2147483647 // LCG
+    const j = ((seed < 0 ? -seed : seed) % (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
 export default function WorldPage() {
   const navigate = useNavigate()
   const [countries, setCountries] = useState<CountryWithStats[]>([])
@@ -31,28 +47,7 @@ export default function WorldPage() {
   const [error, setError] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
-  useEffect(() => {
-    document.title = 'World | PLAYR'
-    fetchCountries()
-  }, [])
-
-  // Daily shuffle: deterministic seed from today's date so order is
-  // stable within a day but rotates across days.
-  const dailyShuffle = <T,>(arr: T[]): T[] => {
-    const today = new Date().toISOString().slice(0, 10) // "2026-02-13"
-    let seed = 0
-    for (let i = 0; i < today.length; i++) seed = (seed * 31 + today.charCodeAt(i)) | 0
-
-    const shuffled = [...arr]
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      seed = (seed * 16807 + 0) % 2147483647 // LCG
-      const j = ((seed < 0 ? -seed : seed) % (i + 1))
-      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-    }
-    return shuffled
-  }
-
-  const fetchCountries = async () => {
+  const fetchCountries = useCallback(async () => {
     try {
       setError(false)
       setLoading(true)
@@ -84,7 +79,12 @@ export default function WorldPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    document.title = 'World | PLAYR'
+    fetchCountries()
+  }, [fetchCountries])
 
   const filteredCountries = countries.filter(country =>
     country.country_name.toLowerCase().includes(searchQuery.toLowerCase())
