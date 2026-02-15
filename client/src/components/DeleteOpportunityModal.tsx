@@ -9,6 +9,7 @@ interface DeleteVacancyModalProps {
   onConfirm: () => void
   vacancyTitle: string
   isLoading: boolean
+  isDraft?: boolean
 }
 
 export default function DeleteVacancyModal({
@@ -17,6 +18,7 @@ export default function DeleteVacancyModal({
   onConfirm,
   vacancyTitle,
   isLoading,
+  isDraft = false,
 }: DeleteVacancyModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
   const confirmButtonRef = useRef<HTMLButtonElement | null>(null)
@@ -69,7 +71,7 @@ export default function DeleteVacancyModal({
             </div>
             <div className="flex-1">
               <h2 id={titleId} className="text-xl font-bold text-gray-900 mb-1">
-                Delete Vacancy Permanently
+                {isDraft ? 'Delete Draft' : 'Delete Opportunity Permanently'}
               </h2>
               <p id={descriptionId} className="text-sm text-gray-600">
                 This action cannot be undone
@@ -88,20 +90,28 @@ export default function DeleteVacancyModal({
 
         {/* Content */}
         <div className="p-6 space-y-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-sm text-red-800 font-medium">
-              ⚠️ Warning: This will permanently delete:
+          {isDraft ? (
+            <p className="text-sm text-gray-600">
+              Are you sure you want to delete the draft "<strong>{vacancyTitle}</strong>"? This draft has not been published and has no applicants.
             </p>
-            <ul className="mt-2 text-sm text-red-700 space-y-1 ml-4 list-disc">
-              <li>The opportunity "<strong>{vacancyTitle}</strong>"</li>
-              <li>All applications submitted to this opportunity</li>
-              <li>Any related media or attachments</li>
-            </ul>
-          </div>
+          ) : (
+            <>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-800 font-medium">
+                  Warning: This will permanently delete:
+                </p>
+                <ul className="mt-2 text-sm text-red-700 space-y-1 ml-4 list-disc">
+                  <li>The opportunity "<strong>{vacancyTitle}</strong>"</li>
+                  <li>All applications submitted to this opportunity</li>
+                  <li>Any related media or attachments</li>
+                </ul>
+              </div>
 
-          <p className="text-sm text-gray-600">
-            Are you sure you want to permanently delete this opportunity? This action cannot be undone.
-          </p>
+              <p className="text-sm text-gray-600">
+                Are you sure you want to permanently delete this opportunity? This action cannot be undone.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Actions */}
@@ -119,7 +129,7 @@ export default function DeleteVacancyModal({
             disabled={isLoading}
             className="flex-1 bg-red-600 hover:bg-red-700 text-white"
           >
-            {isLoading ? 'Deleting...' : 'Delete Permanently'}
+            {isLoading ? 'Deleting...' : isDraft ? 'Delete Draft' : 'Delete Permanently'}
           </Button>
         </div>
       </div>

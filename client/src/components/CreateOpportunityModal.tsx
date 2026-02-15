@@ -339,7 +339,12 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
           .eq('id', editingVacancy.id)
 
         if (error) throw error
-        addToast('Opportunity updated successfully.', 'success')
+        const isStillDraft = (vacancyData.status || editingVacancy.status) === 'draft'
+        if (isStillDraft) {
+          addToast('Draft updated — publish when you\'re ready to go live.', 'info')
+        } else {
+          addToast('Opportunity updated successfully.', 'success')
+        }
       } else {
         // Create new opportunity
         const { error } = await supabase
@@ -347,7 +352,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
           .insert(vacancyData as never)
 
         if (error) throw error
-        addToast('Opportunity created successfully.', 'success')
+        addToast('Draft saved — publish when you\'re ready to go live.', 'info')
         clearVacancyDraft()
       }
 

@@ -47,8 +47,8 @@ test.describe('Messaging - Full Flow', () => {
     ).toBeVisible({ timeout: 20000 })
 
     // After previous test has sent messages, the E2E club should appear in conversations
-    // Look for the club name in the conversation list
-    const conversationItem = page.getByText(/e2e test fc/i).first()
+    // Scope to conversation-item elements to avoid matching notification text elsewhere on page
+    const conversationItem = page.getByTestId('conversation-item').filter({ hasText: /e2e test fc/i }).first()
     const hasConversation = await conversationItem.isVisible({ timeout: 10000 }).catch(() => false)
 
     if (hasConversation) {

@@ -1,19 +1,41 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users } from 'lucide-react'
+import { ArrowLeft, Users, Star, HelpCircle, XCircle, Inbox } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
+import { useToastStore } from '@/lib/toast'
 import type { OpportunityApplicationWithApplicant, Opportunity, Json } from '@/lib/supabase'
+import type { Database } from '@/lib/database.types'
 import ApplicantCard from '@/components/ApplicantCard'
+import { logger } from '@/lib/logger'
+
+type ApplicationStatus = Database['public']['Enums']['application_status']
+
+interface TierGroup {
+  key: string
+  label: string
+  icon: typeof Star
+  iconClass: string
+  statuses: ApplicationStatus[]
+}
+
+const TIER_GROUPS: TierGroup[] = [
+  { key: 'unsorted', label: 'Unsorted', icon: Inbox, iconClass: 'text-gray-400', statuses: ['pending'] },
+  { key: 'shortlisted', label: 'Shortlisted', icon: Star, iconClass: 'text-emerald-600', statuses: ['shortlisted'] },
+  { key: 'maybe', label: 'Maybe', icon: HelpCircle, iconClass: 'text-amber-600', statuses: ['maybe'] },
+  { key: 'not-a-fit', label: 'Not a fit', icon: XCircle, iconClass: 'text-red-500', statuses: ['rejected'] },
+]
 
 export default function ApplicantsList() {
   const { opportunityId } = useParams<{ opportunityId: string }>()
   const navigate = useNavigate()
   const { user } = useAuthStore()
+  const { addToast } = useToastStore()
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null)
   const [applications, setApplications] = useState<OpportunityApplicationWithApplicant[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -119,6 +141,64 @@ export default function ApplicantsList() {
     fetchData()
   }, [opportunityId, user])
 
+  const handleStatusChange = useCallback(async (applicationId: string, newStatus: ApplicationStatus) => {
+    setUpdatingId(applicationId)
+
+    // Optimistic update
+    setApplications((prev) =>
+      prev.map((app) => (app.id === applicationId ? { ...app, status: newStatus } : app))
+    )
+
+    try {
+      const { error: updateError } = await supabase
+        .from('opportunity_applications')
+        .update({ status: newStatus })
+        .eq('id', applicationId)
+
+      if (updateError) throw updateError
+    } catch (err) {
+      // Revert optimistic update
+      setApplications((prev) =>
+        prev.map((app) => {
+          if (app.id !== applicationId) return app
+          // We don't know the old status, so refetch
+          return app
+        })
+      )
+      logger.error('Error updating application status:', err)
+      addToast('Failed to update status. Please try again.', 'error')
+
+      // Refetch to ensure consistency
+      if (opportunityId) {
+        const { data } = await supabase
+          .from('opportunity_applications')
+          .select(`
+            *,
+            applicant:applicant_id (
+              id, full_name, avatar_url, position, secondary_position,
+              base_location, nationality, username
+            )
+          `)
+          .eq('opportunity_id', opportunityId)
+          .order('applied_at', { ascending: false })
+
+        if (data) {
+          setApplications(data as unknown as OpportunityApplicationWithApplicant[])
+        }
+      }
+    } finally {
+      setUpdatingId(null)
+    }
+  }, [addToast, opportunityId])
+
+  // Group applications by tier
+  const groupedApplications = useMemo(() => {
+    return TIER_GROUPS.map((group) => ({
+      ...group,
+      applications: applications.filter((app) => group.statuses.includes(app.status)),
+    })).filter((group) => group.applications.length > 0)
+  }, [applications])
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -138,6 +218,7 @@ export default function ApplicantsList() {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
           <p className="text-gray-600 mb-6">{error || 'Opportunity not found.'}</p>
           <button
+            type="button"
             onClick={() => navigate('/dashboard/profile')}
             className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white rounded-lg hover:opacity-90 transition-opacity"
           >
@@ -155,6 +236,7 @@ export default function ApplicantsList() {
       <div className="bg-white/95 backdrop-blur border-b border-gray-100">
         <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6">
           <button
+            type="button"
             onClick={() => navigate(-1)}
             className="inline-flex w-fit items-center gap-2 text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
           >
@@ -185,10 +267,33 @@ export default function ApplicantsList() {
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {applications.map((application) => (
-              <ApplicantCard key={application.id} application={application} />
-            ))}
+          <div className="space-y-8">
+            {groupedApplications.map((group) => {
+              const Icon = group.icon
+              return (
+                <section key={group.key}>
+                  <div className="mb-3 flex items-center gap-2">
+                    <Icon className={`h-4 w-4 ${group.iconClass}`} />
+                    <h2 className="text-sm font-semibold text-gray-700">
+                      {group.label}
+                    </h2>
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                      {group.applications.length}
+                    </span>
+                  </div>
+                  <div className="space-y-3">
+                    {group.applications.map((application) => (
+                      <ApplicantCard
+                        key={application.id}
+                        application={application}
+                        onStatusChange={handleStatusChange}
+                        isUpdating={updatingId === application.id}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )
+            })}
           </div>
         )}
       </div>
