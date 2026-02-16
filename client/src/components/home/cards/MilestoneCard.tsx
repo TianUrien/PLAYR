@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Award, Video, Image, CheckCircle, Shield } from 'lucide-react'
+import { Video, Image, CheckCircle, Shield } from 'lucide-react'
 import { Avatar, RoleBadge, StorageImage } from '@/components'
 import { getTimeAgo } from '@/lib/utils'
 import type { MilestoneAchievedFeedItem, MilestoneType } from '@/types/homeFeed'
@@ -41,9 +42,17 @@ const MILESTONE_CONFIG: Record<MilestoneType, {
 }
 
 export function MilestoneCard({ item }: MilestoneCardProps) {
+  const [mediaError, setMediaError] = useState(false)
   const timeAgo = getTimeAgo(item.created_at, true)
   const config = MILESTONE_CONFIG[item.milestone_type]
-  const Icon = config?.icon || Award
+
+  // Unknown milestone type — don't render
+  if (!config) return null
+
+  // Media failed to load — hide entire card
+  if (mediaError) return null
+
+  const Icon = config.icon
   const profilePath = item.role === 'club'
     ? `/clubs/id/${item.profile_id}`
     : `/players/id/${item.profile_id}`
@@ -53,8 +62,8 @@ export function MilestoneCard({ item }: MilestoneCardProps) {
       <div className="p-5">
         {/* Header */}
         <div className="flex items-center gap-2 mb-4">
-          <div className={`w-8 h-8 rounded-full ${config?.bgColor || 'bg-gray-100'} flex items-center justify-center flex-shrink-0`}>
-            <Icon className={`w-4 h-4 ${config?.iconColor || 'text-gray-600'}`} />
+          <div className={`w-8 h-8 rounded-full ${config.bgColor} flex items-center justify-center flex-shrink-0`}>
+            <Icon className={`w-4 h-4 ${config.iconColor}`} />
           </div>
           <div className="flex items-center gap-1.5 text-sm text-gray-500">
             <span className="font-medium text-gray-700">Profile milestone</span>
@@ -83,7 +92,7 @@ export function MilestoneCard({ item }: MilestoneCardProps) {
               <RoleBadge role={item.role} />
             </div>
             <p className="text-sm text-gray-600">
-              {config?.label || 'achieved a milestone'}
+              {config.label}
             </p>
           </div>
         </Link>
@@ -96,6 +105,7 @@ export function MilestoneCard({ item }: MilestoneCardProps) {
               controls
               preload="metadata"
               className="w-full h-full object-cover"
+              onError={() => setMediaError(true)}
             />
           </div>
         )}
@@ -107,6 +117,7 @@ export function MilestoneCard({ item }: MilestoneCardProps) {
             className="w-full h-auto max-h-80 object-cover rounded-lg"
             containerClassName="mt-4 rounded-lg overflow-hidden"
             fallbackClassName="mt-4 h-48 rounded-lg"
+            onImageError={() => setMediaError(true)}
           />
         )}
 
