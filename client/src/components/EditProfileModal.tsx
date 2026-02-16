@@ -12,6 +12,7 @@ import { useCountries } from '@/hooks/useCountries'
 import { invalidateProfile } from '@/lib/profile'
 import { useToastStore } from '@/lib/toast'
 import { deleteStorageObject } from '@/lib/storage'
+import { toSentryError } from '@/lib/sentryHelpers'
 import { clearProfileDraft, loadProfileDraft, saveProfileDraft } from '@/lib/profileDrafts'
 import SocialLinksInput from './SocialLinksInput'
 import { type SocialLinks, cleanSocialLinks, validateSocialLinks } from '@/lib/socialLinks'
@@ -229,7 +230,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
   }, [getCountryById])
 
   const captureOnboardingError = (error: unknown, payload: Record<string, unknown>, sourceComponent: string) => {
-    Sentry.captureException(error, {
+    Sentry.captureException(toSentryError(error), {
       tags: { feature: 'onboarding_profile' },
       extra: {
         userId: profile?.id ?? null,
