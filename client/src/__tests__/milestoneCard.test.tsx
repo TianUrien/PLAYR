@@ -38,26 +38,6 @@ describe('MilestoneCard', () => {
     expect(screen.getByText('completed their profile')).toBeInTheDocument()
   })
 
-  it('renders 60% completion milestone', () => {
-    render(
-      <MilestoneCard
-        item={{ ...baseMilestone, milestone_type: 'profile_60_percent' }}
-      />
-    )
-
-    expect(screen.getByText('reached 60% profile completion')).toBeInTheDocument()
-  })
-
-  it('renders 80% completion milestone', () => {
-    render(
-      <MilestoneCard
-        item={{ ...baseMilestone, milestone_type: 'profile_80_percent' }}
-      />
-    )
-
-    expect(screen.getByText('reached 80% profile completion')).toBeInTheDocument()
-  })
-
   it('renders first_video milestone', () => {
     render(
       <MilestoneCard

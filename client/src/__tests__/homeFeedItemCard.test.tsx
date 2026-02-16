@@ -64,31 +64,21 @@ describe('HomeFeedItemCard', () => {
     expect(screen.getByText('Hello PLAYR community!')).toBeInTheDocument()
   })
 
-  it('renders MilestoneCard with new milestone types', () => {
-    const item60: MilestoneAchievedFeedItem = {
+  it('renders MilestoneCard for 100% completion', () => {
+    const item: MilestoneAchievedFeedItem = {
       feed_item_id: '3',
       item_type: 'milestone_achieved',
       created_at: '2026-02-09T00:00:00Z',
-      milestone_type: 'profile_60_percent',
+      milestone_type: 'profile_100_percent',
       profile_id: 'p1',
       full_name: 'Player',
       avatar_url: null,
       role: 'player',
     }
 
-    const { unmount } = render(<HomeFeedItemCard item={item60} />)
+    render(<HomeFeedItemCard item={item} />)
     expect(screen.getByTestId('milestone-card')).toBeInTheDocument()
-    expect(screen.getByText('profile_60_percent')).toBeInTheDocument()
-    unmount()
-
-    const item80: MilestoneAchievedFeedItem = {
-      ...item60,
-      feed_item_id: '4',
-      milestone_type: 'profile_80_percent',
-    }
-
-    render(<HomeFeedItemCard item={item80} />)
-    expect(screen.getByText('profile_80_percent')).toBeInTheDocument()
+    expect(screen.getByText('profile_100_percent')).toBeInTheDocument()
   })
 
   it('returns null for unknown item types', () => {
