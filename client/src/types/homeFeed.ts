@@ -14,8 +14,6 @@ export type FeedItemType =
 export type MilestoneType =
   | 'first_video'
   | 'first_gallery_image'
-  | 'profile_60_percent'
-  | 'profile_80_percent'
   | 'profile_100_percent'
   | 'first_reference_received'
 

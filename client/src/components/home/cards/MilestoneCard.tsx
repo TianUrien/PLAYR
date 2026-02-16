@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import { Award, Video, Image, CheckCircle, Shield, TrendingUp, Target } from 'lucide-react'
-import { Avatar, RoleBadge } from '@/components'
+import { Award, Video, Image, CheckCircle, Shield } from 'lucide-react'
+import { Avatar, RoleBadge, StorageImage } from '@/components'
 import { getTimeAgo } from '@/lib/utils'
 import type { MilestoneAchievedFeedItem, MilestoneType } from '@/types/homeFeed'
 
@@ -25,18 +25,6 @@ const MILESTONE_CONFIG: Record<MilestoneType, {
     bgColor: 'bg-blue-100',
     iconColor: 'text-blue-600',
     label: 'added gallery images',
-  },
-  profile_60_percent: {
-    icon: TrendingUp,
-    bgColor: 'bg-blue-100',
-    iconColor: 'text-blue-600',
-    label: 'reached 60% profile completion',
-  },
-  profile_80_percent: {
-    icon: Target,
-    bgColor: 'bg-purple-100',
-    iconColor: 'text-purple-600',
-    label: 'reached 80% profile completion',
   },
   profile_100_percent: {
     icon: CheckCircle,
@@ -113,14 +101,13 @@ export function MilestoneCard({ item }: MilestoneCardProps) {
         )}
 
         {item.milestone_type === 'first_gallery_image' && item.image_url && (
-          <div className="mt-4 rounded-lg overflow-hidden">
-            <img
-              src={item.image_url}
-              alt="Gallery"
-              className="w-full h-auto max-h-80 object-cover rounded-lg"
-              loading="lazy"
-            />
-          </div>
+          <StorageImage
+            src={item.image_url}
+            alt="Gallery"
+            className="w-full h-auto max-h-80 object-cover rounded-lg"
+            containerClassName="mt-4 rounded-lg overflow-hidden"
+            fallbackClassName="mt-4 h-48 rounded-lg"
+          />
         )}
 
         {/* CTA */}

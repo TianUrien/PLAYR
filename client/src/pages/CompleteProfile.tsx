@@ -11,6 +11,7 @@ import { logger } from '@/lib/logger'
 import { optimizeAvatarImage, validateImage } from '@/lib/imageOptimization'
 import { invalidateProfile } from '@/lib/profile'
 import { deleteStorageObject } from '@/lib/storage'
+import { toSentryError } from '@/lib/sentryHelpers'
 
 type UserRole = 'player' | 'coach' | 'club' | 'brand'
 
@@ -85,7 +86,7 @@ export default function CompleteProfile() {
   const contactEmailFallback = profile?.contact_email ?? profile?.email ?? user?.email ?? fallbackEmail ?? ''
 
   const captureOnboardingError = (error: unknown, payload: Record<string, unknown>, sourceComponent: string) => {
-    Sentry.captureException(error, {
+    Sentry.captureException(toSentryError(error), {
       tags: { feature: 'onboarding_profile' },
       extra: {
         userId: user?.id ?? null,
@@ -460,6 +461,32 @@ export default function CompleteProfile() {
 
       logger.debug('Updating profile with data:', updateData)
       lastUpdatedFields = Object.keys(updateData)
+
+      // Safety net: ensure the profile row exists before attempting UPDATE.
+      // This handles the edge case where the placeholder INSERT in auth.ts
+      // failed silently and the user reached the form via user_metadata.role.
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (!existingProfile) {
+        logger.warn('[COMPLETE_PROFILE] Profile row missing at submit time — creating via RPC', { userId: user.id, role: userRole })
+        const { error: createError } = await supabase.rpc('create_profile_for_new_user', {
+          user_id: user.id,
+          user_email: user.email || '',
+          user_role: userRole,
+        })
+        if (createError) {
+          captureOnboardingError(createError, {
+            role: userRole,
+            stage: 'ensureProfileExistsBeforeSubmit',
+          }, 'CompleteProfile.handleSubmit.createProfile')
+          logger.error('Failed to create missing profile:', createError)
+          throw new Error('Could not create your profile. Please try signing out and back in.')
+        }
+      }
 
       // Update profile
       const { data: updatedProfile, error: updateError } = await supabase

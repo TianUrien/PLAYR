@@ -12,6 +12,23 @@ type ExtraMetadata = Record<string, unknown>
 type TagMetadata = Record<string, string>
 
 /**
+ * Wraps a Supabase error (plain object with code/message/details/hint) in a
+ * proper Error instance so Sentry displays the message instead of the
+ * minified class name ("Ri", "Q", etc.).
+ */
+export function toSentryError(error: unknown): Error {
+  if (error instanceof Error) return error
+
+  const obj = (typeof error === 'object' && error !== null ? error : null) as SupabaseErrorLike | null
+  const message = obj?.message || 'Unknown Supabase error'
+  const wrapped = new Error(message)
+  wrapped.name = 'SupabaseError'
+  // Preserve original properties for Sentry extra context
+  ;(wrapped as unknown as Record<string, unknown>).__raw = error
+  return wrapped
+}
+
+/**
  * Gets in-app browser context for Sentry reporting
  */
 function getInAppBrowserContext(): Record<string, string | boolean> {
@@ -50,10 +67,9 @@ export function reportSupabaseError(
   tags: TagMetadata = {}
 ) {
   const supabaseError = (typeof error === 'object' && error !== null ? error : undefined) as SupabaseErrorLike | undefined
-  const fallbackMessage = error instanceof Error ? error.message : undefined
   const browserContext = getInAppBrowserContext()
 
-  Sentry.captureException(error, {
+  Sentry.captureException(toSentryError(error), {
     tags: {
       scope,
       isSupabase: true,
@@ -61,10 +77,9 @@ export function reportSupabaseError(
       ...tags,
     },
     extra: {
-      message: supabaseError?.message ?? fallbackMessage,
-      code: supabaseError?.code,
-      details: supabaseError?.details,
-      hint: supabaseError?.hint,
+      supabaseCode: supabaseError?.code,
+      supabaseDetails: supabaseError?.details,
+      supabaseHint: supabaseError?.hint,
       ...extras,
     },
   })
@@ -80,8 +95,8 @@ export function reportAuthFlowError(
   extras: ExtraMetadata = {}
 ) {
   const browserContext = getInAppBrowserContext()
-  
-  Sentry.captureException(error, {
+
+  Sentry.captureException(toSentryError(error), {
     tags: {
       feature: 'auth_flow',
       stage,

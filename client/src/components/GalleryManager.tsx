@@ -79,7 +79,7 @@ const MODE_CONFIG: Record<GalleryMode, ModeConfig> = {
     emptyStateDescription: 'No photos yet',
     addButtonLabel: 'Add Photos',
     optimizeUploads: false,
-    maxFileSizeMB: 10,
+    maxFileSizeMB: 50,
   },
   profile: {
     bucket: 'gallery',
@@ -92,7 +92,7 @@ const MODE_CONFIG: Record<GalleryMode, ModeConfig> = {
     addButtonLabel: 'Add Photo',
     optimizeUploads: true,
     optimizeOptions: PROFILE_OPTIMIZE_OPTIONS,
-    maxFileSizeMB: 10,
+    maxFileSizeMB: 50,
   }
 }
 

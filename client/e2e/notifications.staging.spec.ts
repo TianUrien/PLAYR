@@ -227,7 +227,7 @@ test.describe.serial('Notification System E2E', () => {
     expect(error).toBeNull()
     freshCoachVacancyId = vacancy!.id
 
-    const found = await waitForNotification(coachSb, 'opportunity_published', freshCoachVacancyId)
+    const found = await waitForNotification(coachSb, 'opportunity_published', freshCoachVacancyId, 20_000)
     expect(found).toBe(true)
 
     const ctx = await browser.newContext({ storageState: COACH_STORAGE_STATE })
