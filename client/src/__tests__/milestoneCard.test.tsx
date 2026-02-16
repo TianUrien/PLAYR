@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { vi } from 'vitest'
 import type { MilestoneAchievedFeedItem } from '@/types/homeFeed'
 
@@ -11,6 +11,9 @@ vi.mock('react-router-dom', () => ({
 vi.mock('@/components', () => ({
   Avatar: ({ initials }: { initials?: string }) => <span data-testid="avatar">{initials}</span>,
   RoleBadge: ({ role }: { role?: string }) => <span data-testid="role-badge">{role}</span>,
+  StorageImage: ({ onImageError, alt }: { onImageError?: () => void; alt: string; src?: string; className?: string; containerClassName?: string; fallbackClassName?: string }) => (
+    <img data-testid="storage-image" alt={alt} onError={onImageError} />
+  ),
 }))
 
 vi.mock('@/lib/utils', () => ({
@@ -84,5 +87,58 @@ describe('MilestoneCard', () => {
 
     const link = screen.getByText('Test FC').closest('a')
     expect(link).toHaveAttribute('href', '/clubs/id/p1')
+  })
+
+  it('returns null for unknown milestone types', () => {
+    const { container } = render(
+      <MilestoneCard
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        item={{ ...baseMilestone, milestone_type: 'profile_60_percent' as any }}
+      />
+    )
+    expect(container.firstChild).toBeNull()
+  })
+
+  it('hides entire card when gallery image fails to load', () => {
+    const { container } = render(
+      <MilestoneCard
+        item={{
+          ...baseMilestone,
+          milestone_type: 'first_gallery_image',
+          image_url: 'https://broken-url.com/photo.jpg',
+        }}
+      />
+    )
+
+    // Card renders initially
+    expect(screen.getByText('added gallery images')).toBeInTheDocument()
+
+    // Simulate image load error
+    fireEvent.error(screen.getByTestId('storage-image'))
+
+    // Entire card should be gone
+    expect(container.firstChild).toBeNull()
+  })
+
+  it('hides entire card when video fails to load', () => {
+    const { container } = render(
+      <MilestoneCard
+        item={{
+          ...baseMilestone,
+          milestone_type: 'first_video',
+          video_url: 'https://broken-url.com/video.mp4',
+        }}
+      />
+    )
+
+    // Card renders initially
+    expect(screen.getByText('added a highlight video')).toBeInTheDocument()
+
+    // Simulate video load error
+    const video = container.querySelector('video')!
+    fireEvent.error(video)
+
+    // Entire card should be gone
+    expect(container.firstChild).toBeNull()
   })
 })
