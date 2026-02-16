@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Award, Video, Image, CheckCircle, Shield } from 'lucide-react'
-import { Avatar, RoleBadge } from '@/components'
+import { Avatar, RoleBadge, StorageImage } from '@/components'
 import { getTimeAgo } from '@/lib/utils'
 import type { MilestoneAchievedFeedItem, MilestoneType } from '@/types/homeFeed'
 
@@ -101,14 +101,13 @@ export function MilestoneCard({ item }: MilestoneCardProps) {
         )}
 
         {item.milestone_type === 'first_gallery_image' && item.image_url && (
-          <div className="mt-4 rounded-lg overflow-hidden">
-            <img
-              src={item.image_url}
-              alt="Gallery"
-              className="w-full h-auto max-h-80 object-cover rounded-lg"
-              loading="lazy"
-            />
-          </div>
+          <StorageImage
+            src={item.image_url}
+            alt="Gallery"
+            className="w-full h-auto max-h-80 object-cover rounded-lg"
+            containerClassName="mt-4 rounded-lg overflow-hidden"
+            fallbackClassName="mt-4 h-48 rounded-lg"
+          />
         )}
 
         {/* CTA */}
