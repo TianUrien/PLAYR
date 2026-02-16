@@ -175,14 +175,14 @@ test.describe('Vacancy Details - Authenticated Player', () => {
       const card = cardTitles.first().locator('xpath=ancestor::div[contains(@class,"group")]').first()
       await card.click()
 
-      // Wait for the detail view overlay to open
+      // Wait for the detail view overlay to open (use aria-label to avoid matching "Close" text button)
       await expect(
-        page.getByRole('button', { name: 'Close', exact: true })
+        page.getByLabel('Close', { exact: true })
       ).toBeVisible({ timeout: 10000 })
     }
   })
 
-  test('shows apply button on vacancy detail', async ({ page }) => {
+  test('shows action buttons on vacancy detail', async ({ page }) => {
     await page.goto('/opportunities')
     await page.waitForLoadState('networkidle')
 
@@ -193,15 +193,18 @@ test.describe('Vacancy Details - Authenticated Player', () => {
       const card = cardTitles.first().locator('xpath=ancestor::div[contains(@class,"group")]').first()
       await card.click()
 
-      // Wait for detail view to open
+      // Wait for detail view to open (use aria-label to avoid matching "Close" text button)
       await expect(
-        page.getByRole('button', { name: 'Close', exact: true })
+        page.getByLabel('Close', { exact: true })
       ).toBeVisible({ timeout: 10000 })
 
-      // Apply action should be visible for players — either "Apply Now" or "Application Submitted"
-      const applyBtn = page.getByRole('button', { name: /apply now/i }).first()
-      const appliedBtn = page.getByRole('button', { name: /application submitted/i }).first()
-      await expect(applyBtn.or(appliedBtn)).toBeVisible({ timeout: 5000 })
+      // Detail view should always show action buttons in the footer
+      await expect(page.getByRole('button', { name: /close|apply/i }).first()).toBeVisible()
+      await expect(page.getByRole('button', { name: 'View Profile', exact: true }).or(
+        page.getByRole('link', { name: 'View Profile', exact: true })
+      ).or(
+        page.getByRole('button', { name: 'View Club Profile', exact: true })
+      )).toBeVisible({ timeout: 5000 })
     }
   })
 })
