@@ -57,18 +57,22 @@ function hasHighlightVideo(profile: Profile): boolean {
 
 /**
  * Hook to calculate profile strength/completion for Player profiles.
- * 
- * The strength is calculated from 5 weighted buckets:
- * - Basic Info (25%): nationality, base_location, position
- * - Profile Photo (20%): avatar_url
- * - Highlight Video (25%): highlight_video_url
- * - Journey (15%): at least one playing_history entry
- * - Media Gallery (15%): at least one gallery_photos entry
+ *
+ * The strength is calculated from 7 weighted buckets:
+ * - Basic Info (15%): nationality, base_location, position
+ * - Profile Photo (15%): avatar_url
+ * - Highlight Video (20%): highlight_video_url
+ * - Journey (15%): at least one career_history entry
+ * - Media Gallery (10%): at least one gallery_photos entry
+ * - Friends (10%): at least one accepted friend connection
+ * - References (15%): at least one approved reference
  */
 export function useProfileStrength(profile: Profile | null): ProfileStrengthResult {
   const [loading, setLoading] = useState(true)
   const [journeyCount, setJourneyCount] = useState<number>(0)
   const [galleryCount, setGalleryCount] = useState<number>(0)
+  const [friendCount, setFriendCount] = useState<number>(0)
+  const [referenceCount, setReferenceCount] = useState<number>(0)
 
   const fetchCounts = useCallback(async () => {
     if (!profile?.id) {
@@ -78,28 +82,49 @@ export function useProfileStrength(profile: Profile | null): ProfileStrengthResu
 
     setLoading(true)
     try {
-      // Fetch journey entries count
-      const { count: journeyCountResult, error: journeyError } = await supabase
-        .from('career_history')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', profile.id)
+      const [journeyRes, galleryRes, friendsRes, referencesRes] = await Promise.all([
+        supabase
+          .from('career_history')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', profile.id),
+        supabase
+          .from('gallery_photos')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', profile.id),
+        supabase
+          .from('profile_friendships')
+          .select('id', { count: 'exact', head: true })
+          .or(`user_one.eq.${profile.id},user_two.eq.${profile.id}`)
+          .eq('status', 'accepted'),
+        supabase
+          .from('profile_references')
+          .select('id', { count: 'exact', head: true })
+          .eq('requester_id', profile.id)
+          .eq('status', 'accepted'),
+      ])
 
-      if (journeyError) {
-        logger.error('Error fetching journey count:', journeyError)
+      if (journeyRes.error) {
+        logger.error('Error fetching journey count:', journeyRes.error)
       } else {
-        setJourneyCount(journeyCountResult ?? 0)
+        setJourneyCount(journeyRes.count ?? 0)
       }
 
-      // Fetch gallery photos count
-      const { count: galleryCountResult, error: galleryError } = await supabase
-        .from('gallery_photos')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', profile.id)
-
-      if (galleryError) {
-        logger.error('Error fetching gallery count:', galleryError)
+      if (galleryRes.error) {
+        logger.error('Error fetching gallery count:', galleryRes.error)
       } else {
-        setGalleryCount(galleryCountResult ?? 0)
+        setGalleryCount(galleryRes.count ?? 0)
+      }
+
+      if (friendsRes.error) {
+        logger.error('Error fetching friend count:', friendsRes.error)
+      } else {
+        setFriendCount(friendsRes.count ?? 0)
+      }
+
+      if (referencesRes.error) {
+        logger.error('Error fetching reference count:', referencesRes.error)
+      } else {
+        setReferenceCount(referencesRes.count ?? 0)
       }
     } catch (error) {
       logger.error('Error fetching profile strength data:', error)
@@ -122,7 +147,7 @@ export function useProfileStrength(profile: Profile | null): ProfileStrengthResu
         id: 'basic-info',
         label: 'Basic info completed',
         description: 'Add your nationality, location, and playing position',
-        weight: 25,
+        weight: 15,
         completed: isBasicInfoComplete(profile),
         action: { type: 'edit-profile' },
       },
@@ -130,7 +155,7 @@ export function useProfileStrength(profile: Profile | null): ProfileStrengthResu
         id: 'profile-photo',
         label: 'Add a profile photo',
         description: 'Help clubs recognize you with a profile picture',
-        weight: 20,
+        weight: 15,
         completed: hasProfilePhoto(profile),
         action: { type: 'edit-profile' },
       },
@@ -138,7 +163,7 @@ export function useProfileStrength(profile: Profile | null): ProfileStrengthResu
         id: 'highlight-video',
         label: 'Add your highlight video',
         description: 'Show clubs what you can do on the pitch',
-        weight: 25,
+        weight: 20,
         completed: hasHighlightVideo(profile),
         action: { type: 'add-video' },
       },
@@ -154,12 +179,28 @@ export function useProfileStrength(profile: Profile | null): ProfileStrengthResu
         id: 'media-gallery',
         label: 'Add a photo or video to your Gallery',
         description: 'Build your visual portfolio for clubs to see',
-        weight: 15,
+        weight: 10,
         completed: galleryCount > 0,
         action: { type: 'tab', tab: 'profile' },
       },
+      {
+        id: 'friends',
+        label: 'Make your first connection',
+        description: 'Add a friend to start building your trusted circle',
+        weight: 10,
+        completed: friendCount > 0,
+        action: { type: 'tab', tab: 'friends' },
+      },
+      {
+        id: 'references',
+        label: 'Get a trusted reference',
+        description: 'Ask a coach or teammate to vouch for you',
+        weight: 15,
+        completed: referenceCount > 0,
+        action: { type: 'tab', tab: 'friends' },
+      },
     ]
-  }, [profile, journeyCount, galleryCount])
+  }, [profile, journeyCount, galleryCount, friendCount, referenceCount])
 
   const percentage = useMemo(() => {
     if (buckets.length === 0) return 0
