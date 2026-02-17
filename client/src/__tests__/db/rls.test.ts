@@ -350,4 +350,235 @@ describe.skipIf(skip)('RLS Policy Isolation', () => {
       })
     })
   })
+
+  // =========================================================================
+  // FRIENDSHIPS (cross-user isolation)
+  // =========================================================================
+  describe('profile_friendships', () => {
+    it('user can only see friendships they are part of or that are accepted', async () => {
+      const { data: friendships } = await player.client
+        .from('profile_friendships')
+        .select('id, user_one, user_two, status')
+        .limit(50)
+
+      for (const f of friendships ?? []) {
+        const isParticipant =
+          f.user_one === player.userId || f.user_two === player.userId
+        const isAccepted = f.status === 'accepted'
+        expect(isParticipant || isAccepted).toBe(true)
+      }
+    })
+
+    it('coach cannot modify friendships between player and club', async () => {
+      // Find a friendship involving the player
+      const { data: playerFriends } = await player.client
+        .from('profile_friendships')
+        .select('id')
+        .or(`user_one.eq.${player.userId},user_two.eq.${player.userId}`)
+        .limit(1)
+
+      if (!playerFriends?.length) {
+        console.warn('  ⏭  No player friendships found — skipping')
+        return
+      }
+
+      // Coach tries to update it
+      const { error } = await coach.client
+        .from('profile_friendships')
+        .update({ status: 'blocked' })
+        .eq('id', playerFriends[0].id)
+
+      // Either error or 0 rows affected — verify no change
+      const { data: check } = await player.client
+        .from('profile_friendships')
+        .select('id, status')
+        .eq('id', playerFriends[0].id)
+        .single()
+
+      expect(check?.status).not.toBe('blocked')
+      if (error) {
+        expect(error).not.toBeNull()
+      }
+    })
+
+    it('user cannot insert a friendship on behalf of others', async () => {
+      // Coach tries to create a friendship between player and club
+      const { error } = await coach.client
+        .from('profile_friendships')
+        .insert({
+          user_one: player.userId < club.userId ? player.userId : club.userId,
+          user_two: player.userId < club.userId ? club.userId : player.userId,
+          requester_id: player.userId,
+          status: 'pending',
+        } as never)
+
+      expect(error).not.toBeNull()
+    })
+  })
+
+  // =========================================================================
+  // PROFILE REFERENCES (trusted references isolation)
+  // =========================================================================
+  describe('profile_references', () => {
+    it('non-participant can only see accepted references', async () => {
+      // Coach queries all references — should only see accepted ones
+      // (unless coach is requester_id or reference_id)
+      const { data: refs } = await coach.client
+        .from('profile_references')
+        .select('id, requester_id, reference_id, status')
+        .limit(50)
+
+      for (const ref of refs ?? []) {
+        const isParticipant =
+          ref.requester_id === coach.userId ||
+          ref.reference_id === coach.userId
+        if (!isParticipant) {
+          expect(ref.status).toBe('accepted')
+        }
+      }
+    })
+
+    it('user cannot modify another user\'s reference', async () => {
+      // Find a reference where player is NOT the requester or reference
+      const { data: refs } = await player.client
+        .from('profile_references')
+        .select('id, requester_id, reference_id, endorsement')
+        .eq('status', 'accepted')
+        .limit(10)
+
+      const otherRef = (refs ?? []).find(
+        (r) =>
+          r.requester_id !== player.userId &&
+          r.reference_id !== player.userId
+      )
+
+      if (!otherRef) {
+        console.warn('  ⏭  No third-party references found — skipping')
+        return
+      }
+
+      // Player tries to update the endorsement
+      const { error } = await player.client
+        .from('profile_references')
+        .update({ endorsement: 'hacked endorsement' })
+        .eq('id', otherRef.id)
+
+      // Should fail or affect 0 rows
+      if (!error) {
+        const { data: check } = await coach.client
+          .from('profile_references')
+          .select('endorsement')
+          .eq('id', otherRef.id)
+          .single()
+
+        expect(check?.endorsement).not.toBe('hacked endorsement')
+      }
+    })
+
+    it('user cannot insert a reference as someone else', async () => {
+      const { error } = await coach.client
+        .from('profile_references')
+        .insert({
+          requester_id: player.userId,
+          reference_id: club.userId,
+          status: 'pending',
+        } as never)
+
+      expect(error).not.toBeNull()
+    })
+  })
+
+  // =========================================================================
+  // PROFILE NOTIFICATIONS (recipient-only access)
+  // =========================================================================
+  describe('profile_notifications', () => {
+    it('user can only see their own notifications', async () => {
+      const { data: playerNotifs } = await player.client
+        .from('profile_notifications')
+        .select('id, recipient_profile_id')
+        .limit(50)
+
+      for (const n of playerNotifs ?? []) {
+        expect(n.recipient_profile_id).toBe(player.userId)
+      }
+    })
+
+    it('coach cannot read player notifications', async () => {
+      // Get a player notification ID (if any exist)
+      const { data: playerNotifs } = await player.client
+        .from('profile_notifications')
+        .select('id')
+        .limit(1)
+
+      if (!playerNotifs?.length) {
+        console.warn('  ⏭  No player notifications found — skipping')
+        return
+      }
+
+      // Coach tries to read it
+      const { data: coachRead } = await coach.client
+        .from('profile_notifications')
+        .select('id')
+        .eq('id', playerNotifs[0].id)
+
+      expect(coachRead ?? []).toHaveLength(0)
+    })
+
+    it('coach cannot update player notifications', async () => {
+      const { data: playerNotifs } = await player.client
+        .from('profile_notifications')
+        .select('id, is_read')
+        .eq('is_read', false)
+        .limit(1)
+
+      if (!playerNotifs?.length) {
+        console.warn('  ⏭  No unread player notifications found — skipping')
+        return
+      }
+
+      // Coach tries to mark it as read
+      const { error } = await coach.client
+        .from('profile_notifications')
+        .update({ is_read: true })
+        .eq('id', playerNotifs[0].id)
+
+      // Verify it's still unread
+      const { data: check } = await player.client
+        .from('profile_notifications')
+        .select('is_read')
+        .eq('id', playerNotifs[0].id)
+        .single()
+
+      expect(check?.is_read).toBe(false)
+      if (error) {
+        expect(error).not.toBeNull()
+      }
+    })
+
+    it('user cannot delete another user\'s notifications', async () => {
+      const { data: playerNotifs } = await player.client
+        .from('profile_notifications')
+        .select('id')
+        .limit(1)
+
+      if (!playerNotifs?.length) {
+        console.warn('  ⏭  No player notifications found — skipping')
+        return
+      }
+
+      // Coach tries to delete it
+      await coach.client
+        .from('profile_notifications')
+        .delete()
+        .eq('id', playerNotifs[0].id)
+
+      // Verify it still exists
+      const { data: check } = await player.client
+        .from('profile_notifications')
+        .select('id')
+        .eq('id', playerNotifs[0].id)
+
+      expect(check?.length).toBeGreaterThan(0)
+    })
+  })
 })

@@ -59,9 +59,9 @@ jobs:
         working-directory: ./client
         run: npm ci
 
-      - name: Run ESLint
+      - name: Run ESLint (zero warnings)
         working-directory: ./client
-        run: npm run lint
+        run: npx eslint . --max-warnings=0
 
       - name: Run TypeScript type check
         working-directory: ./client
@@ -130,15 +130,23 @@ jobs:
         run: |
           TOTAL_JS=$(cat dist/assets/*.js | wc -c)
           TOTAL_KB=$((TOTAL_JS / 1024))
-          echo "Total JS bundle: ${TOTAL_KB}KB (budget: 2500KB)"
+          GZIP_TOTAL=$(cat dist/assets/*.js | gzip -c | wc -c)
+          GZIP_KB=$((GZIP_TOTAL / 1024))
+          echo "JS bundle: ${TOTAL_KB}KB raw / ${GZIP_KB}KB gzip"
 
-          # Fail if total JS exceeds 2.5MB (uncompressed)
-          if [ "$TOTAL_JS" -gt 2621440 ]; then
-            echo "::error::Bundle size budget exceeded! JS total: ${TOTAL_KB}KB > 2500KB budget"
+          # Primary gate: gzip total must stay under 650KB
+          if [ "$GZIP_TOTAL" -gt 665600 ]; then
+            echo "::error::Gzip bundle budget exceeded! ${GZIP_KB}KB > 650KB"
             exit 1
           fi
 
-          # Warn on individual chunks > 512KB
+          # Secondary gate: raw total must stay under 2.5MB
+          if [ "$TOTAL_JS" -gt 2621440 ]; then
+            echo "::error::Raw bundle budget exceeded! ${TOTAL_KB}KB > 2500KB"
+            exit 1
+          fi
+
+          # Warn on individual chunks > 512KB (raw)
           for f in dist/assets/*.js; do
             SIZE=$(wc -c < "$f")
             if [ "$SIZE" -gt 524288 ]; then
@@ -152,6 +160,26 @@ jobs:
           name: build-output
           path: client/dist
           retention-days: 7
+
+  migration-check:
+    name: Migration Validation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Validate migrations (dry-run)
+        run: supabase db push --linked --dry-run
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
   db-tests:
     name: DB Integration Tests

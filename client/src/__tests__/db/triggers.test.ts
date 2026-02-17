@@ -199,15 +199,18 @@ describe.skipIf(skip)('Trigger Correctness', () => {
 
       const conv = convs[0]
       const before = conv.last_message_at
+      const tag = marker()
 
       // Send a message
-      const { error: msgError } = await player.client
+      const { data: msg, error: msgError } = await player.client
         .from('messages')
         .insert({
           conversation_id: conv.id,
           sender_id: player.userId,
-          content: `Trigger test ${marker()}`,
+          content: `Trigger test ${tag}`,
         })
+        .select('id')
+        .single()
 
       expect(msgError).toBeNull()
 
@@ -225,6 +228,11 @@ describe.skipIf(skip)('Trigger Correctness', () => {
         )
       } else {
         expect(updated!.last_message_at).not.toBeNull()
+      }
+
+      // Cleanup: delete test message
+      if (msg?.id) {
+        await player.client.from('messages').delete().eq('id', msg.id)
       }
     })
   })
@@ -269,11 +277,15 @@ describe.skipIf(skip)('Trigger Correctness', () => {
       const countBefore = before?.length ?? 0
 
       // Player sends a message
-      await player.client.from('messages').insert({
-        conversation_id: conv.id,
-        sender_id: player.userId,
-        content: `Notification test ${tag}`,
-      })
+      const { data: msg } = await player.client
+        .from('messages')
+        .insert({
+          conversation_id: conv.id,
+          sender_id: player.userId,
+          content: `Notification test ${tag}`,
+        })
+        .select('id')
+        .single()
 
       // Small delay for trigger propagation
       await new Promise((r) => setTimeout(r, 1000))
@@ -288,6 +300,11 @@ describe.skipIf(skip)('Trigger Correctness', () => {
       const countAfter = after?.length ?? 0
 
       expect(countAfter).toBeGreaterThanOrEqual(countBefore)
+
+      // Cleanup: delete test message
+      if (msg?.id) {
+        await player.client.from('messages').delete().eq('id', msg.id)
+      }
     })
   })
 
