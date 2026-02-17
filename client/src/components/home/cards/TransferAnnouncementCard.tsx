@@ -39,9 +39,10 @@ export function TransferAnnouncementCard({ item, onLikeUpdate, onDelete }: Trans
 
   const clubPath = meta.club_profile_id ? `/clubs/id/${meta.club_profile_id}` : null
 
-  const sortedImages = item.images
-    ? [...item.images].sort((a, b) => a.order - b.order)
-    : []
+  const sortedImages = useMemo(
+    () => item.images ? [...item.images].sort((a, b) => a.order - b.order) : [],
+    [item.images]
+  )
 
   const lightboxImages = useMemo(
     () => sortedImages.filter((m) => (m.media_type ?? 'image') === 'image'),
