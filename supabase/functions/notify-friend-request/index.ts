@@ -10,6 +10,8 @@ import {
   generateEmailText,
   sendEmail,
 } from '../_shared/friend-request-email.ts'
+import { renderTemplate } from '../_shared/email-renderer.ts'
+import { sendTrackedEmail } from '../_shared/email-sender.ts'
 
 /**
  * ============================================================================
@@ -193,19 +195,50 @@ Deno.serve(async (req: Request) => {
 
     logger.info('Both accounts are real - proceeding with email')
 
-    const emailHtml = generateEmailHtml(requester as RequesterData)
-    const emailText = generateEmailText(requester as RequesterData)
     const requesterName = requester.full_name?.trim() || 'Someone'
-    const subject = `${requesterName} sent you a friend request on PLAYR`
+    const PLAYR_BASE_URL = Deno.env.get('PUBLIC_SITE_URL') ?? 'https://oplayr.com'
+    const profileUrl = requester.username
+      ? `${PLAYR_BASE_URL}/players/${requester.username}`
+      : `${PLAYR_BASE_URL}/players/id/${requester.id}`
 
-    const result = await sendEmail(
+    const templateVars = {
+      requester_name: requesterName,
+      requester_location: requester.base_location?.trim() || '',
+      requester_avatar_url: requester.avatar_url || '',
+      cta_url: `${PLAYR_BASE_URL}/friends`,
+      profile_url: profileUrl,
+      settings_url: `${PLAYR_BASE_URL}/settings`,
+    }
+
+    // Try DB template, fall back to hardcoded
+    let subject: string
+    let emailHtml: string
+    let emailText: string
+
+    const rendered = await renderTemplate(supabase, 'friend_request', templateVars)
+    if (rendered) {
+      subject = rendered.subject
+      emailHtml = rendered.html
+      emailText = rendered.text
+      logger.info('Using DB template for friend_request')
+    } else {
+      emailHtml = generateEmailHtml(requester as RequesterData)
+      emailText = generateEmailText(requester as RequesterData)
+      subject = `${requesterName} sent you a friend request on PLAYR`
+      logger.info('Falling back to hardcoded template')
+    }
+
+    const result = await sendTrackedEmail({
+      supabase,
       resendApiKey,
-      recipient.email,
+      to: recipient.email,
       subject,
-      emailHtml,
-      emailText,
-      logger
-    )
+      html: emailHtml,
+      text: emailText,
+      templateKey: 'friend_request',
+      recipientId: recipient.id,
+      logger,
+    })
 
     if (!result.success) {
       logger.error('Failed to send email', { error: result.error })
@@ -219,6 +252,7 @@ Deno.serve(async (req: Request) => {
       recipient: recipient.email,
       subject,
       requesterName: requester.full_name,
+      resendEmailId: result.resendEmailId,
     })
 
     return new Response(

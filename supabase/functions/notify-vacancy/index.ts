@@ -18,6 +18,8 @@ import {
   sendEmailsIndividually,
   isVacancyNewlyPublished,
 } from '../_shared/vacancy-email.ts'
+import { renderTemplate } from '../_shared/email-renderer.ts'
+import { sendTrackedBatch, RecipientInfo } from '../_shared/email-sender.ts'
 
 /**
  * ============================================================================
@@ -64,7 +66,9 @@ interface ClubProfile {
 interface RecipientProfile {
   id: string
   email: string
+  full_name: string | null
   role: string
+  nationality: string | null
   is_test_account: boolean
   notify_opportunities: boolean
 }
@@ -88,7 +92,7 @@ async function fetchEligibleRecipients(
   supabase: any,
   vacancy: VacancyRecord,
   logger: ReturnType<typeof createLogger>
-): Promise<string[]> {
+): Promise<RecipientInfo[]> {
   const targetRole = vacancy.opportunity_type // 'player' or 'coach'
 
   logger.info('Fetching eligible recipients (paginated)', {
@@ -97,14 +101,14 @@ async function fetchEligibleRecipients(
     pageSize: RECIPIENT_PAGE_SIZE,
   })
 
-  const eligibleEmails: string[] = []
+  const eligible: RecipientInfo[] = []
   let offset = 0
   let hasMore = true
 
   while (hasMore) {
     const { data: profiles, error } = await supabase
       .from('profiles')
-      .select('id, email, role, is_test_account, notify_opportunities')
+      .select('id, email, full_name, role, nationality, is_test_account, notify_opportunities')
       .eq('role', targetRole)
       .eq('is_test_account', false)
       .eq('onboarding_completed', true)
@@ -115,7 +119,6 @@ async function fetchEligibleRecipients(
 
     if (error) {
       logger.error('Failed to fetch recipient profiles', { error: error.message, offset })
-      // Return what we've collected so far rather than failing entirely
       break
     }
 
@@ -126,15 +129,21 @@ async function fetchEligibleRecipients(
 
     const batch = (profiles as RecipientProfile[])
       .filter(p => !BLOCKED_TEST_RECIPIENTS.includes(p.email.toLowerCase()))
-      .map(p => p.email)
+      .map(p => ({
+        email: p.email,
+        recipientId: p.id,
+        recipientName: p.full_name || undefined,
+        recipientRole: p.role,
+        recipientCountry: p.nationality || undefined,
+      }))
 
-    eligibleEmails.push(...batch)
+    eligible.push(...batch)
 
     logger.info('Fetched recipient page', {
       offset,
       pageSize: profiles.length,
       batchEmails: batch.length,
-      totalSoFar: eligibleEmails.length,
+      totalSoFar: eligible.length,
     })
 
     offset += RECIPIENT_PAGE_SIZE
@@ -142,12 +151,12 @@ async function fetchEligibleRecipients(
   }
 
   logger.info('Found eligible recipients', {
-    totalEligible: eligibleEmails.length,
+    totalEligible: eligible.length,
     targetRole,
     pagesQueried: Math.ceil(offset / RECIPIENT_PAGE_SIZE) || 1,
   })
 
-  return eligibleEmails
+  return eligible
 }
 
 Deno.serve(async (req: Request) => {
@@ -283,55 +292,106 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    // Generate email content (using shared template - identical to test mode)
+    // Generate email content — try DB template first, fall back to hardcoded
     const clubName = clubProfile.full_name || 'Unknown Club'
-    const subject = `New opportunity on PLAYR: ${vacancy.title}`
-    const html = generateEmailHtml(vacancy, clubName)
-    const text = generateEmailText(vacancy, clubName)
+    const position = vacancy.position
+      ? vacancy.position.charAt(0).toUpperCase() + vacancy.position.slice(1)
+      : ''
+    const city = vacancy.location_city?.trim() || ''
+    const country = vacancy.location_country?.trim() || ''
+    const location = city && country ? `${city}, ${country}` : city || country || ''
+    const summary = vacancy.description?.trim()?.slice(0, 200) || ''
+
+    const PLAYR_BASE_URL = Deno.env.get('PUBLIC_SITE_URL') ?? 'https://oplayr.com'
+
+    // Use a sentinel placeholder for first_name so we can personalize per-recipient.
+    // The template will render "Hi __FIRST_NAME__," and we replace it per-recipient.
+    const FIRST_NAME_SENTINEL = '__FIRST_NAME_SENTINEL__'
+    const templateVars = {
+      vacancy_title: vacancy.title,
+      club_name: clubName,
+      position,
+      location,
+      summary,
+      first_name: FIRST_NAME_SENTINEL,
+      cta_url: `${PLAYR_BASE_URL}/opportunities/${vacancy.id}`,
+      settings_url: `${PLAYR_BASE_URL}/settings`,
+    }
+
+    let baseSubject: string
+    let baseHtml: string
+    let baseText: string
+
+    const rendered = await renderTemplate(supabase, 'vacancy_notification', templateVars)
+    if (rendered) {
+      baseSubject = rendered.subject
+      baseHtml = rendered.html
+      baseText = rendered.text
+      logger.info('Using DB template for vacancy_notification')
+    } else {
+      baseSubject = `New opportunity on PLAYR: ${vacancy.title}`
+      baseHtml = generateEmailHtml(vacancy, clubName)
+      baseText = generateEmailText(vacancy, clubName)
+      logger.info('Falling back to hardcoded template')
+    }
 
     // ==========================================================================
-    // SEND TO REAL USERS ONLY
-    // Recipients are filtered to exclude test accounts and blocked emails
-    // Using parallel batched sending for performance
+    // SEND TO REAL USERS ONLY with tracking
+    // Per-recipient personalization: each email gets a unique greeting with the
+    // recipient's first name. This makes each email's HTML unique, which prevents
+    // Gmail from fingerprinting identical content and routing to Promotions.
     // ==========================================================================
-    logger.info('Sending to real recipients', { 
+    logger.info('Sending to real recipients (personalized)', {
       recipientCount: recipients.length,
-      opportunityType: vacancy.opportunity_type 
+      opportunityType: vacancy.opportunity_type
     })
 
-    const emailResult = await sendEmailsIndividually(
+    const emailResult = await sendTrackedBatch({
+      supabase,
       resendApiKey,
       recipients,
-      subject,
-      html,
-      text,
-      logger
-    )
+      subject: baseSubject,
+      html: baseHtml,
+      text: baseText,
+      templateKey: 'vacancy_notification',
+      logger,
+      renderForRecipient: (r: RecipientInfo) => {
+        const firstName = r.recipientName
+          ? r.recipientName.split(' ')[0]
+          : ''
+        const personalizedHtml = baseHtml.replace(FIRST_NAME_SENTINEL, firstName)
+        const personalizedText = baseText.replace(FIRST_NAME_SENTINEL, firstName)
+        return {
+          html: personalizedHtml,
+          text: personalizedText,
+          subject: baseSubject,
+        }
+      },
+    })
 
     if (!emailResult.success) {
-      logger.warn('Some emails failed to send', { 
-        sent: emailResult.sent.length, 
+      logger.warn('Some emails failed to send', {
+        sent: emailResult.sent.length,
         failed: emailResult.failed.length,
-        failedEmails: emailResult.failed.slice(0, 10), // Log first 10 for debugging
+        failedEmails: emailResult.failed.slice(0, 10),
       })
     }
 
     logger.info('=== REAL MODE: Notification completed ===', {
       vacancyId: vacancy.id,
-      sentCount: emailResult.sent.length,
-      failedCount: emailResult.failed.length,
+      sentCount: emailResult.stats.sent,
+      failedCount: emailResult.stats.failed,
       durationMs: emailResult.stats.durationMs,
-      avgTimePerEmail: emailResult.stats.avgTimePerEmail,
       batchApiCalls: emailResult.stats.batchApiCalls,
     })
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         mode: 'REAL',
         message: 'Production notifications sent via Batch API',
-        sentCount: emailResult.sent.length,
-        failedCount: emailResult.failed.length,
+        sentCount: emailResult.stats.sent,
+        failedCount: emailResult.stats.failed,
         stats: emailResult.stats,
         vacancyId: vacancy.id,
       }),

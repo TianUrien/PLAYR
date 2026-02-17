@@ -64,6 +64,8 @@ const AdminEngagement = lazy(() => import('@/features/admin/pages/AdminEngagemen
 const AdminNetworking = lazy(() => import('@/features/admin/pages/AdminNetworking').then(m => ({ default: m.AdminNetworking })))
 const AdminInvestorDashboard = lazy(() => import('@/features/admin/pages/AdminInvestorDashboard').then(m => ({ default: m.AdminInvestorDashboard })))
 const AdminWorld = lazy(() => import('@/features/admin/pages/AdminWorld'))
+const AdminEmail = lazy(() => import('@/features/admin/pages/AdminEmail').then(m => ({ default: m.AdminEmail })))
+const AdminEmailTemplateEditor = lazy(() => import('@/features/admin/pages/AdminEmailTemplateEditor').then(m => ({ default: m.AdminEmailTemplateEditor })))
 
 // Public investor dashboard (no auth required)
 const PublicInvestorDashboard = lazy(() => import('@/pages/PublicInvestorDashboard'))
@@ -251,6 +253,8 @@ function App() {
                   <Route path="players" element={<AdminPlayers />} />
                   <Route path="engagement" element={<AdminEngagement />} />
                   <Route path="networking" element={<AdminNetworking />} />
+                  <Route path="email" element={<AdminEmail />} />
+                  <Route path="email/template/:templateId" element={<AdminEmailTemplateEditor />} />
                   <Route path="investors" element={<AdminInvestorDashboard />} />
                   <Route path="world" element={<AdminWorld />} />
                   <Route path="data-issues" element={<AdminDataIssues />} />

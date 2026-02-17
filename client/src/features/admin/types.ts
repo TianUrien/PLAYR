@@ -815,3 +815,233 @@ export interface ReferenceMetrics {
   generated_at: string
 }
 
+// ============================================================================
+// EMAIL INTELLIGENCE TYPES
+// ============================================================================
+
+export interface EmailContentBlock {
+  type: 'heading' | 'paragraph' | 'card' | 'user_card' | 'button' | 'divider' | 'footnote' | 'note' | 'conversation_list'
+  text?: string
+  level?: number
+  url?: string
+  title?: string
+  subtitle?: string
+  label?: string
+  fields?: Array<{ label: string; value: string; conditional?: boolean }>
+  name_var?: string
+  avatar_var?: string
+  detail_vars?: string[]
+  conversations_var?: string
+  is_html?: boolean
+  align?: string
+  size?: string
+  color?: string
+  conditional?: boolean
+}
+
+export interface EmailTemplateVariable {
+  name: string
+  description: string
+  required: boolean
+}
+
+export interface EmailTemplate {
+  id: string
+  template_key: string
+  name: string
+  description: string | null
+  category: 'notification' | 'campaign' | 'transactional'
+  subject_template: string
+  content_json: EmailContentBlock[]
+  text_template: string | null
+  variables: EmailTemplateVariable[]
+  is_active: boolean
+  current_version: number
+  created_at: string
+  updated_at: string
+  // Joined stats (from admin_get_email_templates)
+  total_sent?: number
+  total_delivered?: number
+  total_opened?: number
+  total_clicked?: number
+  open_rate?: number
+  click_rate?: number
+}
+
+export interface EmailTemplateVersion {
+  id: string
+  version_number: number
+  subject_template: string
+  content_json: EmailContentBlock[]
+  text_template: string | null
+  variables: EmailTemplateVariable[]
+  change_note: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface EmailTemplateDetail {
+  template: EmailTemplate
+  versions: EmailTemplateVersion[]
+  stats: {
+    total_sent: number
+    total_delivered: number
+    total_opened: number
+    total_clicked: number
+    total_bounced: number
+    daily_trend: Array<{ date: string; sent: number; opened: number }>
+    by_role: Array<{ role: string; sent: number; opened: number; clicked?: number }>
+    by_country: Array<{ country: string; sent: number; opened: number }>
+  }
+}
+
+export interface EmailOverviewStats {
+  total_sent: number
+  total_delivered: number
+  total_opened: number
+  total_clicked: number
+  total_bounced: number
+  total_complained: number
+  total_unsubscribed: number
+  delivery_rate: number
+  open_rate: number
+  click_rate: number
+  bounce_rate: number
+  complaint_rate: number
+  unsubscribe_rate: number
+  daily_trend: Array<{
+    date: string
+    sent: number
+    delivered: number
+    opened: number
+    clicked: number
+    bounced: number
+  }>
+  template_breakdown: Array<{
+    template_key: string
+    name: string
+    sent: number
+    delivered: number
+    opened: number
+    clicked: number
+    open_rate: number
+    click_rate: number
+  }>
+  generated_at: string
+}
+
+export interface EmailCampaign {
+  id: string
+  template_id: string | null
+  template_key: string | null
+  template_name: string | null
+  name: string
+  category: string
+  status: 'draft' | 'sending' | 'sent' | 'failed'
+  audience_filter: Record<string, unknown> | null
+  target_role: string | null
+  target_country: string | null
+  scheduled_at: string | null
+  sent_at: string | null
+  total_recipients: number
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  total_sent: number
+  total_delivered: number
+  total_opened: number
+  total_clicked: number
+  total_count: number
+}
+
+export interface EmailSendItem {
+  id: string
+  template_key: string
+  template_name: string | null
+  campaign_id: string | null
+  recipient_email: string
+  recipient_role: string | null
+  recipient_country: string | null
+  subject: string
+  status: string
+  sent_at: string
+  delivered_at: string | null
+  opened_at: string | null
+  clicked_at: string | null
+  bounced_at: string | null
+  total_count: number
+}
+
+export interface EmailEngagementItem {
+  send_id: string
+  recipient_id: string | null
+  recipient_email: string
+  recipient_role: string | null
+  recipient_country: string | null
+  recipient_name: string | null
+  template_key: string
+  template_name: string | null
+  subject: string
+  status: string
+  engagement_state: string
+  sent_at: string
+  delivered_at: string | null
+  opened_at: string | null
+  clicked_at: string | null
+  total_count: number
+}
+
+export interface EmailSendStats {
+  total_sent: number
+  total_delivered: number
+  total_opened: number
+  total_clicked: number
+  total_bounced: number
+  total_complained: number
+  total_unsubscribed: number
+  by_role: Array<{ role: string; sent: number; opened: number; clicked: number }>
+  by_country: Array<{ country: string; sent: number; opened: number }>
+}
+
+export interface EmailEngagementSearchParams {
+  template_key?: string
+  campaign_id?: string
+  status?: string
+  role?: string
+  country?: string
+  limit?: number
+  offset?: number
+}
+
+// ============================================================================
+// CAMPAIGN MANAGEMENT TYPES
+// ============================================================================
+
+export interface CampaignDetail {
+  campaign: EmailCampaign
+  stats: {
+    total: number
+    delivered: number
+    opened: number
+    clicked: number
+    bounced: number
+  }
+}
+
+export interface AudiencePreview {
+  count: number
+  sample: Array<{
+    full_name: string | null
+    email: string
+    role: string
+    country_name: string | null
+  }>
+}
+
+export interface CreateCampaignParams {
+  name: string
+  template_id: string
+  category: string
+  audience_filter: { role?: string; country?: string }
+}
+
