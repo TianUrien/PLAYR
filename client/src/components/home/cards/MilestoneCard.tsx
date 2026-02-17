@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Video, Image, CheckCircle, Shield } from 'lucide-react'
+import { Image, CheckCircle, Shield } from 'lucide-react'
 import { Avatar, RoleBadge, StorageImage } from '@/components'
 import { getTimeAgo } from '@/lib/utils'
 import type { MilestoneAchievedFeedItem, MilestoneType } from '@/types/homeFeed'
@@ -10,17 +10,11 @@ interface MilestoneCardProps {
 }
 
 const MILESTONE_CONFIG: Record<MilestoneType, {
-  icon: typeof Video
+  icon: typeof Image
   bgColor: string
   iconColor: string
   label: string
 }> = {
-  first_video: {
-    icon: Video,
-    bgColor: 'bg-purple-100',
-    iconColor: 'text-purple-600',
-    label: 'added a highlight video',
-  },
   first_gallery_image: {
     icon: Image,
     bgColor: 'bg-blue-100',
@@ -98,18 +92,6 @@ export function MilestoneCard({ item }: MilestoneCardProps) {
         </Link>
 
         {/* Milestone media preview */}
-        {item.milestone_type === 'first_video' && item.video_url && (
-          <div className="mt-4 aspect-video bg-gray-100 rounded-lg overflow-hidden">
-            <video
-              src={item.video_url}
-              controls
-              preload="metadata"
-              className="w-full h-full object-cover"
-              onError={() => setMediaError(true)}
-            />
-          </div>
-        )}
-
         {item.milestone_type === 'first_gallery_image' && item.image_url && (
           <StorageImage
             src={item.image_url}

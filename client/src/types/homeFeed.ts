@@ -12,7 +12,6 @@ export type FeedItemType =
   | 'user_post'
 
 export type MilestoneType =
-  | 'first_video'
   | 'first_gallery_image'
   | 'profile_100_percent'
   | 'first_reference_received'
@@ -61,7 +60,6 @@ export interface MilestoneAchievedFeedItem extends BaseFeedItem {
   full_name: string | null
   avatar_url: string | null
   role: 'player' | 'coach' | 'club'
-  video_url?: string | null
   image_url?: string | null
 }
 
