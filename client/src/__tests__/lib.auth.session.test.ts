@@ -1,5 +1,14 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { AuthApiError } from '@supabase/supabase-js'
+
+// Mock supabase client to avoid "Missing Supabase environment variables" in CI
+vi.mock('@/lib/supabase', () => ({
+  supabase: {
+    auth: { onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })) },
+    from: vi.fn(),
+  },
+}))
+
 import { isSessionExpiredError } from '@/lib/auth'
 
 /**
