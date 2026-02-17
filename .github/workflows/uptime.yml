@@ -5,6 +5,9 @@ on:
     - cron: '*/5 * * * *'
   workflow_dispatch:
 
+permissions:
+  issues: write
+
 jobs:
   health-check:
     name: Health Check
