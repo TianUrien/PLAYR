@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Grid, List, ChevronDown, Filter, Search } from 'lucide-react'
+import { Grid, List, ChevronDown, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
 // Vacancy is a legacy alias for Opportunity - keeping for compatibility during migration
@@ -12,6 +12,8 @@ import ApplyToOpportunityModal from '../components/ApplyToOpportunityModal'
 import SignInPromptModal from '../components/SignInPromptModal'
 import Button from '../components/Button'
 import { OpportunityCardSkeleton } from '../components/Skeleton'
+import OpportunityQuickFilters from '../components/OpportunityQuickFilters'
+import OpportunityFilterSheet from '../components/OpportunityFilterSheet'
 import { OpportunitiesListJsonLd } from '../components/OpportunityJsonLd'
 import { requestCache } from '@/lib/requestCache'
 import { monitor } from '@/lib/monitor'
@@ -43,7 +45,7 @@ export default function OpportunitiesPage() {
 
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
   const [filteredVacancies, setFilteredVacancies] = useState<Vacancy[]>([])
-  const [clubs, setClubs] = useState<Record<string, { id: string; full_name: string; avatar_url: string | null; role: string | null; current_club: string | null }>>({})
+  const [clubs, setClubs] = useState<Record<string, { id: string; full_name: string; avatar_url: string | null; role: string | null; current_club: string | null; womens_league_division: string | null; mens_league_division: string | null }>>({})
   const [userApplications, setUserApplications] = useState<string[]>([])
   const [selectedVacancy, setSelectedVacancy] = useState<Vacancy | null>(null)
   const [showApplyModal, setShowApplyModal] = useState(false)
@@ -59,19 +61,39 @@ export default function OpportunitiesPage() {
     const param = searchParams.get('sort')
     return param && VALID_SORTS.includes(param as SortBy) ? (param as SortBy) : 'newest'
   })
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilterSheet, setShowFilterSheet] = useState(false)
   const [isSyncingNewVacancies, setIsSyncingNewVacancies] = useState(false)
   const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '')
 
   const [filters, setFilters] = useState<FiltersState>(() => {
-    // Initialize from URL params only — no role-based defaults
-    const typeParam = searchParams.get('type')
-    const defaultType: FiltersState['opportunityType'] =
-      (typeParam === 'player' || typeParam === 'coach') ? typeParam : 'all'
+    const hasAnyParam = [...searchParams.keys()].length > 0
 
+    const typeParam = searchParams.get('type')
     const genderParam = searchParams.get('gender')
     const startParam = searchParams.get('start')
     const priorityParam = searchParams.get('priority')
+
+    // Smart defaults: if NO URL params and user has a profile, pre-populate opportunity type
+    // Only type is safe to default — gender/position are too narrow and hide relevant opportunities
+    if (!hasAnyParam && profile) {
+      const smartType = (profile.role === 'player' || profile.role === 'coach')
+        ? profile.role as 'player' | 'coach'
+        : 'all' as const
+
+      return {
+        opportunityType: smartType,
+        position: [],
+        gender: 'all',
+        location: '',
+        startDate: 'all',
+        benefits: [],
+        priority: 'all',
+      }
+    }
+
+    // Otherwise initialize from URL params
+    const defaultType: FiltersState['opportunityType'] =
+      (typeParam === 'player' || typeParam === 'coach') ? typeParam : 'all'
 
     return {
       opportunityType: defaultType,
@@ -99,7 +121,7 @@ export default function OpportunitiesPage() {
 
     setSearchParams(params, { replace: true })
   }, [filters, searchQuery, sortBy, setSearchParams])
-  const { count: opportunityCount, markSeen, refresh: refreshOpportunityNotifications } = useOpportunityNotifications()
+  const { count: opportunityCount, markSeen, refresh: refreshOpportunityNotifications, lastSeenAt } = useOpportunityNotifications()
 
   const fetchVacancies = useCallback(async (options?: { skipCache?: boolean; silent?: boolean }) => {
     if (!options?.silent) {
@@ -131,7 +153,9 @@ export default function OpportunitiesPage() {
                   avatar_url,
                   is_test_account,
                   role,
-                  current_club
+                  current_club,
+                  womens_league_division,
+                  mens_league_division
                 )
               `)
               .eq('status', 'open')
@@ -143,7 +167,7 @@ export default function OpportunitiesPage() {
             logger.debug('Fetched vacancies with clubs:', vacanciesData)
 
             // Filter out test vacancies for non-test users
-            type VacancyWithClub = Vacancy & { club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean; role?: string | null; current_club?: string | null } }
+            type VacancyWithClub = Vacancy & { club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean; role?: string | null; current_club?: string | null; womens_league_division?: string | null; mens_league_division?: string | null } }
             let filteredVacancies = vacanciesData as VacancyWithClub[]
 
             if (!isCurrentUserTestAccount) {
@@ -154,7 +178,7 @@ export default function OpportunitiesPage() {
             }
 
             // Build clubs map from embedded data
-            const clubsMap: Record<string, { id: string; full_name: string; avatar_url: string | null; role: string | null; current_club: string | null }> = {}
+            const clubsMap: Record<string, { id: string; full_name: string; avatar_url: string | null; role: string | null; current_club: string | null; womens_league_division: string | null; mens_league_division: string | null }> = {}
 
             filteredVacancies.forEach((vacancy) => {
               if (vacancy.club && vacancy.club.id) {
@@ -164,6 +188,8 @@ export default function OpportunitiesPage() {
                   avatar_url: vacancy.club.avatar_url,
                   role: vacancy.club.role ?? null,
                   current_club: vacancy.club.current_club ?? null,
+                  womens_league_division: vacancy.club.womens_league_division ?? null,
+                  mens_league_division: vacancy.club.mens_league_division ?? null,
                 }
               }
             })
@@ -458,6 +484,23 @@ export default function OpportunitiesPage() {
     )
   }
 
+  // Count secondary filters (location, startDate, benefits, priority) for "More" badge
+  const secondaryFilterCount =
+    (filters.location.trim() !== '' ? 1 : 0) +
+    (filters.startDate !== 'all' ? 1 : 0) +
+    filters.benefits.length +
+    (filters.priority !== 'all' ? 1 : 0)
+
+  const clearSecondaryFilters = () => {
+    setFilters(prev => ({
+      ...prev,
+      location: '',
+      startDate: 'all',
+      benefits: [],
+      priority: 'all',
+    }))
+  }
+
   return (
     <>
       {/* Structured data for AI discoverability */}
@@ -494,6 +537,22 @@ export default function OpportunitiesPage() {
             />
           </div>
 
+          {/* Mobile Quick-Filter Chips */}
+          <div className="mb-4">
+            <OpportunityQuickFilters
+              opportunityType={filters.opportunityType}
+              gender={filters.gender}
+              position={filters.position}
+              onSetType={(type) => updateFilter('opportunityType', type)}
+              onSetGender={(gender) => updateFilter('gender', gender)}
+              onTogglePosition={togglePosition}
+              onClearAll={clearFilters}
+              hasActiveFilters={hasActiveFilters()}
+              secondaryFilterCount={secondaryFilterCount}
+              onOpenMoreFilters={() => setShowFilterSheet(true)}
+            />
+          </div>
+
           {opportunityCount > 0 && (
             <div className="bg-[#8026FA]/5 border border-[#8026FA]/10 text-gray-900 rounded-xl p-4 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
@@ -523,16 +582,6 @@ export default function OpportunitiesPage() {
                 <p className="text-sm text-gray-600">
                   Showing <span className="font-semibold text-gray-900">{filteredVacancies.length}</span> opportunities
                 </p>
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="lg:hidden flex items-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                >
-                  <Filter className="w-4 h-4" />
-                  Filters
-                  {hasActiveFilters() && (
-                    <span className="w-2 h-2 bg-[#8026FA] rounded-full" />
-                  )}
-                </button>
               </div>
 
               {/* Sort & View Toggle */}
@@ -576,7 +625,7 @@ export default function OpportunitiesPage() {
 
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* Filters Panel - Desktop */}
-          <aside className={`${showFilters ? 'block' : 'hidden'} lg:block w-full lg:w-72 flex-shrink-0`}>
+          <aside className={"hidden lg:block w-full lg:w-72 flex-shrink-0"}>
             <div className="bg-white rounded-xl p-6 shadow-sm sticky top-24 space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-900">Filters</h2>
@@ -800,6 +849,10 @@ export default function OpportunitiesPage() {
                   const club = clubs[vacancy.club_id]
                   const isApplied = userApplications.includes(vacancy.id)
                   const org = vacancy.organization_name || club?.current_club || null
+                  // Pick league based on opportunity gender
+                  const leagueDivision = vacancy.gender === 'Women'
+                    ? club?.womens_league_division ?? club?.mens_league_division ?? null
+                    : club?.mens_league_division ?? club?.womens_league_division ?? null
                   return (
                     <OpportunityCard
                       key={vacancy.id}
@@ -809,6 +862,8 @@ export default function OpportunitiesPage() {
                       clubId={vacancy.club_id}
                       publisherRole={club?.role}
                       publisherOrganization={org}
+                      leagueDivision={leagueDivision}
+                      lastSeenAt={lastSeenAt}
                       onViewDetails={() => {
                         setSelectedVacancy(vacancy)
                         setShowDetailView(true)
@@ -833,6 +888,12 @@ export default function OpportunitiesPage() {
           clubId={selectedVacancy.club_id}
           publisherRole={clubs[selectedVacancy.club_id]?.role}
           publisherOrganization={selectedVacancy.organization_name || clubs[selectedVacancy.club_id]?.current_club || null}
+          leagueDivision={(() => {
+            const c = clubs[selectedVacancy.club_id]
+            return selectedVacancy.gender === 'Women'
+              ? c?.womens_league_division ?? c?.mens_league_division ?? null
+              : c?.mens_league_division ?? c?.womens_league_division ?? null
+          })()}
           onClose={() => {
             setShowDetailView(false)
             setSelectedVacancy(null)
@@ -886,6 +947,21 @@ export default function OpportunitiesPage() {
           }}
         />
       )}
+
+      {/* Mobile Filter Bottom Sheet */}
+      <OpportunityFilterSheet
+        isOpen={showFilterSheet}
+        onClose={() => setShowFilterSheet(false)}
+        location={filters.location}
+        startDate={filters.startDate}
+        benefits={filters.benefits}
+        priority={filters.priority}
+        onSetLocation={(location) => updateFilter('location', location)}
+        onSetStartDate={(startDate) => updateFilter('startDate', startDate)}
+        onToggleBenefit={toggleBenefit}
+        onSetPriority={(priority) => updateFilter('priority', priority)}
+        onClearSecondary={clearSecondaryFilters}
+      />
       </div>
     </>
   )

@@ -5,6 +5,7 @@ import { useOpportunityNotificationStore } from '@/lib/opportunityNotifications'
 export function useOpportunityNotifications() {
   const userId = useAuthStore(state => state.user?.id ?? null)
   const count = useOpportunityNotificationStore(state => state.count)
+  const lastSeenAt = useOpportunityNotificationStore(state => state.lastSeenAt)
   const initialize = useOpportunityNotificationStore(state => state.initialize)
   const markSeen = useOpportunityNotificationStore(state => state.markSeen)
   const refresh = useOpportunityNotificationStore(state => state.refresh)
@@ -26,6 +27,7 @@ export function useOpportunityNotifications() {
 
   return {
     count,
+    lastSeenAt,
     markSeen,
     refresh
   }
