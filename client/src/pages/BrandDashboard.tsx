@@ -11,6 +11,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import Header from '@/components/Header'
 import { Avatar, Button, DashboardMenu, ProfileStrengthCard, RoleBadge, ScrollableTabs } from '@/components'
 import { BrandForm, type BrandFormData, ProductCard, AddProductModal, BrandPostCard, AddPostModal } from '@/components/brands'
+import ProfilePostsTab from '@/components/ProfilePostsTab'
 import ConfirmActionModal from '@/components/ConfirmActionModal'
 import { useBrandProfileStrength } from '@/hooks/useBrandProfileStrength'
 import { useBrandProducts } from '@/hooks/useBrandProducts'
@@ -591,6 +592,14 @@ export default function BrandDashboard() {
                         onDelete={(p) => setPostToDelete(p)}
                       />
                     ))}
+                  </div>
+                )}
+
+                {/* Home Feed Posts */}
+                {profile?.id && (
+                  <div className="mt-8 pt-8 border-t border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Home Feed Posts</h3>
+                    <ProfilePostsTab profileId={profile.id} />
                   </div>
                 )}
               </div>

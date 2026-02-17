@@ -8,6 +8,7 @@ import MediaTab from '@/components/MediaTab'
 import JourneyTab from '@/components/JourneyTab'
 import CommentsTab from '@/components/CommentsTab'
 import AddVideoLinkModal from '@/components/AddVideoLinkModal'
+import ProfilePostsTab from '@/components/ProfilePostsTab'
 import Button from '@/components/Button'
 import SignInPromptModal from '@/components/SignInPromptModal'
 import SocialLinksDisplay from '@/components/SocialLinksDisplay'
@@ -22,7 +23,7 @@ import type { SocialLinks } from '@/lib/socialLinks'
 import { useProfileStrength, type ProfileStrengthBucket } from '@/hooks/useProfileStrength'
 import { calculateAge, formatDateOfBirth } from '@/lib/utils'
 
-type TabType = 'profile' | 'friends' | 'journey' | 'comments'
+type TabType = 'profile' | 'friends' | 'journey' | 'comments' | 'posts'
 
 export type PlayerProfileShape =
   Partial<Profile> &
@@ -64,14 +65,14 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
   const { addToast } = useToastStore()
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const tabParam = searchParams.get('tab') as TabType | null
-    return tabParam && ['profile', 'friends', 'journey', 'comments'].includes(tabParam) ? tabParam : 'profile'
+    return tabParam && ['profile', 'friends', 'journey', 'comments', 'posts'].includes(tabParam) ? tabParam : 'profile'
   })
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAddVideoModal, setShowAddVideoModal] = useState(false)
   const [showSignInPrompt, setShowSignInPrompt] = useState(false)
   const [sendingMessage, setSendingMessage] = useState(false)
   const claimCommentHighlights = useNotificationStore((state) => state.claimCommentHighlights)
-  
+
   // Profile strength for player profiles (only for own profile)
   const profileStrength = useProfileStrength(!readOnly ? (profile as Profile) : null)
   const prevPercentageRef = useRef<number | null>(null)
@@ -83,7 +84,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
 
   useEffect(() => {
     if (!tabParam) return
-    if (tabParam !== activeTab && ['profile', 'friends', 'journey', 'comments'].includes(tabParam)) {
+    if (tabParam !== activeTab && ['profile', 'friends', 'journey', 'comments', 'posts'].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [tabParam, activeTab])
@@ -225,6 +226,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
     { id: 'journey', label: 'Journey' },
     { id: 'friends', label: 'Friends' },
     { id: 'comments', label: 'Comments' },
+    { id: 'posts', label: 'Posts' },
   ]
 
   const handleTabChange = (tab: TabType) => {
@@ -663,6 +665,14 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                     showGallery={true}
                   />
                 </section>
+
+                {/* Posts — shown inline on public profile below Gallery */}
+                {readOnly && (
+                  <section className="space-y-3 pt-6 border-t border-gray-200">
+                    <h2 className="text-2xl font-bold text-gray-900">Posts</h2>
+                    <ProfilePostsTab profileId={profile.id} readOnly />
+                  </section>
+                )}
               </div>
             )}
 
@@ -681,6 +691,12 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
             {activeTab === 'friends' && (
               <div className="animate-fade-in">
                 <FriendsTab profileId={profile.id} readOnly={readOnly} profileRole={profile.role} />
+              </div>
+            )}
+
+            {activeTab === 'posts' && (
+              <div className="animate-fade-in">
+                <ProfilePostsTab profileId={profile.id} readOnly={readOnly} />
               </div>
             )}
           </div>

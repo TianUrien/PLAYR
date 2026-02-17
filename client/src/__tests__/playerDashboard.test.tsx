@@ -85,6 +85,10 @@ vi.mock('@/components/AddVideoLinkModal', () => ({
   default: () => <div data-testid="add-video-modal" />,
 }))
 
+vi.mock('@/components/ProfilePostsTab', () => ({
+  default: () => <div data-testid="profile-posts-tab">Profile Posts</div>,
+}))
+
 vi.mock('@/hooks/useProfileStrength', () => ({
   useProfileStrength: () => ({
     percentage: 60,

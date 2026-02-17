@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
@@ -7,6 +7,7 @@ import { useUserPosts } from '@/hooks/useUserPosts'
 import { Avatar, RoleBadge } from '@/components'
 import { getTimeAgo } from '@/lib/utils'
 import { FeedMediaGrid } from '../FeedMediaGrid'
+import { MediaLightbox } from '../MediaLightbox'
 import { PostInteractionBar } from '../PostInteractionBar'
 import { PostCommentsSection } from '../PostCommentsSection'
 import { PostComposerModal } from '../PostComposerModal'
@@ -28,6 +29,8 @@ export function UserPostCard({ item, onLikeUpdate, onDelete }: UserPostCardProps
   const [isExpanded, setIsExpanded] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [localCommentCount, setLocalCommentCount] = useState(item.comment_count)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
 
   const timeAgo = getTimeAgo(item.created_at, true)
   const isOwner = user?.id === item.author_id
@@ -41,6 +44,21 @@ export function UserPostCard({ item, onLikeUpdate, onDelete }: UserPostCardProps
   const sortedImages = item.images
     ? [...item.images].sort((a, b) => a.order - b.order)
     : []
+
+  const lightboxImages = useMemo(
+    () => sortedImages.filter((m) => (m.media_type ?? 'image') === 'image'),
+    [sortedImages]
+  )
+
+  const handleImageClick = useCallback((gridIndex: number) => {
+    const clickedItem = sortedImages[gridIndex]
+    if (!clickedItem || (clickedItem.media_type ?? 'image') !== 'image') return
+    const idx = lightboxImages.findIndex((img) => img.url === clickedItem.url)
+    if (idx >= 0) {
+      setLightboxIndex(idx)
+      setLightboxOpen(true)
+    }
+  }, [sortedImages, lightboxImages])
 
   // Content truncation (show more/less)
   const isLongContent = item.content.length > 300
@@ -161,7 +179,7 @@ export function UserPostCard({ item, onLikeUpdate, onDelete }: UserPostCardProps
         {/* Media grid */}
         {sortedImages.length > 0 && (
           <div className="px-4 pb-2">
-            <FeedMediaGrid media={sortedImages} />
+            <FeedMediaGrid media={sortedImages} onImageClick={handleImageClick} />
           </div>
         )}
 
@@ -206,6 +224,15 @@ export function UserPostCard({ item, onLikeUpdate, onDelete }: UserPostCardProps
             content: item.content,
             images: item.images,
           }}
+        />
+      )}
+
+      {/* Media lightbox */}
+      {lightboxOpen && lightboxImages.length > 0 && (
+        <MediaLightbox
+          images={lightboxImages}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxOpen(false)}
         />
       )}
     </>

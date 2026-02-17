@@ -6,6 +6,7 @@ import { Avatar, Button, CountryDisplay, DashboardMenu, EditProfileModal, Commen
 import { useClubProfileStrength } from '@/hooks/useClubProfileStrength'
 import { logger } from '@/lib/logger'
 import OpportunitiesTab from '@/components/OpportunitiesTab'
+import ProfilePostsTab from '@/components/ProfilePostsTab'
 import ClubMediaTab from '@/components/ClubMediaTab'
 import Skeleton from '@/components/Skeleton'
 import SignInPromptModal from '@/components/SignInPromptModal'
@@ -19,9 +20,9 @@ import { useNotificationStore } from '@/lib/notifications'
 import { derivePublicContactEmail } from '@/lib/profile'
 import type { SocialLinks } from '@/lib/socialLinks'
 
-type TabType = 'overview' | 'vacancies' | 'friends' | 'players' | 'comments'
+type TabType = 'overview' | 'vacancies' | 'friends' | 'players' | 'comments' | 'posts'
 
-const READ_ONLY_TABS: TabType[] = ['overview', 'vacancies', 'friends', 'comments']
+const READ_ONLY_TABS: TabType[] = ['overview', 'vacancies', 'friends', 'comments', 'posts']
 const FULL_TABS: TabType[] = [...READ_ONLY_TABS, 'players']
 
 type ClubProfileShape =
@@ -214,6 +215,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
     { id: 'vacancies', label: 'Opportunities' },
     { id: 'friends', label: 'Friends' },
     { id: 'comments', label: 'Comments' },
+    { id: 'posts', label: 'Posts' },
   ]
 
   const tabs: { id: TabType; label: string }[] = readOnly
@@ -547,6 +549,14 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
                   <ClubMediaTab clubId={profile.id} readOnly={readOnly} />
                 </section>
 
+                {/* Posts — shown inline on public profile below gallery */}
+                {readOnly && (
+                  <section className="space-y-3 pt-6 border-t border-gray-200">
+                    <h2 className="text-2xl font-bold text-gray-900">Posts</h2>
+                    <ProfilePostsTab profileId={profile.id} readOnly />
+                  </section>
+                )}
+
                 {!readOnly && (
                   <div className="pt-6 border-t border-gray-200">
                     <button
@@ -580,6 +590,12 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
             {activeTab === 'comments' && (
               <div className="animate-fade-in">
                 <CommentsTab profileId={profile.id} highlightedCommentIds={highlightedComments} />
+              </div>
+            )}
+
+            {activeTab === 'posts' && (
+              <div className="animate-fade-in">
+                <ProfilePostsTab profileId={profile.id} readOnly={readOnly} />
               </div>
             )}
 

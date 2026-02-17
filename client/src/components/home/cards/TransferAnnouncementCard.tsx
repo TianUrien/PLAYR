@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, MoreHorizontal, Trash2, Shield } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
@@ -7,6 +7,7 @@ import { useUserPosts } from '@/hooks/useUserPosts'
 import { Avatar, RoleBadge } from '@/components'
 import { getTimeAgo } from '@/lib/utils'
 import { FeedMediaGrid } from '../FeedMediaGrid'
+import { MediaLightbox } from '../MediaLightbox'
 import { PostInteractionBar } from '../PostInteractionBar'
 import { PostCommentsSection } from '../PostCommentsSection'
 import type { UserPostFeedItem, TransferMetadata } from '@/types/homeFeed'
@@ -26,6 +27,8 @@ export function TransferAnnouncementCard({ item, onLikeUpdate, onDelete }: Trans
   const [showComments, setShowComments] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [localCommentCount, setLocalCommentCount] = useState(item.comment_count)
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
 
   const timeAgo = getTimeAgo(item.created_at, true)
   const isOwner = user?.id === item.author_id
@@ -39,6 +42,21 @@ export function TransferAnnouncementCard({ item, onLikeUpdate, onDelete }: Trans
   const sortedImages = item.images
     ? [...item.images].sort((a, b) => a.order - b.order)
     : []
+
+  const lightboxImages = useMemo(
+    () => sortedImages.filter((m) => (m.media_type ?? 'image') === 'image'),
+    [sortedImages]
+  )
+
+  const handleImageClick = useCallback((gridIndex: number) => {
+    const clickedItem = sortedImages[gridIndex]
+    if (!clickedItem || (clickedItem.media_type ?? 'image') !== 'image') return
+    const idx = lightboxImages.findIndex((img) => img.url === clickedItem.url)
+    if (idx >= 0) {
+      setLightboxIndex(idx)
+      setLightboxOpen(true)
+    }
+  }, [sortedImages, lightboxImages])
 
   // Check if content is the auto-generated default
   const defaultContent = `Joined ${meta.club_name}!`
@@ -192,7 +210,7 @@ export function TransferAnnouncementCard({ item, onLikeUpdate, onDelete }: Trans
       {/* Media grid */}
       {sortedImages.length > 0 && (
         <div className="px-4 pb-2">
-          <FeedMediaGrid media={sortedImages} />
+          <FeedMediaGrid media={sortedImages} onImageClick={handleImageClick} />
         </div>
       )}
 
@@ -213,6 +231,15 @@ export function TransferAnnouncementCard({ item, onLikeUpdate, onDelete }: Trans
           postId={item.post_id}
           commentCount={localCommentCount}
           onCommentCountChange={handleCommentCountChange}
+        />
+      )}
+
+      {/* Media lightbox */}
+      {lightboxOpen && lightboxImages.length > 0 && (
+        <MediaLightbox
+          images={lightboxImages}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxOpen(false)}
         />
       )}
     </div>

@@ -6,6 +6,7 @@ import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, Frien
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
 import OpportunitiesTab from '@/components/OpportunitiesTab'
+import ProfilePostsTab from '@/components/ProfilePostsTab'
 import Button from '@/components/Button'
 import { DashboardSkeleton } from '@/components/Skeleton'
 import SignInPromptModal from '@/components/SignInPromptModal'
@@ -21,7 +22,7 @@ import type { SocialLinks } from '@/lib/socialLinks'
 import { useCoachProfileStrength } from '@/hooks/useCoachProfileStrength'
 import { calculateAge, formatDateOfBirth } from '@/lib/utils'
 
-type TabType = 'profile' | 'vacancies' | 'journey' | 'friends' | 'comments'
+type TabType = 'profile' | 'vacancies' | 'journey' | 'friends' | 'comments' | 'posts'
 
 export type CoachProfileShape =
   Partial<Profile> &
@@ -58,7 +59,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const param = searchParams.get('tab') as TabType | null
-    return param && ['profile', 'vacancies', 'journey', 'friends', 'comments'].includes(param) ? param : 'profile'
+    return param && ['profile', 'vacancies', 'journey', 'friends', 'comments', 'posts'].includes(param) ? param : 'profile'
   })
   const [showEditModal, setShowEditModal] = useState(false)
   const [showSignInPrompt, setShowSignInPrompt] = useState(false)
@@ -83,7 +84,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
 
   useEffect(() => {
     if (!tabParam) return
-    if (tabParam !== activeTab && ['profile', 'vacancies', 'journey', 'friends', 'comments'].includes(tabParam)) {
+    if (tabParam !== activeTab && ['profile', 'vacancies', 'journey', 'friends', 'comments', 'posts'].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [tabParam, activeTab])
@@ -210,6 +211,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
     { id: 'journey', label: 'Journey' },
     { id: 'friends', label: 'Friends' },
     { id: 'comments', label: 'Comments' },
+    { id: 'posts', label: 'Posts' },
   ]
 
   const handleTabChange = (tab: TabType) => {
@@ -572,6 +574,14 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                     )}
                   />
                 </section>
+
+                {/* Posts — shown inline on public profile below media */}
+                {readOnly && (
+                  <section className="space-y-3 pt-6 border-t border-gray-200">
+                    <h2 className="text-2xl font-bold text-gray-900">Posts</h2>
+                    <ProfilePostsTab profileId={profile.id} readOnly />
+                  </section>
+                )}
               </div>
             )}
 
@@ -602,6 +612,12 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
             {activeTab === 'comments' && (
               <div className="animate-fade-in">
                 <CommentsTab profileId={profile.id} highlightedCommentIds={highlightedComments} />
+              </div>
+            )}
+
+            {activeTab === 'posts' && (
+              <div className="animate-fade-in">
+                <ProfilePostsTab profileId={profile.id} readOnly={readOnly} />
               </div>
             )}
           </div>
