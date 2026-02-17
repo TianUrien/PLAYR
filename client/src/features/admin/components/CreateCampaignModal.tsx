@@ -3,6 +3,7 @@ import { X, Users, Loader2 } from 'lucide-react'
 import type { EmailTemplate, WorldCountry } from '../types'
 import { getAllCountries, createEmailCampaign } from '../api/adminApi'
 import { useAudiencePreview } from '../hooks/useEmailStats'
+import { logger } from '@/lib/logger'
 
 interface CreateCampaignModalProps {
   templates: EmailTemplate[]
@@ -25,7 +26,9 @@ export function CreateCampaignModal({ templates, onClose, onCreated }: CreateCam
   const activeTemplates = templates.filter(t => t.is_active)
 
   useEffect(() => {
-    getAllCountries().then(setCountries).catch(() => {})
+    getAllCountries().then(setCountries).catch((err) => {
+      logger.warn('[CreateCampaignModal] Failed to load countries for filter', err)
+    })
   }, [])
 
   const audienceFilter = {

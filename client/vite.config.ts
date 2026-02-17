@@ -145,8 +145,14 @@ export default defineConfig(({ mode }) => {
       exclude: ['**/e2e/**', '**/__tests__/db/**', '**/node_modules/**', '**/dist/**'],
       coverage: {
         provider: 'v8',
-        reporter: ['text', 'html'],
-        reportsDirectory: 'coverage'
+        reporter: ['text', 'html', 'json-summary'],
+        reportsDirectory: 'coverage',
+        thresholds: {
+          lines: 27,
+          functions: 28,
+          branches: 29,
+          statements: 27,
+        }
       }
     }
   }

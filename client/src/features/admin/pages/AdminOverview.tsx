@@ -4,7 +4,7 @@
  * Dashboard showing key metrics and KPIs for the admin portal.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { formatAdminDateTime } from '../utils/formatDate'
 import { Link } from 'react-router-dom'
 import {
@@ -20,15 +20,22 @@ import {
   TrendingUp,
   Store,
   Package,
+  Activity,
 } from 'lucide-react'
 import { StatCard } from '../components/StatCard'
 import { useAdminStats } from '../hooks/useAdminStats'
+import { getErrorBudgetStatus } from '@/lib/errorBudget'
+import type { ErrorBudgetStatus } from '@/lib/errorBudget'
 
 export function AdminOverview() {
   const { stats, signupTrends, topCountries, isLoading, error, refetch } = useAdminStats()
+  const [errorBudget, setErrorBudget] = useState<ErrorBudgetStatus | null>(null)
 
   useEffect(() => {
     document.title = 'Admin Overview | PLAYR'
+    setErrorBudget(getErrorBudgetStatus())
+    const interval = setInterval(() => setErrorBudget(getErrorBudgetStatus()), 60000)
+    return () => clearInterval(interval)
   }, [])
 
   if (error) {
@@ -266,7 +273,41 @@ export function AdminOverview() {
       {/* Data Health */}
       <section>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Data Health</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Error Budget Card */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-medium text-gray-500">Error Budget</span>
+              <div className={`p-2 rounded-lg ${
+                errorBudget?.status === 'exceeded' ? 'bg-red-50' :
+                errorBudget?.status === 'warning' ? 'bg-amber-50' : 'bg-green-50'
+              }`}>
+                <Activity className={`w-4 h-4 ${
+                  errorBudget?.status === 'exceeded' ? 'text-red-600' :
+                  errorBudget?.status === 'warning' ? 'text-amber-600' : 'text-green-600'
+                }`} />
+              </div>
+            </div>
+            <div className="text-2xl font-bold text-gray-900">
+              {errorBudget ? `${errorBudget.remaining.toFixed(2)}%` : '—'}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {errorBudget?.status === 'exceeded' ? 'Budget exceeded — investigate errors' :
+               errorBudget?.status === 'warning' ? 'Budget running low' :
+               'Remaining of 1% budget (last hour)'}
+            </p>
+            {errorBudget && (
+              <div className="mt-3 w-full bg-gray-100 rounded-full h-1.5">
+                <div
+                  className={`h-1.5 rounded-full transition-all ${
+                    errorBudget.status === 'exceeded' ? 'bg-red-500' :
+                    errorBudget.status === 'warning' ? 'bg-amber-500' : 'bg-green-500'
+                  }`}
+                  style={{ width: `${Math.min(100, (errorBudget.errorRate / errorBudget.budget) * 100)}%` }}
+                />
+              </div>
+            )}
+          </div>
           <Link
             to="/admin/data-issues"
             className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-shadow"

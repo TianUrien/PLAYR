@@ -63,7 +63,8 @@ const fetchActorProfile = async (actorId: string): Promise<ActorProfile | null> 
     actorProfileCache.set(actorId, data)
     actorCacheTimestamps.set(actorId, now)
     return data
-  } catch {
+  } catch (err) {
+    logger.warn('[NOTIFICATIONS] Failed to fetch actor profile', { actorId, error: err })
     return null
   }
 }
