@@ -10,6 +10,8 @@ import {
   generateEmailText,
   sendEmail,
 } from '../_shared/message-digest-email.ts'
+import { renderTemplate } from '../_shared/email-renderer.ts'
+import { sendTrackedEmail } from '../_shared/email-sender.ts'
 
 /**
  * ============================================================================
@@ -214,23 +216,57 @@ Deno.serve(async (req: Request) => {
       totalMessages: conversations.reduce((sum, c) => sum + c.message_count, 0),
     })
 
-    // Generate email
-    const emailHtml = generateEmailHtml(recipient as RecipientData, conversations)
-    const emailText = generateEmailText(recipient as RecipientData, conversations)
+    const totalMessages = conversations.reduce((sum, c) => sum + c.message_count, 0)
+    const firstName = recipient.full_name?.split(' ')[0]?.trim() || 'there'
+    const PLAYR_BASE_URL = Deno.env.get('PUBLIC_SITE_URL') ?? 'https://oplayr.com'
 
-    const subject = conversations.length === 1
-      ? `New message from ${conversations[0].sender_name} on PLAYR`
-      : 'You have new messages on PLAYR'
+    const templateVars = {
+      first_name: firstName,
+      heading: conversations.length === 1
+        ? `New message from ${conversations[0].sender_name}`
+        : `You have ${totalMessages} new message${totalMessages === 1 ? '' : 's'}`,
+      message_count: String(totalMessages),
+      conversations: JSON.stringify(conversations),
+      conversations_text: conversations
+        .map(c => `${c.sender_name}: ${c.message_count} new message${c.message_count === 1 ? '' : 's'}`)
+        .join('\n'),
+      cta_url: `${PLAYR_BASE_URL}/messages`,
+      cta_label: 'View Messages',
+      settings_url: `${PLAYR_BASE_URL}/settings`,
+    }
 
-    // Send email
-    const result = await sendEmail(
+    // Try DB template, fall back to hardcoded
+    let subject: string
+    let emailHtml: string
+    let emailText: string
+
+    const rendered = await renderTemplate(supabase, 'message_digest', templateVars)
+    if (rendered) {
+      subject = rendered.subject
+      emailHtml = rendered.html
+      emailText = rendered.text
+      logger.info('Using DB template for message_digest')
+    } else {
+      emailHtml = generateEmailHtml(recipient as RecipientData, conversations)
+      emailText = generateEmailText(recipient as RecipientData, conversations)
+      subject = conversations.length === 1
+        ? `New message from ${conversations[0].sender_name} on PLAYR`
+        : 'You have new messages on PLAYR'
+      logger.info('Falling back to hardcoded template')
+    }
+
+    // Send tracked email
+    const result = await sendTrackedEmail({
+      supabase,
       resendApiKey,
-      recipient.email,
+      to: recipient.email,
       subject,
-      emailHtml,
-      emailText,
-      logger
-    )
+      html: emailHtml,
+      text: emailText,
+      templateKey: 'message_digest',
+      recipientId: recipient.id,
+      logger,
+    })
 
     // Mark queue row as processed regardless of email success
     await markQueueProcessed(supabase, queueRecord.id, logger)
@@ -247,6 +283,7 @@ Deno.serve(async (req: Request) => {
       recipient: recipient.email,
       subject,
       conversationCount: conversations.length,
+      resendEmailId: result.resendEmailId,
     })
 
     return new Response(

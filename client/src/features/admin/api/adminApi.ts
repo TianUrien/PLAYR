@@ -1296,3 +1296,289 @@ export async function getReferenceMetrics(
   return data as ReferenceMetrics
 }
 
+// ============================================================================
+// EMAIL INTELLIGENCE
+// ============================================================================
+
+import type {
+  EmailTemplate,
+  EmailTemplateDetail,
+  EmailOverviewStats,
+  EmailCampaign,
+  EmailSendItem,
+  EmailEngagementItem,
+  EmailSendStats,
+  EmailEngagementSearchParams,
+  CampaignDetail,
+  AudiencePreview,
+  CreateCampaignParams,
+} from '../types'
+
+/**
+ * Get email overview KPIs + daily trends
+ */
+export async function getEmailOverview(days = 30): Promise<EmailOverviewStats> {
+  const { data, error } = await adminRpc('admin_get_email_overview', {
+    p_days: days,
+  })
+  if (error) throw new Error(`Failed to get email overview: ${error.message}`)
+  return data as EmailOverviewStats
+}
+
+/**
+ * Get all email templates with stats
+ */
+export async function getEmailTemplates(): Promise<EmailTemplate[]> {
+  const { data, error } = await adminRpc('admin_get_email_templates')
+  if (error) throw new Error(`Failed to get email templates: ${error.message}`)
+  return data as EmailTemplate[]
+}
+
+/**
+ * Get template detail with versions and per-template stats
+ */
+export async function getEmailTemplateDetail(templateId: string): Promise<EmailTemplateDetail> {
+  const { data, error } = await adminRpc('admin_get_email_template_detail', {
+    p_template_id: templateId,
+  })
+  if (error) throw new Error(`Failed to get email template detail: ${error.message}`)
+  return data as EmailTemplateDetail
+}
+
+/**
+ * Save a new template draft (creates a new version)
+ */
+export async function saveEmailTemplateDraft(params: {
+  templateId: string
+  subject: string
+  contentJson: unknown[]
+  text?: string
+  variables?: unknown[]
+  changeNote?: string
+}): Promise<{ version_id: string; version_number: number }> {
+  const { data, error } = await adminRpc('admin_save_email_template_draft', {
+    p_template_id: params.templateId,
+    p_subject: params.subject,
+    p_content_json: params.contentJson,
+    p_text: params.text ?? null,
+    p_variables: params.variables ?? [],
+    p_change_note: params.changeNote ?? null,
+  })
+  if (error) throw new Error(`Failed to save template draft: ${error.message}`)
+  return data as { version_id: string; version_number: number }
+}
+
+/**
+ * Activate a specific template version (makes it live)
+ */
+export async function activateEmailTemplate(
+  templateId: string,
+  versionNumber: number
+): Promise<void> {
+  const { error } = await adminRpc('admin_activate_email_template', {
+    p_template_id: templateId,
+    p_version_number: versionNumber,
+  })
+  if (error) throw new Error(`Failed to activate template: ${error.message}`)
+}
+
+/**
+ * Rollback to a previous template version
+ */
+export async function rollbackEmailTemplate(
+  templateId: string,
+  versionNumber: number
+): Promise<void> {
+  const { error } = await adminRpc('admin_rollback_email_template', {
+    p_template_id: templateId,
+    p_version_number: versionNumber,
+  })
+  if (error) throw new Error(`Failed to rollback template: ${error.message}`)
+}
+
+/**
+ * Get campaigns list with pagination
+ */
+export async function getEmailCampaigns(params: {
+  status?: string
+  category?: string
+  limit?: number
+  offset?: number
+} = {}): Promise<{ campaigns: EmailCampaign[]; totalCount: number }> {
+  const { data, error } = await adminRpc('admin_get_email_campaigns', {
+    p_status: params.status || null,
+    p_category: params.category || null,
+    p_limit: params.limit || 50,
+    p_offset: params.offset || 0,
+  })
+  if (error) throw new Error(`Failed to get email campaigns: ${error.message}`)
+
+  const campaigns = data as EmailCampaign[]
+  const totalCount = campaigns.length > 0 ? campaigns[0].total_count : 0
+
+  return { campaigns, totalCount }
+}
+
+/**
+ * Get filtered send stats
+ */
+export async function getEmailSendStats(params: {
+  days?: number
+  templateKey?: string
+  campaignId?: string
+} = {}): Promise<EmailSendStats> {
+  const { data, error } = await adminRpc('admin_get_email_send_stats', {
+    p_days: params.days || 30,
+    p_template_key: params.templateKey || null,
+    p_campaign_id: params.campaignId || null,
+  })
+  if (error) throw new Error(`Failed to get email send stats: ${error.message}`)
+  return data as EmailSendStats
+}
+
+/**
+ * Get email history for a specific user
+ */
+export async function getUserEmailHistory(
+  userId: string,
+  limit = 50,
+  offset = 0
+): Promise<{ sends: EmailSendItem[]; totalCount: number }> {
+  const { data, error } = await adminRpc('admin_get_user_email_history', {
+    p_user_id: userId,
+    p_limit: limit,
+    p_offset: offset,
+  })
+  if (error) throw new Error(`Failed to get user email history: ${error.message}`)
+
+  const sends = data as EmailSendItem[]
+  const totalCount = sends.length > 0 ? sends[0].total_count : 0
+
+  return { sends, totalCount }
+}
+
+/**
+ * Get email engagement explorer data
+ */
+export async function getEmailEngagementExplorer(
+  params: EmailEngagementSearchParams = {}
+): Promise<{ items: EmailEngagementItem[]; totalCount: number }> {
+  const { data, error } = await adminRpc('admin_get_email_engagement_explorer', {
+    p_template_key: params.template_key || null,
+    p_campaign_id: params.campaign_id || null,
+    p_status: params.status || null,
+    p_role: params.role || null,
+    p_country: params.country || null,
+    p_limit: params.limit || 50,
+    p_offset: params.offset || 0,
+  })
+  if (error) throw new Error(`Failed to get email engagement: ${error.message}`)
+
+  const items = data as EmailEngagementItem[]
+  const totalCount = items.length > 0 ? items[0].total_count : 0
+
+  return { items, totalCount }
+}
+
+/**
+ * Send a test email using a specific template (via Edge Function)
+ */
+export async function sendTestEmail(
+  templateId: string,
+  recipientEmail: string,
+  testVariables: Record<string, string> = {}
+): Promise<{ resend_email_id?: string }> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('No active session')
+
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-send-test-email`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({
+      template_id: templateId,
+      recipient_email: recipientEmail,
+      test_variables: testVariables,
+    }),
+  })
+
+  const result = await response.json()
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to send test email')
+  }
+  return { resend_email_id: result.resend_email_id }
+}
+
+// ============================================================================
+// CAMPAIGN MANAGEMENT
+// ============================================================================
+
+/**
+ * Create a new email campaign (draft status)
+ */
+export async function createEmailCampaign(params: CreateCampaignParams): Promise<EmailCampaign> {
+  const { data, error } = await adminRpc('admin_create_email_campaign', {
+    p_name: params.name,
+    p_template_id: params.template_id,
+    p_category: params.category,
+    p_audience_filter: params.audience_filter,
+  })
+  if (error) throw new Error(`Failed to create campaign: ${error.message}`)
+  return data as EmailCampaign
+}
+
+/**
+ * Get detailed campaign info with send stats
+ */
+export async function getCampaignDetail(campaignId: string): Promise<CampaignDetail> {
+  const { data, error } = await adminRpc('admin_get_campaign_detail', {
+    p_campaign_id: campaignId,
+  })
+  if (error) throw new Error(`Failed to get campaign detail: ${error.message}`)
+  return data as CampaignDetail
+}
+
+/**
+ * Preview campaign audience (dry run — returns count + sample)
+ */
+export async function previewCampaignAudience(
+  category: string,
+  audienceFilter: { role?: string; country?: string }
+): Promise<AudiencePreview> {
+  const { data, error } = await adminRpc('admin_preview_campaign_audience', {
+    p_category: category,
+    p_audience_filter: audienceFilter,
+  })
+  if (error) throw new Error(`Failed to preview audience: ${error.message}`)
+  return data as AudiencePreview
+}
+
+/**
+ * Send a campaign (via Edge Function)
+ */
+export async function sendCampaign(campaignId: string): Promise<{
+  sent: number
+  failed: number
+  duration_ms: number
+}> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('No active session')
+
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-send-campaign`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({ campaign_id: campaignId }),
+  })
+
+  const result = await response.json()
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to send campaign')
+  }
+  return { sent: result.sent, failed: result.failed, duration_ms: result.duration_ms }
+}
+

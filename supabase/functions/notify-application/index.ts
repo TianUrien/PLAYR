@@ -11,6 +11,8 @@ import {
   generateEmailText,
   sendEmail,
 } from '../_shared/application-email.ts'
+import { renderTemplate } from '../_shared/email-renderer.ts'
+import { sendTrackedEmail } from '../_shared/email-sender.ts'
 
 /**
  * ============================================================================
@@ -217,20 +219,60 @@ Deno.serve(async (req: Request) => {
 
     logger.info('Both applicant and club are REAL accounts - proceeding with email')
 
-    // Generate email content
-    const emailHtml = generateEmailHtml(applicant as ApplicantData, opportunity as OpportunityData)
-    const emailText = generateEmailText(applicant as ApplicantData, opportunity as OpportunityData)
-    const subject = `New application for "${opportunity.title}"`
+    // Build positions string
+    const positions: string[] = []
+    if (applicant.position) positions.push(applicant.position.charAt(0).toUpperCase() + applicant.position.slice(1))
+    if (applicant.secondary_position && applicant.secondary_position !== applicant.position) {
+      positions.push(applicant.secondary_position.charAt(0).toUpperCase() + applicant.secondary_position.slice(1))
+    }
 
-    // Send email to the club
-    const result = await sendEmail(
+    const PLAYR_BASE_URL = Deno.env.get('PUBLIC_SITE_URL') ?? 'https://oplayr.com'
+    const profileUrl = applicant.username
+      ? `${PLAYR_BASE_URL}/players/${applicant.username}`
+      : `${PLAYR_BASE_URL}/players/id/${applicant.id}`
+
+    const templateVars = {
+      opportunity_title: opportunity.title,
+      applicant_name: applicant.full_name?.trim() || 'Player',
+      applicant_position: positions.join(' \u2022 '),
+      applicant_location: applicant.base_location?.trim() || '',
+      applicant_avatar_url: applicant.avatar_url || '',
+      cta_url: profileUrl,
+      settings_url: `${PLAYR_BASE_URL}/settings`,
+    }
+
+    // Try DB template, fall back to hardcoded
+    let subject: string
+    let emailHtml: string
+    let emailText: string
+
+    const rendered = await renderTemplate(supabase, 'application_notification', templateVars)
+    if (rendered) {
+      subject = rendered.subject
+      emailHtml = rendered.html
+      emailText = rendered.text
+      logger.info('Using DB template for application_notification')
+    } else {
+      emailHtml = generateEmailHtml(applicant as ApplicantData, opportunity as OpportunityData)
+      emailText = generateEmailText(applicant as ApplicantData, opportunity as OpportunityData)
+      subject = `New application for "${opportunity.title}"`
+      logger.info('Falling back to hardcoded template')
+    }
+
+    // Send tracked email to the club
+    const result = await sendTrackedEmail({
+      supabase,
       resendApiKey,
-      club.email,
+      to: club.email,
       subject,
-      emailHtml,
-      emailText,
-      logger
-    )
+      html: emailHtml,
+      text: emailText,
+      templateKey: 'application_notification',
+      recipientId: club.id,
+      recipientRole: 'club',
+      recipientCountry: null,
+      logger,
+    })
 
     if (!result.success) {
       logger.error('Failed to send email', { error: result.error })
@@ -245,11 +287,12 @@ Deno.serve(async (req: Request) => {
       subject,
       applicantName: applicant.full_name,
       opportunityTitle: opportunity.title,
+      resendEmailId: result.resendEmailId,
     })
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: 'Application notification email sent',
         recipient: club.email,
       }),

@@ -17,6 +17,8 @@ import {
   sendEmailsIndividually,
   isVacancyNewlyPublished,
 } from '../_shared/vacancy-email.ts'
+import { renderTemplate } from '../_shared/email-renderer.ts'
+import { sendTrackedBatch } from '../_shared/email-sender.ts'
 
 /**
  * ============================================================================
@@ -183,27 +185,56 @@ Deno.serve(async (req: Request) => {
 
     // Generate email content (using shared template - identical to production)
     const clubName = clubProfile.full_name || 'Unknown Club'
-    const subject = `New opportunity on PLAYR: ${vacancy.title}`
-    const html = generateEmailHtml(vacancy, clubName)
-    const text = generateEmailText(vacancy, clubName)
+    const PLAYR_BASE_URL = Deno.env.get('PUBLIC_SITE_URL') ?? 'https://oplayr.com'
+
+    const templateVars = {
+      club_name: clubName,
+      vacancy_title: vacancy.title || 'Untitled',
+      position: vacancy.position || '',
+      location: vacancy.location || '',
+      summary: vacancy.description?.slice(0, 200) || '',
+      cta_url: `${PLAYR_BASE_URL}/opportunities/${vacancy.id}`,
+      settings_url: `${PLAYR_BASE_URL}/settings`,
+    }
+
+    // Try DB template, fall back to hardcoded
+    let subject: string
+    let html: string
+    let text: string
+
+    const rendered = await renderTemplate(supabase, 'vacancy_notification', templateVars)
+    if (rendered) {
+      subject = rendered.subject
+      html = rendered.html
+      text = rendered.text
+      logger.info('Using DB template for vacancy_notification (test mode)')
+    } else {
+      subject = `New opportunity on PLAYR: ${vacancy.title}`
+      html = generateEmailHtml(vacancy, clubName)
+      text = generateEmailText(vacancy, clubName)
+      logger.info('Falling back to hardcoded template (test mode)')
+    }
 
     // ==========================================================================
     // SEND TO HARDCODED TEST RECIPIENTS ONLY
     // These are the only recipients that will ever receive emails from TEST MODE
     // ==========================================================================
-    const emailResult = await sendEmailsIndividually(
+    const recipients = TEST_RECIPIENTS.map(email => ({ email }))
+    const emailResult = await sendTrackedBatch({
+      supabase,
       resendApiKey,
-      TEST_RECIPIENTS,
+      recipients,
       subject,
       html,
       text,
-      logger
-    )
+      templateKey: 'vacancy_notification',
+      logger,
+    })
 
     if (!emailResult.success) {
-      logger.warn('Some test emails failed to send', { 
-        sent: emailResult.sent, 
-        failed: emailResult.failed 
+      logger.warn('Some test emails failed to send', {
+        sent: emailResult.sent,
+        failed: emailResult.failed
       })
     }
 
@@ -214,8 +245,8 @@ Deno.serve(async (req: Request) => {
     })
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         mode: 'TEST',
         message: 'Test notifications sent',
         sent: emailResult.sent,

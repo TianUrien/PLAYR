@@ -1,9 +1,41 @@
-import { useCallback } from 'react'
+import { Component, useCallback } from 'react'
+import type { ReactNode, ErrorInfo } from 'react'
 import { Loader2, Rss } from 'lucide-react'
+import * as Sentry from '@sentry/react'
 import { useHomeFeed } from '@/hooks/useHomeFeed'
 import { HomeFeedItemCard } from './HomeFeedItemCard'
 import { FeedSkeleton } from './FeedSkeleton'
 import { PostComposer } from './PostComposer'
+
+/**
+ * Lightweight error boundary for individual feed items.
+ * If one card crashes (e.g. Chrome auto-translate corrupting the DOM),
+ * only that card is hidden — the rest of the feed stays alive.
+ */
+class FeedItemErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    Sentry.captureException(error, {
+      extra: { componentStack: info.componentStack, context: 'FeedItemErrorBoundary' },
+    })
+  }
+
+  render() {
+    if (this.state.hasError) return null
+    return this.props.children
+  }
+}
 
 export function HomeFeed() {
   const { items, isLoading, error, refetch, hasMore, loadMore, updateItemLike, removeItem, prependItem } = useHomeFeed()
@@ -59,12 +91,13 @@ export function HomeFeed() {
       {items.length > 0 && (
         <div className="space-y-6">
           {items.map(item => (
-            <HomeFeedItemCard
-              key={item.feed_item_id}
-              item={item}
-              onLikeUpdate={updateItemLike}
-              onDelete={removeItem}
-            />
+            <FeedItemErrorBoundary key={item.feed_item_id}>
+              <HomeFeedItemCard
+                item={item}
+                onLikeUpdate={updateItemLike}
+                onDelete={removeItem}
+              />
+            </FeedItemErrorBoundary>
           ))}
         </div>
       )}
