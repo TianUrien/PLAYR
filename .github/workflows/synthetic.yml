@@ -1,0 +1,86 @@
+name: Synthetic Monitoring
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  synthetic-smoke:
+    name: Production Smoke Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./client
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: ./client
+        run: npx playwright install --with-deps chromium
+
+      - name: Run public smoke tests against production
+        working-directory: ./client
+        env:
+          PLAYWRIGHT_BASE_URL: https://www.playr.gg
+        run: npx playwright test --project=chromium --grep @smoke --retries=2 --reporter=list
+
+      - name: Upload Playwright report on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: synthetic-report-${{ github.run_id }}
+          path: client/playwright-report
+          retention-days: 7
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `[Synthetic] Production smoke tests failed at ${new Date().toISOString()}`
+            const body = [
+              `Production smoke tests detected a failure.`,
+              ``,
+              `**Run**: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              `**Time**: ${new Date().toISOString()}`,
+              ``,
+              `Check the Playwright report artifact for details.`,
+              ``,
+              `_This issue was created automatically by synthetic monitoring._`,
+            ].join('\n')
+
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'synthetic-monitoring',
+              state: 'open',
+              per_page: 1,
+            })
+
+            if (existing.data.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.data[0].number,
+                body: `Still failing at ${new Date().toISOString()}. [Run details](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`,
+              })
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['synthetic-monitoring', 'bug'],
+              })
+            }

@@ -238,7 +238,7 @@ const clearLocalSession = async (reason: string, options?: ClearSessionOptions) 
   Sentry.setUser(null)
 }
 
-const isSessionExpiredError = (error: AuthError | null): error is AuthApiError => {
+export const isSessionExpiredError = (error: AuthError | null): error is AuthApiError => {
   if (!error) return false
   if (!(error instanceof AuthApiError)) return false
   const msg = error.message.toLowerCase()
