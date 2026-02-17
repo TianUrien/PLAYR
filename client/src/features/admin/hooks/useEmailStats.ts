@@ -83,6 +83,7 @@ export function useEmailCampaigns(params: { status?: string; limit?: number; off
     } finally {
       setIsLoading(false)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally tracking individual fields, not the params object
   }, [params.status, params.limit, params.offset])
 
   useEffect(() => { fetch() }, [fetch])
@@ -109,6 +110,7 @@ export function useEmailEngagement(params: EmailEngagementSearchParams = {}) {
     } finally {
       setIsLoading(false)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally tracking individual fields, not the params object
   }, [params.template_key, params.status, params.role, params.limit, params.offset])
 
   useEffect(() => { fetch() }, [fetch])
