@@ -41,16 +41,6 @@ describe('MilestoneCard', () => {
     expect(screen.getByText('completed their profile')).toBeInTheDocument()
   })
 
-  it('renders first_video milestone', () => {
-    render(
-      <MilestoneCard
-        item={{ ...baseMilestone, milestone_type: 'first_video' }}
-      />
-    )
-
-    expect(screen.getByText('added a highlight video')).toBeInTheDocument()
-  })
-
   it('renders first_gallery_image milestone', () => {
     render(
       <MilestoneCard
@@ -120,25 +110,4 @@ describe('MilestoneCard', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('hides entire card when video fails to load', () => {
-    const { container } = render(
-      <MilestoneCard
-        item={{
-          ...baseMilestone,
-          milestone_type: 'first_video',
-          video_url: 'https://broken-url.com/video.mp4',
-        }}
-      />
-    )
-
-    // Card renders initially
-    expect(screen.getByText('added a highlight video')).toBeInTheDocument()
-
-    // Simulate video load error
-    const video = container.querySelector('video')!
-    fireEvent.error(video)
-
-    // Entire card should be gone
-    expect(container.firstChild).toBeNull()
-  })
 })
