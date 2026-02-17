@@ -73,22 +73,17 @@ export default function OpportunitiesPage() {
     const startParam = searchParams.get('start')
     const priorityParam = searchParams.get('priority')
 
-    // Smart defaults: if NO URL params and user has a profile, pre-populate from profile
+    // Smart defaults: if NO URL params and user has a profile, pre-populate opportunity type
+    // Only type is safe to default — gender/position are too narrow and hide relevant opportunities
     if (!hasAnyParam && profile) {
       const smartType = (profile.role === 'player' || profile.role === 'coach')
         ? profile.role as 'player' | 'coach'
         : 'all' as const
-      const smartGender = (profile.gender === 'Men' || profile.gender === 'Women')
-        ? profile.gender
-        : 'all' as const
-      const smartPosition: string[] = profile.position
-        ? [profile.position.toLowerCase()]
-        : []
 
       return {
         opportunityType: smartType,
-        position: smartPosition,
-        gender: smartGender,
+        position: [],
+        gender: 'all',
         location: '',
         startDate: 'all',
         benefits: [],
