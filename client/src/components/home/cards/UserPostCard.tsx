@@ -41,9 +41,10 @@ export function UserPostCard({ item, onLikeUpdate, onDelete }: UserPostCardProps
       ? `/brands/${item.author_id}`
       : `/players/id/${item.author_id}`
 
-  const sortedImages = item.images
-    ? [...item.images].sort((a, b) => a.order - b.order)
-    : []
+  const sortedImages = useMemo(
+    () => item.images ? [...item.images].sort((a, b) => a.order - b.order) : [],
+    [item.images]
+  )
 
   const lightboxImages = useMemo(
     () => sortedImages.filter((m) => (m.media_type ?? 'image') === 'image'),

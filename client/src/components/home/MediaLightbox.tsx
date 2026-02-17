@@ -19,7 +19,6 @@ export function MediaLightbox({ images, initialIndex, onClose }: MediaLightboxPr
   const dialogRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number>(0)
-  const isAnimatingRef = useRef(false)
 
   useFocusTrap({ containerRef: dialogRef, isActive: true })
 

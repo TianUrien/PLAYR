@@ -82,7 +82,7 @@ export default function Header() {
           {/* Logo & Tagline */}
           <div className="flex items-center gap-3">
             <button 
-              onClick={() => handleNavigate(user ? '/opportunities' : '/')}
+              onClick={() => handleNavigate(user ? '/home' : '/')}
               className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             >
               <img 
