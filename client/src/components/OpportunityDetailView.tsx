@@ -13,6 +13,7 @@ interface VacancyDetailViewProps {
   clubId: string
   publisherRole?: string | null
   publisherOrganization?: string | null
+  leagueDivision?: string | null
   onClose: () => void
   onApply?: () => void
   hasApplied?: boolean
@@ -37,6 +38,7 @@ export default function VacancyDetailView({
   clubId,
   publisherRole,
   publisherOrganization,
+  leagueDivision,
   onClose,
   onApply,
   hasApplied = false,
@@ -158,12 +160,13 @@ export default function VacancyDetailView({
                       {clubName}
                     </button>
                     {publisherRole && (
-                      <p className="text-xs text-gray-400 mt-0.5">
+                      <p className="text-xs text-gray-500 mt-0.5">
                         {publisherRole === 'coach'
                           ? publisherOrganization
-                            ? `Coach · ${publisherOrganization}`
+                            ? `Coach at ${publisherOrganization}`
                             : 'Coach'
                           : 'Club'}
+                        {leagueDivision ? ` · ${leagueDivision}` : ''}
                       </p>
                     )}
                   </div>

@@ -18,7 +18,7 @@ export default function OpportunityDetailPage() {
   const isCurrentUserTestAccount = profile?.is_test_account ?? false
   
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null)
-  const [club, setClub] = useState<{ id: string; full_name: string | null; avatar_url: string | null; role: string | null; current_club: string | null } | null>(null)
+  const [club, setClub] = useState<{ id: string; full_name: string | null; avatar_url: string | null; role: string | null; current_club: string | null; womens_league_division: string | null; mens_league_division: string | null } | null>(null)
   const [hasApplied, setHasApplied] = useState(false)
   const [showApplyModal, setShowApplyModal] = useState(false)
   const [showSignInPrompt, setShowSignInPrompt] = useState(false)
@@ -40,7 +40,9 @@ export default function OpportunityDetailPage() {
             avatar_url,
             is_test_account,
             role,
-            current_club
+            current_club,
+            womens_league_division,
+            mens_league_division
           )
         `)
         .eq('id', id)
@@ -54,7 +56,7 @@ export default function OpportunityDetailPage() {
       }
 
       // Check if this is a test opportunity and current user is not a test account
-      const opportunityWithClub = opportunityData as Opportunity & { club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean; role?: string | null; current_club?: string | null } }
+      const opportunityWithClub = opportunityData as Opportunity & { club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean; role?: string | null; current_club?: string | null; womens_league_division?: string | null; mens_league_division?: string | null } }
       if (opportunityWithClub.club?.is_test_account && !isCurrentUserTestAccount) {
         // Real users cannot view test opportunities
         logger.debug('Test opportunity not accessible to non-test user')
@@ -72,6 +74,8 @@ export default function OpportunityDetailPage() {
           avatar_url: opportunityWithClub.club.avatar_url,
           role: opportunityWithClub.club.role ?? null,
           current_club: opportunityWithClub.club.current_club ?? null,
+          womens_league_division: opportunityWithClub.club.womens_league_division ?? null,
+          mens_league_division: opportunityWithClub.club.mens_league_division ?? null,
         })
       }
 
@@ -255,6 +259,11 @@ export default function OpportunityDetailPage() {
             clubId={club.id}
             publisherRole={club.role}
             publisherOrganization={opportunity.organization_name || club.current_club || null}
+            leagueDivision={(() => {
+              return opportunity.gender === 'Women'
+                ? club.womens_league_division ?? club.mens_league_division ?? null
+                : club.mens_league_division ?? club.womens_league_division ?? null
+            })()}
             onClose={() => navigate('/opportunities')}
             onApply={canShowApplyButton ? handleApplyClick : undefined}
             hasApplied={hasApplied}

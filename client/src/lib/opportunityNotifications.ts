@@ -12,6 +12,8 @@ interface OpportunityNotificationState {
   count: number
   loading: boolean
   userId: string | null
+  /** Timestamp of when the user last viewed opportunities — used for NEW badge on cards */
+  lastSeenAt: string | null
   /** Number of active subscribers - used for cleanup */
   _subscriberCount: number
   initialize: (userId: string | null) => Promise<void>
@@ -78,6 +80,7 @@ export const useOpportunityNotificationStore = create<OpportunityNotificationSta
   count: 0,
   loading: false,
   userId: null,
+  lastSeenAt: null,
   _subscriberCount: 0,
 
   subscribe: () => {
@@ -101,7 +104,7 @@ export const useOpportunityNotificationStore = create<OpportunityNotificationSta
       clearInterval(refreshInterval)
       refreshInterval = null
     }
-    set({ count: 0, loading: false, userId: null, _subscriberCount: 0 })
+    set({ count: 0, loading: false, userId: null, lastSeenAt: null, _subscriberCount: 0 })
   },
 
   refresh: async (options?: RefreshOptions) => {
@@ -130,6 +133,18 @@ export const useOpportunityNotificationStore = create<OpportunityNotificationSta
       await refresh({ bypassCache: true })
     } else {
       await refresh({ bypassCache: true })
+    }
+
+    // Fetch lastSeenAt for NEW badge computation
+    try {
+      const { data: inboxState } = await supabase
+        .from('opportunity_inbox_state')
+        .select('last_seen_at')
+        .eq('user_id', userId)
+        .single()
+      set({ lastSeenAt: inboxState?.last_seen_at ?? null })
+    } catch {
+      // No inbox state yet — all opportunities are "new"
     }
 
     // Only start interval if we have subscribers and no existing interval

@@ -6,7 +6,6 @@ import { logger } from '@/lib/logger'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import type { Vacancy } from '@/lib/supabase'
-import Button from './Button'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { reportSupabaseError } from '@/lib/sentryHelpers'
 
@@ -34,9 +33,7 @@ export default function ApplyToVacancyModal({
   const descriptionId = useId()
 
   const handleClose = useCallback(() => {
-    if (isSubmitting) {
-      return
-    }
+    if (isSubmitting) return
     onClose()
     setError(null)
   }, [isSubmitting, onClose])
@@ -44,11 +41,8 @@ export default function ApplyToVacancyModal({
   useFocusTrap({ containerRef: dialogRef, isActive: isOpen })
 
   useEffect(() => {
-    if (!isOpen) {
-      return
-    }
+    if (!isOpen) return
 
-    // Lock body scroll when modal is open
     const originalOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
@@ -60,7 +54,7 @@ export default function ApplyToVacancyModal({
     }
 
     document.addEventListener('keydown', handleKeyDown)
-    
+
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = originalOverflow
@@ -98,14 +92,11 @@ export default function ApplyToVacancyModal({
         } as never)
 
       if (insertError) {
-        // Check for duplicate application error (code 23505 = unique violation)
         if (insertError.code === '23505') {
-          // User already applied - close modal and inform them
           onSuccess(vacancy.id)
           onClose()
           addToast('You have already applied to this opportunity.', 'info')
         } else if (insertError.code === '42501' || insertError.message?.includes('row-level security')) {
-          // RLS policy blocked the insert - role mismatch
           logger.error('Role mismatch - RLS policy blocked application:', insertError)
           reportSupabaseError('vacancies.apply_rls_block', insertError, {
             vacancyId: vacancy.id,
@@ -115,8 +106,7 @@ export default function ApplyToVacancyModal({
             operation: 'apply_vacancy'
           })
           onError?.(vacancy.id)
-          
-          // Show user-friendly role mismatch message
+
           if (vacancy.opportunity_type === 'coach') {
             addToast('Only coaches can apply to coach opportunities.', 'error')
           } else if (vacancy.opportunity_type === 'player') {
@@ -125,7 +115,6 @@ export default function ApplyToVacancyModal({
             addToast('You cannot apply to this opportunity due to role restrictions.', 'error')
           }
         } else {
-          // Real error - revert optimistic update
           logger.error('Error applying to vacancy:', insertError)
           reportSupabaseError('vacancies.apply_error', insertError, {
             vacancyId: vacancy.id,
@@ -139,13 +128,11 @@ export default function ApplyToVacancyModal({
           addToast('Failed to submit application. Please try again.', 'error')
         }
       } else {
-        // Success! Application created
         onSuccess(vacancy.id)
         onClose()
         addToast('Application submitted successfully!', 'success')
       }
     } catch (err) {
-      // Network error - UI already updated
       logger.error('Unexpected error:', err)
       reportSupabaseError('vacancies.apply_exception', err, {
         vacancyId: vacancy.id
@@ -162,87 +149,51 @@ export default function ApplyToVacancyModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" role="presentation">
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      role="presentation"
+      onClick={(e) => { if (e.target === e.currentTarget) handleClose() }}
+    >
       <div
         ref={dialogRef}
-        className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto focus:outline-none"
+        className="bg-white rounded-2xl max-w-sm w-full focus:outline-none shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         tabIndex={-1}
       >
-        {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 id={titleId} className="text-2xl font-bold text-gray-900">Apply to Position</h2>
-            <p id={descriptionId} className="text-sm text-gray-600 mt-1">{vacancy.title}</p>
-          </div>
-          <button
-            onClick={handleClose}
-            disabled={isSubmitting}
-            className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
-            aria-label="Close modal"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Vacancy Info */}
-          <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-            {vacancy.opportunity_type === 'player' && vacancy.position && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Position:</span>
-                <span className="text-sm text-gray-900">{vacancy.position}</span>
-              </div>
-            )}
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Location:</span>
-              <span className="text-sm text-gray-900">
-                {vacancy.location_city}, {vacancy.location_country}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Type:</span>
-              <span className="text-sm text-gray-900 capitalize">{vacancy.opportunity_type}</span>
-            </div>
+        <form onSubmit={handleSubmit} className="p-6">
+          <div className="flex items-start justify-between mb-4">
+            <h2 id={titleId} className="text-lg font-bold text-gray-900">Apply to this position?</h2>
+            <button
+              type="button"
+              onClick={handleClose}
+              disabled={isSubmitting}
+              className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 -mt-1 -mr-1 p-1 hover:bg-gray-100 rounded-full"
+              aria-label="Close modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
-          {/* Error Message */}
+          <p id={descriptionId} className="text-sm text-gray-600 mb-6">
+            Your profile will be shared with the club for review.
+          </p>
+
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
               <p className="text-sm text-red-800">{error}</p>
             </div>
           )}
 
-          {/* Info Box */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-blue-800">
-              <strong>What happens next?</strong> Your application will be sent to the club. 
-              They'll review your profile and may contact you if you're a good fit.
-            </p>
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center gap-3 pt-4">
-            <Button
-              type="button"
-              onClick={handleClose}
-              disabled={isSubmitting}
-              className="flex-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              {isSubmitting ? 'Submitting...' : 'Submit Application'}
-            </Button>
-          </div>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full px-4 py-3 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-[#8026FA] to-[#924CEC] hover:opacity-90 transition-opacity disabled:opacity-60"
+          >
+            {isSubmitting ? 'Submitting...' : 'Submit Application'}
+          </button>
         </form>
       </div>
     </div>
