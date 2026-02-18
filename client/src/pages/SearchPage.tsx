@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Loader2, SearchX } from 'lucide-react'
 import { Header } from '@/components'
@@ -7,6 +7,7 @@ import { SearchPostResult } from '@/components/search/SearchPostResult'
 import { SearchPersonResult } from '@/components/search/SearchPersonResult'
 import { SearchClubResult } from '@/components/search/SearchClubResult'
 import { useSearch } from '@/hooks/useSearch'
+import { trackDbEvent } from '@/lib/trackDbEvent'
 import type { SearchResult } from '@/hooks/useSearch'
 
 type TabType = 'all' | 'posts' | 'people' | 'clubs'
@@ -50,6 +51,18 @@ export default function SearchPage() {
   const handleTabChange = useCallback((tab: TabType) => {
     setActiveTab(tab)
   }, [])
+
+  // Track search when first page of results arrives for a query
+  const lastTrackedQuery = useRef('')
+  useEffect(() => {
+    if (!data?.pages?.[0] || !query || query === lastTrackedQuery.current) return
+    lastTrackedQuery.current = query
+    trackDbEvent('search', undefined, undefined, {
+      search_type: activeTab,
+      search_term: query,
+      result_count: data.pages[0].total,
+    })
+  }, [data?.pages, query, activeTab])
 
   // Flatten all pages' results
   const results: SearchResult[] = data?.pages.flatMap((page) => page.results) ?? []

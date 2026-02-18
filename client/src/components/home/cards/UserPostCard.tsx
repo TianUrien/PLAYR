@@ -36,10 +36,10 @@ export function UserPostCard({ item, onLikeUpdate, onDelete }: UserPostCardProps
   const isOwner = user?.id === item.author_id
 
   const profilePath = item.author_role === 'club'
-    ? `/clubs/id/${item.author_id}`
+    ? `/clubs/id/${item.author_id}?ref=feed`
     : item.author_role === 'brand'
-      ? `/brands/${item.author_id}`
-      : `/players/id/${item.author_id}`
+      ? `/brands/${item.author_id}?ref=feed`
+      : `/players/id/${item.author_id}?ref=feed`
 
   const sortedImages = useMemo(
     () => item.images ? [...item.images].sort((a, b) => a.order - b.order) : [],

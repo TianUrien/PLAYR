@@ -110,12 +110,12 @@ export default function MemberCard({
     }
     // Navigate to correct public profile based on role
     if (role === 'brand') {
-      navigate(brandSlug ? `/brands/${brandSlug}` : '/brands')
+      navigate(brandSlug ? `/brands/${brandSlug}?ref=community` : '/brands')
     } else if (role === 'club') {
-      navigate(`/clubs/id/${id}`)
+      navigate(`/clubs/id/${id}?ref=community`)
     } else {
       // Players and Coaches use player profile route
-      navigate(`/players/id/${id}`)
+      navigate(`/players/id/${id}?ref=community`)
     }
   }
 

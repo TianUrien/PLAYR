@@ -82,9 +82,9 @@ export default function ApplicantCard({ application, onStatusChange, isUpdating,
 
   const handleViewProfile = () => {
     if (applicant.username) {
-      navigate(`/players/${applicant.username}`)
+      navigate(`/players/${applicant.username}?ref=applicants`)
     } else {
-      navigate(`/players/id/${applicant.id}`)
+      navigate(`/players/id/${applicant.id}?ref=applicants`)
     }
   }
 

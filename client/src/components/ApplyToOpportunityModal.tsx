@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
+import { trackDbEvent } from '@/lib/trackDbEvent'
+import { trackApplicationSubmit } from '@/lib/analytics'
 import type { Vacancy } from '@/lib/supabase'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { reportSupabaseError } from '@/lib/sentryHelpers'
@@ -128,6 +130,8 @@ export default function ApplyToVacancyModal({
           addToast('Failed to submit application. Please try again.', 'error')
         }
       } else {
+        trackDbEvent('application_submit', 'vacancy', vacancy.id, { position: vacancy.position ?? undefined })
+        trackApplicationSubmit(vacancy.id, vacancy.position ?? undefined)
         onSuccess(vacancy.id)
         onClose()
         addToast('Application submitted successfully!', 'success')

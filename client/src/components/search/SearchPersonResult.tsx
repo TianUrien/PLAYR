@@ -8,10 +8,10 @@ interface SearchPersonResultProps {
 
 export function SearchPersonResult({ result }: SearchPersonResultProps) {
   const profilePath = result.role === 'club'
-    ? `/clubs/id/${result.profile_id}`
+    ? `/clubs/id/${result.profile_id}?ref=search`
     : result.role === 'brand'
-      ? `/brands/${result.profile_id}`
-      : `/players/id/${result.profile_id}`
+      ? `/brands/${result.profile_id}?ref=search`
+      : `/players/id/${result.profile_id}?ref=search`
 
   const subtitle = [result.position, result.base_location, result.current_club]
     .filter(Boolean)

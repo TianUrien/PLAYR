@@ -4,6 +4,7 @@
  * Public profile page for a brand.
  */
 
+import { useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ArrowLeft, Loader2, Store, MessageCircle } from 'lucide-react'
 import { Header, Layout, Button } from '@/components'
@@ -13,6 +14,8 @@ import { useBrand } from '@/hooks/useBrand'
 import { useBrandProducts } from '@/hooks/useBrandProducts'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useAuthStore } from '@/lib/auth'
+import { trackDbEvent } from '@/lib/trackDbEvent'
+import { trackProfileView } from '@/lib/analytics'
 import Skeleton from '@/components/Skeleton'
 
 export default function BrandProfilePage() {
@@ -21,6 +24,16 @@ export default function BrandProfilePage() {
   const { user, profile } = useAuthStore()
   const { brand, isLoading, error } = useBrand(slug)
   const { products, isLoading: productsLoading } = useBrandProducts(brand?.id)
+
+  // Track brand profile view (skip if brand owner)
+  const isOwnBrand = profile?.role === 'brand' && brand?.profile_id === user?.id
+  useEffect(() => {
+    if (!brand || isOwnBrand) return
+    const ref = new URLSearchParams(window.location.search).get('ref') || 'direct'
+    trackDbEvent('profile_view', 'profile', brand.profile_id, { viewed_role: 'brand', source: ref })
+    trackProfileView('brand', brand.profile_id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brand?.id])
 
   // Check if current user can message this brand
   const canMessage = user && profile?.role !== 'brand' && brand

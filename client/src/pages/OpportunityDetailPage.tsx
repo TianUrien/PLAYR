@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../lib/auth'
 import { logger } from '../lib/logger'
+import { trackDbEvent } from '../lib/trackDbEvent'
+import { trackVacancyView } from '../lib/analytics'
 import type { Opportunity } from '../lib/supabase'
 import Header from '../components/Header'
 import OpportunityDetailView from '../components/OpportunityDetailView'
@@ -158,6 +160,17 @@ export default function OpportunityDetailPage() {
       if (twitterDesc) twitterDesc.setAttribute('content', defaultDesc)
     }
   }, [opportunity, club])
+
+  // Track vacancy view
+  useEffect(() => {
+    if (!opportunity) return
+    trackDbEvent('vacancy_view', 'vacancy', opportunity.id, {
+      position: opportunity.position ?? undefined,
+      location: opportunity.location_city ?? undefined,
+    })
+    trackVacancyView(opportunity.id, opportunity.position ?? undefined, opportunity.location_city ?? undefined)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [opportunity?.id])
 
   const refreshApplicationStatus = async () => {
     // Allow both players and coaches to refresh their application status

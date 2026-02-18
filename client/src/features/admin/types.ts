@@ -807,6 +807,47 @@ export interface ReferenceMetrics {
 }
 
 // ============================================================================
+// FEATURE USAGE TYPES
+// ============================================================================
+
+export interface ProfileViewStats {
+  total: number
+  unique_profiles_viewed: number
+  unique_viewers: number
+  by_viewed_role: Record<string, number>
+  by_source: Record<string, number>
+}
+
+export interface MostViewedProfile {
+  profile_id: string
+  full_name: string | null
+  role: string
+  avatar_url: string | null
+  view_count: number
+  unique_viewers: number
+}
+
+export interface ViewTrendItem {
+  date: string
+  views: number
+}
+
+export interface EventSummaryItem {
+  event_name: string
+  count: number
+  unique_users: number
+}
+
+export interface FeatureUsageMetrics {
+  profile_views: ProfileViewStats
+  most_viewed_profiles: MostViewedProfile[]
+  view_trend: ViewTrendItem[]
+  event_summary: EventSummaryItem[]
+  period_days: number
+  generated_at: string
+}
+
+// ============================================================================
 // EMAIL INTELLIGENCE TYPES
 // ============================================================================
 
