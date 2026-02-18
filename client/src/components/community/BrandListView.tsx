@@ -5,21 +5,24 @@
  * Extracted from BrandsPage.tsx BrandDirectory component.
  */
 
-import { useState } from 'react'
 import { Search, Store, Loader2 } from 'lucide-react'
 import { BrandCardSkeleton } from '@/components/Skeleton'
 import { BrandCard, BrandCategoryFilter } from '@/components/brands'
 import { useBrands, type BrandCategory } from '@/hooks/useBrands'
+import { usePageState } from '@/hooks/usePageState'
+import { useScrollRestore } from '@/hooks/useScrollRestore'
 
 export function BrandListView() {
-  const [category, setCategory] = useState<BrandCategory | null>(null)
-  const [search, setSearch] = useState('')
-  const [searchInput, setSearchInput] = useState('')
+  const [category, setCategory] = usePageState<BrandCategory | null>('brand-category', null)
+  const [search, setSearch] = usePageState('brand-search', '')
+  const [searchInput, setSearchInput] = usePageState('brand-searchInput', '')
 
   const { brands, isLoading, error, total, hasMore, loadMore } = useBrands({
     category,
     search: search || null,
   })
+
+  useScrollRestore(!isLoading || brands.length > 0)
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()

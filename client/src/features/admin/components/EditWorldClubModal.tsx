@@ -5,23 +5,25 @@
  * Supports cascading dropdowns: Country → Region → Leagues
  */
 
-import { useState, useEffect, useCallback } from 'react'
-import { X, Save, Loader2, Plus, AlertTriangle } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { X, Save, Loader2, Plus, AlertTriangle, Upload, Trash2, Shield } from 'lucide-react'
 import { formatAdminDate } from '../utils/formatDate'
 import {
   getWorldCountries,
-  getWorldProvinces, 
+  getWorldProvinces,
   getWorldLeagues,
   createWorldClub,
   updateWorldClub,
 } from '../api/adminApi'
-import type { 
-  WorldClub, 
-  WorldCountry, 
-  WorldProvince, 
+import type {
+  WorldClub,
+  WorldCountry,
+  WorldProvince,
   WorldLeague,
 } from '../types'
 import { logger } from '@/lib/logger'
+import { supabase } from '@/lib/supabase'
+import { deleteStorageObject } from '@/lib/storage'
 
 interface EditWorldClubModalProps {
   isOpen: boolean
@@ -37,6 +39,7 @@ export function EditWorldClubModal({
   club,
 }: EditWorldClubModalProps) {
   const isCreating = club === null
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Form state
   const [clubName, setClubName] = useState('')
@@ -44,6 +47,8 @@ export function EditWorldClubModal({
   const [provinceId, setProvinceId] = useState<number | null>(null)
   const [menLeagueId, setMenLeagueId] = useState<number | null>(null)
   const [womenLeagueId, setWomenLeagueId] = useState<number | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [originalAvatarUrl, setOriginalAvatarUrl] = useState<string | null>(null)
 
   // Dropdown data
   const [countries, setCountries] = useState<WorldCountry[]>([])
@@ -55,6 +60,7 @@ export function EditWorldClubModal({
   const [loadingProvinces, setLoadingProvinces] = useState(false)
   const [loadingLeagues, setLoadingLeagues] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const loadCountries = useCallback(async () => {
@@ -117,6 +123,8 @@ export function EditWorldClubModal({
         setProvinceId(club.province_id)
         setMenLeagueId(club.men_league_id)
         setWomenLeagueId(club.women_league_id)
+        setAvatarUrl(club.avatar_url ?? null)
+        setOriginalAvatarUrl(club.avatar_url ?? null)
       } else {
         // Creating new club
         setClubName('')
@@ -124,11 +132,88 @@ export function EditWorldClubModal({
         setProvinceId(null)
         setMenLeagueId(null)
         setWomenLeagueId(null)
+        setAvatarUrl(null)
+        setOriginalAvatarUrl(null)
       }
       setError(null)
       loadCountries()
     }
   }, [isOpen, club, loadCountries])
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Reset input so same file can be re-selected
+    e.target.value = ''
+
+    // Validate file type
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      setError('Only JPG and PNG files are allowed')
+      return
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be under 5MB')
+      return
+    }
+
+    // For new clubs, we need the club ID first — store as local preview
+    if (isCreating) {
+      // Store file for upload after creation
+      const previewUrl = URL.createObjectURL(file)
+      setAvatarUrl(previewUrl)
+      // Store the file in a ref for later upload
+      pendingFileRef.current = file
+      return
+    }
+
+    // For existing clubs, upload immediately
+    await uploadFile(file, club!.id)
+  }
+
+  const pendingFileRef = useRef<File | null>(null)
+
+  const uploadFile = async (file: File, clubId: string) => {
+    setIsUploading(true)
+    setError(null)
+
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const path = `${clubId}/${Date.now()}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from('world-club-logos')
+        .upload(path, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage
+        .from('world-club-logos')
+        .getPublicUrl(path)
+
+      setAvatarUrl(urlData.publicUrl)
+    } catch (err) {
+      logger.error('[EditWorldClubModal] Upload failed:', err)
+      setError(err instanceof Error ? err.message : 'Failed to upload image')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleRemoveAvatar = async () => {
+    if (avatarUrl && !avatarUrl.startsWith('blob:')) {
+      // Delete from storage
+      await deleteStorageObject({
+        bucket: 'world-club-logos',
+        publicUrl: avatarUrl,
+        context: 'admin-remove-club-logo',
+      })
+    }
+    setAvatarUrl(null)
+    pendingFileRef.current = null
+  }
 
   // Load provinces when country changes
   useEffect(() => {
@@ -185,14 +270,44 @@ export function EditWorldClubModal({
     try {
       if (isCreating) {
         // Create new club
-        await createWorldClub({
+        const newClub = await createWorldClub({
           club_name: clubName.trim(),
           country_id: countryId,
           province_id: provinceId,
           men_league_id: menLeagueId,
           women_league_id: womenLeagueId,
         })
+
+        // If a file was pending, upload it now that we have the club ID
+        if (pendingFileRef.current && newClub?.id) {
+          const file = pendingFileRef.current
+          const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+          const path = `${newClub.id}/${Date.now()}.${ext}`
+
+          const { error: uploadError } = await supabase.storage
+            .from('world-club-logos')
+            .upload(path, file, { upsert: true })
+
+          if (!uploadError) {
+            const { data: urlData } = supabase.storage
+              .from('world-club-logos')
+              .getPublicUrl(path)
+            await updateWorldClub(newClub.id, { avatar_url: urlData.publicUrl })
+          } else {
+            logger.error('[EditWorldClubModal] Upload after create failed:', uploadError)
+          }
+          pendingFileRef.current = null
+        }
       } else {
+        // Delete old avatar from storage if it was replaced or removed
+        if (originalAvatarUrl && originalAvatarUrl !== avatarUrl) {
+          await deleteStorageObject({
+            bucket: 'world-club-logos',
+            publicUrl: originalAvatarUrl,
+            context: 'admin-replace-club-logo',
+          })
+        }
+
         // Update existing club
         await updateWorldClub(club.id, {
           club_name: clubName.trim(),
@@ -200,6 +315,7 @@ export function EditWorldClubModal({
           province_id: provinceId,
           men_league_id: menLeagueId,
           women_league_id: womenLeagueId,
+          avatar_url: avatarUrl,
         })
       }
 
@@ -249,6 +365,67 @@ export function EditWorldClubModal({
               <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
+
+          {/* Club Logo */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Club Logo
+            </label>
+            <div className="flex items-center gap-4">
+              {/* Preview */}
+              <div className="relative w-16 h-16 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 border border-gray-200">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Club logo"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Shield className="w-7 h-7 text-gray-400" />
+                )}
+                {isUploading && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 animate-spin text-white" />
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {avatarUrl ? 'Replace' : 'Upload'}
+                </button>
+                {avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveAvatar}
+                    disabled={isUploading}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Remove
+                  </button>
+                )}
+                <p className="text-xs text-gray-500">JPG or PNG, max 5MB</p>
+              </div>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".jpg,.jpeg,.png"
+                onChange={handleFileSelect}
+                className="hidden"
+                aria-label="Upload club logo"
+              />
+            </div>
+          </div>
 
           {/* Club Name */}
           <div>

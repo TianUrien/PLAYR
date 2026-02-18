@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom'
 import { initializeAuth } from '@/lib/auth'
 import { logger } from '@/lib/logger'
 import { initGA, trackPageView } from '@/lib/analytics'
@@ -130,12 +130,14 @@ function AnalyticsTracker() {
   return null
 }
 
-// Scroll to top on route change
+// Scroll to top on forward navigation; skip on back/forward (POP) to allow scroll restoration
 function ScrollToTop() {
   const { pathname } = useLocation()
+  const navigationType = useNavigationType()
   useEffect(() => {
+    if (navigationType === 'POP') return
     window.scrollTo(0, 0)
-  }, [pathname])
+  }, [pathname, navigationType])
   return null
 }
 

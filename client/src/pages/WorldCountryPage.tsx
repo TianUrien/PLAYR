@@ -200,13 +200,16 @@ export default function WorldCountryPage() {
       setClubsLoading(true)
       const leagueColumn = genderFilter === 'women' ? 'women_league_id' : 'men_league_id'
 
+      // avatar_url added in migration 202602190500 but not yet in generated types
+      type ClubRow = { id: string; club_id: string; club_name: string; avatar_url: string | null; is_claimed: boolean; claimed_profile_id: string | null }
       const { data: clubData, error: clubError } = await supabase
         .from('world_clubs')
-        .select('id, club_id, club_name, is_claimed, claimed_profile_id')
+        .select('id, club_id, club_name, avatar_url, is_claimed, claimed_profile_id')
         .eq('country_id', countryId)
         .eq(leagueColumn, leagueId)
         .order('is_claimed', { ascending: false })
         .order('club_name')
+        .returns<ClubRow[]>()
 
       if (clubError) throw clubError
 
@@ -239,7 +242,7 @@ export default function WorldCountryPage() {
           is_claimed: effectivelyClaimed,
           claimed_profile_id: club.claimed_profile_id,
           profile_username: profile?.username ?? null,
-          profile_avatar_url: profile?.avatar_url ?? null,
+          profile_avatar_url: profile?.avatar_url ?? club.avatar_url ?? null,
         }
       })
 
@@ -513,7 +516,7 @@ export default function WorldCountryPage() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        {club.is_claimed && club.profile_avatar_url ? (
+                        {club.profile_avatar_url ? (
                           <img
                             src={club.profile_avatar_url}
                             alt={club.club_name}

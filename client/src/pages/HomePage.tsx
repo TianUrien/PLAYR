@@ -1,15 +1,26 @@
 import { Header } from '@/components'
 import { HomeFeed } from '@/components/home/HomeFeed'
-import { SearchBar } from '@/components/search/SearchBar'
+import { SearchOverlay } from '@/components/search/SearchOverlay'
+import { useScrollRestore } from '@/hooks/useScrollRestore'
+import { useScrollDirection } from '@/hooks/useScrollDirection'
 
 export default function HomePage() {
+  useScrollRestore()
+  const scrollDirection = useScrollDirection()
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
 
       <main className="max-w-2xl mx-auto px-4 md:px-6 pt-24 pb-24">
-        <div className="mb-4">
-          <SearchBar />
+        <div
+          className={`sticky top-[var(--app-header-height,60px)] z-40 bg-gray-50 pb-4 transition-all duration-200 ${
+            scrollDirection === 'down'
+              ? '-translate-y-full opacity-0 pointer-events-none'
+              : 'translate-y-0 opacity-100'
+          }`}
+        >
+          <SearchOverlay />
         </div>
         <HomeFeed />
       </main>

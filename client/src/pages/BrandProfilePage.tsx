@@ -5,7 +5,7 @@
  */
 
 import { useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Loader2, Store, MessageCircle } from 'lucide-react'
 import { Header, Layout, Button } from '@/components'
 import { BrandHeader, ProductCard } from '@/components/brands'
@@ -20,6 +20,7 @@ import Skeleton from '@/components/Skeleton'
 
 export default function BrandProfilePage() {
   const { slug } = useParams<{ slug: string }>()
+  const navigate = useNavigate()
   const isMobile = useMediaQuery('(max-width: 1023px)')
   const { user, profile } = useAuthStore()
   const { brand, isLoading, error } = useBrand(slug)
@@ -46,13 +47,14 @@ export default function BrandProfilePage() {
         {/* Back Button (Mobile) */}
         {isMobile && (
           <div className="bg-white border-b border-gray-200 px-4 py-3">
-            <Link
-              to="/brands"
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
               className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span>Back to Brands</span>
-            </Link>
+              <span>Back</span>
+            </button>
           </div>
         )}
 

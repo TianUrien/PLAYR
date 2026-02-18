@@ -613,6 +613,7 @@ export async function getWorldClubs(
     men_league_name: row.men_league?.name ?? null,
     women_league_id: row.women_league_id,
     women_league_name: row.women_league?.name ?? null,
+    avatar_url: row.avatar_url ?? null,
     is_claimed: row.is_claimed,
     claimed_profile_id: row.claimed_profile_id,
     claimed_profile_name: row.claimed_profile?.full_name ?? null,
@@ -761,6 +762,9 @@ export async function updateWorldClub(
   }
   if (payload.women_league_id !== undefined) {
     updates.women_league_id = payload.women_league_id
+  }
+  if (payload.avatar_url !== undefined) {
+    updates.avatar_url = payload.avatar_url
   }
   if (payload.is_claimed !== undefined) {
     updates.is_claimed = payload.is_claimed
