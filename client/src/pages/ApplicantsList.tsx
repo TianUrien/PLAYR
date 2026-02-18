@@ -7,6 +7,7 @@ import { useToastStore } from '@/lib/toast'
 import type { OpportunityApplicationWithApplicant, Opportunity, Json } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 import ApplicantCard from '@/components/ApplicantCard'
+import type { ApplicantReferenceInfo } from '@/components/ApplicantCard'
 import { logger } from '@/lib/logger'
 
 type ApplicationStatus = Database['public']['Enums']['application_status']
@@ -36,6 +37,7 @@ export default function ApplicantsList() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [referenceMap, setReferenceMap] = useState<Map<string, ApplicantReferenceInfo>>(new Map())
 
   useEffect(() => {
     const fetchData = async () => {
@@ -130,6 +132,62 @@ export default function ApplicantsList() {
           },
         }))
 
+        // Fetch reference data for all applicants (non-blocking on failure)
+        const refMap = new Map<string, ApplicantReferenceInfo>()
+        try {
+          const ids = transformedApplications.map((app) => app.applicant.id)
+          if (ids.length > 0) {
+            const { data: referencesData } = await supabase
+              .from('profile_references')
+              .select(`
+                requester_id,
+                endorsement_text,
+                relationship_type,
+                accepted_at,
+                reference:reference_id (
+                  id,
+                  full_name,
+                  role,
+                  username
+                )
+              `)
+              .in('requester_id', ids)
+              .eq('status', 'accepted')
+              .order('accepted_at', { ascending: false })
+
+            if (referencesData) {
+              for (const ref of referencesData) {
+                const endorser = ref.reference as { id: string; full_name: string | null; role: string | null; username: string | null } | null
+                const existing = refMap.get(ref.requester_id)
+                if (!existing) {
+                  refMap.set(ref.requester_id, {
+                    count: 1,
+                    topEndorsement: ref.endorsement_text ? {
+                      text: ref.endorsement_text,
+                      endorserName: endorser?.full_name ?? 'PLAYR Member',
+                      endorserRole: endorser?.role ?? null,
+                      relationshipType: ref.relationship_type,
+                    } : null,
+                  })
+                } else {
+                  existing.count += 1
+                  if (!existing.topEndorsement && ref.endorsement_text) {
+                    existing.topEndorsement = {
+                      text: ref.endorsement_text,
+                      endorserName: endorser?.full_name ?? 'PLAYR Member',
+                      endorserRole: endorser?.role ?? null,
+                      relationshipType: ref.relationship_type,
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (refErr) {
+          logger.error('Failed to fetch reference data for applicants:', refErr)
+        }
+
+        setReferenceMap(refMap)
         setApplications(transformedApplications)
       } catch {
         setError('Failed to load applicants. Please try again.')
@@ -288,6 +346,7 @@ export default function ApplicantsList() {
                         application={application}
                         onStatusChange={handleStatusChange}
                         isUpdating={updatingId === application.id}
+                        referenceInfo={referenceMap.get(application.applicant_id) ?? null}
                       />
                     ))}
                   </div>

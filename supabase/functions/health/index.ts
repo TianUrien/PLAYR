@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getServiceClient } from '../_shared/supabase-client.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 
 Deno.serve(async (req) => {
@@ -10,10 +10,7 @@ Deno.serve(async (req) => {
   const started = Date.now()
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const supabase = getServiceClient()
 
     // Lightweight DB check: query current timestamp
     const { error: dbError } = await supabase

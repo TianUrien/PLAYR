@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getServiceClient } from '../_shared/supabase-client.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import {
   ApplicationPayload,
@@ -55,21 +55,11 @@ Deno.serve(async (req: Request) => {
 
     // Get environment variables
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
     if (!resendApiKey) {
       logger.error('RESEND_API_KEY not configured')
       return new Response(
         JSON.stringify({ error: 'RESEND_API_KEY not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      logger.error('Supabase credentials not configured')
-      return new Response(
-        JSON.stringify({ error: 'Supabase credentials not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -109,8 +99,8 @@ Deno.serve(async (req: Request) => {
       applicantId: application.applicant_id,
     })
 
-    // Create Supabase client
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    // Service role client (shared singleton)
+    const supabase = getServiceClient()
 
     // Fetch the opportunity details
     const { data: opportunity, error: opportunityError } = await supabase

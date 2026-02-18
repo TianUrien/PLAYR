@@ -123,6 +123,29 @@ export const checkApplicationRateLimit = async (userId: string): Promise<RateLim
 }
 
 /**
+ * Check message sending rate limit
+ * @param userId - User's ID
+ * @returns RateLimitResult or null if check fails
+ */
+export const checkMessageRateLimit = async (userId: string): Promise<RateLimitResult | null> => {
+  try {
+    const { data, error } = await supabase.rpc('check_message_rate_limit', {
+      p_user_id: userId
+    })
+
+    if (error) {
+      logger.error('[RATE_LIMIT] Message rate limit check failed', { error })
+      return null
+    }
+
+    return data as RateLimitResult
+  } catch (err) {
+    logger.error('[RATE_LIMIT] Unexpected error checking message rate limit', { err })
+    return null
+  }
+}
+
+/**
  * Format rate limit error message for user display
  */
 export const formatRateLimitError = (result: RateLimitResult): string => {

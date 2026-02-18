@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
-import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getServiceClient } from '../_shared/supabase-client.ts'
 import { getCorsHeaders } from '../_shared/cors.ts'
 
 // Rate limiting for delete-account endpoint (database-backed, survives cold starts)
@@ -295,19 +296,7 @@ Deno.serve(async (req) => {
   try {
     const token = sanitizeBearerToken(req.headers.get('Authorization'))
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Supabase credentials are not configured')
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
+    const supabase = getServiceClient()
 
     const {
       data: { user },

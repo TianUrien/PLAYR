@@ -10,6 +10,7 @@ import { useToastStore } from '@/lib/toast'
 import { useUnreadStore } from '@/lib/unread'
 import { loadMessageDraft, saveMessageDraft, clearMessageDraft } from '@/lib/messageDrafts'
 import { reportSupabaseError } from '@/lib/sentryHelpers'
+import { checkMessageRateLimit, formatRateLimitError } from '@/lib/rateLimit'
 import type { ChatMessage, Message, Conversation, ChatMessageEvent, MessageDeliveryStatus, MessageMetadata } from '@/types/chat'
 
 const MESSAGES_PAGE_SIZE = 50
@@ -463,6 +464,13 @@ export function useChat({
     if (messageContent.length > 1000) {
       addToast('Message is too long. Maximum 1000 characters.', 'error')
       return
+    }
+
+    // Rate limit check
+    const rateCheck = await checkMessageRateLimit(currentUserId)
+    if (rateCheck && !rateCheck.allowed) {
+      addToast(formatRateLimitError(rateCheck), 'error')
+      return false
     }
 
     setSending(true)

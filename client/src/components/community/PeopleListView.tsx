@@ -47,7 +47,8 @@ interface CommunityFilters {
   availability: 'all' | 'open'
 }
 
-const POSITIONS = ['goalkeeper', 'defender', 'midfielder', 'forward']
+const PLAYER_POSITIONS = ['goalkeeper', 'defender', 'midfielder', 'forward']
+const COACH_POSITIONS = ['head coach', 'assistant coach', 'youth coach']
 
 interface PeopleListViewProps {
   roleFilter?: 'player' | 'coach' | 'club'
@@ -512,9 +513,11 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
             {/* Position — hidden when role is club or brand */}
             {filters.role !== 'club' && filters.role !== 'brand' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Position</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {filters.role === 'coach' ? 'Coaching Role' : 'Position'}
+                </label>
                 <div className="space-y-2">
-                  {POSITIONS.map((position) => (
+                  {(filters.role === 'coach' ? COACH_POSITIONS : PLAYER_POSITIONS).map((position) => (
                     <label key={position} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"

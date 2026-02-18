@@ -25,15 +25,17 @@ interface UseCoachProfileStrengthOptions {
  * Coach-specific profile strength calculation.
  *
  * Buckets:
- * - Basic Info (25%): full_name, nationality, base_location, date_of_birth, gender
- * - Profile Photo (20%): avatar_url present
+ * - Basic Info (20%): full_name, nationality, base_location, date_of_birth, gender
+ * - Profile Photo (15%): avatar_url present
  * - Professional Bio (20%): bio field filled
- * - Experience/Journey (20%): at least 1 playing_history entry
- * - Media Gallery (15%): at least 1 gallery_photos entry
+ * - Experience/Journey (20%): at least 1 career_history entry
+ * - Media Gallery (10%): at least 1 gallery_photos entry
+ * - References (15%): at least 1 accepted reference
  */
 export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOptions) {
   const [journeyCount, setJourneyCount] = useState<number | null>(null)
   const [galleryCount, setGalleryCount] = useState<number | null>(null)
+  const [referenceCount, setReferenceCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
 
   const profileId = profile?.id ?? null
@@ -43,12 +45,13 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
     if (!profileId) {
       setJourneyCount(null)
       setGalleryCount(null)
+      setReferenceCount(null)
       setLoading(false)
       return
     }
     setLoading(true)
     try {
-      const [journeyRes, galleryRes] = await Promise.all([
+      const [journeyRes, galleryRes, referencesRes] = await Promise.all([
         supabase
           .from('career_history')
           .select('id', { count: 'exact', head: true })
@@ -57,9 +60,15 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
           .from('gallery_photos')
           .select('id', { count: 'exact', head: true })
           .eq('user_id', profileId),
+        supabase
+          .from('profile_references')
+          .select('id', { count: 'exact', head: true })
+          .eq('requester_id', profileId)
+          .eq('status', 'accepted'),
       ])
       setJourneyCount(journeyRes.count ?? 0)
       setGalleryCount(galleryRes.count ?? 0)
+      setReferenceCount(referencesRes.count ?? 0)
     } finally {
       setLoading(false)
     }
@@ -103,13 +112,14 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
     const bioComplete = hasProfessionalBio()
     const journeyComplete = (journeyCount ?? 0) >= 1
     const galleryComplete = (galleryCount ?? 0) >= 1
+    const referencesComplete = (referenceCount ?? 0) >= 1
 
     return [
       {
         id: 'basic',
         label: 'Basic Info',
         hint: 'Complete name, nationality, location, DOB, and gender',
-        weight: 25,
+        weight: 20,
         completed: basicComplete,
         actionId: 'edit-profile',
         actionLabel: 'Edit Profile',
@@ -118,7 +128,7 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
         id: 'photo',
         label: 'Profile Photo',
         hint: 'Upload a profile photo',
-        weight: 20,
+        weight: 15,
         completed: photoComplete,
         actionId: 'edit-profile',
         actionLabel: 'Add Photo',
@@ -145,13 +155,22 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
         id: 'gallery',
         label: 'Media Gallery',
         hint: 'Upload at least one gallery photo',
-        weight: 15,
+        weight: 10,
         completed: galleryComplete,
         actionId: 'gallery-tab',
         actionLabel: 'Add Media',
       },
+      {
+        id: 'references',
+        label: 'Get a trusted reference',
+        hint: 'Ask a player or fellow coach to vouch for you',
+        weight: 15,
+        completed: referencesComplete,
+        actionId: 'friends-tab',
+        actionLabel: 'Get Reference',
+      },
     ]
-  }, [isBasicInfoComplete, hasProfilePhoto, hasProfessionalBio, journeyCount, galleryCount])
+  }, [isBasicInfoComplete, hasProfilePhoto, hasProfessionalBio, journeyCount, galleryCount, referenceCount])
 
   // Calculate total percentage
   const percentage = useMemo(() => {

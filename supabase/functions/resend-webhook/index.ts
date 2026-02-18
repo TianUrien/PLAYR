@@ -5,8 +5,7 @@ declare const Deno: {
   serve: (handler: (req: Request) => Response | Promise<Response>) => void
 }
 
-// @ts-expect-error Deno URL imports are resolved at runtime in Supabase Edge Functions.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getServiceClient } from '../_shared/supabase-client.ts'
 
 /**
  * Resend Webhook Handler
@@ -147,9 +146,7 @@ Deno.serve(async (req: Request) => {
     // ========================================================================
     // Connect to Supabase (service role for bypassing RLS)
     // ========================================================================
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    const supabase = getServiceClient()
 
     // ========================================================================
     // Look up the email_sends row

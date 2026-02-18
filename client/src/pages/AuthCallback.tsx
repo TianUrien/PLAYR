@@ -279,8 +279,8 @@ export default function AuthCallback() {
           return
         }
 
-        // Poll every 500ms for up to 10 seconds
-        for (let attempt = 1; attempt <= 20; attempt++) {
+        // Poll every 500ms for up to 30 seconds
+        for (let attempt = 1; attempt <= 60; attempt++) {
           if (!isMountedRef.current) {
             logger.debug('[AUTH_CALLBACK] Component unmounted, stopping poll')
             return
@@ -324,10 +324,10 @@ export default function AuthCallback() {
           }
         }
 
-        // Timeout after 10 seconds
+        // Timeout after 30 seconds
         if (!isMountedRef.current) return
-        
-        logger.error('[AUTH_CALLBACK] Timeout - no session found after 10 seconds')
+
+        logger.error('[AUTH_CALLBACK] Timeout - no session found after 30 seconds')
         
         // Check for fallback implicit flow tokens
         const params = new URLSearchParams(window.location.hash.substring(1))
@@ -451,8 +451,14 @@ export default function AuthCallback() {
           
           <div className="space-y-3">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => window.location.reload()}
               className="w-full px-6 py-3 bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
             >
               Back to Sign In
             </button>
@@ -463,7 +469,7 @@ export default function AuthCallback() {
                   .then(() => alert('Link copied! Paste it in Safari or Chrome.'))
                   .catch(() => alert('Please copy this link manually: ' + window.location.href))
               }}
-              className="w-full px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              className="w-full px-6 py-3 text-sm text-gray-500 hover:text-gray-700 transition-colors font-medium"
             >
               Copy Verification Link
             </button>

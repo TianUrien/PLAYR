@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { MapPin, Star, HelpCircle, XCircle, ChevronDown, Minus } from 'lucide-react'
+import { MapPin, Star, HelpCircle, XCircle, ChevronDown, Minus, ShieldCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { OpportunityApplicationWithApplicant } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
@@ -36,13 +36,24 @@ function getCurrentTier(status: ApplicationStatus) {
   return TIER_OPTIONS.find((opt) => opt.tier === status) ?? null
 }
 
+export interface ApplicantReferenceInfo {
+  count: number
+  topEndorsement: {
+    text: string
+    endorserName: string
+    endorserRole: string | null
+    relationshipType: string
+  } | null
+}
+
 interface ApplicantCardProps {
   application: OpportunityApplicationWithApplicant
   onStatusChange?: (applicationId: string, status: ApplicationStatus) => void
   isUpdating?: boolean
+  referenceInfo?: ApplicantReferenceInfo | null
 }
 
-export default function ApplicantCard({ application, onStatusChange, isUpdating }: ApplicantCardProps) {
+export default function ApplicantCard({ application, onStatusChange, isUpdating, referenceInfo }: ApplicantCardProps) {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -143,6 +154,25 @@ export default function ApplicantCard({ application, onStatusChange, isUpdating 
           <div className="mt-2 text-xs text-gray-500 sm:text-sm">
             Applied {formatDate(application.applied_at)}
           </div>
+
+          {referenceInfo && referenceInfo.count > 0 && (
+            <div className="mt-2 space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="h-3.5 w-3.5 flex-shrink-0 text-emerald-500" />
+                <span className="text-xs font-medium text-emerald-700">
+                  {referenceInfo.count} {referenceInfo.count === 1 ? 'reference' : 'references'}
+                </span>
+              </div>
+              {referenceInfo.topEndorsement && (
+                <p className="text-xs italic text-gray-500 line-clamp-1 pl-5">
+                  &ldquo;{referenceInfo.topEndorsement.text}&rdquo;
+                  <span className="not-italic text-gray-400">
+                    {' '}&mdash; {referenceInfo.topEndorsement.endorserName}
+                  </span>
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Actions */}

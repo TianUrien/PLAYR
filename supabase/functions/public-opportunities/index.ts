@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getServiceClient } from '../_shared/supabase-client.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import {
   PublicOpportunityRow,
@@ -164,20 +164,8 @@ Deno.serve(async (req: Request) => {
     || req.headers.get('cf-connecting-ip')
     || 'unknown'
 
-  // Initialize Supabase client (using service role for view access)
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')
-  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-
-  if (!supabaseUrl || !supabaseKey) {
-    console.error('Missing Supabase environment variables')
-    return errorResponse(
-      'INTERNAL_ERROR',
-      'Service configuration error',
-      500
-    )
-  }
-
-  const supabase = createClient(supabaseUrl, supabaseKey)
+  // Service role client (shared singleton)
+  const supabase = getServiceClient()
 
   // Check rate limit (database-backed, survives cold starts)
   const rateCheck = await checkDbRateLimit(supabase, clientIP)
