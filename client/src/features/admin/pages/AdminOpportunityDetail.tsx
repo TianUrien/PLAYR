@@ -15,8 +15,10 @@ import {
   Calendar,
   Clock,
   Users,
-  CheckCircle,
+  Star,
   XCircle,
+  HelpCircle,
+  Inbox,
   AlertTriangle,
   Video,
   ExternalLink,
@@ -78,14 +80,18 @@ export function AdminOpportunityDetail() {
     return `${Math.round(minutes / 1440)}d`
   }
 
+  const statusLabels: Record<ApplicationStatus, string> = {
+    pending: 'Unsorted',
+    shortlisted: 'Good fit',
+    maybe: 'Maybe',
+    rejected: 'Not a fit',
+  }
+
   const statusStyles: Record<ApplicationStatus, string> = {
-    pending: 'bg-amber-100 text-amber-700',
-    reviewed: 'bg-blue-100 text-blue-700',
-    shortlisted: 'bg-purple-100 text-purple-700',
-    interview: 'bg-indigo-100 text-indigo-700',
-    accepted: 'bg-green-100 text-green-700',
+    pending: 'bg-gray-100 text-gray-700',
+    shortlisted: 'bg-emerald-100 text-emerald-700',
+    maybe: 'bg-amber-100 text-amber-700',
     rejected: 'bg-red-100 text-red-700',
-    withdrawn: 'bg-gray-100 text-gray-700',
   }
 
   const applicantColumns: Column<VacancyApplicant>[] = [
@@ -149,8 +155,8 @@ export function AdminOpportunityDetail() {
       key: 'status',
       label: 'Status',
       render: (value) => (
-        <span className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${statusStyles[value as ApplicationStatus]}`}>
-          {String(value)}
+        <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusStyles[value as ApplicationStatus]}`}>
+          {statusLabels[value as ApplicationStatus] ?? String(value)}
         </span>
       ),
     },
@@ -299,17 +305,17 @@ export function AdminOpportunityDetail() {
               <p className="text-2xl font-bold text-gray-900">{stats.total_applications}</p>
               <p className="text-xs text-gray-500">Total</p>
             </div>
+            <div className="text-center p-3 bg-emerald-50 rounded-lg">
+              <p className="text-2xl font-bold text-emerald-600">{stats.shortlisted}</p>
+              <p className="text-xs text-gray-500">Good fit</p>
+            </div>
             <div className="text-center p-3 bg-amber-50 rounded-lg">
-              <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
-              <p className="text-xs text-gray-500">Pending</p>
+              <p className="text-2xl font-bold text-amber-600">{stats.maybe}</p>
+              <p className="text-xs text-gray-500">Maybe</p>
             </div>
-            <div className="text-center p-3 bg-purple-50 rounded-lg">
-              <p className="text-2xl font-bold text-purple-600">{stats.shortlisted}</p>
-              <p className="text-xs text-gray-500">Shortlisted</p>
-            </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <p className="text-2xl font-bold text-green-600">{stats.accepted}</p>
-              <p className="text-xs text-gray-500">Accepted</p>
+            <div className="text-center p-3 bg-red-50 rounded-lg">
+              <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+              <p className="text-xs text-gray-500">Not a fit</p>
             </div>
           </div>
           
@@ -344,24 +350,26 @@ export function AdminOpportunityDetail() {
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <h2 className="text-sm font-semibold text-gray-900 mb-4">Status Breakdown</h2>
         <div className="flex flex-wrap gap-3">
-          {[
-            { key: 'pending', count: stats.pending, icon: Clock, color: 'amber' },
-            { key: 'reviewed', count: stats.reviewed, icon: CheckCircle, color: 'blue' },
-            { key: 'shortlisted', count: stats.shortlisted, icon: Users, color: 'purple' },
-            { key: 'interview', count: stats.interview, icon: Calendar, color: 'indigo' },
-            { key: 'accepted', count: stats.accepted, icon: CheckCircle, color: 'green' },
-            { key: 'rejected', count: stats.rejected, icon: XCircle, color: 'red' },
-            { key: 'withdrawn', count: stats.withdrawn, icon: ArrowLeft, color: 'gray' },
-          ].map(({ key, count, icon: Icon, color }) => (
-            <div
-              key={key}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg bg-${color}-50`}
-            >
-              <Icon className={`w-4 h-4 text-${color}-600`} />
-              <span className="text-sm font-medium text-gray-700 capitalize">{key}</span>
-              <span className={`text-sm font-bold text-${color}-600`}>{count}</span>
-            </div>
-          ))}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-50">
+            <Inbox className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-700">Unsorted</span>
+            <span className="text-sm font-bold text-gray-600">{stats.pending}</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50">
+            <Star className="w-4 h-4 text-emerald-600" />
+            <span className="text-sm font-medium text-gray-700">Good fit</span>
+            <span className="text-sm font-bold text-emerald-600">{stats.shortlisted}</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50">
+            <HelpCircle className="w-4 h-4 text-amber-600" />
+            <span className="text-sm font-medium text-gray-700">Maybe</span>
+            <span className="text-sm font-bold text-amber-600">{stats.maybe}</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50">
+            <XCircle className="w-4 h-4 text-red-500" />
+            <span className="text-sm font-medium text-gray-700">Not a fit</span>
+            <span className="text-sm font-bold text-red-600">{stats.rejected}</span>
+          </div>
         </div>
       </div>
 
@@ -381,13 +389,10 @@ export function AdminOpportunityDetail() {
             className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             <option value="all">All statuses</option>
-            <option value="pending">Pending</option>
-            <option value="reviewed">Reviewed</option>
-            <option value="shortlisted">Shortlisted</option>
-            <option value="interview">Interview</option>
-            <option value="accepted">Accepted</option>
-            <option value="rejected">Rejected</option>
-            <option value="withdrawn">Withdrawn</option>
+            <option value="pending">Unsorted</option>
+            <option value="shortlisted">Good fit</option>
+            <option value="maybe">Maybe</option>
+            <option value="rejected">Not a fit</option>
           </select>
         </div>
         
