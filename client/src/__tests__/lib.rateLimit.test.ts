@@ -8,7 +8,7 @@ vi.mock('@/lib/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }))
 
-import { formatRateLimitError, checkLoginRateLimit } from '@/lib/rateLimit'
+import { formatRateLimitError, checkLoginRateLimit, checkMessageRateLimit } from '@/lib/rateLimit'
 import type { RateLimitResult } from '@/lib/rateLimit'
 import { supabase } from '@/lib/supabase'
 
@@ -92,6 +92,43 @@ describe('checkLoginRateLimit', () => {
     vi.mocked(supabase.rpc).mockRejectedValue(new Error('Network failure'))
 
     const result = await checkLoginRateLimit()
+    expect(result).toBeNull()
+  })
+})
+
+describe('checkMessageRateLimit', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('returns data on successful RPC call', async () => {
+    const mockResult: RateLimitResult = {
+      allowed: true,
+      remaining: 29,
+      reset_at: new Date().toISOString(),
+      limit: 30,
+    }
+    vi.mocked(supabase.rpc).mockResolvedValue({ data: mockResult, error: null } as never)
+
+    const result = await checkMessageRateLimit('user-123')
+    expect(result).toEqual(mockResult)
+    expect(supabase.rpc).toHaveBeenCalledWith('check_message_rate_limit', { p_user_id: 'user-123' })
+  })
+
+  it('returns null on RPC error (fail-open)', async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({
+      data: null,
+      error: { message: 'function not found', code: 'PGRST202' },
+    } as never)
+
+    const result = await checkMessageRateLimit('user-123')
+    expect(result).toBeNull()
+  })
+
+  it('returns null on unexpected exception (fail-open)', async () => {
+    vi.mocked(supabase.rpc).mockRejectedValue(new Error('Network failure'))
+
+    const result = await checkMessageRateLimit('user-123')
     expect(result).toBeNull()
   })
 })

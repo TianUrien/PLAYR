@@ -14,6 +14,7 @@ interface FeedPage {
 interface UseHomeFeedResult {
   items: HomeFeedItem[]
   isLoading: boolean
+  isFetchingNextPage: boolean
   error: string | null
   total: number
   hasMore: boolean
@@ -129,6 +130,7 @@ export function useHomeFeed(): UseHomeFeedResult {
   return {
     items,
     isLoading: query.isLoading,
+    isFetchingNextPage: query.isFetchingNextPage,
     error: errorStr,
     total,
     hasMore: query.hasNextPage ?? false,

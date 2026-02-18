@@ -440,6 +440,7 @@ export default function CompleteProfile() {
         updateData = {
           ...updateData,
           nationality2_country_id: formData.nationality2CountryId,
+          position: formData.position || null,
           gender: normalizeGender(formData.gender),
           date_of_birth: formData.dateOfBirth || null,
         }
@@ -964,7 +965,24 @@ export default function CompleteProfile() {
                     showNationality
                   />
 
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">Additional Details</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">Coaching Details</p>
+
+                  <div>
+                    <label htmlFor="coach-position-select" className="block text-sm font-medium text-gray-700 mb-2">
+                      Coaching Role
+                    </label>
+                    <select
+                      id="coach-position-select"
+                      value={formData.position}
+                      onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
+                    >
+                      <option value="">Select your role (optional)</option>
+                      <option value="Head Coach">Head Coach</option>
+                      <option value="Assistant Coach">Assistant Coach</option>
+                      <option value="Youth Coach">Youth Coach</option>
+                    </select>
+                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="coach-gender">

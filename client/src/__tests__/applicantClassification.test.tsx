@@ -14,6 +14,7 @@ import { vi } from 'vitest'
 import { resolve } from 'path'
 import { readFileSync } from 'fs'
 import ApplicantCard from '@/components/ApplicantCard'
+import type { ApplicantReferenceInfo } from '@/components/ApplicantCard'
 import type { OpportunityApplicationWithApplicant } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
 
@@ -56,6 +57,7 @@ const renderCard = (
   overrides?: Partial<OpportunityApplicationWithApplicant>,
   onStatusChange?: (id: string, status: ApplicationStatus) => void,
   isUpdating?: boolean,
+  referenceInfo?: ApplicantReferenceInfo | null,
 ) => {
   const app = { ...baseApplication, ...overrides }
   return render(
@@ -64,6 +66,7 @@ const renderCard = (
         application={app}
         onStatusChange={onStatusChange}
         isUpdating={isUpdating}
+        referenceInfo={referenceInfo}
       />
     </MemoryRouter>,
   )
@@ -184,6 +187,56 @@ describe('Opportunities source — delete draft menu', () => {
     expect(DELETE_MODAL_SOURCE).toContain('Delete Draft')
     expect(DELETE_MODAL_SOURCE).toContain('Delete Opportunity Permanently')
     expect(DELETE_MODAL_SOURCE).toContain('has not been published and has no applicants')
+  })
+})
+
+describe('ApplicantCard — reference trust signal', () => {
+  it('shows reference count when referenceInfo is provided', () => {
+    renderCard({ status: 'pending' }, vi.fn(), false, {
+      count: 3,
+      topEndorsement: null,
+    })
+    expect(screen.getByText('3 references')).toBeInTheDocument()
+  })
+
+  it('shows singular "reference" for count of 1', () => {
+    renderCard({ status: 'pending' }, vi.fn(), false, {
+      count: 1,
+      topEndorsement: null,
+    })
+    expect(screen.getByText('1 reference')).toBeInTheDocument()
+  })
+
+  it('shows top endorsement text and endorser name when available', () => {
+    renderCard({ status: 'pending' }, vi.fn(), false, {
+      count: 2,
+      topEndorsement: {
+        text: 'Excellent midfielder with great vision',
+        endorserName: 'Coach Williams',
+        endorserRole: 'coach',
+        relationshipType: 'Head Coach',
+      },
+    })
+    expect(screen.getByText(/Excellent midfielder/)).toBeInTheDocument()
+    expect(screen.getByText(/Coach Williams/)).toBeInTheDocument()
+  })
+
+  it('does not show reference section when count is 0', () => {
+    renderCard({ status: 'pending' }, vi.fn(), false, {
+      count: 0,
+      topEndorsement: null,
+    })
+    expect(screen.queryByText(/reference/i)).not.toBeInTheDocument()
+  })
+
+  it('does not show reference section when referenceInfo is null', () => {
+    renderCard({ status: 'pending' }, vi.fn(), false, null)
+    expect(screen.queryByText(/reference/i)).not.toBeInTheDocument()
+  })
+
+  it('does not show reference section when referenceInfo is undefined', () => {
+    renderCard({ status: 'pending' }, vi.fn(), false)
+    expect(screen.queryByText(/reference/i)).not.toBeInTheDocument()
   })
 })
 

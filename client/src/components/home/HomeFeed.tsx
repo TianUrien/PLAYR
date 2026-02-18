@@ -1,4 +1,4 @@
-import { Component, useCallback } from 'react'
+import { Component, useEffect, useRef } from 'react'
 import type { ReactNode, ErrorInfo } from 'react'
 import { Loader2, Rss } from 'lucide-react'
 import * as Sentry from '@sentry/react'
@@ -38,11 +38,23 @@ class FeedItemErrorBoundary extends Component<
 }
 
 export function HomeFeed() {
-  const { items, isLoading, error, refetch, hasMore, loadMore, updateItemLike, removeItem, prependItem } = useHomeFeed()
+  const { items, isLoading, isFetchingNextPage, error, refetch, hasMore, loadMore, updateItemLike, removeItem, prependItem } = useHomeFeed()
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
-  const handleLoadMore = useCallback(() => {
-    void loadMore()
-  }, [loadMore])
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !isFetchingNextPage) {
+          void loadMore()
+        }
+      },
+      { rootMargin: '200px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore, isFetchingNextPage, loadMore])
 
   return (
     <div>
@@ -102,20 +114,11 @@ export function HomeFeed() {
         </div>
       )}
 
-      {/* Load more */}
-      {hasMore && !isLoading && (
-        <div className="text-center pt-6">
-          <button
-            onClick={handleLoadMore}
-            className="px-6 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
-          >
-            Load more
-          </button>
-        </div>
-      )}
+      {/* Infinite scroll sentinel */}
+      {hasMore && <div ref={sentinelRef} />}
 
       {/* Pagination loading */}
-      {isLoading && items.length > 0 && (
+      {isFetchingNextPage && (
         <div className="flex items-center justify-center py-6">
           <Loader2 className="w-6 h-6 text-[#8026FA] animate-spin" />
         </div>

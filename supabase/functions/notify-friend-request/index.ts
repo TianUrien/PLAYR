@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getServiceClient } from '../_shared/supabase-client.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import {
   FriendRequestPayload,
@@ -44,21 +44,11 @@ Deno.serve(async (req: Request) => {
     logger.info('=== Received webhook request ===')
 
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
     if (!resendApiKey) {
       logger.error('RESEND_API_KEY not configured')
       return new Response(
         JSON.stringify({ error: 'RESEND_API_KEY not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      logger.error('Supabase credentials not configured')
-      return new Response(
-        JSON.stringify({ error: 'Supabase credentials not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -112,7 +102,7 @@ Deno.serve(async (req: Request) => {
       recipientId,
     })
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const supabase = getServiceClient()
 
     // Fetch requester profile
     const { data: requester, error: requesterError } = await supabase

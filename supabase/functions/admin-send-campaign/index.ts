@@ -7,6 +7,7 @@ declare const Deno: {
 
 // @ts-expect-error Deno URL imports are resolved at runtime in Supabase Edge Functions.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getServiceClient } from '../_shared/supabase-client.ts'
 import { getCorsHeaders } from '../_shared/cors.ts'
 import { renderTemplate } from '../_shared/email-renderer.ts'
 import { sendTrackedBatch, createLogger } from '../_shared/email-sender.ts'
@@ -49,7 +50,6 @@ Deno.serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
@@ -84,7 +84,7 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    const serviceClient = createClient(supabaseUrl, supabaseServiceKey)
+    const serviceClient = getServiceClient()
 
     // ========================================================================
     // Fetch campaign — must be 'draft'

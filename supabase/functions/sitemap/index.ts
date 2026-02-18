@@ -1,5 +1,5 @@
 // deno-lint-ignore-file no-explicit-any
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getServiceClient } from '../_shared/supabase-client.ts'
 
 /**
  * ============================================================================
@@ -67,15 +67,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing Supabase environment variables')
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey)
+    // Service role client (shared singleton)
+    const supabase = getServiceClient()
 
     // Fetch all open, public opportunities
     // Using the same criteria as public_opportunities view:

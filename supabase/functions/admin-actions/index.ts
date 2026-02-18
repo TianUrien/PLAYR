@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getServiceClient } from '../_shared/supabase-client.ts'
 import { getCorsHeaders } from '../_shared/cors.ts'
 
 // UUID format validation
@@ -61,18 +62,13 @@ Deno.serve(async (req) => {
     const token = authHeader.slice(7)
 
     // Create Supabase clients
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-    // User client to verify the caller
-    const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+    // User client to verify the caller (per-request — needs caller's auth token)
+    const userClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: `Bearer ${token}` } },
     })
 
-    // Service role client for admin operations
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
+    // Service role client for admin operations (shared singleton)
+    const adminClient = getServiceClient()
 
     // Verify the caller is authenticated
     const { data: { user }, error: authError } = await userClient.auth.getUser(token)
