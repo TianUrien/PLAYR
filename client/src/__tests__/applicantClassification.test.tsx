@@ -190,7 +190,7 @@ describe('Opportunities source — delete draft menu', () => {
 describe('ApplicantsList source — tier grouping', () => {
   it('defines all 4 tier groups in correct order', () => {
     const unsortedIdx = APPLICANTS_LIST_SOURCE.indexOf("label: 'Unsorted'")
-    const shortlistedIdx = APPLICANTS_LIST_SOURCE.indexOf("label: 'Shortlisted'")
+    const shortlistedIdx = APPLICANTS_LIST_SOURCE.indexOf("label: 'Good fit'")
     const maybeIdx = APPLICANTS_LIST_SOURCE.indexOf("label: 'Maybe'")
     const notAFitIdx = APPLICANTS_LIST_SOURCE.indexOf("label: 'Not a fit'")
 
