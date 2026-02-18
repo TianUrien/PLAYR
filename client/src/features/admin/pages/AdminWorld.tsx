@@ -25,6 +25,7 @@ import {
   MapPin,
   Building2,
   AlertTriangle,
+  Shield,
 } from 'lucide-react'
 import { StatCard } from '../components/StatCard'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -494,9 +495,18 @@ export default function AdminWorld() {
                     clubs.map((club) => (
                       <tr key={club.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3">
-                          <div>
-                            <p className="font-medium text-gray-900">{club.club_name}</p>
-                            <p className="text-xs text-gray-500">ID: {club.club_id}</p>
+                          <div className="flex items-center gap-3">
+                            {club.avatar_url ? (
+                              <img src={club.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                <Shield className="w-4 h-4 text-gray-400" />
+                              </div>
+                            )}
+                            <div>
+                              <p className="font-medium text-gray-900">{club.club_name}</p>
+                              <p className="text-xs text-gray-500">ID: {club.club_id}</p>
+                            </div>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">

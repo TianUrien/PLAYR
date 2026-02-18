@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Search, Filter } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useNavigationType } from 'react-router-dom'
 import { Avatar, RoleBadge, MemberCard } from '@/components'
 import { logger } from '@/lib/logger'
 import { ProfileCardSkeleton } from '@/components/Skeleton'
@@ -16,6 +16,8 @@ import { useAuthStore } from '@/lib/auth'
 import { requestCache } from '@/lib/requestCache'
 import { monitor } from '@/lib/monitor'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
+import { usePageState } from '@/hooks/usePageState'
+import { useScrollRestore } from '@/hooks/useScrollRestore'
 
 interface Profile {
   id: string
@@ -56,14 +58,15 @@ interface PeopleListViewProps {
 
 export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
   const navigate = useNavigate()
+  const navigationType = useNavigationType()
   const { profile: currentUserProfile } = useAuthStore()
   const isCurrentUserTestAccount = currentUserProfile?.is_test_account ?? false
 
   const [baseMembers, setBaseMembers] = useState<Profile[]>([])
   const [allMembers, setAllMembers] = useState<Profile[]>([])
   const [displayedMembers, setDisplayedMembers] = useState<Profile[]>([])
-  const [searchQuery, setSearchQuery] = useState('')
-  const [filters, setFilters] = useState<CommunityFilters>({
+  const [searchQuery, setSearchQuery] = usePageState('community-search', '')
+  const [filters, setFilters] = usePageState<CommunityFilters>('community-filters', {
     role: roleFilter || 'all',
     position: [],
     gender: 'all',
@@ -74,10 +77,16 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
   const [showFilters, setShowFilters] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSearching, setIsSearching] = useState(false)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = usePageState('community-page', 1)
   const [hasMore, setHasMore] = useState(true)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const searchContainerRef = useRef<HTMLDivElement>(null)
+
+  // Track whether this is a restored (back/forward) navigation
+  const isRestoredRef = useRef(navigationType === 'POP')
+
+  // Scroll restoration — waits for data to load before restoring position
+  useScrollRestore(!isLoading)
 
   // Responsive page size — reacts to viewport changes
   const isMobile = useMediaQuery('(max-width: 767px)')
@@ -152,7 +161,7 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
   // Sync role filter when roleFilter prop changes
   useEffect(() => {
     setFilters(prev => ({ ...prev, role: roleFilter || 'all' }))
-  }, [roleFilter])
+  }, [roleFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initial load
   useEffect(() => {
@@ -229,7 +238,7 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
         setIsSearching(false)
       }
     }, { query })
-  }, [pageSize, isCurrentUserTestAccount])
+  }, [pageSize, isCurrentUserTestAccount]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Client-side search filtering (instant, for both grid and suggestions)
   const clientFilteredMembers = useMemo(() => {
@@ -296,10 +305,18 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
 
   // Update displayed members when filter changes
   useEffect(() => {
-    setDisplayedMembers(filteredMembers.slice(0, pageSize))
-    setPage(1)
-    setHasMore(filteredMembers.length > pageSize)
-  }, [filteredMembers, pageSize])
+    if (isRestoredRef.current) {
+      // On back navigation, show items up to the restored page
+      const endIndex = page * pageSize
+      setDisplayedMembers(filteredMembers.slice(0, endIndex))
+      setHasMore(filteredMembers.length > endIndex)
+      isRestoredRef.current = false
+    } else {
+      setDisplayedMembers(filteredMembers.slice(0, pageSize))
+      setPage(1)
+      setHasMore(filteredMembers.length > pageSize)
+    }
+  }, [filteredMembers, pageSize]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load more handler
   const handleLoadMore = () => {

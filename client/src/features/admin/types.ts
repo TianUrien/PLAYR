@@ -529,6 +529,7 @@ export interface WorldClub {
   men_league_name?: string | null
   women_league_id: number | null
   women_league_name?: string | null
+  avatar_url?: string | null
   is_claimed: boolean
   claimed_profile_id: string | null
   claimed_profile_name?: string | null
@@ -581,6 +582,7 @@ export interface WorldClubCreatePayload {
   province_id?: number | null
   men_league_id?: number | null
   women_league_id?: number | null
+  avatar_url?: string | null
 }
 
 export interface WorldClubUpdatePayload {
@@ -589,6 +591,7 @@ export interface WorldClubUpdatePayload {
   province_id?: number | null
   men_league_id?: number | null
   women_league_id?: number | null
+  avatar_url?: string | null
   is_claimed?: boolean
   claimed_profile_id?: string | null
 }
