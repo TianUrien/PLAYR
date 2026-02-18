@@ -11,6 +11,7 @@ import { useUnreadStore } from '@/lib/unread'
 import { loadMessageDraft, saveMessageDraft, clearMessageDraft } from '@/lib/messageDrafts'
 import { reportSupabaseError } from '@/lib/sentryHelpers'
 import { checkMessageRateLimit, formatRateLimitError } from '@/lib/rateLimit'
+import { trackDbEvent } from '@/lib/trackDbEvent'
 import type { ChatMessage, Message, Conversation, ChatMessageEvent, MessageDeliveryStatus, MessageMetadata } from '@/types/chat'
 
 const MESSAGES_PAGE_SIZE = 50
@@ -638,6 +639,8 @@ export function useChat({
         },
         { conversationId: conversationIdForMetrics }
       )
+
+      trackDbEvent('message_send', 'conversation', conversationIdForMetrics)
 
       if (onMessageSent && (deliveredMessage || optimisticMessage)) {
         onMessageSent({

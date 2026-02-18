@@ -6,6 +6,8 @@ import { logger } from '../lib/logger'
 import type { Profile } from '../lib/supabase'
 import ClubDashboard from './ClubDashboard'
 import { useAuthStore } from '../lib/auth'
+import { trackDbEvent } from '../lib/trackDbEvent'
+import { trackProfileView } from '../lib/analytics'
 
 type PublicClubProfile = Partial<Profile> &
   Pick<
@@ -133,6 +135,16 @@ export default function PublicClubProfile() {
     fetchProfile()
   }, [username, id, isCurrentUserTestAccount])
 
+  // Track profile view (skip own profile)
+  const isOwnProfile = currentUserProfile?.id === profile?.id
+  useEffect(() => {
+    if (!profile || isOwnProfile) return
+    const ref = new URLSearchParams(window.location.search).get('ref') || 'direct'
+    trackDbEvent('profile_view', 'profile', profile.id, { viewed_role: 'club', source: ref })
+    trackProfileView('club', profile.id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id])
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -164,9 +176,6 @@ export default function PublicClubProfile() {
       </div>
     )
   }
-
-  // Check if the current user is viewing their own profile
-  const isOwnProfile = currentUserProfile?.id === profile.id
 
   return (
     <ClubDashboard

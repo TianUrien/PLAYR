@@ -11,8 +11,8 @@ interface MemberJoinedCardProps {
 export function MemberJoinedCard({ item }: MemberJoinedCardProps) {
   const timeAgo = getTimeAgo(item.created_at, true)
   const profilePath = item.role === 'club'
-    ? `/clubs/id/${item.profile_id}`
-    : `/players/id/${item.profile_id}`
+    ? `/clubs/id/${item.profile_id}?ref=feed`
+    : `/players/id/${item.profile_id}?ref=feed`
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">

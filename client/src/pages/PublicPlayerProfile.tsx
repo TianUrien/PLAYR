@@ -7,6 +7,8 @@ import type { Profile } from '../lib/supabase'
 import PlayerDashboard, { type PlayerProfileShape } from './PlayerDashboard'
 import CoachDashboard from './CoachDashboard'
 import { useAuthStore } from '../lib/auth'
+import { trackDbEvent } from '../lib/trackDbEvent'
+import { trackProfileView } from '../lib/analytics'
 
 type PublicProfileBase = Pick<
   Profile,
@@ -147,6 +149,16 @@ export default function PublicPlayerProfile() {
     fetchProfile()
   }, [username, id, isCurrentUserTestAccount])
 
+  // Track profile view (skip own profile)
+  const isOwnProfile = currentUserProfile?.id === profile?.id
+  useEffect(() => {
+    if (!profile || isOwnProfile) return
+    const ref = new URLSearchParams(window.location.search).get('ref') || 'direct'
+    trackDbEvent('profile_view', 'profile', profile.id, { viewed_role: profile.role, source: ref })
+    trackProfileView(profile.role, profile.id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id])
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -178,10 +190,6 @@ export default function PublicPlayerProfile() {
       </div>
     )
   }
-
-  // Render CoachDashboard for coaches, PlayerDashboard for players
-  // Check if the current user is viewing their own profile
-  const isOwnProfile = currentUserProfile?.id === profile.id
 
   if (profile.role === 'coach') {
     return <CoachDashboard profileData={{ ...profile, email: '', contact_email_public: profile.contact_email_public ?? false }} readOnly={true} isOwnProfile={isOwnProfile} />

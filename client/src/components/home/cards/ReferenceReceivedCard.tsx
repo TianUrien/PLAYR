@@ -9,8 +9,8 @@ interface ReferenceReceivedCardProps {
 }
 
 function getProfilePath(role: string, id: string) {
-  if (role === 'club') return `/clubs/id/${id}`
-  return `/players/id/${id}`
+  if (role === 'club') return `/clubs/id/${id}?ref=feed`
+  return `/players/id/${id}?ref=feed`
 }
 
 export function ReferenceReceivedCard({ item }: ReferenceReceivedCardProps) {

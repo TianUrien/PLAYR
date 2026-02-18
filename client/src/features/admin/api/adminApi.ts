@@ -31,6 +31,7 @@ import type {
   MessagingMetrics,
   FriendshipMetrics,
   ReferenceMetrics,
+  FeatureUsageMetrics,
 } from '../types'
 
 // Helper to call RPC functions that aren't in generated types yet
@@ -1580,5 +1581,20 @@ export async function sendCampaign(campaignId: string): Promise<{
     throw new Error(result.error || 'Failed to send campaign')
   }
   return { sent: result.sent, failed: result.failed, duration_ms: result.duration_ms }
+}
+
+// ============================================================================
+// FEATURE USAGE
+// ============================================================================
+
+export async function getFeatureUsageMetrics(
+  days?: number,
+): Promise<FeatureUsageMetrics> {
+  const { data, error } = await adminRpc('admin_get_feature_usage_metrics', {
+    p_days: days ?? 30,
+    p_exclude_test: true,
+  })
+  if (error) throw new Error(`Failed to get feature usage metrics: ${error.message}`)
+  return data as FeatureUsageMetrics
 }
 
