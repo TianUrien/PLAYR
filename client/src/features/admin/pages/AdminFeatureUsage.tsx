@@ -18,7 +18,7 @@ import { StatCard } from '../components/StatCard'
 import { DataTable } from '../components/DataTable'
 import type { Column } from '../components/DataTable'
 import { getFeatureUsageMetrics } from '../api/adminApi'
-import type { FeatureUsageMetrics, MostViewedProfile, EventSummaryItem, ViewTrendItem } from '../types'
+import type { FeatureUsageMetrics, MostViewedProfile, EventSummaryItem } from '../types'
 import { logger } from '@/lib/logger'
 import { formatAdminDate } from '../utils/formatDate'
 
