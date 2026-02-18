@@ -2906,12 +2906,9 @@ export type Database = {
     Enums: {
       application_status:
         | "pending"
-        | "reviewed"
         | "shortlisted"
-        | "interview"
-        | "accepted"
+        | "maybe"
         | "rejected"
-        | "withdrawn"
       comment_rating: "positive" | "neutral" | "negative"
       comment_status: "visible" | "hidden" | "reported" | "deleted"
       friendship_status:
@@ -3092,12 +3089,9 @@ export const Constants = {
     Enums: {
       application_status: [
         "pending",
-        "reviewed",
         "shortlisted",
-        "interview",
-        "accepted",
+        "maybe",
         "rejected",
-        "withdrawn",
       ],
       comment_rating: ["positive", "neutral", "negative"],
       comment_status: ["visible", "hidden", "reported", "deleted"],

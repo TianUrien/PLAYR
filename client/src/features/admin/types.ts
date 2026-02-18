@@ -271,14 +271,11 @@ export interface VacancyApplicant {
   total_count: number
 }
 
-export type ApplicationStatus = 
+export type ApplicationStatus =
   | 'pending'
-  | 'reviewed'
   | 'shortlisted'
-  | 'interview'
-  | 'accepted'
+  | 'maybe'
   | 'rejected'
-  | 'withdrawn'
 
 export interface VacancyDetail {
   vacancy: {
@@ -316,12 +313,9 @@ export interface VacancyDetail {
   stats: {
     total_applications: number
     pending: number
-    reviewed: number
     shortlisted: number
-    interview: number
-    accepted: number
+    maybe: number
     rejected: number
-    withdrawn: number
     first_application_at: string | null
     last_application_at: string | null
     avg_apps_per_day: number | null
@@ -439,12 +433,9 @@ export interface ExtendedDashboardStats {
   // Application status breakdown
   application_status_breakdown: {
     pending: number
-    reviewed: number
     shortlisted: number
-    interview: number
-    accepted: number
+    maybe: number
     rejected: number
-    withdrawn: number
   }
   
   generated_at: string

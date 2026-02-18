@@ -175,7 +175,7 @@ export default function ApplicantCard({ application, onStatusChange, isUpdating 
               </button>
 
               {menuOpen && (
-                <div className="absolute right-0 z-20 mt-1 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                <div className="absolute left-0 z-20 mt-1 w-40 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 bg-white py-1 shadow-lg sm:left-auto sm:right-0">
                   {TIER_OPTIONS.map((opt) => {
                     const Icon = opt.icon
                     const isActive = application.status === opt.tier
