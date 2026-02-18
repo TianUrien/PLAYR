@@ -23,6 +23,10 @@ WHERE status::text IN ('reviewed', 'interview', 'accepted', 'withdrawn');
 -- Step 2: Drop the function that references application_status in its signature
 DROP FUNCTION IF EXISTS public.admin_get_vacancy_applicants(UUID, public.application_status, INTEGER, INTEGER);
 
+-- Step 2b: Drop RLS policy that references the status column with 'withdrawn' value
+-- (withdrawn is being removed; this policy is no longer valid)
+DROP POLICY IF EXISTS "Applicants can withdraw applications" ON public.opportunity_applications;
+
 -- Step 3: Alter column to TEXT so we can drop the enum
 ALTER TABLE public.opportunity_applications
   ALTER COLUMN status SET DEFAULT 'pending',
@@ -39,9 +43,11 @@ CREATE TYPE public.application_status AS ENUM (
   'rejected'
 );
 
--- Step 6: Alter column back to the new enum
+-- Step 6: Drop the text default, alter column back to enum, then re-set default
+ALTER TABLE public.opportunity_applications ALTER COLUMN status DROP DEFAULT;
 ALTER TABLE public.opportunity_applications
-  ALTER COLUMN status TYPE public.application_status USING status::public.application_status,
+  ALTER COLUMN status TYPE public.application_status USING status::public.application_status;
+ALTER TABLE public.opportunity_applications
   ALTER COLUMN status SET DEFAULT 'pending'::public.application_status;
 
 -- =============================================================================

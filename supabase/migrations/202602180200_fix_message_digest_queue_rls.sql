@@ -6,6 +6,8 @@
 
 ALTER TABLE public.message_digest_queue ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Deny all user access" ON public.message_digest_queue;
+
 CREATE POLICY "Deny all user access"
   ON public.message_digest_queue
   FOR ALL
