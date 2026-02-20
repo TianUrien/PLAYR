@@ -140,7 +140,7 @@ Deno.serve(async (req: Request) => {
     // Fetch recipient profile
     const { data: recipient, error: recipientError } = await supabase
       .from('profiles')
-      .select('id, email, full_name, is_test_account, notify_friends')
+      .select('id, email, full_name, is_test_account, onboarding_completed, notify_friends')
       .eq('id', recipientId)
       .single()
 
@@ -167,6 +167,23 @@ Deno.serve(async (req: Request) => {
       })
       return new Response(
         JSON.stringify({ message: 'Ignored - recipient is a test account' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Skip recipients who haven't completed onboarding or have no email
+    if (!recipient.onboarding_completed) {
+      logger.info('Ignoring - recipient has not completed onboarding', { recipientId: recipient.id })
+      return new Response(
+        JSON.stringify({ message: 'Ignored - recipient has not completed onboarding' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!recipient.email) {
+      logger.info('Ignoring - recipient has no email address', { recipientId: recipient.id })
+      return new Response(
+        JSON.stringify({ message: 'Ignored - recipient has no email address' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

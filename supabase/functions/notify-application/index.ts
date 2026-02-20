@@ -158,7 +158,7 @@ Deno.serve(async (req: Request) => {
     // Fetch the club profile (recipient)
     const { data: club, error: clubError } = await supabase
       .from('profiles')
-      .select('id, email, full_name, is_test_account, notify_applications')
+      .select('id, email, full_name, is_test_account, onboarding_completed, notify_applications')
       .eq('id', opportunity.club_id)
       .single()
 
@@ -188,6 +188,25 @@ Deno.serve(async (req: Request) => {
       })
       return new Response(
         JSON.stringify({ message: 'Ignored - club is a test account' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ==========================================================================
+    // SAFETY CHECK: Skip clubs that haven't completed onboarding or have no email
+    // ==========================================================================
+    if (!club.onboarding_completed) {
+      logger.info('Ignoring - club has not completed onboarding', { clubId: club.id })
+      return new Response(
+        JSON.stringify({ message: 'Ignored - club has not completed onboarding' }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    if (!club.email) {
+      logger.info('Ignoring - club has no email address', { clubId: club.id })
+      return new Response(
+        JSON.stringify({ message: 'Ignored - club has no email address' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
