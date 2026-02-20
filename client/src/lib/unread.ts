@@ -5,6 +5,8 @@ import { requestCache, generateCacheKey } from './requestCache'
 import { monitor } from './monitor'
 import { logger } from './logger'
 
+let visibilityListenerBound = false
+
 type RefreshOptions = {
   bypassCache?: boolean
 }
@@ -140,5 +142,15 @@ export const useUnreadStore = create<UnreadState>((set, get) => ({
       .subscribe()
 
     set({ channel, initializing: false })
+
+    // Bind visibility listener once to refresh unread count when tab regains focus
+    if (typeof window !== 'undefined' && !visibilityListenerBound) {
+      window.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'hidden' && get().userId) {
+          void get().refresh({ bypassCache: true })
+        }
+      })
+      visibilityListenerBound = true
+    }
   }
 }))
