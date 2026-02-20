@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import type { InfiniteData } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -23,10 +23,14 @@ interface UseHomeFeedResult {
   updateItemLike: (postId: string, liked: boolean, likeCount: number) => void
   removeItem: (feedItemId: string) => void
   prependItem: (item: HomeFeedItem) => void
+  newCount: number
+  showNewItems: () => Promise<void>
+  dismissNewItems: () => void
 }
 
 const DEFAULT_LIMIT = 20
 const QUERY_KEY = ['home-feed'] as const
+const NEW_ITEMS_CHECK_COOLDOWN = 5_000 // minimum 5s between checks
 
 export function useHomeFeed(): UseHomeFeedResult {
   const queryClient = useQueryClient()
@@ -65,7 +69,55 @@ export function useHomeFeed(): UseHomeFeedResult {
   const items = pages.flatMap(p => p.items)
   const total = pages[pages.length - 1]?.total ?? 0
 
+  // --- New items detection ---
+  const [newCount, setNewCount] = useState(0)
+  const lastCheckRef = useRef(0)
+
+  const latestTimestamp = useMemo(() => {
+    if (items.length === 0) return null
+    return items[0].created_at // items are sorted newest-first from the RPC
+  }, [items])
+
+  const checkForNewItems = useCallback(async () => {
+    if (!latestTimestamp) return
+    const now = Date.now()
+    if (now - lastCheckRef.current < NEW_ITEMS_CHECK_COOLDOWN) return
+    lastCheckRef.current = now
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.rpc as any)('get_home_feed_new_count', {
+        p_since: latestTimestamp,
+      })
+      if (!error && typeof data === 'number' && data > 0) {
+        setNewCount(data)
+      }
+    } catch {
+      // Silent fail — best-effort enhancement
+    }
+  }, [latestTimestamp])
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void checkForNewItems()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [checkForNewItems])
+
+  const showNewItems = useCallback(async () => {
+    setNewCount(0)
+    await query.refetch()
+  }, [query])
+
+  const dismissNewItems = useCallback(() => {
+    setNewCount(0)
+  }, [])
+
   const refetch = useCallback(async () => {
+    setNewCount(0)
     await query.refetch()
   }, [query])
 
@@ -107,6 +159,7 @@ export function useHomeFeed(): UseHomeFeedResult {
   }, [queryClient])
 
   const prependItem = useCallback((item: HomeFeedItem) => {
+    setNewCount(0)
     queryClient.setQueryData<InfiniteData<FeedPage>>(QUERY_KEY, (old) => {
       if (!old || old.pages.length === 0) return old
       const [firstPage, ...rest] = old.pages
@@ -139,5 +192,8 @@ export function useHomeFeed(): UseHomeFeedResult {
     updateItemLike,
     removeItem,
     prependItem,
+    newCount,
+    showNewItems,
+    dismissNewItems,
   }
 }

@@ -1,6 +1,6 @@
-import { Component, useEffect, useRef } from 'react'
+import { Component, useCallback, useEffect, useRef } from 'react'
 import type { ReactNode, ErrorInfo } from 'react'
-import { Loader2, Rss } from 'lucide-react'
+import { ArrowUp, Loader2, Rss } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { useHomeFeed } from '@/hooks/useHomeFeed'
 import { HomeFeedItemCard } from './HomeFeedItemCard'
@@ -38,8 +38,14 @@ class FeedItemErrorBoundary extends Component<
 }
 
 export function HomeFeed() {
-  const { items, isLoading, isFetchingNextPage, error, refetch, hasMore, loadMore, updateItemLike, removeItem, prependItem } = useHomeFeed()
+  const { items, isLoading, isFetchingNextPage, error, refetch, hasMore, loadMore, updateItemLike, removeItem, prependItem, newCount, showNewItems } = useHomeFeed()
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const feedTopRef = useRef<HTMLDivElement>(null)
+
+  const handleShowNewItems = useCallback(async () => {
+    await showNewItems()
+    feedTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [showNewItems])
 
   useEffect(() => {
     const el = sentinelRef.current
@@ -62,6 +68,25 @@ export function HomeFeed() {
       <div className="mb-8">
         <PostComposer onPostCreated={prependItem} />
       </div>
+
+      {/* Scroll anchor for new posts */}
+      <div ref={feedTopRef} />
+
+      {/* New posts banner */}
+      {newCount > 0 && (
+        <div className="flex justify-center mb-4">
+          <button
+            type="button"
+            onClick={() => void handleShowNewItems()}
+            className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#8026FA] text-white text-sm font-medium rounded-full shadow-lg hover:bg-[#6B1FD4] active:scale-95 transition-all duration-200 animate-slideDown"
+          >
+            <ArrowUp className="w-4 h-4" />
+            {newCount === 1
+              ? '1 new post'
+              : `${newCount > 99 ? '99+' : newCount} new posts`}
+          </button>
+        </div>
+      )}
 
       {/* Loading state */}
       {isLoading && items.length === 0 && (
