@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { getServiceClient } from '../_shared/supabase-client.ts'
+import { captureException } from '../_shared/sentry.ts'
 
 /**
  * ============================================================================
@@ -149,6 +150,7 @@ ${urlEntries.join('\n')}
 
   } catch (error) {
     console.error('Sitemap generation error:', error)
+    captureException(error, { functionName: 'sitemap' })
     
     // Return a minimal valid sitemap on error
     const fallbackSitemap = `<?xml version="1.0" encoding="UTF-8"?>

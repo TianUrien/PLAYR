@@ -2,6 +2,7 @@
 import { type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getServiceClient } from '../_shared/supabase-client.ts'
 import { getCorsHeaders } from '../_shared/cors.ts'
+import { captureException } from '../_shared/sentry.ts'
 
 // Rate limiting for delete-account endpoint (database-backed, survives cold starts)
 const MAX_DELETE_ATTEMPTS = 3
@@ -400,6 +401,7 @@ Deno.serve(async (req) => {
     })
   } catch (error: any) {
     logger.error('Delete-account error', { error })
+    captureException(error, { functionName: 'delete-account', correlationId })
 
     // Sanitize error messages for client - don't leak internal details
     const sanitizedError = sanitizeErrorMessage(error?.message)

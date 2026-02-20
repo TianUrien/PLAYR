@@ -1,4 +1,5 @@
 import { getServiceClient } from '../_shared/supabase-client.ts'
+import { captureException } from '../_shared/sentry.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 
 Deno.serve(async (req) => {
@@ -38,6 +39,7 @@ Deno.serve(async (req) => {
       }
     )
   } catch (err) {
+    captureException(err, { functionName: 'health' })
     return new Response(
       JSON.stringify({
         status: 'unhealthy',

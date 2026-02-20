@@ -6,6 +6,7 @@ declare const Deno: {
 }
 
 import { getServiceClient } from '../_shared/supabase-client.ts'
+import { captureException } from '../_shared/sentry.ts'
 
 /**
  * Resend Webhook Handler
@@ -241,6 +242,7 @@ Deno.serve(async (req: Request) => {
     log('error', 'Webhook handler error', {
       error: error instanceof Error ? error.message : 'Unknown',
     })
+    captureException(error, { functionName: 'resend-webhook', correlationId })
     // Always return 200 to prevent Resend from retrying
     return new Response('OK', { status: 200 })
   }

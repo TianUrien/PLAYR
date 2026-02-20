@@ -41,10 +41,15 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(6px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        slideDown: {
+          '0%': { opacity: '0', transform: 'translateY(-12px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
         shimmer: 'shimmer 2s ease-in-out infinite',
         fadeSlideIn: 'fadeSlideIn 400ms ease-out forwards',
+        slideDown: 'slideDown 0.3s ease-out',
       },
     },
   },

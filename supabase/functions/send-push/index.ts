@@ -2,6 +2,7 @@
 import webpush from 'npm:web-push@3.6.7'
 import { getServiceClient } from '../_shared/supabase-client.ts'
 import { corsHeaders } from '../_shared/cors.ts'
+import { captureException } from '../_shared/sentry.ts'
 import { buildPushPayload } from './push-payload.ts'
 
 /**
@@ -157,6 +158,7 @@ Deno.serve(async (req: Request) => {
     )
   } catch (err: any) {
     console.error('[send-push] Error:', err?.message || err)
+    captureException(err, { functionName: 'send-push' })
     return new Response(
       JSON.stringify({ error: err?.message || 'Internal error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
