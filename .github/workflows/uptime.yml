@@ -19,6 +19,7 @@ jobs:
         run: |
           HTTP_STATUS=$(curl -s -o /tmp/health-response.json -w "%{http_code}" \
             --max-time 30 \
+            -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0ZXJ0Z2Z0dWpuZWJ1YnhncWl0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjMwMzEwNTUsImV4cCI6MjA3ODYwNzA1NX0.hmJLa5nkS9EM3LIRLrrDhsnbZqqoL4RCsve84Qtk8Hw" \
             "https://xtertgftujnebubxgqit.supabase.co/functions/v1/health")
 
           echo "status=$HTTP_STATUS" >> $GITHUB_OUTPUT
