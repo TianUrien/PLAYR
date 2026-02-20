@@ -17,7 +17,7 @@ import { getServiceClient } from '../_shared/supabase-client.ts'
  * contains the signing secret from the Resend dashboard.
  *
  * This function:
- *   1. Verifies the webhook signature (if secret configured)
+ *   1. Verifies the webhook signature (mandatory)
  *   2. Looks up the email_sends row by resend_email_id
  *   3. Updates the status with progression logic (never regresses)
  *   4. Inserts a raw event into email_events
@@ -71,53 +71,54 @@ Deno.serve(async (req: Request) => {
     let payload: any
 
     // ========================================================================
-    // Verify webhook signature (if secret is configured)
+    // Verify webhook signature (mandatory)
     // ========================================================================
     const webhookSecret = Deno.env.get('RESEND_WEBHOOK_SECRET')
-    if (webhookSecret) {
-      const svixId = req.headers.get('svix-id')
-      const svixTimestamp = req.headers.get('svix-timestamp')
-      const svixSignature = req.headers.get('svix-signature')
-
-      if (!svixId || !svixTimestamp || !svixSignature) {
-        log('warn', 'Missing svix headers, rejecting')
-        return new Response('Missing signature headers', { status: 401 })
-      }
-
-      // Verify timestamp is within 5 minutes
-      const timestampSec = parseInt(svixTimestamp, 10)
-      const nowSec = Math.floor(Date.now() / 1000)
-      if (Math.abs(nowSec - timestampSec) > 300) {
-        log('warn', 'Webhook timestamp too old', { age: nowSec - timestampSec })
-        return new Response('Timestamp too old', { status: 401 })
-      }
-
-      // Verify signature using HMAC-SHA256
-      const signedContent = `${svixId}.${svixTimestamp}.${rawBody}`
-      const secretBytes = base64Decode(webhookSecret.replace('whsec_', ''))
-      const key = await crypto.subtle.importKey(
-        'raw',
-        secretBytes,
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign']
-      )
-      const signatureBytes = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signedContent))
-      const expectedSignature = `v1,${base64Encode(new Uint8Array(signatureBytes))}`
-
-      // Svix can send multiple signatures separated by spaces
-      const signatures = svixSignature.split(' ')
-      const isValid = signatures.some(sig => sig === expectedSignature)
-
-      if (!isValid) {
-        log('warn', 'Invalid webhook signature')
-        return new Response('Invalid signature', { status: 401 })
-      }
-
-      log('info', 'Webhook signature verified')
-    } else {
-      log('info', 'No RESEND_WEBHOOK_SECRET configured, skipping verification')
+    if (!webhookSecret) {
+      log('error', 'RESEND_WEBHOOK_SECRET not configured — refusing to process unverified webhooks')
+      return new Response('Server misconfiguration', { status: 500 })
     }
+
+    const svixId = req.headers.get('svix-id')
+    const svixTimestamp = req.headers.get('svix-timestamp')
+    const svixSignature = req.headers.get('svix-signature')
+
+    if (!svixId || !svixTimestamp || !svixSignature) {
+      log('warn', 'Missing svix headers, rejecting')
+      return new Response('Missing signature headers', { status: 401 })
+    }
+
+    // Verify timestamp is within 5 minutes
+    const timestampSec = parseInt(svixTimestamp, 10)
+    const nowSec = Math.floor(Date.now() / 1000)
+    if (Math.abs(nowSec - timestampSec) > 300) {
+      log('warn', 'Webhook timestamp too old', { age: nowSec - timestampSec })
+      return new Response('Timestamp too old', { status: 401 })
+    }
+
+    // Verify signature using HMAC-SHA256
+    const signedContent = `${svixId}.${svixTimestamp}.${rawBody}`
+    const secretBytes = base64Decode(webhookSecret.replace('whsec_', ''))
+    const key = await crypto.subtle.importKey(
+      'raw',
+      secretBytes,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    )
+    const signatureBytes = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signedContent))
+    const expectedSignature = `v1,${base64Encode(new Uint8Array(signatureBytes))}`
+
+    // Svix can send multiple signatures separated by spaces
+    const signatures = svixSignature.split(' ')
+    const isValid = signatures.some(sig => sig === expectedSignature)
+
+    if (!isValid) {
+      log('warn', 'Invalid webhook signature')
+      return new Response('Invalid signature', { status: 401 })
+    }
+
+    log('info', 'Webhook signature verified')
 
     payload = JSON.parse(rawBody)
 

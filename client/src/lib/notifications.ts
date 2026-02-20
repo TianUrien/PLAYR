@@ -18,6 +18,7 @@ const HEARTBEAT_INTERVAL_MS = 60_000
 const CHANNEL_RECONNECT_BASE_DELAY_MS = 2000
 const CHANNEL_RECONNECT_MAX_DELAY_MS = 30_000
 let lifecycleListenersBound = false
+let realtimeVerifyTimeoutId: ReturnType<typeof setTimeout> | undefined
 
 type ProfileNotificationRow = Tables<'profile_notifications'>
 
@@ -295,6 +296,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
 
     const handleVisibilityChange = () => {
       if (!isPageHidden()) {
+        // Force refresh on tab focus to catch any events missed while hidden
+        void get().refresh({ bypassCache: true })
         performHeartbeat()
       }
     }
@@ -326,6 +329,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
     const { channel } = get()
     clearHeartbeat()
     clearReconnectTimeout()
+    clearTimeout(realtimeVerifyTimeoutId)
+    realtimeVerifyTimeoutId = undefined
     if (channel) {
       await supabase.removeChannel(channel)
     }
@@ -361,6 +366,13 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
           set((state) => ({
             ...upsertNotification(normalized, state),
           }))
+
+          // Debounced verification: re-fetch from server 3s after last realtime event
+          // to catch malformed payloads or missed events. Multiple rapid events batch into one fetch.
+          clearTimeout(realtimeVerifyTimeoutId)
+          realtimeVerifyTimeoutId = setTimeout(() => {
+            void get().refresh({ bypassCache: true })
+          }, 3000)
         }
       )
       .subscribe((status) => {
