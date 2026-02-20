@@ -67,7 +67,7 @@ interface RecipientProfile {
   email: string
   full_name: string | null
   role: string
-  nationality: string | null
+  countries: { code: string; name: string } | null
   is_test_account: boolean
   notify_opportunities: boolean
 }
@@ -107,7 +107,7 @@ async function fetchEligibleRecipients(
   while (hasMore) {
     const { data: profiles, error } = await supabase
       .from('profiles')
-      .select('id, email, full_name, role, nationality, is_test_account, notify_opportunities')
+      .select('id, email, full_name, role, countries!profiles_nationality_country_id_fkey(code, name), is_test_account, notify_opportunities')
       .eq('role', targetRole)
       .eq('is_test_account', false)
       .eq('onboarding_completed', true)
@@ -133,7 +133,7 @@ async function fetchEligibleRecipients(
         recipientId: p.id,
         recipientName: p.full_name || undefined,
         recipientRole: p.role,
-        recipientCountry: p.nationality || undefined,
+        recipientCountry: p.countries?.name || undefined,
       }))
 
     eligible.push(...batch)

@@ -1,6 +1,6 @@
-# Vacancy Notification System
+# Notification System
 
-This directory contains the Edge Functions for vacancy email notifications on PLAYR.
+This directory contains the Edge Functions for email notifications on PLAYR.
 
 ## Architecture Overview
 
@@ -179,3 +179,68 @@ The system ensures TEST and REAL modes **never overlap**:
 1. Check Resend dashboard for delivery status
 2. Verify `RESEND_API_KEY` is set correctly
 3. Check spam folder
+
+---
+
+## Onboarding Reminder System
+
+### Architecture
+
+Automated 3-touch email cadence for users who signed up but never completed onboarding.
+
+```
+pg_cron (daily 10:00 UTC)
+  → enqueue_onboarding_reminders()
+    → INSERT INTO onboarding_reminder_queue
+      → Database webhook on INSERT
+        → notify-onboarding-reminder edge function
+          → renderTemplate() + sendTrackedEmail() → Resend
+```
+
+### Cadence
+
+| Reminder | Delay | Subject |
+|----------|-------|---------|
+| 1 | 24 hours after signup | "Complete your PLAYR profile and start connecting" |
+| 2 | 72 hours after signup | "Your PLAYR profile is almost ready" |
+| 3 | 7 days after signup | "Last chance to complete your PLAYR profile" |
+
+Each reminder only sends after the previous one has been processed. This prevents sending all 3 at once for users who signed up long ago.
+
+### Safety Guarantees
+
+- Skips test accounts (`is_test_account = false`)
+- Re-checks `onboarding_completed` at send time (user may have completed since enqueue)
+- Skips recipients with no email
+- UNIQUE constraint on `(recipient_id, reminder_number)` prevents duplicate reminders
+- Marks queue `processed_at` on ALL exit paths (success, skip, or error)
+
+### Webhook Configuration
+
+#### Webhook: Onboarding Reminder
+- **Name:** `notify-onboarding-reminder`
+- **Table:** `onboarding_reminder_queue`
+- **Events:** INSERT
+- **URL:** `https://xtertgftujnebubxgqit.supabase.co/functions/v1/notify-onboarding-reminder`
+
+### Deployment
+
+```bash
+supabase functions deploy notify-onboarding-reminder
+```
+
+### Verification
+
+```sql
+-- Check cron job is scheduled
+SELECT * FROM cron.job WHERE jobname = 'onboarding_reminder_emails';
+
+-- Manually trigger enqueue (for testing)
+SELECT public.enqueue_onboarding_reminders();
+
+-- Check queue state
+SELECT * FROM onboarding_reminder_queue ORDER BY created_at DESC;
+
+-- Check sent emails
+SELECT * FROM email_sends WHERE template_key = 'onboarding_reminder' ORDER BY sent_at DESC;
+```
