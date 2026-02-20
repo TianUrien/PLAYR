@@ -2,7 +2,8 @@
 const ALLOWED_ORIGINS = [
   'https://www.oplayr.com',
   'https://oplayr.com',
-  'https://playr-client.vercel.app',
+  'https://playr-flax.vercel.app',
+  'https://playr-staging.vercel.app',
   // Development origins
   'http://localhost:5173',
   'http://localhost:3000',
