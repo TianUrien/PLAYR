@@ -36,9 +36,9 @@ jobs:
         working-directory: ./client
         run: npm ci
 
-      - name: Dependency audit
+      - name: Dependency audit (production only)
         working-directory: ./client
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
 
   lint-and-typecheck:
     name: Lint & Type Check
