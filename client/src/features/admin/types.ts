@@ -48,7 +48,18 @@ export interface DashboardStats {
   // Data health
   auth_orphans: number
   profile_orphans: number
-  
+
+  // Push & PWA metrics
+  push_subscribers: number
+  push_subscribers_player: number
+  push_subscribers_coach: number
+  push_subscribers_club: number
+  push_subscribers_brand: number
+  pwa_installs: number
+  pwa_installs_ios: number
+  pwa_installs_android: number
+  pwa_installs_desktop: number
+
   // Meta
   generated_at: string
 }

@@ -23,6 +23,7 @@ import { logger } from '@/lib/logger'
 import Header from '@/components/Header'
 import DeleteAccountModal from '@/components/DeleteAccountModal'
 import { usePushSubscription } from '@/hooks/usePushSubscription'
+import { trackPushSubscribe, trackPushUnsubscribe } from '@/lib/analytics'
 
 // App version - could be pulled from package.json in the future
 const APP_VERSION = '1.0.0'
@@ -213,8 +214,10 @@ export default function SettingsPage() {
     try {
       if (push.isSubscribed) {
         await push.unsubscribe()
+        trackPushUnsubscribe()
       } else {
         await push.subscribe()
+        trackPushSubscribe('settings')
       }
       setNotificationSuccess(true)
       setTimeout(() => setNotificationSuccess(false), 3000)

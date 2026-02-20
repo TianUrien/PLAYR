@@ -8,6 +8,7 @@ import ToastContainer from '@/components/ToastContainer'
 import UploadIndicator from '@/components/UploadIndicator'
 import { ProfileImagePreviewProvider } from '@/components/ProfileImagePreviewProvider'
 import InstallPrompt from '@/components/InstallPrompt'
+import PushPrompt from '@/components/PushPrompt'
 import { useEngagementTracking } from '@/hooks/useEngagementTracking'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal'
@@ -186,6 +187,7 @@ function App() {
           <ToastContainer />
           <UploadIndicator />
           <InstallPrompt />
+          <PushPrompt />
           <EngagementTracker />
           <AnalyticsTracker />
           <ScrollToTop />
