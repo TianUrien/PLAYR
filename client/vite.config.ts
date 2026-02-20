@@ -33,6 +33,7 @@ export default defineConfig(({ mode }) => {
         includeAssets: ['favicon.ico', 'Favicon-logo.svg', 'New-LogoBlack.svg', 'WhiteLogo.svg'],
         manifest: false, // We use our own manifest.json
         workbox: {
+          importScripts: ['/push-sw.js'],
           globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
           runtimeCaching: [
             {

@@ -536,6 +536,7 @@ export default function CompleteProfile() {
       await invalidateProfile({ userId: user.id, reason: 'complete-profile' })
       
       logger.debug('Auth store refreshed - profile now complete')
+      localStorage.setItem('playr-onboarding-completed', '1')
       navigate('/dashboard/profile', { replace: true })
 
     } catch (err) {

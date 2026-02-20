@@ -237,3 +237,53 @@ export function trackMediaUpload(mediaType: 'photo' | 'video'): void {
     label: mediaType,
   })
 }
+
+/** Track push notification subscription */
+export function trackPushSubscribe(source: 'settings' | 'prompt'): void {
+  trackEvent({
+    action: 'push_subscribe',
+    category: 'notifications',
+    label: source,
+  })
+}
+
+/** Track push notification unsubscribe */
+export function trackPushUnsubscribe(): void {
+  trackEvent({
+    action: 'push_unsubscribe',
+    category: 'notifications',
+  })
+}
+
+/** Track PWA install */
+export function trackPwaInstall(platform: 'ios' | 'android' | 'desktop'): void {
+  trackEvent({
+    action: 'pwa_install',
+    category: 'engagement',
+    label: platform,
+  })
+}
+
+/** Track PWA install prompt dismissed */
+export function trackPwaInstallDismiss(): void {
+  trackEvent({
+    action: 'pwa_install_dismiss',
+    category: 'engagement',
+  })
+}
+
+/** Track push prompt shown */
+export function trackPushPromptShown(): void {
+  trackEvent({
+    action: 'push_prompt_shown',
+    category: 'notifications',
+  })
+}
+
+/** Track push prompt dismissed */
+export function trackPushPromptDismiss(): void {
+  trackEvent({
+    action: 'push_prompt_dismiss',
+    category: 'notifications',
+  })
+}

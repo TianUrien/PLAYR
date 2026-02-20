@@ -22,6 +22,8 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import Header from '@/components/Header'
 import DeleteAccountModal from '@/components/DeleteAccountModal'
+import { usePushSubscription } from '@/hooks/usePushSubscription'
+import { trackPushSubscribe, trackPushUnsubscribe } from '@/lib/analytics'
 
 // App version - could be pulled from package.json in the future
 const APP_VERSION = '1.0.0'
@@ -48,6 +50,9 @@ export default function SettingsPage() {
   const [notifyMessages, setNotifyMessages] = useState(true)
   const [notificationLoading, setNotificationLoading] = useState(false)
   const [notificationSuccess, setNotificationSuccess] = useState(false)
+
+  // Push notification subscription
+  const push = usePushSubscription()
 
   // Sign out loading state
   const [signOutLoading, setSignOutLoading] = useState(false)
@@ -200,6 +205,24 @@ export default function SettingsPage() {
       setNotifyMessages(!newValue)
     } finally {
       setNotificationLoading(false)
+    }
+  }
+
+  const handlePushToggle = async () => {
+    if (!push.isSupported) return
+
+    try {
+      if (push.isSubscribed) {
+        await push.unsubscribe()
+        trackPushUnsubscribe()
+      } else {
+        await push.subscribe()
+        trackPushSubscribe('settings')
+      }
+      setNotificationSuccess(true)
+      setTimeout(() => setNotificationSuccess(false), 3000)
+    } catch (error) {
+      logger.error('Failed to toggle push notifications:', error)
     }
   }
 
@@ -613,6 +636,37 @@ export default function SettingsPage() {
                       <span
                         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                           notifyMessages ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    )}
+                  </button>
+                </div>
+
+                {/* Push Notifications -- All roles */}
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div className="flex-1 pr-4">
+                    <p className="text-gray-900 font-medium text-sm">Push Notifications</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {!push.isSupported
+                        ? 'Not supported in this browser'
+                        : push.permission === 'denied'
+                          ? 'Blocked — enable in browser settings'
+                          : 'Receive notifications even when the app is closed'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handlePushToggle}
+                    disabled={!push.isSupported || push.permission === 'denied' || push.loading}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                      push.isSubscribed ? 'bg-indigo-600' : 'bg-gray-300'
+                    } ${!push.isSupported || push.permission === 'denied' || push.loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {push.loading ? (
+                      <Loader2 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 text-white animate-spin" />
+                    ) : (
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          push.isSubscribed ? 'translate-x-6' : 'translate-x-1'
                         }`}
                       />
                     )}

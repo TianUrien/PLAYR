@@ -21,6 +21,8 @@ import {
   Store,
   Package,
   Activity,
+  Bell,
+  Smartphone,
 } from 'lucide-react'
 import { StatCard } from '../components/StatCard'
 import { useAdminStats } from '../hooks/useAdminStats'
@@ -265,6 +267,71 @@ export function AdminOverview() {
             value={stats?.blocked_users ?? 0}
             icon={UserX}
             color="red"
+            loading={isLoading}
+          />
+        </div>
+      </section>
+
+      {/* Push & PWA */}
+      <section>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Push & PWA</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="Push Subscribers"
+            value={stats?.push_subscribers ?? 0}
+            icon={Bell}
+            color="purple"
+            loading={isLoading}
+          />
+          <StatCard
+            label="Push Activation Rate"
+            value={
+              stats?.total_users
+                ? `${((stats.push_subscribers / stats.total_users) * 100).toFixed(1)}%`
+                : '0%'
+            }
+            icon={Bell}
+            color="blue"
+            loading={isLoading}
+          />
+          <StatCard
+            label="PWA Installs"
+            value={stats?.pwa_installs ?? 0}
+            icon={Smartphone}
+            color="green"
+            loading={isLoading}
+          />
+          <StatCard
+            label="iOS / Android / Desktop"
+            value={`${stats?.pwa_installs_ios ?? 0} / ${stats?.pwa_installs_android ?? 0} / ${stats?.pwa_installs_desktop ?? 0}`}
+            icon={Smartphone}
+            color="amber"
+            loading={isLoading}
+          />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-4">
+          <StatCard
+            label="Players (Push)"
+            value={stats?.push_subscribers_player ?? 0}
+            color="blue"
+            loading={isLoading}
+          />
+          <StatCard
+            label="Coaches (Push)"
+            value={stats?.push_subscribers_coach ?? 0}
+            color="green"
+            loading={isLoading}
+          />
+          <StatCard
+            label="Clubs (Push)"
+            value={stats?.push_subscribers_club ?? 0}
+            color="amber"
+            loading={isLoading}
+          />
+          <StatCard
+            label="Brands (Push)"
+            value={stats?.push_subscribers_brand ?? 0}
+            color="rose"
             loading={isLoading}
           />
         </div>

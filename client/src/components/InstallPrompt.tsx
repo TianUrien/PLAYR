@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { X, Download, Share, Plus } from 'lucide-react'
+import { trackPwaInstall, trackPwaInstallDismiss } from '@/lib/analytics'
+import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/lib/auth'
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[]
@@ -18,6 +21,27 @@ declare global {
 
 type InstallState = 'idle' | 'can-install' | 'ios-safari' | 'installed'
 
+function detectPlatform(): 'ios' | 'android' | 'desktop' {
+  const ua = navigator.userAgent
+  if (/iPad|iPhone|iPod/i.test(ua)) return 'ios'
+  if (/Android/i.test(ua)) return 'android'
+  return 'desktop'
+}
+
+function persistInstallToDb(platform: 'ios' | 'android' | 'desktop') {
+  const userId = useAuthStore.getState().user?.id
+  if (!userId) return
+  supabase
+    .from('pwa_installs')
+    .upsert(
+      { profile_id: userId, platform, user_agent: navigator.userAgent },
+      { onConflict: 'profile_id,platform' }
+    )
+    .then(({ error }) => {
+      if (error) console.warn('[PWA] Failed to persist install:', error.message)
+    })
+}
+
 export default function InstallPrompt() {
   const [installState, setInstallState] = useState<InstallState>('idle')
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
@@ -28,7 +52,7 @@ export default function InstallPrompt() {
     (window.navigator as Navigator & { standalone?: boolean }).standalone === true
 
   // Check if iOS Safari
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && 
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) &&
     !('MSStream' in window)
   const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
   const isIOSSafari = isIOS && isSafari
@@ -47,6 +71,14 @@ export default function InstallPrompt() {
     // If running standalone, mark as installed
     if (isStandalone) {
       setInstallState('installed')
+
+      // Track iOS/standalone installs retroactively (can't detect "Add to Home Screen" action)
+      if (!localStorage.getItem('pwa-install-tracked')) {
+        const platform = detectPlatform()
+        trackPwaInstall(platform)
+        persistInstallToDb(platform)
+        localStorage.setItem('pwa-install-tracked', '1')
+      }
       return
     }
 
@@ -55,6 +87,17 @@ export default function InstallPrompt() {
       setInstallState('ios-safari')
     }
   }, [isStandalone, isIOSSafari])
+
+  // Signal visibility to other components (PushPrompt reads this)
+  useEffect(() => {
+    const isVisible = !isDismissed && installState !== 'installed' && installState !== 'idle'
+    if (isVisible) {
+      localStorage.setItem('pwa-install-visible', '1')
+    } else {
+      localStorage.removeItem('pwa-install-visible')
+    }
+    return () => localStorage.removeItem('pwa-install-visible')
+  }, [isDismissed, installState])
 
   // Listen for the install prompt
   useEffect(() => {
@@ -87,6 +130,10 @@ export default function InstallPrompt() {
 
     if (outcome === 'accepted') {
       setInstallState('installed')
+      const platform = detectPlatform()
+      trackPwaInstall(platform)
+      persistInstallToDb(platform)
+      localStorage.setItem('pwa-install-tracked', '1')
     }
     setDeferredPrompt(null)
   }, [deferredPrompt])
@@ -94,6 +141,7 @@ export default function InstallPrompt() {
   const handleDismiss = useCallback(() => {
     setIsDismissed(true)
     localStorage.setItem('pwa-install-dismissed', Date.now().toString())
+    trackPwaInstallDismiss()
   }, [])
 
   // Don't show if dismissed, already installed, or no install option
@@ -112,12 +160,12 @@ export default function InstallPrompt() {
         >
           <X className="w-4 h-4 text-gray-500" />
         </button>
-        
+
         <div className="flex items-start gap-3">
-          <img 
-            src="/pwa-icons/android/android-launchericon-96-96.png" 
-            alt="PLAYR" 
-            className="w-10 h-10 rounded-xl flex-shrink-0" 
+          <img
+            src="/pwa-icons/android/android-launchericon-96-96.png"
+            alt="PLAYR"
+            className="w-10 h-10 rounded-xl flex-shrink-0"
           />
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-gray-900 text-sm">Install PLAYR</h3>
@@ -151,12 +199,12 @@ export default function InstallPrompt() {
       >
         <X className="w-4 h-4 text-gray-500" />
       </button>
-      
+
       <div className="flex items-start gap-3">
-        <img 
-          src="/pwa-icons/android/android-launchericon-96-96.png" 
-          alt="PLAYR" 
-          className="w-10 h-10 rounded-xl flex-shrink-0" 
+        <img
+          src="/pwa-icons/android/android-launchericon-96-96.png"
+          alt="PLAYR"
+          className="w-10 h-10 rounded-xl flex-shrink-0"
         />
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-gray-900 text-sm">Install PLAYR</h3>
