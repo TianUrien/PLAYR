@@ -8,6 +8,7 @@ declare const Deno: {
 // @ts-expect-error Deno URL imports are resolved at runtime in Supabase Edge Functions.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getServiceClient } from '../_shared/supabase-client.ts'
+import { captureException } from '../_shared/sentry.ts'
 import { getCorsHeaders } from '../_shared/cors.ts'
 import { renderTemplate } from '../_shared/email-renderer.ts'
 import { sendTrackedEmail, createLogger } from '../_shared/email-sender.ts'
@@ -160,6 +161,7 @@ Deno.serve(async (req: Request) => {
     logger.error('Test email handler error', {
       error: error instanceof Error ? error.message : 'Unknown',
     })
+    captureException(error, { functionName: 'admin-send-test-email', correlationId })
     return new Response(
       JSON.stringify({ success: false, error: 'Internal server error' }),
       { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }

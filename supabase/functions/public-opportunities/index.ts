@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { getServiceClient } from '../_shared/supabase-client.ts'
+import { captureException } from '../_shared/sentry.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import {
   PublicOpportunityRow,
@@ -312,6 +313,7 @@ Deno.serve(async (req: Request) => {
 
   } catch (err) {
     console.error('Unexpected error:', err)
+    captureException(err, { functionName: 'public-opportunities' })
     return errorResponse(
       'INTERNAL_ERROR',
       'An unexpected error occurred',

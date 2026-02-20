@@ -1,5 +1,6 @@
 // deno-lint-ignore-file no-explicit-any
 import { getServiceClient } from '../_shared/supabase-client.ts'
+import { captureException } from '../_shared/sentry.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import {
   ApplicationPayload,
@@ -271,6 +272,7 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     logger.error('Unhandled error', { error: errorMessage })
+    captureException(error, { functionName: 'notify-test-application', correlationId })
     return new Response(
       JSON.stringify({ error: 'Internal server error', details: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
