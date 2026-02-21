@@ -49,7 +49,7 @@ export function AdminDirectory() {
   // Search/filter state
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('')
-  const [blockedFilter, setBlockedFilter] = useState<string>('')
+  const [statusFilter, setStatusFilter] = useState<string>('')
   const [testFilter, setTestFilter] = useState<string>('')
   const [page, setPage] = useState(1)
 
@@ -77,7 +77,8 @@ export function AdminDirectory() {
       const params: ProfileSearchParams = {
         query: searchQuery || undefined,
         role: roleFilter as 'player' | 'coach' | 'club' | 'brand' | undefined,
-        is_blocked: blockedFilter === 'blocked' ? true : blockedFilter === 'active' ? false : undefined,
+        is_blocked: statusFilter === 'blocked' ? true : statusFilter === 'active' || statusFilter === 'incomplete' ? false : undefined,
+        onboarding_completed: statusFilter === 'active' ? true : statusFilter === 'incomplete' ? false : undefined,
         is_test_account: testFilter === 'test' ? true : testFilter === 'real' ? false : undefined,
         limit: PAGE_SIZE,
         offset: (page - 1) * PAGE_SIZE,
@@ -92,7 +93,7 @@ export function AdminDirectory() {
     } finally {
       setIsLoading(false)
     }
-  }, [searchQuery, roleFilter, blockedFilter, testFilter, page])
+  }, [searchQuery, roleFilter, statusFilter, testFilter, page])
 
   useEffect(() => {
     document.title = 'User Directory | PLAYR Admin'
@@ -388,9 +389,9 @@ export function AdminDirectory() {
           </select>
 
           <select
-            value={blockedFilter}
+            value={statusFilter}
             onChange={(e) => {
-              setBlockedFilter(e.target.value)
+              setStatusFilter(e.target.value)
               setPage(1)
             }}
             className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -399,6 +400,7 @@ export function AdminDirectory() {
           >
             <option value="">All Status</option>
             <option value="active">Active</option>
+            <option value="incomplete">Incomplete</option>
             <option value="blocked">Blocked</option>
           </select>
 
