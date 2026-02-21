@@ -567,7 +567,7 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
                     </form>
                   ) : (
                     <>
-                      <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-line">
+                      <p className="text-sm leading-relaxed text-gray-700 whitespace-pre-line break-words">
                         {existingComment.content}
                       </p>
                       <div className="flex flex-wrap items-center gap-3">
@@ -673,7 +673,7 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
                           {renderRatingBadge(comment.rating)}
                         </div>
                       </div>
-                      <p className="mt-3 text-sm leading-relaxed text-gray-700 whitespace-pre-line">
+                      <p className="mt-3 text-sm leading-relaxed text-gray-700 whitespace-pre-line break-words">
                         {comment.content}
                       </p>
                     </div>

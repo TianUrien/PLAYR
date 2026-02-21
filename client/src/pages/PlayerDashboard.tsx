@@ -651,7 +651,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
 
                   <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
                     {profile.bio?.trim() ? (
-                      <p className="text-gray-700 leading-relaxed whitespace-pre-line">
+                      <p className="text-gray-700 leading-relaxed whitespace-pre-line break-words">
                         {profile.bio}
                       </p>
                     ) : (

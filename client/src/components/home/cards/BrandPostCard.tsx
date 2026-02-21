@@ -47,7 +47,7 @@ export function BrandPostCard({ item }: BrandPostCardProps) {
 
         {/* Post Content */}
         {item.post_content && (
-          <p className="text-gray-800 mb-4 whitespace-pre-line">
+          <p className="text-gray-800 mb-4 whitespace-pre-line break-words">
             {item.post_content}
           </p>
         )}
