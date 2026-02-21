@@ -1088,6 +1088,78 @@ export interface CreateCampaignParams {
   name: string
   template_id: string
   category: string
-  audience_filter: { role?: string; country?: string }
+  audience_filter: { role?: string; country?: string; status?: string }
+  audience_source?: 'users' | 'outreach'
+}
+
+// ============================================================================
+// OUTREACH TYPES
+// ============================================================================
+
+export type OutreachStatus =
+  | 'imported'
+  | 'contacted'
+  | 'delivered'
+  | 'opened'
+  | 'clicked'
+  | 'signed_up'
+  | 'bounced'
+  | 'unsubscribed'
+
+export interface OutreachContact {
+  id: string
+  email: string
+  contact_name: string | null
+  club_name: string
+  country: string | null
+  role_at_club: string | null
+  phone: string | null
+  notes: string | null
+  status: OutreachStatus
+  source: 'csv_import' | 'manual'
+  world_club_id: string | null
+  converted_profile_id: string | null
+  converted_at: string | null
+  first_contacted_at: string | null
+  last_contacted_at: string | null
+  created_at: string
+  total_count: number
+}
+
+export interface OutreachStats {
+  total: number
+  imported: number
+  contacted: number
+  delivered: number
+  opened: number
+  clicked: number
+  signed_up: number
+  bounced: number
+  unsubscribed: number
+}
+
+export interface OutreachContactFilters {
+  status?: string
+  country?: string
+  search?: string
+  limit?: number
+  offset?: number
+}
+
+export interface OutreachAudiencePreview {
+  count: number
+  sample: Array<{
+    contact_name: string | null
+    email: string
+    club_name: string
+    country: string | null
+    status: string
+  }>
+}
+
+export interface OutreachImportResult {
+  imported: number
+  skipped: number
+  total: number
 }
 

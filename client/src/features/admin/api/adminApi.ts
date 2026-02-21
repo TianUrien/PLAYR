@@ -1529,6 +1529,7 @@ export async function createEmailCampaign(params: CreateCampaignParams): Promise
     p_template_id: params.template_id,
     p_category: params.category,
     p_audience_filter: params.audience_filter,
+    p_audience_source: params.audience_source || 'users',
   })
   if (error) throw new Error(`Failed to create campaign: ${error.message}`)
   return data as EmailCampaign

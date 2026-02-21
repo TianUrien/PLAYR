@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
-import { X, Users, Loader2 } from 'lucide-react'
-import type { EmailTemplate, WorldCountry } from '../types'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { X, Users, Loader2, Megaphone } from 'lucide-react'
+import type { EmailTemplate, WorldCountry, OutreachAudiencePreview } from '../types'
 import { getAllCountries, createEmailCampaign } from '../api/adminApi'
+import { previewOutreachAudience } from '../api/outreachApi'
 import { useAudiencePreview } from '../hooks/useEmailStats'
 import { logger } from '@/lib/logger'
 
@@ -15,15 +16,30 @@ export function CreateCampaignModal({ templates, onClose, onCreated }: CreateCam
   const [name, setName] = useState('')
   const [templateId, setTemplateId] = useState('')
   const [category, setCategory] = useState('notification')
+  const [audienceSource, setAudienceSource] = useState<'users' | 'outreach'>('users')
   const [filterRole, setFilterRole] = useState('')
   const [filterCountry, setFilterCountry] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
   const [countries, setCountries] = useState<WorldCountry[]>([])
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const { preview, isLoading: previewLoading, error: previewError, fetchPreview, reset: resetPreview } = useAudiencePreview()
+  // Users audience preview
+  const { preview: usersPreview, isLoading: usersPreviewLoading, error: usersPreviewError, fetchPreview: fetchUsersPreview, reset: resetUsersPreview } = useAudiencePreview()
 
-  const activeTemplates = templates.filter(t => t.is_active)
+  // Outreach audience preview
+  const [outreachPreview, setOutreachPreview] = useState<OutreachAudiencePreview | null>(null)
+  const [outreachPreviewLoading, setOutreachPreviewLoading] = useState(false)
+  const [outreachPreviewError, setOutreachPreviewError] = useState<string | null>(null)
+
+  const isOutreach = audienceSource === 'outreach'
+
+  // Filter templates by audience source
+  const activeTemplates = templates.filter(t => {
+    if (!t.is_active) return false
+    if (isOutreach) return t.category === 'marketing'
+    return true
+  })
 
   useEffect(() => {
     getAllCountries().then(setCountries).catch((err) => {
@@ -31,14 +47,47 @@ export function CreateCampaignModal({ templates, onClose, onCreated }: CreateCam
     })
   }, [])
 
-  const audienceFilter = {
+  // Reset filters when audience source changes
+  useEffect(() => {
+    setFilterRole('')
+    setFilterCountry('')
+    setFilterStatus('')
+    setTemplateId('')
+    resetUsersPreview()
+    setOutreachPreview(null)
+    setOutreachPreviewError(null)
+    if (isOutreach) {
+      setCategory('marketing')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audienceSource])
+
+  const audienceFilter = useMemo(() => ({
     ...(filterRole ? { role: filterRole } : {}),
     ...(filterCountry ? { country: filterCountry } : {}),
-  }
+    ...(filterStatus ? { status: filterStatus } : {}),
+  }), [filterRole, filterCountry, filterStatus])
 
-  const handlePreview = () => {
-    fetchPreview(category, audienceFilter)
-  }
+  const handlePreview = useCallback(async () => {
+    if (isOutreach) {
+      setOutreachPreviewLoading(true)
+      setOutreachPreviewError(null)
+      try {
+        const result = await previewOutreachAudience({
+          ...(filterCountry ? { country: filterCountry } : {}),
+          ...(filterStatus ? { status: filterStatus } : {}),
+        })
+        setOutreachPreview(result)
+      } catch (err) {
+        setOutreachPreviewError(err instanceof Error ? err.message : 'Failed to preview')
+        setOutreachPreview(null)
+      } finally {
+        setOutreachPreviewLoading(false)
+      }
+    } else {
+      fetchUsersPreview(category, audienceFilter)
+    }
+  }, [isOutreach, filterCountry, filterStatus, category, audienceFilter, fetchUsersPreview])
 
   const handleCreate = async () => {
     if (!name.trim() || !templateId) return
@@ -50,6 +99,7 @@ export function CreateCampaignModal({ templates, onClose, onCreated }: CreateCam
         template_id: templateId,
         category,
         audience_filter: audienceFilter,
+        audience_source: audienceSource,
       })
       onCreated()
     } catch (err) {
@@ -61,8 +111,14 @@ export function CreateCampaignModal({ templates, onClose, onCreated }: CreateCam
 
   // Reset preview when filters change
   useEffect(() => {
-    resetPreview()
-  }, [filterRole, filterCountry, category, resetPreview])
+    resetUsersPreview()
+    setOutreachPreview(null)
+    setOutreachPreviewError(null)
+  }, [filterRole, filterCountry, filterStatus, category, resetUsersPreview])
+
+  const previewLoading = isOutreach ? outreachPreviewLoading : usersPreviewLoading
+  const previewError = isOutreach ? outreachPreviewError : usersPreviewError
+  const preview = isOutreach ? outreachPreview : usersPreview
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -77,13 +133,44 @@ export function CreateCampaignModal({ templates, onClose, onCreated }: CreateCam
 
         {/* Body */}
         <div className="px-6 py-4 space-y-4">
+          {/* Audience Source Toggle */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Audience</label>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setAudienceSource('users')}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                  !isOutreach
+                    ? 'bg-purple-50 text-purple-700 border-r border-purple-200'
+                    : 'bg-white text-gray-500 hover:bg-gray-50 border-r border-gray-200'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                Platform Users
+              </button>
+              <button
+                type="button"
+                onClick={() => setAudienceSource('outreach')}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium transition-colors ${
+                  isOutreach
+                    ? 'bg-purple-50 text-purple-700'
+                    : 'bg-white text-gray-500 hover:bg-gray-50'
+                }`}
+              >
+                <Megaphone className="w-4 h-4" />
+                Outreach Contacts
+              </button>
+            </div>
+          </div>
+
           {/* Campaign name */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Campaign Name</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. February Player Newsletter"
+              placeholder={isOutreach ? 'e.g. Italy Club Introduction' : 'e.g. February Player Newsletter'}
               className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
@@ -103,49 +190,88 @@ export function CreateCampaignModal({ templates, onClose, onCreated }: CreateCam
             </select>
           </div>
 
-          {/* Category */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="notification">Notification</option>
-              <option value="marketing">Marketing</option>
-            </select>
-          </div>
+          {/* Category — hidden for outreach (always marketing) */}
+          {!isOutreach && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                aria-label="Category"
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="notification">Notification</option>
+                <option value="marketing">Marketing</option>
+              </select>
+            </div>
+          )}
 
           {/* Audience filters */}
           <div className="border-t border-gray-100 pt-4">
             <h3 className="text-sm font-medium text-gray-700 mb-3">Audience Filters</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-gray-500 mb-1">Role</label>
-                <select
-                  value={filterRole}
-                  onChange={(e) => setFilterRole(e.target.value)}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">All roles</option>
-                  <option value="player">Player</option>
-                  <option value="coach">Coach</option>
-                  <option value="club">Club</option>
-                  <option value="brand">Brand</option>
-                </select>
-              </div>
+              {/* Role filter — only for users */}
+              {!isOutreach && (
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Role</label>
+                  <select
+                    value={filterRole}
+                    onChange={(e) => setFilterRole(e.target.value)}
+                    aria-label="Role"
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">All roles</option>
+                    <option value="player">Player</option>
+                    <option value="coach">Coach</option>
+                    <option value="club">Club</option>
+                    <option value="brand">Brand</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Status filter — only for outreach */}
+              {isOutreach && (
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Status</label>
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    aria-label="Status"
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">All statuses</option>
+                    <option value="imported">Imported</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="opened">Opened</option>
+                  </select>
+                </div>
+              )}
+
+              {/* Country filter */}
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Country</label>
-                <select
-                  value={filterCountry}
-                  onChange={(e) => setFilterCountry(e.target.value)}
-                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">All countries</option>
-                  {countries.map(c => (
-                    <option key={c.id} value={c.code}>{c.flag_emoji} {c.name}</option>
-                  ))}
-                </select>
+                {isOutreach ? (
+                  <input
+                    type="text"
+                    placeholder="e.g. Italy"
+                    value={filterCountry}
+                    onChange={(e) => setFilterCountry(e.target.value)}
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                ) : (
+                  <select
+                    value={filterCountry}
+                    onChange={(e) => setFilterCountry(e.target.value)}
+                    aria-label="Country"
+                    className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">All countries</option>
+                    {countries.map(c => (
+                      <option key={c.id} value={c.code}>{c.flag_emoji} {c.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
 
@@ -173,12 +299,22 @@ export function CreateCampaignModal({ templates, onClose, onCreated }: CreateCam
                 {preview.sample.length > 0 && (
                   <div className="space-y-1">
                     <p className="text-xs text-gray-500 mb-1">Sample:</p>
-                    {preview.sample.map((s, i) => (
+                    {preview.sample.map((s: Record<string, unknown>, i: number) => (
                       <div key={i} className="flex items-center justify-between text-xs">
-                        <span className="text-gray-700 truncate max-w-[180px]">{s.full_name || s.email}</span>
+                        <span className="text-gray-700 truncate max-w-[180px]">
+                          {isOutreach
+                            ? (s.club_name as string) || (s.email as string)
+                            : (s.full_name as string) || (s.email as string)
+                          }
+                        </span>
                         <div className="flex items-center gap-2">
-                          <span className="text-gray-500 capitalize">{s.role}</span>
-                          {s.country_name && <span className="text-gray-400">{s.country_name}</span>}
+                          {isOutreach
+                            ? <span className="text-gray-500">{(s.status as string) || ''}</span>
+                            : <span className="text-gray-500 capitalize">{(s.role as string) || ''}</span>
+                          }
+                          {(s.country_name || s.country) && (
+                            <span className="text-gray-400">{(s.country_name || s.country) as string}</span>
+                          )}
                         </div>
                       </div>
                     ))}
