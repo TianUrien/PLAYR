@@ -10,8 +10,9 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getServiceClient } from '../_shared/supabase-client.ts'
 import { captureException } from '../_shared/sentry.ts'
 import { getCorsHeaders } from '../_shared/cors.ts'
-import { renderTemplate } from '../_shared/email-renderer.ts'
+import { renderTemplate, getActiveTemplate, interpolateVariables, renderContentBlocks } from '../_shared/email-renderer.ts'
 import { sendTrackedBatch, createLogger } from '../_shared/email-sender.ts'
+import type { RecipientInfo } from '../_shared/email-sender.ts'
 
 /**
  * Admin Send Campaign
@@ -129,6 +130,7 @@ Deno.serve(async (req: Request) => {
     // ========================================================================
     // Render template
     // ========================================================================
+    const isOutreach = campaign.audience_source === 'outreach'
     const rendered = await renderTemplate(serviceClient, campaign.template_key, {})
     if (!rendered) {
       await serviceClient.rpc('admin_update_campaign_status', {
@@ -142,51 +144,112 @@ Deno.serve(async (req: Request) => {
       )
     }
 
+    // For outreach campaigns, fetch the raw template for per-recipient personalization
+    let outreachTemplate: any = null
+    let outreachContactMap: Map<string, { contact_name: string; club_name: string; country: string }> | null = null
+
+    if (isOutreach) {
+      outreachTemplate = await getActiveTemplate(serviceClient, campaign.template_key)
+    }
+
     // ========================================================================
     // Query recipients
     // ========================================================================
     const audienceFilter = campaign.audience_filter || {}
-    const filterRole = audienceFilter.role || null
     const filterCountry = audienceFilter.country || null
+    let recipients: Array<{ email: string; recipientId: string | null; recipientRole: string; recipientCountry: string | null }>
 
-    let recipientQuery = serviceClient
-      .from('profiles')
-      .select('id, email, full_name, role, nationality_country_id, countries!profiles_nationality_country_id_fkey(code, name)')
-      .not('email', 'is', null)
-      .neq('email', '')
-      .eq('is_blocked', false)
-      .eq('is_test_account', false)
+    if (isOutreach) {
+      // Query outreach_contacts — exclude bounced/unsubscribed/signed_up
+      let outreachQuery = serviceClient
+        .from('outreach_contacts')
+        .select('id, email, contact_name, club_name, country, status')
+        .not('status', 'in', '("bounced","unsubscribed","signed_up")')
 
-    if (filterRole) {
-      recipientQuery = recipientQuery.eq('role', filterRole)
-    }
+      if (filterCountry) {
+        outreachQuery = outreachQuery.ilike('country', `%${filterCountry}%`)
+      }
 
-    const { data: recipientData, error: recipientError } = await recipientQuery
+      const filterStatus = audienceFilter.status || null
+      if (filterStatus) {
+        outreachQuery = outreachQuery.eq('status', filterStatus)
+      }
 
-    if (recipientError) {
-      logger.error('Failed to query recipients', { error: recipientError.message })
-      await serviceClient.rpc('admin_update_campaign_status', {
-        p_campaign_id: campaign_id,
-        p_status: 'failed',
-        p_sent_count: 0,
+      const { data: outreachData, error: outreachError } = await outreachQuery
+
+      if (outreachError) {
+        logger.error('Failed to query outreach contacts', { error: outreachError.message })
+        await serviceClient.rpc('admin_update_campaign_status', {
+          p_campaign_id: campaign_id,
+          p_status: 'failed',
+          p_sent_count: 0,
+        })
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to query outreach contacts' }),
+          { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Build lookup map for per-recipient personalization
+      outreachContactMap = new Map()
+      recipients = (outreachData || []).map((c: any) => {
+        outreachContactMap!.set(c.email, {
+          contact_name: c.contact_name || '',
+          club_name: c.club_name || '',
+          country: c.country || '',
+        })
+        return {
+          email: c.email as string,
+          recipientId: null,
+          recipientRole: 'outreach',
+          recipientCountry: c.country || null,
+        }
       })
-      return new Response(
-        JSON.stringify({ success: false, error: 'Failed to query recipients' }),
-        { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
-      )
-    }
+    } else {
+      // Original path: query profiles
+      const filterRole = audienceFilter.role || null
 
-    // Apply country filter client-side (join filtering)
-    let recipients = (recipientData || []).map((r: any) => ({
-      email: r.email as string,
-      recipientId: r.id as string,
-      recipientRole: r.role as string,
-      recipientCountry: r.countries?.code || null,
-      countryCode: r.countries?.code || null,
-    }))
+      let recipientQuery = serviceClient
+        .from('profiles')
+        .select('id, email, full_name, role, nationality_country_id, countries!profiles_nationality_country_id_fkey(code, name)')
+        .not('email', 'is', null)
+        .neq('email', '')
+        .eq('is_blocked', false)
+        .eq('is_test_account', false)
 
-    if (filterCountry) {
-      recipients = recipients.filter(r => r.countryCode === filterCountry)
+      if (filterRole) {
+        recipientQuery = recipientQuery.eq('role', filterRole)
+      }
+
+      const { data: recipientData, error: recipientError } = await recipientQuery
+
+      if (recipientError) {
+        logger.error('Failed to query recipients', { error: recipientError.message })
+        await serviceClient.rpc('admin_update_campaign_status', {
+          p_campaign_id: campaign_id,
+          p_status: 'failed',
+          p_sent_count: 0,
+        })
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to query recipients' }),
+          { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      // Apply country filter client-side (join filtering)
+      let profileRecipients = (recipientData || []).map((r: any) => ({
+        email: r.email as string,
+        recipientId: r.id as string,
+        recipientRole: r.role as string,
+        recipientCountry: r.countries?.code || null,
+        countryCode: r.countries?.code || null,
+      }))
+
+      if (filterCountry) {
+        profileRecipients = profileRecipients.filter(r => r.countryCode === filterCountry)
+      }
+
+      recipients = profileRecipients
     }
 
     if (recipients.length === 0) {
@@ -202,7 +265,7 @@ Deno.serve(async (req: Request) => {
       )
     }
 
-    logger.info('Recipients found', { count: recipients.length })
+    logger.info('Recipients found', { count: recipients.length, audienceSource: isOutreach ? 'outreach' : 'users' })
 
     // ========================================================================
     // Send via batch
@@ -220,14 +283,37 @@ Deno.serve(async (req: Request) => {
       )
     }
 
+    // Build per-recipient rendering function for outreach campaigns
+    let renderForRecipient: ((recipient: RecipientInfo) => { html: string; text: string; subject: string }) | undefined
+
+    if (isOutreach && outreachTemplate && outreachContactMap) {
+      renderForRecipient = (recipient: RecipientInfo) => {
+        const contact = outreachContactMap!.get(recipient.email)
+        const contactName = contact?.contact_name || ''
+        const vars: Record<string, string> = {
+          contact_name: contactName,
+          contact_name_greeting: contactName ? ` ${contactName}` : '',
+          club_name: contact?.club_name || '',
+          country: contact?.country || '',
+          cta_url: 'https://oplayr.com/signup',
+        }
+        const subject = interpolateVariables(outreachTemplate.subject_template, vars)
+        const { html } = renderContentBlocks(outreachTemplate.content_json, vars)
+        const text = outreachTemplate.text_template
+          ? interpolateVariables(outreachTemplate.text_template, vars)
+          : subject
+        return { html, text, subject }
+      }
+    }
+
     const batchResult = await sendTrackedBatch({
       supabase: serviceClient,
       resendApiKey,
       recipients: recipients.map(r => ({
         email: r.email,
-        recipientId: r.recipientId,
+        recipientId: r.recipientId || undefined,
         recipientRole: r.recipientRole,
-        recipientCountry: r.recipientCountry,
+        recipientCountry: r.recipientCountry || undefined,
       })),
       subject: rendered.subject,
       html: rendered.html,
@@ -235,6 +321,7 @@ Deno.serve(async (req: Request) => {
       templateKey: campaign.template_key,
       campaignId: campaign_id,
       logger,
+      renderForRecipient,
     })
 
     // ========================================================================
