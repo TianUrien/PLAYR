@@ -3,6 +3,7 @@ import { X, Download, Share, Plus } from 'lucide-react'
 import { trackPwaInstall, trackPwaInstallDismiss } from '@/lib/analytics'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
+import { logger } from '@/lib/logger'
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[]
@@ -21,6 +22,9 @@ declare global {
 
 type InstallState = 'idle' | 'can-install' | 'ios-safari' | 'installed'
 
+// Version key — bumped to force re-tracking for users who hit the v1 bug
+const TRACKED_KEY = 'pwa-install-tracked-v2'
+
 function detectPlatform(): 'ios' | 'android' | 'desktop' {
   const ua = navigator.userAgent
   if (/iPad|iPhone|iPod/i.test(ua)) return 'ios'
@@ -28,24 +32,31 @@ function detectPlatform(): 'ios' | 'android' | 'desktop' {
   return 'desktop'
 }
 
-function persistInstallToDb(platform: 'ios' | 'android' | 'desktop') {
+async function persistInstallToDb(platform: 'ios' | 'android' | 'desktop'): Promise<boolean> {
   const userId = useAuthStore.getState().user?.id
-  if (!userId) return
-  supabase
-    .from('pwa_installs')
+  if (!userId) return false
+  // pwa_installs not yet in generated types
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any).from('pwa_installs')
     .upsert(
       { profile_id: userId, platform, user_agent: navigator.userAgent },
       { onConflict: 'profile_id,platform' }
     )
-    .then(({ error }) => {
-      if (error) console.warn('[PWA] Failed to persist install:', error.message)
-    })
+  if (error) {
+    logger.warn('[PWA] Failed to persist install:', error.message)
+    return false
+  }
+  logger.info('[PWA] Install tracked:', platform)
+  return true
 }
 
 export default function InstallPrompt() {
   const [installState, setInstallState] = useState<InstallState>('idle')
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [isDismissed, setIsDismissed] = useState(false)
+
+  // Subscribe to auth state so we can react when user becomes available
+  const userId = useAuthStore(state => state.user?.id)
 
   // Check if running as installed PWA
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
@@ -68,25 +79,27 @@ export default function InstallPrompt() {
       }
     }
 
-    // If running standalone, mark as installed
     if (isStandalone) {
       setInstallState('installed')
-
-      // Track iOS/standalone installs retroactively (can't detect "Add to Home Screen" action)
-      if (!localStorage.getItem('pwa-install-tracked')) {
-        const platform = detectPlatform()
-        trackPwaInstall(platform)
-        persistInstallToDb(platform)
-        localStorage.setItem('pwa-install-tracked', '1')
-      }
-      return
-    }
-
-    // iOS Safari gets special treatment
-    if (isIOSSafari) {
+    } else if (isIOSSafari) {
       setInstallState('ios-safari')
     }
   }, [isStandalone, isIOSSafari])
+
+  // Track standalone installs — waits for auth to be ready before persisting
+  useEffect(() => {
+    if (!isStandalone) return
+    if (!userId) return
+    if (localStorage.getItem(TRACKED_KEY)) return
+
+    const platform = detectPlatform()
+    trackPwaInstall(platform)
+    persistInstallToDb(platform).then(success => {
+      if (success) {
+        localStorage.setItem(TRACKED_KEY, '1')
+      }
+    })
+  }, [isStandalone, userId])
 
   // Signal visibility to other components (PushPrompt reads this)
   useEffect(() => {
@@ -132,8 +145,8 @@ export default function InstallPrompt() {
       setInstallState('installed')
       const platform = detectPlatform()
       trackPwaInstall(platform)
-      persistInstallToDb(platform)
-      localStorage.setItem('pwa-install-tracked', '1')
+      const success = await persistInstallToDb(platform)
+      if (success) localStorage.setItem(TRACKED_KEY, '1')
     }
     setDeferredPrompt(null)
   }, [deferredPrompt])
