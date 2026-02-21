@@ -78,7 +78,7 @@ export function generateEmailHtml(vacancy: VacancyRecord, clubName: string): str
   
   <!-- Header -->
   <div style="background: linear-gradient(135deg, #8026FA 0%, #924CEC 100%); padding: 32px 24px; border-radius: 16px 16px 0 0; text-align: center;">
-    <img src="https://oplayr.com/playr-logo-white.png" alt="PLAYR" width="120" height="29" style="height: 29px; width: 120px;" />
+    <img src="https://www.oplayr.com/playr-logo-white.png" alt="PLAYR" width="120" height="29" style="height: 29px; width: 120px;" />
   </div>
   
   <!-- Main Content -->
