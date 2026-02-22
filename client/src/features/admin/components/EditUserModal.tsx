@@ -4,9 +4,11 @@
  * Modal for admins to manually edit user profile data.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { X, Save, Loader2 } from 'lucide-react'
 import { CountrySelect } from '@/components'
+import WorldClubSearch from '@/components/WorldClubSearch'
+import type { WorldClubSearchResult } from '@/components/WorldClubSearch'
 import { useCountries } from '@/hooks/useCountries'
 import type { AdminProfileDetails } from '../types'
 
@@ -39,6 +41,7 @@ export function EditUserModal({
     secondary_position: '',
     gender: '',
     current_club: '',
+    current_world_club_id: null as string | null,
   })
 
   // Initialize form when profile changes
@@ -54,11 +57,27 @@ export function EditUserModal({
         secondary_position: profile.secondary_position || '',
         gender: profile.gender || '',
         current_club: profile.current_club || '',
+        current_world_club_id: profile.current_world_club_id ?? null,
       })
       setReason('')
       setError(null)
     }
   }, [profile])
+
+  const handleClubSelect = useCallback((club: WorldClubSearchResult) => {
+    setFormData(prev => ({
+      ...prev,
+      current_club: club.club_name,
+      current_world_club_id: club.id,
+    }))
+  }, [])
+
+  const handleClubClear = useCallback(() => {
+    setFormData(prev => ({
+      ...prev,
+      current_world_club_id: null,
+    }))
+  }, [])
 
   if (!isOpen || !profile) return null
 
@@ -106,6 +125,9 @@ export function EditUserModal({
       }
       if (formData.current_club !== (profile.current_club || '')) {
         updates.current_club = formData.current_club || null
+      }
+      if (formData.current_world_club_id !== (profile.current_world_club_id ?? null)) {
+        updates.current_world_club_id = formData.current_world_club_id
       }
 
       if (Object.keys(updates).length === 0) {
@@ -251,21 +273,20 @@ export function EditUserModal({
                     </select>
                   </div>
 
-                  <div>
-                    <label htmlFor="admin-edit-current-club" className="block text-sm font-medium text-gray-700 mb-1">
-                      Current Club
-                    </label>
-                    <input
-                      id="admin-edit-current-club"
-                      type="text"
-                      value={formData.current_club}
-                      onChange={(e) => setFormData(prev => ({ ...prev, current_club: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                      aria-label="Current club"
-                    />
-                  </div>
                 </>
               )}
+
+              {/* Current Club (all roles) */}
+              <WorldClubSearch
+                  label="Current Club"
+                  value={formData.current_club}
+                  onChange={(value) => setFormData(prev => ({ ...prev, current_club: value }))}
+                  onClubSelect={handleClubSelect}
+                  onClubClear={handleClubClear}
+                  selectedClubId={formData.current_world_club_id}
+                  placeholder="Search World clubs..."
+                  id="admin-edit-current-club"
+                />
 
               {/* Gender */}
               {(profile.role === 'player' || profile.role === 'coach') && (

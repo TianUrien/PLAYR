@@ -21,6 +21,7 @@ export default function OpportunityDetailPage() {
   
   const [opportunity, setOpportunity] = useState<Opportunity | null>(null)
   const [club, setClub] = useState<{ id: string; full_name: string | null; avatar_url: string | null; role: string | null; current_club: string | null; womens_league_division: string | null; mens_league_division: string | null } | null>(null)
+  const [worldClub, setWorldClub] = useState<{ id: string; clubName: string; avatarUrl: string | null; countryName: string | null; flagEmoji: string | null; leagueName: string | null } | null>(null)
   const [hasApplied, setHasApplied] = useState(false)
   const [showApplyModal, setShowApplyModal] = useState(false)
   const [showSignInPrompt, setShowSignInPrompt] = useState(false)
@@ -45,6 +46,14 @@ export default function OpportunityDetailPage() {
             current_club,
             womens_league_division,
             mens_league_division
+          ),
+          world_club:world_clubs!opportunities_world_club_id_fkey(
+            id,
+            club_name,
+            avatar_url,
+            country:countries(name, flag_emoji),
+            men_league:world_leagues!world_clubs_men_league_id_fkey(name, tier),
+            women_league:world_leagues!world_clubs_women_league_id_fkey(name, tier)
           )
         `)
         .eq('id', id)
@@ -58,7 +67,18 @@ export default function OpportunityDetailPage() {
       }
 
       // Check if this is a test opportunity and current user is not a test account
-      const opportunityWithClub = opportunityData as Opportunity & { club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean; role?: string | null; current_club?: string | null; womens_league_division?: string | null; mens_league_division?: string | null } }
+      type WorldClubJoin = {
+        id: string
+        club_name: string
+        avatar_url: string | null
+        country: { name: string; flag_emoji: string | null } | null
+        men_league: { name: string; tier: number | null } | null
+        women_league: { name: string; tier: number | null } | null
+      } | null
+      const opportunityWithClub = opportunityData as Opportunity & {
+        club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean; role?: string | null; current_club?: string | null; womens_league_division?: string | null; mens_league_division?: string | null }
+        world_club?: WorldClubJoin
+      }
       if (opportunityWithClub.club?.is_test_account && !isCurrentUserTestAccount) {
         // Real users cannot view test opportunities
         logger.debug('Test opportunity not accessible to non-test user')
@@ -79,6 +99,21 @@ export default function OpportunityDetailPage() {
           womens_league_division: opportunityWithClub.club.womens_league_division ?? null,
           mens_league_division: opportunityWithClub.club.mens_league_division ?? null,
         })
+      }
+
+      // Set world club from the joined data
+      if (opportunityWithClub.world_club) {
+        const wc = opportunityWithClub.world_club
+        setWorldClub({
+          id: wc.id,
+          clubName: wc.club_name,
+          avatarUrl: wc.avatar_url,
+          countryName: wc.country?.name ?? null,
+          flagEmoji: wc.country?.flag_emoji ?? null,
+          leagueName: wc.men_league?.name ?? wc.women_league?.name ?? null,
+        })
+      } else {
+        setWorldClub(null)
       }
 
       // Check if user has applied
@@ -277,6 +312,7 @@ export default function OpportunityDetailPage() {
                 ? club.womens_league_division ?? club.mens_league_division ?? null
                 : club.mens_league_division ?? club.womens_league_division ?? null
             })()}
+            worldClub={worldClub}
             onClose={() => navigate('/opportunities')}
             onApply={canShowApplyButton ? handleApplyClick : undefined}
             hasApplied={hasApplied}

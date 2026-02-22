@@ -27,6 +27,7 @@ import { logger } from '@/lib/logger'
 import Button from './Button'
 import Skeleton from './Skeleton'
 import StorageImage from './StorageImage'
+import WorldClubSearch, { type WorldClubSearchResult } from './WorldClubSearch'
 
 type EditableJourneyEntry = Omit<
   CareerHistory,
@@ -150,6 +151,7 @@ const createEmptyJourneyEntry = (userId: string): EditableJourneyEntry => ({
   end_date: null,
   description: '',
   image_url: null,
+  world_club_id: null,
   display_order: 0,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
@@ -269,7 +271,15 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
     try {
       const { data, error } = await supabase
         .from('career_history')
-        .select('*')
+        .select(`
+          *,
+          world_club:world_clubs!career_history_world_club_id_fkey(
+            id, club_name, avatar_url, country_id,
+            country:countries(name, flag_emoji),
+            men_league:world_leagues!world_clubs_men_league_id_fkey(name, tier),
+            women_league:world_leagues!world_clubs_women_league_id_fkey(name, tier)
+          )
+        `)
         .eq('user_id', targetUserId)
         .order('start_date', { ascending: false, nullsFirst: false })
         .order('display_order', { ascending: false })
@@ -646,6 +656,7 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       end_date: endDate,
       description: activeEntryDraft.description,
       image_url: activeEntryDraft.image_url,
+      world_club_id: entryType === 'club' ? (activeEntryDraft.world_club_id ?? null) : null,
       display_order: isCreating ? computeDisplayOrder() : activeEntryDraft.display_order,
     }
 
@@ -740,18 +751,43 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label htmlFor={`journey-title-${entry.id}`} className="text-sm font-medium text-gray-700">
-              Title<span className="text-red-500">*</span>
-            </label>
-            <input
-              id={`journey-title-${entry.id}`}
-              type="text"
-              value={entry.club_name}
-              onChange={event => updateField('club_name', event.target.value)}
-              className={`mt-1 w-full rounded-lg border px-4 py-2.5 focus:border-transparent focus:ring-2 focus:ring-indigo-500 ${formErrors.club_name ? 'border-red-400' : 'border-gray-300'}`}
-              placeholder="Amsterdam Hockey Club"
-            />
-            {formErrors.club_name && <p className="mt-1 text-sm text-red-600">{formErrors.club_name}</p>}
+            {entry.entry_type === 'club' ? (
+              <WorldClubSearch
+                id={`journey-title-${entry.id}`}
+                value={entry.club_name}
+                onChange={v => updateField('club_name', v)}
+                onClubSelect={(club: WorldClubSearchResult) => {
+                  updateField('club_name', club.club_name)
+                  updateField('world_club_id', club.id)
+                  if (club.country_name && !entry.location_country)
+                    updateField('location_country', club.country_name)
+                  const league = club.men_league_name || club.women_league_name
+                  if (league && !entry.division_league)
+                    updateField('division_league', league)
+                }}
+                onClubClear={() => updateField('world_club_id', null as unknown as EditableJourneyEntry['world_club_id'])}
+                selectedClubId={entry.world_club_id ?? null}
+                label="Club Name"
+                required
+                error={formErrors.club_name}
+                placeholder="Amsterdam Hockey Club"
+              />
+            ) : (
+              <>
+                <label htmlFor={`journey-title-${entry.id}`} className="text-sm font-medium text-gray-700">
+                  Title<span className="text-red-500">*</span>
+                </label>
+                <input
+                  id={`journey-title-${entry.id}`}
+                  type="text"
+                  value={entry.club_name}
+                  onChange={event => updateField('club_name', event.target.value)}
+                  className={`mt-1 w-full rounded-lg border px-4 py-2.5 focus:border-transparent focus:ring-2 focus:ring-indigo-500 ${formErrors.club_name ? 'border-red-400' : 'border-gray-300'}`}
+                  placeholder="Amsterdam Hockey Club"
+                />
+                {formErrors.club_name && <p className="mt-1 text-sm text-red-600">{formErrors.club_name}</p>}
+              </>
+            )}
           </div>
 
           <div>
@@ -1140,6 +1176,8 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
                 const startLabel = formatMonthLabel(entry.start_date)
                 const endLabel = entry.end_date ? formatMonthLabel(entry.end_date) : 'Present'
                 const durationLabel = formatDuration(entry.start_date, entry.end_date)
+                // world_club comes from the Supabase join and isn't in the base type
+                const worldClub = (entry as Record<string, unknown>).world_club as { avatar_url?: string | null } | null | undefined
                 const location = [entry.location_city, entry.location_country]
                   .filter(Boolean)
                   .join(', ')
@@ -1188,9 +1226,15 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
 
                           {/* Header row: Logo + Title */}
                           <div className="flex items-start gap-2.5 sm:gap-3">
-                            {/* Club/Event logo — use thumbnail with full image fallback */}
+                            {/* Club/Event logo — prefer world club avatar when linked */}
                             <StorageImage
-                              src={entry.image_url ? deriveThumbUrl(entry.image_url) : null}
+                              src={
+                                worldClub?.avatar_url
+                                  ? worldClub.avatar_url
+                                  : entry.image_url
+                                    ? deriveThumbUrl(entry.image_url)
+                                    : null
+                              }
                               fallbackSrc={entry.image_url}
                               alt="Journey logo"
                               className="h-full w-full object-cover rounded-xl"
@@ -1233,6 +1277,15 @@ export default function JourneyTab({ profileId, readOnly = false }: JourneyTabPr
                               <>
                                 <span className="text-gray-300">·</span>
                                 <span>{durationLabel}</span>
+                              </>
+                            )}
+                            {worldClub && (
+                              <>
+                                <span className="text-gray-300">·</span>
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                                  <Globe2 className="h-3 w-3" />
+                                  Directory
+                                </span>
                               </>
                             )}
                           </div>

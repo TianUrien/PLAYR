@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { X, MapPin, Calendar, Clock, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, Mail, Phone, CheckCircle, AlertTriangle } from 'lucide-react'
+import { X, MapPin, Calendar, Clock, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, Mail, Phone, CheckCircle, AlertTriangle, BadgeCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Vacancy } from '../lib/supabase'
-import { Avatar } from './index'
+import { Avatar, StorageImage } from './index'
 import Button from './Button'
 import { getCountryColor, formatCountryBanner } from '@/lib/countryColors'
+import type { WorldClubInfo } from './OpportunityCard'
 
 interface VacancyDetailViewProps {
   vacancy: Vacancy
@@ -14,6 +15,7 @@ interface VacancyDetailViewProps {
   publisherRole?: string | null
   publisherOrganization?: string | null
   leagueDivision?: string | null
+  worldClub?: WorldClubInfo | null
   onClose: () => void
   onApply?: () => void
   hasApplied?: boolean
@@ -39,12 +41,15 @@ export default function VacancyDetailView({
   publisherRole,
   publisherOrganization,
   leagueDivision,
+  worldClub,
   onClose,
   onApply,
   hasApplied = false,
   hideClubProfileButton = false
 }: VacancyDetailViewProps) {
   const navigate = useNavigate()
+
+  const isDualIdentity = publisherRole === 'coach' && worldClub
 
   const handleClubClick = () => {
     onClose()
@@ -135,42 +140,37 @@ export default function VacancyDetailView({
           {/* Content */}
           <div className="p-6 sm:p-8">
             {/* Header Section with Close Button */}
-            <div className="flex items-start gap-4 mb-4">
-              <button
-                onClick={handleClubClick}
-                className="hover:opacity-80 transition-opacity flex-shrink-0"
-                aria-label={`View ${clubName} profile`}
-              >
-                <Avatar
-                  src={clubLogo}
-                  alt={clubName}
-                  size="lg"
-                />
-              </button>
-
-              <div className="flex-1 min-w-0">
-                {/* Club Name Row with Close Button */}
-                <div className="flex items-start justify-between gap-2">
-                  <div>
+            {isDualIdentity ? (
+              /* Dual Identity Header — Coach first, Club second */
+              <div className="mb-4">
+                <div className="flex items-start justify-between gap-2 mb-2.5">
+                  {/* Row 1: Coach (primary — large avatar) */}
+                  <div className="flex items-center gap-4 min-w-0">
                     <button
-                      type="button"
                       onClick={handleClubClick}
-                      className="text-sm text-gray-600 hover:text-gray-900 block"
+                      className="hover:opacity-80 transition-opacity flex-shrink-0"
+                      aria-label={`View ${clubName} profile`}
                     >
-                      {clubName}
+                      <Avatar
+                        src={clubLogo}
+                        alt={clubName}
+                        size="lg"
+                      />
                     </button>
-                    {publisherRole && (
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {publisherRole === 'coach'
-                          ? publisherOrganization
-                            ? `Coach at ${publisherOrganization}`
-                            : 'Coach'
-                          : 'Club'}
-                        {leagueDivision ? ` · ${leagueDivision}` : ''}
+                    <div className="min-w-0">
+                      <button
+                        type="button"
+                        onClick={handleClubClick}
+                        className="text-sm font-semibold text-gray-900 hover:text-[#8026FA] transition-colors block truncate"
+                      >
+                        {clubName}
+                      </button>
+                      <p className="text-xs text-gray-500 mt-0.5 truncate">
+                        {publisherOrganization ? `Coach at ${publisherOrganization}` : 'Coach'}
                       </p>
-                    )}
+                    </div>
                   </div>
-                  {/* Close Button - Subtle, inside white area */}
+                  {/* Close Button */}
                   <button
                     onClick={onClose}
                     className="p-2 min-w-[36px] min-h-[36px] hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center flex-shrink-0 -mt-1 -mr-2"
@@ -180,60 +180,142 @@ export default function VacancyDetailView({
                   </button>
                 </div>
 
-                {/* Title */}
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 mb-3">
-                  {vacancy.title}
-                </h1>
-
-                {/* Position Block */}
-                {vacancy.position && (
-                  <div className="mb-3 rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5 max-w-xs">
-                    <span className="block text-[11px] uppercase tracking-wider text-gray-500 font-medium">Position</span>
-                    <span className="block text-sm font-semibold text-gray-900 capitalize">{vacancy.position.replace(/_/g, ' ')}</span>
-                  </div>
-                )}
-
-                {/* Secondary Tags Row - Role, Gender, Priority */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <span className="inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold bg-[#8026FA]/10 text-[#8026FA]">
-                    {vacancy.opportunity_type === 'player' ? 'Player' : 'Coach'}
-                    {vacancy.opportunity_type === 'player' && vacancy.gender && ` · ${formatGender(vacancy.gender)}`}
-                    {vacancy.position && ` · ${vacancy.position.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}`}
+                {/* Row 2: World Club (secondary — smaller logo) */}
+                <div className="flex items-center gap-2.5 ml-1">
+                  <button
+                    type="button"
+                    onClick={() => { onClose(); navigate(`/world/clubs/${worldClub!.id}`) }}
+                    className="flex items-center gap-2.5 hover:opacity-80 transition-opacity min-w-0"
+                  >
+                    {worldClub!.avatarUrl ? (
+                      <StorageImage
+                        src={worldClub!.avatarUrl}
+                        alt={worldClub!.clubName}
+                        className="w-8 h-8 rounded-full object-cover flex-shrink-0"
+                        containerClassName="w-8 h-8 flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0 border border-orange-200">
+                        <span className="text-[10px] font-bold text-orange-600">
+                          {worldClub!.clubName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                        </span>
+                      </div>
+                    )}
+                    <span className="text-sm font-medium text-gray-700 hover:text-[#8026FA] transition-colors truncate">
+                      {worldClub!.clubName}
+                    </span>
+                  </button>
+                  {worldClub!.flagEmoji && (
+                    <span className="text-sm flex-shrink-0">{worldClub!.flagEmoji}</span>
+                  )}
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FFF7ED] text-[#EA580C] border border-orange-100 flex-shrink-0 whitespace-nowrap">
+                    <BadgeCheck className="w-3 h-3" />
+                    Official
                   </span>
-                  {vacancy.priority && vacancy.priority !== 'low' && (
-                    <span className={`inline-flex h-8 items-center gap-1 rounded-full px-3 text-xs font-medium ${getPriorityColor(vacancy.priority)}`}>
-                      {vacancy.priority === 'high' && <AlertTriangle className="w-3.5 h-3.5" />}
-                      {getPriorityLabel(vacancy.priority)}
-                    </span>
-                  )}
-                  {hasApplied && (
-                    <span className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold border border-[#8026FA]/15 bg-[#8026FA]/5 text-[#8026FA]">
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      <span className="leading-none">Applied</span>
-                    </span>
-                  )}
-                </div>
-
-                {/* Location & Timeline */}
-                <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4" />
-                    <span>{vacancy.location_city}</span>
-                  </div>
-                  {vacancy.start_date && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      <span>Starts {formatDate(vacancy.start_date)}</span>
-                    </div>
-                  )}
-                  {vacancy.duration_text && (
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      <span>{vacancy.duration_text}</span>
-                    </div>
-                  )}
                 </div>
               </div>
+            ) : (
+              /* Single Identity Header (existing) */
+              <div className="flex items-start gap-4 mb-4">
+                <button
+                  onClick={handleClubClick}
+                  className="hover:opacity-80 transition-opacity flex-shrink-0"
+                  aria-label={`View ${clubName} profile`}
+                >
+                  <Avatar
+                    src={clubLogo}
+                    alt={clubName}
+                    size="lg"
+                  />
+                </button>
+
+                <div className="flex-1 min-w-0">
+                  {/* Club Name Row with Close Button */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <button
+                        type="button"
+                        onClick={handleClubClick}
+                        className="text-sm text-gray-600 hover:text-gray-900 block"
+                      >
+                        {clubName}
+                      </button>
+                      {publisherRole && (
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {publisherRole === 'coach'
+                            ? publisherOrganization
+                              ? `Coach at ${publisherOrganization}`
+                              : 'Coach'
+                            : 'Club'}
+                          {leagueDivision ? ` · ${leagueDivision}` : ''}
+                        </p>
+                      )}
+                    </div>
+                    {/* Close Button - Subtle, inside white area */}
+                    <button
+                      onClick={onClose}
+                      className="p-2 min-w-[36px] min-h-[36px] hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center flex-shrink-0 -mt-1 -mr-2"
+                      aria-label="Close"
+                    >
+                      <X className="w-5 h-5 text-gray-400" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Title */}
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3">
+              {vacancy.title}
+            </h1>
+
+            {/* Position Block */}
+            {vacancy.position && (
+              <div className="mb-3 rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5 max-w-xs">
+                <span className="block text-[11px] uppercase tracking-wider text-gray-500 font-medium">Position</span>
+                <span className="block text-sm font-semibold text-gray-900 capitalize">{vacancy.position.replace(/_/g, ' ')}</span>
+              </div>
+            )}
+
+            {/* Secondary Tags Row - Role, Gender, Priority */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              <span className="inline-flex h-8 items-center rounded-full px-3 text-xs font-semibold bg-[#8026FA]/10 text-[#8026FA]">
+                {vacancy.opportunity_type === 'player' ? 'Player' : 'Coach'}
+                {vacancy.opportunity_type === 'player' && vacancy.gender && ` · ${formatGender(vacancy.gender)}`}
+                {vacancy.position && ` · ${vacancy.position.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}`}
+              </span>
+              {vacancy.priority && vacancy.priority !== 'low' && (
+                <span className={`inline-flex h-8 items-center gap-1 rounded-full px-3 text-xs font-medium ${getPriorityColor(vacancy.priority)}`}>
+                  {vacancy.priority === 'high' && <AlertTriangle className="w-3.5 h-3.5" />}
+                  {getPriorityLabel(vacancy.priority)}
+                </span>
+              )}
+              {hasApplied && (
+                <span className="inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold border border-[#8026FA]/15 bg-[#8026FA]/5 text-[#8026FA]">
+                  <CheckCircle className="w-3.5 h-3.5" />
+                  <span className="leading-none">Applied</span>
+                </span>
+              )}
+            </div>
+
+            {/* Location & Timeline */}
+            <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-0">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                <span>{vacancy.location_city}</span>
+              </div>
+              {vacancy.start_date && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  <span>Starts {formatDate(vacancy.start_date)}</span>
+                </div>
+              )}
+              {vacancy.duration_text && (
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  <span>{vacancy.duration_text}</span>
+                </div>
+              )}
             </div>
 
             {/* Divider */}

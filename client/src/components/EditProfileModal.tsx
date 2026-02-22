@@ -15,6 +15,7 @@ import { deleteStorageObject } from '@/lib/storage'
 import { toSentryError } from '@/lib/sentryHelpers'
 import { clearProfileDraft, loadProfileDraft, saveProfileDraft } from '@/lib/profileDrafts'
 import SocialLinksInput from './SocialLinksInput'
+import WorldClubSearch from './WorldClubSearch'
 import { type SocialLinks, cleanSocialLinks, validateSocialLinks } from '@/lib/socialLinks'
 
 interface EditProfileModalProps {
@@ -34,6 +35,7 @@ type ProfileFormData = {
   secondary_position: string
   gender: string
   current_club: string
+  current_world_club_id: string | null
   year_founded: string
   womens_league_division: string
   mens_league_division: string
@@ -103,6 +105,7 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   secondary_position: profile?.secondary_position || '',
   gender: profile?.gender || '',
   current_club: profile?.current_club || '',
+  current_world_club_id: (profile as unknown as { current_world_club_id?: string | null })?.current_world_club_id ?? null,
   year_founded: profile?.year_founded?.toString() || '',
   womens_league_division: (profile as unknown as { womens_league_division?: string | null })?.womens_league_division || '',
   mens_league_division: (profile as unknown as { mens_league_division?: string | null })?.mens_league_division || '',
@@ -395,6 +398,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.gender = formData.gender
       optimisticUpdate.date_of_birth = formData.date_of_birth || null
       optimisticUpdate.current_club = formData.current_club || null
+      optimisticUpdate.current_world_club_id = formData.current_world_club_id
       optimisticUpdate.bio = formData.bio || null
       optimisticUpdate.open_to_play = formData.open_to_play
       optimisticUpdate.brand_representation = formData.brand_representation || null
@@ -405,6 +409,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.gender = formData.gender || null
       optimisticUpdate.date_of_birth = formData.date_of_birth || null
       optimisticUpdate.current_club = formData.current_club || null
+      optimisticUpdate.current_world_club_id = formData.current_world_club_id
       optimisticUpdate.bio = formData.bio || null
       optimisticUpdate.open_to_coach = formData.open_to_coach
     } else if (role === 'club') {
@@ -733,11 +738,17 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
                 />
 
-                <Input
-                  label="Current Club (Optional)"
-                  type="text"
+                <WorldClubSearch
                   value={formData.current_club}
-                  onChange={(e) => setFormData({ ...formData, current_club: e.target.value })}
+                  onChange={(v) => setFormData({ ...formData, current_club: v })}
+                  onClubSelect={(club) => setFormData({
+                    ...formData,
+                    current_club: club.club_name,
+                    current_world_club_id: club.id,
+                  })}
+                  onClubClear={() => setFormData({ ...formData, current_world_club_id: null })}
+                  selectedClubId={formData.current_world_club_id}
+                  label="Current Club (Optional)"
                   placeholder="e.g., Holcombe Hockey Club"
                 />
 
@@ -817,11 +828,17 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                   onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
                 />
 
-                <Input
-                  label="Current Club (Optional)"
-                  type="text"
+                <WorldClubSearch
                   value={formData.current_club}
-                  onChange={(e) => setFormData({ ...formData, current_club: e.target.value })}
+                  onChange={(v) => setFormData({ ...formData, current_club: v })}
+                  onClubSelect={(club) => setFormData({
+                    ...formData,
+                    current_club: club.club_name,
+                    current_world_club_id: club.id,
+                  })}
+                  onClubClear={() => setFormData({ ...formData, current_world_club_id: null })}
+                  selectedClubId={formData.current_world_club_id}
+                  label="Current Club (Optional)"
                   placeholder="e.g., Holcombe Hockey Club"
                 />
 

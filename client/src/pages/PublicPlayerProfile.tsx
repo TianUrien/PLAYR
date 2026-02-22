@@ -54,6 +54,7 @@ const PUBLIC_PROFILE_FIELDS = [
   'nationality_country_id',
   'nationality2_country_id',
   'current_club',
+  'current_world_club_id',
   'gender',
   'date_of_birth',
   'position',
