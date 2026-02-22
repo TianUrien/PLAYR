@@ -51,6 +51,9 @@ export interface OpportunityPostedFeedItem extends BaseFeedItem {
   club_logo: string | null
   priority: string | null
   start_date: string | null
+  publisher_role?: string | null
+  world_club_name?: string | null
+  world_club_avatar?: string | null
 }
 
 export interface MilestoneAchievedFeedItem extends BaseFeedItem {

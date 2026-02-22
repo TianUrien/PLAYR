@@ -20,6 +20,7 @@ import { useNotificationStore } from '@/lib/notifications'
 import { derivePublicContactEmail } from '@/lib/profile'
 import type { SocialLinks } from '@/lib/socialLinks'
 import { useCoachProfileStrength } from '@/hooks/useCoachProfileStrength'
+import { useWorldClubLogo } from '@/hooks/useWorldClubLogo'
 import { calculateAge, formatDateOfBirth } from '@/lib/utils'
 
 type TabType = 'profile' | 'vacancies' | 'journey' | 'friends' | 'comments' | 'posts'
@@ -70,6 +71,8 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
   const clearCommentNotifications = useNotificationStore((state) => state.clearCommentNotifications)
   const commentHighlightVersion = useNotificationStore((state) => state.commentHighlightVersion)
   const [highlightedComments, setHighlightedComments] = useState<Set<string>>(new Set())
+  const currentWorldClubId = (profile as Partial<Profile> | null)?.current_world_club_id ?? null
+  const currentClubLogo = useWorldClubLogo(currentWorldClubId)
 
   const tabParam = searchParams.get('tab') as TabType | null
 
@@ -371,7 +374,15 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                 {/* Current Club (if specified) */}
                 {profile.current_club && (
                   <div className="flex items-center gap-2">
-                    <Landmark className="w-5 h-5" />
+                    {currentClubLogo ? (
+                      <img
+                        src={currentClubLogo}
+                        alt=""
+                        className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <Landmark className="w-5 h-5" />
+                    )}
                     <span>{profile.current_club}</span>
                   </div>
                 )}

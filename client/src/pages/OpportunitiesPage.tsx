@@ -46,6 +46,7 @@ export default function OpportunitiesPage() {
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
   const [filteredVacancies, setFilteredVacancies] = useState<Vacancy[]>([])
   const [clubs, setClubs] = useState<Record<string, { id: string; full_name: string; avatar_url: string | null; role: string | null; current_club: string | null; womens_league_division: string | null; mens_league_division: string | null }>>({})
+  const [worldClubsMap, setWorldClubsMap] = useState<Record<string, { id: string; clubName: string; avatarUrl: string | null; countryName: string | null; flagEmoji: string | null; leagueName: string | null }>>({})
   const [userApplications, setUserApplications] = useState<string[]>([])
   const [selectedVacancy, setSelectedVacancy] = useState<Vacancy | null>(null)
   const [showApplyModal, setShowApplyModal] = useState(false)
@@ -76,12 +77,8 @@ export default function OpportunitiesPage() {
     // Smart defaults: if NO URL params and user has a profile, pre-populate opportunity type
     // Only type is safe to default — gender/position are too narrow and hide relevant opportunities
     if (!hasAnyParam && profile) {
-      const smartType = (profile.role === 'player' || profile.role === 'coach')
-        ? profile.role as 'player' | 'coach'
-        : 'all' as const
-
       return {
-        opportunityType: smartType,
+        opportunityType: 'all' as const,
         position: [],
         gender: 'all',
         location: '',
@@ -138,7 +135,7 @@ export default function OpportunitiesPage() {
 
     await monitor.measure('fetch_vacancies', async () => {
       try {
-        const { vacanciesData, clubsMap } = await requestCache.dedupe(
+        const { vacanciesData, clubsMap, wcMap } = await requestCache.dedupe(
           cacheKey,
           async () => {
             // Fetch vacancies with club data in a single query using JOIN
@@ -156,6 +153,14 @@ export default function OpportunitiesPage() {
                   current_club,
                   womens_league_division,
                   mens_league_division
+                ),
+                world_club:world_clubs!opportunities_world_club_id_fkey(
+                  id,
+                  club_name,
+                  avatar_url,
+                  country:countries(name, flag_emoji),
+                  men_league:world_leagues!world_clubs_men_league_id_fkey(name, tier),
+                  women_league:world_leagues!world_clubs_women_league_id_fkey(name, tier)
                 )
               `)
               .eq('status', 'open')
@@ -167,7 +172,18 @@ export default function OpportunitiesPage() {
             logger.debug('Fetched vacancies with clubs:', vacanciesData)
 
             // Filter out test vacancies for non-test users
-            type VacancyWithClub = Vacancy & { club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean; role?: string | null; current_club?: string | null; womens_league_division?: string | null; mens_league_division?: string | null } }
+            type WorldClubJoin = {
+              id: string
+              club_name: string
+              avatar_url: string | null
+              country: { name: string; flag_emoji: string | null } | null
+              men_league: { name: string; tier: number | null } | null
+              women_league: { name: string; tier: number | null } | null
+            } | null
+            type VacancyWithClub = Vacancy & {
+              club?: { id: string; full_name: string | null; avatar_url: string | null; is_test_account?: boolean; role?: string | null; current_club?: string | null; womens_league_division?: string | null; mens_league_division?: string | null }
+              world_club?: WorldClubJoin
+            }
             let filteredVacancies = vacanciesData as VacancyWithClub[]
 
             if (!isCurrentUserTestAccount) {
@@ -179,6 +195,7 @@ export default function OpportunitiesPage() {
 
             // Build clubs map from embedded data
             const clubsMap: Record<string, { id: string; full_name: string; avatar_url: string | null; role: string | null; current_club: string | null; womens_league_division: string | null; mens_league_division: string | null }> = {}
+            const wcMap: Record<string, { id: string; clubName: string; avatarUrl: string | null; countryName: string | null; flagEmoji: string | null; leagueName: string | null }> = {}
 
             filteredVacancies.forEach((vacancy) => {
               if (vacancy.club && vacancy.club.id) {
@@ -192,17 +209,28 @@ export default function OpportunitiesPage() {
                   mens_league_division: vacancy.club.mens_league_division ?? null,
                 }
               }
+              if (vacancy.world_club && vacancy.world_club_id) {
+                wcMap[vacancy.world_club_id] = {
+                  id: vacancy.world_club.id,
+                  clubName: vacancy.world_club.club_name,
+                  avatarUrl: vacancy.world_club.avatar_url,
+                  countryName: vacancy.world_club.country?.name ?? null,
+                  flagEmoji: vacancy.world_club.country?.flag_emoji ?? null,
+                  leagueName: vacancy.world_club.men_league?.name ?? vacancy.world_club.women_league?.name ?? null,
+                }
+              }
             })
 
             logger.debug('Clubs map:', clubsMap)
 
-            return { vacanciesData: filteredVacancies, clubsMap }
+            return { vacanciesData: filteredVacancies, clubsMap, wcMap }
           },
           options?.skipCache ? 0 : 5000 // disable cache when explicitly requesting fresh data
         )
 
         setVacancies((vacanciesData as Vacancy[]) || [])
         setClubs(clubsMap)
+        setWorldClubsMap(wcMap)
       } catch (error) {
         logger.error('Error fetching vacancies:', error)
         setFetchError('Could not load opportunities. Please check your connection and try again.')
@@ -864,6 +892,7 @@ export default function OpportunitiesPage() {
                       publisherOrganization={org}
                       leagueDivision={leagueDivision}
                       lastSeenAt={lastSeenAt}
+                      worldClub={vacancy.world_club_id ? worldClubsMap[vacancy.world_club_id] ?? null : null}
                       onViewDetails={() => {
                         setSelectedVacancy(vacancy)
                         setShowDetailView(true)
@@ -894,6 +923,7 @@ export default function OpportunitiesPage() {
               ? c?.womens_league_division ?? c?.mens_league_division ?? null
               : c?.mens_league_division ?? c?.womens_league_division ?? null
           })()}
+          worldClub={selectedVacancy.world_club_id ? worldClubsMap[selectedVacancy.world_club_id] ?? null : null}
           onClose={() => {
             setShowDetailView(false)
             setSelectedVacancy(null)

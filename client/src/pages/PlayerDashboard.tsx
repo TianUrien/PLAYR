@@ -21,6 +21,7 @@ import { useNotificationStore } from '@/lib/notifications'
 import { derivePublicContactEmail } from '@/lib/profile'
 import type { SocialLinks } from '@/lib/socialLinks'
 import { useProfileStrength, type ProfileStrengthBucket } from '@/hooks/useProfileStrength'
+import { useWorldClubLogo } from '@/hooks/useWorldClubLogo'
 import { calculateAge, formatDateOfBirth } from '@/lib/utils'
 
 type TabType = 'profile' | 'friends' | 'journey' | 'comments' | 'posts'
@@ -79,6 +80,8 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
   const clearCommentNotifications = useNotificationStore((state) => state.clearCommentNotifications)
   const commentHighlightVersion = useNotificationStore((state) => state.commentHighlightVersion)
   const [highlightedComments, setHighlightedComments] = useState<Set<string>>(new Set())
+  const currentWorldClubId = (profile as Partial<Profile> | null)?.current_world_club_id ?? null
+  const currentClubLogo = useWorldClubLogo(currentWorldClubId)
 
   const tabParam = searchParams.get('tab') as TabType | null
 
@@ -405,7 +408,15 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                   <>
                     <span className="text-gray-400">•</span>
                     <div className="flex items-center gap-1.5">
-                      <Landmark className="w-4 h-4 md:w-5 md:h-5" />
+                      {currentClubLogo ? (
+                        <img
+                          src={currentClubLogo}
+                          alt=""
+                          className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <Landmark className="w-4 h-4 md:w-5 md:h-5" />
+                      )}
                       <span>{profile.current_club}</span>
                     </div>
                   </>

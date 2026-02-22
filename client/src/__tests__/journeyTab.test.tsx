@@ -195,7 +195,7 @@ describe('JourneyTab', () => {
     expect(await screen.findByText('Brussels Wolves')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /edit/i }))
 
-    const titleInput = await screen.findByLabelText(/Title/)
+    const titleInput = await screen.findByLabelText(/Club Name/)
     await user.clear(titleInput)
     await user.type(titleInput, 'Brussels Wolves Elite')
 
