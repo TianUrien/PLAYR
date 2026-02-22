@@ -53,10 +53,12 @@ interface UseCountriesResult {
 }
 
 let cachedCountries: Country[] | null = null
+let inflightRequest: Promise<Country[]> | null = null
 
 /**
  * Hook to fetch and cache the list of countries for dropdowns.
- * Countries are cached globally to avoid refetching.
+ * Countries are cached globally with request deduplication to avoid N+1 fetches
+ * when many components mount simultaneously (e.g. Community page cards).
  */
 export function useCountries(): UseCountriesResult {
   const [countries, setCountries] = useState<Country[]>(cachedCountries ?? [])
@@ -70,29 +72,33 @@ export function useCountries(): UseCountriesResult {
       return
     }
 
-    const fetchCountries = async () => {
-      try {
-        setLoading(true)
-        const { data, error: fetchError } = await supabase
-          .from('countries')
-          .select('id, code, code_alpha3, name, common_name, nationality_name, region, flag_emoji')
-          .order('name')
-
-        if (fetchError) {
-          throw new Error(fetchError.message)
-        }
-
-        const countryList = (data ?? []) as Country[]
-        cachedCountries = countryList
-        setCountries(countryList)
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to fetch countries'))
-      } finally {
-        setLoading(false)
-      }
+    if (!inflightRequest) {
+      inflightRequest = supabase
+        .from('countries')
+        .select('id, code, code_alpha3, name, common_name, nationality_name, region, flag_emoji')
+        .order('name')
+        .then(({ data, error: fetchError }) => {
+          if (fetchError) throw new Error(fetchError.message)
+          const countryList = (data ?? []) as Country[]
+          cachedCountries = countryList
+          return countryList
+        })
+        .finally(() => {
+          inflightRequest = null
+        })
     }
 
-    fetchCountries()
+    setLoading(true)
+    inflightRequest
+      .then((countryList) => {
+        setCountries(countryList)
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err : new Error('Failed to fetch countries'))
+      })
+      .finally(() => {
+        setLoading(false)
+      })
   }, [])
 
   const getCountryById = (id: number | null): Country | undefined => {
