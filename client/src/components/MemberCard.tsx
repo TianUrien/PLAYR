@@ -7,6 +7,7 @@ import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { useToastStore } from '@/lib/toast'
+import { useWorldClubLogo } from '@/hooks/useWorldClubLogo'
 import { formatDistanceToNow } from 'date-fns'
 
 interface MemberCardProps {
@@ -23,6 +24,7 @@ interface MemberCardProps {
   position: string | null
   secondary_position: string | null
   current_team: string | null
+  current_world_club_id?: string | null
   created_at: string
   open_to_play?: boolean
   open_to_coach?: boolean
@@ -42,6 +44,7 @@ export default function MemberCard({
   position,
   secondary_position,
   current_team,
+  current_world_club_id,
   created_at,
   open_to_play,
   open_to_coach,
@@ -49,6 +52,7 @@ export default function MemberCard({
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const { addToast } = useToastStore()
+  const clubLogo = useWorldClubLogo(current_world_club_id ?? null)
   const [isLoading, setIsLoading] = useState(false)
   const [showSignInPrompt, setShowSignInPrompt] = useState(false)
   const [signInAction, setSignInAction] = useState<'message' | 'view'>('message')
@@ -178,7 +182,12 @@ export default function MemberCard({
         {current_team && (
           <div className="flex items-start gap-2">
             <span className="text-xs font-semibold text-gray-400 min-w-[72px]">Current team:</span>
-            <span className="text-gray-700">{current_team}</span>
+            <span className="text-gray-700 flex items-center gap-1.5">
+              {clubLogo && (
+                <img src={clubLogo} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
+              )}
+              {current_team}
+            </span>
           </div>
         )}
       </div>
