@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MessageCircle, User } from 'lucide-react'
+import { MessageCircle, User, Globe, MapPin, Shield, Building2 } from 'lucide-react'
 import { Avatar, RoleBadge, NationalityCardDisplay, AvailabilityPill } from '@/components'
 import SignInPromptModal from '@/components/SignInPromptModal'
 import { useAuthStore } from '@/lib/auth'
@@ -149,8 +149,9 @@ export default function MemberCard({
       {/* Details */}
       <div className="space-y-3 mb-4 sm:mb-5 text-sm">
         {(nationality_country_id || nationality) && (
-          <div className="flex items-start gap-2">
-            <span className="text-xs font-medium text-gray-400 min-w-[72px]">Nationality:</span>
+          <div className="flex items-center gap-2.5">
+            <Globe className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider min-w-[68px]">Nationality</span>
             <NationalityCardDisplay
               primaryCountryId={nationality_country_id}
               secondaryCountryId={nationality2_country_id}
@@ -161,23 +162,28 @@ export default function MemberCard({
         )}
 
         {base_location && (
-          <div className="flex items-start gap-2">
-            <span className="text-xs font-medium text-gray-400 min-w-[72px]">Location base:</span>
+          <div className="flex items-center gap-2.5">
+            <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider min-w-[68px]">Location</span>
             <span className="text-gray-700">{base_location}</span>
           </div>
         )}
 
         {positions.length > 0 && (role === 'player' || role === 'coach') && (
-          <div className="flex items-start gap-2">
-            <span className="text-xs font-medium text-gray-400 min-w-[72px]">Position:</span>
+          <div className="flex items-center gap-2.5">
+            <Shield className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider min-w-[68px]">Position</span>
             <span className="text-gray-700">{positions.map(capitalizeFirst).join(' • ')}</span>
           </div>
         )}
 
         {current_team && (
-          <div>
-            <span className="text-xs font-medium text-gray-400">Current team:</span>
-            <div className="flex items-center gap-2 mt-1">
+          <div className="pt-1">
+            <div className="flex items-center gap-2.5">
+              <Building2 className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+              <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Team</span>
+            </div>
+            <div className="flex items-center gap-2 mt-1.5 ml-[22px]">
               {clubLogo && (
                 <img src={clubLogo} alt="" className="w-7 h-7 rounded-lg object-cover flex-shrink-0" />
               )}
