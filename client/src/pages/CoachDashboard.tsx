@@ -8,7 +8,6 @@ import MediaTab from '@/components/MediaTab'
 import OpportunitiesTab from '@/components/OpportunitiesTab'
 import ProfilePostsTab from '@/components/ProfilePostsTab'
 import Button from '@/components/Button'
-import StorageImage from '@/components/StorageImage'
 import { DashboardSkeleton } from '@/components/Skeleton'
 import SignInPromptModal from '@/components/SignInPromptModal'
 import SocialLinksDisplay from '@/components/SocialLinksDisplay'
@@ -21,6 +20,7 @@ import { useNotificationStore } from '@/lib/notifications'
 import { derivePublicContactEmail } from '@/lib/profile'
 import type { SocialLinks } from '@/lib/socialLinks'
 import { useCoachProfileStrength } from '@/hooks/useCoachProfileStrength'
+import { useWorldClubLogo } from '@/hooks/useWorldClubLogo'
 import { calculateAge, formatDateOfBirth } from '@/lib/utils'
 
 type TabType = 'profile' | 'vacancies' | 'journey' | 'friends' | 'comments' | 'posts'
@@ -71,17 +71,10 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
   const clearCommentNotifications = useNotificationStore((state) => state.clearCommentNotifications)
   const commentHighlightVersion = useNotificationStore((state) => state.commentHighlightVersion)
   const [highlightedComments, setHighlightedComments] = useState<Set<string>>(new Set())
-  const [currentClubLogo, setCurrentClubLogo] = useState<string | null>(null)
   const currentWorldClubId = (profile as Partial<Profile> | null)?.current_world_club_id ?? null
+  const currentClubLogo = useWorldClubLogo(currentWorldClubId)
 
   const tabParam = searchParams.get('tab') as TabType | null
-
-  // Fetch world club avatar for current club when linked
-  useEffect(() => {
-    if (!currentWorldClubId) { setCurrentClubLogo(null); return }
-    supabase.from('world_clubs').select('avatar_url').eq('id', currentWorldClubId).single()
-      .then(({ data }) => setCurrentClubLogo(data?.avatar_url ?? null))
-  }, [currentWorldClubId])
 
   // Profile strength for coaches (only compute for own profile)
   // Must be called before any early returns to satisfy React hooks rules
@@ -382,13 +375,10 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                 {profile.current_club && (
                   <div className="flex items-center gap-2">
                     {currentClubLogo ? (
-                      <StorageImage
+                      <img
                         src={currentClubLogo}
                         alt=""
-                        className="h-full w-full rounded-full object-cover"
-                        containerClassName="h-5 w-5"
-                        fallbackClassName="hidden"
-                        fallback={<Landmark className="w-5 h-5" />}
+                        className="w-5 h-5 rounded-full object-cover flex-shrink-0"
                       />
                     ) : (
                       <Landmark className="w-5 h-5" />

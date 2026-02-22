@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -1371,6 +1372,7 @@ export type Database = {
           title: string
           updated_at: string
           version: number
+          world_club_id: string | null
         }
         Insert: {
           application_deadline?: string | null
@@ -1398,6 +1400,7 @@ export type Database = {
           title: string
           updated_at?: string
           version?: number
+          world_club_id?: string | null
         }
         Update: {
           application_deadline?: string | null
@@ -1425,6 +1428,7 @@ export type Database = {
           title?: string
           updated_at?: string
           version?: number
+          world_club_id?: string | null
         }
         Relationships: [
           {
@@ -1439,6 +1443,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_world_club_id_fkey"
+            columns: ["world_club_id"]
+            isOneToOne: false
+            referencedRelation: "world_clubs"
             referencedColumns: ["id"]
           },
         ]
@@ -3029,6 +3040,9 @@ export type Database = {
           requirements: string[] | null
           start_date: string | null
           title: string | null
+          world_club_avatar_url: string | null
+          world_club_league: string | null
+          world_club_name: string | null
         }
         Relationships: []
       }

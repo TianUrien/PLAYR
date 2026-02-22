@@ -329,6 +329,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
         contact_email: formData.contact_email || null,
         contact_phone: formData.contact_phone || null,
         organization_name: formData.organization_name?.trim() || null,
+        world_club_id: profile?.role === 'coach' ? profile.current_world_club_id ?? null : null,
       }
 
       if (editingVacancy) {

@@ -10,7 +10,6 @@ import CommentsTab from '@/components/CommentsTab'
 import AddVideoLinkModal from '@/components/AddVideoLinkModal'
 import ProfilePostsTab from '@/components/ProfilePostsTab'
 import Button from '@/components/Button'
-import StorageImage from '@/components/StorageImage'
 import SignInPromptModal from '@/components/SignInPromptModal'
 import SocialLinksDisplay from '@/components/SocialLinksDisplay'
 import type { Profile } from '@/lib/supabase'
@@ -22,6 +21,7 @@ import { useNotificationStore } from '@/lib/notifications'
 import { derivePublicContactEmail } from '@/lib/profile'
 import type { SocialLinks } from '@/lib/socialLinks'
 import { useProfileStrength, type ProfileStrengthBucket } from '@/hooks/useProfileStrength'
+import { useWorldClubLogo } from '@/hooks/useWorldClubLogo'
 import { calculateAge, formatDateOfBirth } from '@/lib/utils'
 
 type TabType = 'profile' | 'friends' | 'journey' | 'comments' | 'posts'
@@ -80,17 +80,10 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
   const clearCommentNotifications = useNotificationStore((state) => state.clearCommentNotifications)
   const commentHighlightVersion = useNotificationStore((state) => state.commentHighlightVersion)
   const [highlightedComments, setHighlightedComments] = useState<Set<string>>(new Set())
-  const [currentClubLogo, setCurrentClubLogo] = useState<string | null>(null)
   const currentWorldClubId = (profile as Partial<Profile> | null)?.current_world_club_id ?? null
+  const currentClubLogo = useWorldClubLogo(currentWorldClubId)
 
   const tabParam = searchParams.get('tab') as TabType | null
-
-  // Fetch world club avatar for current club when linked
-  useEffect(() => {
-    if (!currentWorldClubId) { setCurrentClubLogo(null); return }
-    supabase.from('world_clubs').select('avatar_url').eq('id', currentWorldClubId).single()
-      .then(({ data }) => setCurrentClubLogo(data?.avatar_url ?? null))
-  }, [currentWorldClubId])
 
   useEffect(() => {
     if (!tabParam) return
@@ -416,13 +409,10 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                     <span className="text-gray-400">•</span>
                     <div className="flex items-center gap-1.5">
                       {currentClubLogo ? (
-                        <StorageImage
+                        <img
                           src={currentClubLogo}
                           alt=""
-                          className="h-full w-full rounded-full object-cover"
-                          containerClassName="h-5 w-5"
-                          fallbackClassName="hidden"
-                          fallback={<Landmark className="w-4 h-4 md:w-5 md:h-5" />}
+                          className="w-5 h-5 rounded-full object-cover flex-shrink-0"
                         />
                       ) : (
                         <Landmark className="w-4 h-4 md:w-5 md:h-5" />

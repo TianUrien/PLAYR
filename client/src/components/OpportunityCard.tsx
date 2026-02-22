@@ -1,10 +1,19 @@
-import { MapPin, Calendar, Clock, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, AlertTriangle } from 'lucide-react'
+import { MapPin, Calendar, Clock, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, AlertTriangle, BadgeCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Vacancy } from '../lib/supabase'
-import { Avatar } from './index'
+import { Avatar, StorageImage } from './index'
 import Button from './Button'
 import { getCountryColor, formatCountryBanner } from '@/lib/countryColors'
 import { getTimeAgo } from '@/lib/utils'
+
+export interface WorldClubInfo {
+  id: string
+  clubName: string
+  avatarUrl: string | null
+  countryName: string | null
+  flagEmoji: string | null
+  leagueName: string | null
+}
 
 interface VacancyCardProps {
   vacancy: Vacancy
@@ -15,6 +24,7 @@ interface VacancyCardProps {
   publisherOrganization?: string | null
   leagueDivision?: string | null
   lastSeenAt?: string | null
+  worldClub?: WorldClubInfo | null
   onViewDetails: () => void
   onApply?: () => void
   hasApplied?: boolean
@@ -66,6 +76,7 @@ export default function VacancyCard({
   publisherOrganization,
   leagueDivision,
   lastSeenAt,
+  worldClub,
   onViewDetails,
   onApply,
   hasApplied = false
@@ -78,9 +89,16 @@ export default function VacancyCard({
     onApply()
   }
 
-  const handleClubClick = (e: React.MouseEvent) => {
+  const handlePublisherClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     navigate(publisherRole === 'coach' ? `/players/id/${clubId}` : `/clubs/id/${clubId}`)
+  }
+
+  const handleWorldClubClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (worldClub) {
+      navigate(`/world/clubs/${worldClub.id}`)
+    }
   }
 
   const formatDate = (dateString: string | null) => {
@@ -119,7 +137,10 @@ export default function VacancyCard({
   // Deadline countdown
   const deadlineLabel = getDeadlineLabel(vacancy.application_deadline)
 
-  // Build identity context line
+  // Dual identity: coach with linked world club
+  const isDualIdentity = publisherRole === 'coach' && worldClub
+
+  // Build identity context line (for single-identity fallback)
   let identityContext = ''
   if (publisherRole === 'coach') {
     identityContext = publisherOrganization ? `Coach at ${publisherOrganization}` : 'Coach'
@@ -146,38 +167,110 @@ export default function VacancyCard({
 
       {/* Card Content */}
       <div className="p-5">
-        {/* 2. Identity row — larger avatar, bold name, league context */}
-        <div className="flex items-center gap-3 mb-3">
-          <button
-            type="button"
-            onClick={handleClubClick}
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity min-w-0"
-          >
-            <Avatar
-              src={clubLogo}
-              initials={clubName.split(' ').map(n => n[0]).join('')}
-              size="md"
-            />
-            <div className="min-w-0 text-left">
-              <span className="text-sm font-semibold text-gray-900 truncate block hover:text-[#8026FA] transition-colors">
-                {clubName}
-              </span>
-              <span className="text-xs text-gray-500 truncate block">
-                {identityContext}
+        {isDualIdentity ? (
+          <>
+            {/* 2a. Dual Identity — Coach first (primary), Club second */}
+            {/* Row 1: Coach (large avatar + name + subtitle) */}
+            <div className="flex items-center gap-3 mb-2">
+              <button
+                type="button"
+                onClick={handlePublisherClick}
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity min-w-0"
+              >
+                <Avatar
+                  src={clubLogo}
+                  initials={clubName.split(' ').map(n => n[0]).join('')}
+                  size="md"
+                />
+                <div className="min-w-0 text-left">
+                  <span className="text-sm font-semibold text-gray-900 truncate block hover:text-[#8026FA] transition-colors">
+                    {clubName}
+                  </span>
+                  <span className="text-xs text-gray-500 truncate block">
+                    {publisherOrganization ? `Coach at ${publisherOrganization}` : 'Coach'}
+                  </span>
+                </div>
+              </button>
+              {/* NEW badge or timestamp */}
+              {isNew ? (
+                <span className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#8026FA] text-white flex-shrink-0">
+                  NEW
+                </span>
+              ) : (
+                <span className="ml-auto text-[11px] text-gray-400 flex-shrink-0">
+                  {getTimeAgo(vacancy.created_at || new Date().toISOString())}
+                </span>
+              )}
+            </div>
+
+            {/* Row 2: Club (smaller logo + name + flag + Official badge) */}
+            <div className="flex items-center gap-2.5 mb-3 ml-1">
+              <button
+                type="button"
+                onClick={handleWorldClubClick}
+                className="flex items-center gap-2.5 hover:opacity-80 transition-opacity min-w-0"
+              >
+                {worldClub.avatarUrl ? (
+                  <StorageImage
+                    src={worldClub.avatarUrl}
+                    alt={worldClub.clubName}
+                    className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                    containerClassName="w-7 h-7 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0 border border-orange-200">
+                    <span className="text-[9px] font-bold text-orange-600">
+                      {worldClub.clubName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </span>
+                  </div>
+                )}
+                <span className="text-xs font-medium text-gray-700 truncate hover:text-[#8026FA] transition-colors">
+                  {worldClub.clubName}
+                </span>
+              </button>
+              {worldClub.flagEmoji && (
+                <span className="text-xs flex-shrink-0">{worldClub.flagEmoji}</span>
+              )}
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-[#FFF7ED] text-[#EA580C] border border-orange-100 flex-shrink-0 whitespace-nowrap">
+                <BadgeCheck className="w-2.5 h-2.5" />
+                Official
               </span>
             </div>
-          </button>
-          {/* NEW badge or timestamp */}
-          {isNew ? (
-            <span className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#8026FA] text-white flex-shrink-0">
-              NEW
-            </span>
-          ) : (
-            <span className="ml-auto text-[11px] text-gray-400 flex-shrink-0">
-              {getTimeAgo(vacancy.created_at || new Date().toISOString())}
-            </span>
-          )}
-        </div>
+          </>
+        ) : (
+          /* 2b. Single Identity (existing behavior) */
+          <div className="flex items-center gap-3 mb-3">
+            <button
+              type="button"
+              onClick={handlePublisherClick}
+              className="flex items-center gap-3 hover:opacity-80 transition-opacity min-w-0"
+            >
+              <Avatar
+                src={clubLogo}
+                initials={clubName.split(' ').map(n => n[0]).join('')}
+                size="md"
+              />
+              <div className="min-w-0 text-left">
+                <span className="text-sm font-semibold text-gray-900 truncate block hover:text-[#8026FA] transition-colors">
+                  {clubName}
+                </span>
+                <span className="text-xs text-gray-500 truncate block">
+                  {identityContext}
+                </span>
+              </div>
+            </button>
+            {/* NEW badge or timestamp */}
+            {isNew ? (
+              <span className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[#8026FA] text-white flex-shrink-0">
+                NEW
+              </span>
+            ) : (
+              <span className="ml-auto text-[11px] text-gray-400 flex-shrink-0">
+                {getTimeAgo(vacancy.created_at || new Date().toISOString())}
+              </span>
+            )}
+          </div>
+        )}
 
         {/* 3. Title */}
         <h2 className="text-base font-bold text-gray-900 mb-2 line-clamp-2 group-hover:text-[#8026FA] transition-colors">
