@@ -284,6 +284,7 @@ export type Database = {
           start_date: string | null
           updated_at: string
           user_id: string
+          world_club_id: string | null
           years: string
         }
         Insert: {
@@ -304,6 +305,7 @@ export type Database = {
           start_date?: string | null
           updated_at?: string
           user_id: string
+          world_club_id?: string | null
           years: string
         }
         Update: {
@@ -324,6 +326,7 @@ export type Database = {
           start_date?: string | null
           updated_at?: string
           user_id?: string
+          world_club_id?: string | null
           years?: string
         }
         Relationships: [
@@ -339,6 +342,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "career_history_world_club_id_fkey"
+            columns: ["world_club_id"]
+            isOneToOne: false
+            referencedRelation: "world_clubs"
             referencedColumns: ["id"]
           },
         ]
@@ -2069,6 +2079,7 @@ export type Database = {
           contact_email_public: boolean
           created_at: string
           current_club: string | null
+          current_world_club_id: string | null
           date_of_birth: string | null
           email: string
           full_name: string | null
@@ -2127,6 +2138,7 @@ export type Database = {
           contact_email_public?: boolean
           created_at?: string
           current_club?: string | null
+          current_world_club_id?: string | null
           date_of_birth?: string | null
           email: string
           full_name?: string | null
@@ -2185,6 +2197,7 @@ export type Database = {
           contact_email_public?: boolean
           created_at?: string
           current_club?: string | null
+          current_world_club_id?: string | null
           date_of_birth?: string | null
           email?: string
           full_name?: string | null
@@ -2242,6 +2255,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "world_countries_with_directory"
             referencedColumns: ["country_id"]
+          },
+          {
+            foreignKeyName: "profiles_current_world_club_id_fkey"
+            columns: ["current_world_club_id"]
+            isOneToOne: false
+            referencedRelation: "world_clubs"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "profiles_mens_league_id_fkey"
@@ -3770,6 +3790,7 @@ export type Database = {
           contact_email_public: boolean
           created_at: string
           current_club: string | null
+          current_world_club_id: string | null
           date_of_birth: string | null
           email: string
           full_name: string | null
@@ -3878,6 +3899,7 @@ export type Database = {
           contact_email_public: boolean
           created_at: string
           current_club: string | null
+          current_world_club_id: string | null
           date_of_birth: string | null
           email: string
           full_name: string | null
@@ -3941,6 +3963,14 @@ export type Database = {
       }
       create_user_post: {
         Args: { p_content: string; p_images?: Json }
+        Returns: Json
+      }
+      create_world_club_from_career: {
+        Args: {
+          p_club_name: string
+          p_country_id: number
+          p_province_id?: number
+        }
         Returns: Json
       }
       current_profile_role: { Args: never; Returns: string }
@@ -4435,6 +4465,26 @@ export type Database = {
           p_type?: string
         }
         Returns: Json
+      }
+      search_world_clubs: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          avatar_url: string
+          club_name: string
+          club_name_normalized: string
+          country_code: string
+          country_id: number
+          country_name: string
+          flag_emoji: string
+          id: string
+          is_claimed: boolean
+          men_league_name: string
+          men_league_tier: number
+          province_id: number
+          province_name: string
+          women_league_name: string
+          women_league_tier: number
+        }[]
       }
       set_profile_comment_status: {
         Args: {

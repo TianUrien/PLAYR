@@ -8,6 +8,7 @@ import MediaTab from '@/components/MediaTab'
 import OpportunitiesTab from '@/components/OpportunitiesTab'
 import ProfilePostsTab from '@/components/ProfilePostsTab'
 import Button from '@/components/Button'
+import StorageImage from '@/components/StorageImage'
 import { DashboardSkeleton } from '@/components/Skeleton'
 import SignInPromptModal from '@/components/SignInPromptModal'
 import SocialLinksDisplay from '@/components/SocialLinksDisplay'
@@ -70,8 +71,17 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
   const clearCommentNotifications = useNotificationStore((state) => state.clearCommentNotifications)
   const commentHighlightVersion = useNotificationStore((state) => state.commentHighlightVersion)
   const [highlightedComments, setHighlightedComments] = useState<Set<string>>(new Set())
+  const [currentClubLogo, setCurrentClubLogo] = useState<string | null>(null)
+  const currentWorldClubId = (profile as Partial<Profile> | null)?.current_world_club_id ?? null
 
   const tabParam = searchParams.get('tab') as TabType | null
+
+  // Fetch world club avatar for current club when linked
+  useEffect(() => {
+    if (!currentWorldClubId) { setCurrentClubLogo(null); return }
+    supabase.from('world_clubs').select('avatar_url').eq('id', currentWorldClubId).single()
+      .then(({ data }) => setCurrentClubLogo(data?.avatar_url ?? null))
+  }, [currentWorldClubId])
 
   // Profile strength for coaches (only compute for own profile)
   // Must be called before any early returns to satisfy React hooks rules
@@ -371,7 +381,18 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                 {/* Current Club (if specified) */}
                 {profile.current_club && (
                   <div className="flex items-center gap-2">
-                    <Landmark className="w-5 h-5" />
+                    {currentClubLogo ? (
+                      <StorageImage
+                        src={currentClubLogo}
+                        alt=""
+                        className="h-full w-full rounded-full object-cover"
+                        containerClassName="h-5 w-5"
+                        fallbackClassName="hidden"
+                        fallback={<Landmark className="w-5 h-5" />}
+                      />
+                    ) : (
+                      <Landmark className="w-5 h-5" />
+                    )}
                     <span>{profile.current_club}</span>
                   </div>
                 )}
