@@ -379,6 +379,25 @@ export const initializeAuth = () => {
 
   // Listen for auth changes
   const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    // If we already have an authenticated user and the incoming event carries
+    // the same user, skip heavy re-processing. This prevents cascading state
+    // resets (loading flash → ProtectedRoute unmounts children → form state
+    // lost) caused by:
+    //   - TOKEN_REFRESHED: JWT renewed on tab focus
+    //   - SIGNED_IN via broadcast channel: another PLAYR tab refreshed its token
+    // We still process SIGNED_OUT (clear session) and USER_UPDATED (metadata
+    // changed) which represent real user-state changes.
+    const currentUser = useAuthStore.getState().user
+    if (
+      currentUser &&
+      session?.user?.id === currentUser.id &&
+      event !== 'SIGNED_OUT' &&
+      event !== 'USER_UPDATED'
+    ) {
+      logger.debug('[AUTH_STORE] Auth event with same user, skipping', { event })
+      return
+    }
+
     setLoading(true)
 
     if (!session && event === 'SIGNED_OUT') {
