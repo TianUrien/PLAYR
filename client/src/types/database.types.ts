@@ -4149,6 +4149,28 @@ export type Database = {
         }
         Returns: Json
       }
+      get_club_members: {
+        Args: { p_limit?: number; p_offset?: number; p_profile_id: string }
+        Returns: {
+          avatar_url: string
+          base_location: string
+          created_at: string
+          current_club: string
+          current_world_club_id: string
+          full_name: string
+          id: string
+          is_test_account: boolean
+          nationality: string
+          nationality_country_id: number
+          nationality2_country_id: number
+          open_to_coach: boolean
+          open_to_play: boolean
+          position: string
+          role: string
+          secondary_position: string
+          total_count: number
+        }[]
+      }
       get_home_feed: {
         Args: { p_item_type?: string; p_limit?: number; p_offset?: number }
         Returns: Json

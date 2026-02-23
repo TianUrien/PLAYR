@@ -8,6 +8,7 @@ import { logger } from '@/lib/logger'
 import OpportunitiesTab from '@/components/OpportunitiesTab'
 import ProfilePostsTab from '@/components/ProfilePostsTab'
 import ClubMediaTab from '@/components/ClubMediaTab'
+import ClubMembersTab from '@/components/ClubMembersTab'
 import Skeleton from '@/components/Skeleton'
 import SignInPromptModal from '@/components/SignInPromptModal'
 import SocialLinksDisplay from '@/components/SocialLinksDisplay'
@@ -20,10 +21,9 @@ import { useNotificationStore } from '@/lib/notifications'
 import { derivePublicContactEmail } from '@/lib/profile'
 import type { SocialLinks } from '@/lib/socialLinks'
 
-type TabType = 'overview' | 'vacancies' | 'friends' | 'players' | 'comments' | 'posts'
+type TabType = 'overview' | 'vacancies' | 'friends' | 'members' | 'comments' | 'posts'
 
-const READ_ONLY_TABS: TabType[] = ['overview', 'vacancies', 'friends', 'comments', 'posts']
-const FULL_TABS: TabType[] = [...READ_ONLY_TABS, 'players']
+const ALL_TABS: TabType[] = ['overview', 'vacancies', 'members', 'friends', 'comments', 'posts']
 
 type ClubProfileShape =
   Partial<Profile> &
@@ -61,7 +61,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
   const navigate = useNavigate()
   const { addToast } = useToastStore()
   const [searchParams, setSearchParams] = useSearchParams()
-  const allowedTabs = readOnly ? READ_ONLY_TABS : FULL_TABS
+  const allowedTabs = ALL_TABS
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const param = searchParams.get('tab') as TabType | null
     return param && allowedTabs.includes(param) ? param : 'overview'
@@ -210,17 +210,14 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
     }
   }
 
-  const baseTabs: { id: TabType; label: string }[] = [
+  const tabs: { id: TabType; label: string }[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'vacancies', label: 'Opportunities' },
+    { id: 'members', label: 'Members' },
     { id: 'friends', label: 'Friends' },
     { id: 'comments', label: 'Comments' },
     { id: 'posts', label: 'Posts' },
   ]
-
-  const tabs: { id: TabType; label: string }[] = readOnly
-    ? baseTabs
-    : [...baseTabs, { id: 'players', label: 'Players' }]
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab)
@@ -610,13 +607,9 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
               </div>
             )}
 
-            {activeTab === 'players' && (
-              <div className="text-center py-12 animate-fade-in">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">👥</span>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Club Community Coming Soon</h3>
-                <p className="text-gray-600">We&apos;re building better tools to manage your player roster and alumni.</p>
+            {activeTab === 'members' && (
+              <div className="animate-fade-in">
+                <ClubMembersTab profileId={profile.id} />
               </div>
             )}
           </div>
