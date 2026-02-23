@@ -282,6 +282,8 @@ export default function QuestionDetailPage() {
                           rows={4}
                           maxLength={1500}
                           aria-label="Edit your answer"
+                          autoCapitalize="sentences"
+                          spellCheck
                         />
                         <div className="flex justify-end gap-2 mt-3">
                           <button
@@ -351,6 +353,8 @@ export default function QuestionDetailPage() {
                 placeholder="Share your knowledge or experience..."
                 rows={5}
                 maxLength={1500}
+                autoCapitalize="sentences"
+                spellCheck
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-purple-500 focus:outline-none focus:ring-2 focus:ring-opacity-50 resize-none"
               />
               <div className="flex items-center justify-between mt-3">

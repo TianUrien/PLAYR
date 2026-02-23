@@ -39,7 +39,7 @@ const engagementRpc = supabase.rpc.bind(supabase) as unknown as (
 function getOrCreateSessionId(): string {
   let sessionId = sessionStorage.getItem(SESSION_STORAGE_KEY)
   if (!sessionId) {
-    sessionId = crypto.randomUUID()
+    sessionId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36)
     sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId)
   }
   return sessionId

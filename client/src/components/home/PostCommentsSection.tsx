@@ -181,6 +181,8 @@ export function PostCommentsSection({
               onKeyDown={handleKeyDown}
               placeholder="Write a comment..."
               maxLength={500}
+              enterKeyHint="send"
+              autoCapitalize="sentences"
               className="flex-1 bg-transparent text-sm text-gray-900 placeholder-gray-400 border-0 focus:outline-none focus:ring-0"
             />
             <button

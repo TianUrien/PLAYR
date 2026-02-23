@@ -24,7 +24,7 @@ const getClientIdentifier = (): string => {
   const sessionId = sessionStorage.getItem('rate_limit_session')
   if (sessionId) return sessionId
 
-  const newSessionId = crypto.randomUUID()
+  const newSessionId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36)
   sessionStorage.setItem('rate_limit_session', newSessionId)
   return newSessionId
 }

@@ -324,6 +324,8 @@ export function BrandForm({
           onChange={(e) => setFormData(prev => ({ ...prev, bio: e.target.value }))}
           placeholder="Tell us about your brand..."
           rows={4}
+          autoCapitalize="sentences"
+          spellCheck
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
         />
       </div>

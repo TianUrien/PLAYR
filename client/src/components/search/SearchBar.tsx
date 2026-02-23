@@ -52,12 +52,16 @@ export function SearchBar({ autoFocus = false, initialQuery = '', onQueryChange 
       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400 pointer-events-none" />
       <input
         ref={inputRef}
-        type="text"
+        type="search"
         value={query}
         onChange={(e) => handleChange(e.target.value)}
         placeholder="Search posts, people, clubs..."
         className="w-full pl-10 pr-10 py-2.5 text-sm bg-gray-100 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-[#8026FA]/30 focus:border-[#8026FA] focus:bg-white transition-colors"
         autoComplete="off"
+        enterKeyHint="search"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
       />
       {query && (
         <button

@@ -240,7 +240,7 @@ export default function CountrySelect({
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   ref={inputRef}
-                  type="text"
+                  type="search"
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value)
@@ -253,6 +253,11 @@ export default function CountrySelect({
                     'border border-gray-200 rounded-md',
                     'focus:outline-none focus:ring-2 focus:ring-[#8026FA] focus:border-transparent'
                   )}
+                  autoComplete="off"
+                  enterKeyHint="search"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   aria-autocomplete="list"
                   aria-controls={listboxId}
                   aria-activedescendant={

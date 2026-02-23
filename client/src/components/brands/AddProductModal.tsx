@@ -264,6 +264,8 @@ export function AddProductModal({
                 placeholder="Short description of your product or service..."
                 rows={3}
                 maxLength={300}
+                autoCapitalize="sentences"
+                spellCheck
                 className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none ${
                   errors.description ? 'border-red-300' : 'border-gray-300'
                 }`}
