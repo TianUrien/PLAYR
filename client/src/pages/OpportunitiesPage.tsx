@@ -158,6 +158,7 @@ export default function OpportunitiesPage() {
                   id,
                   club_name,
                   avatar_url,
+                  claimed_profile:profiles!world_clubs_claimed_profile_id_fkey(avatar_url),
                   country:countries(name, flag_emoji),
                   men_league:world_leagues!world_clubs_men_league_id_fkey(name, tier),
                   women_league:world_leagues!world_clubs_women_league_id_fkey(name, tier)
@@ -176,6 +177,7 @@ export default function OpportunitiesPage() {
               id: string
               club_name: string
               avatar_url: string | null
+              claimed_profile: { avatar_url: string | null } | null
               country: { name: string; flag_emoji: string | null } | null
               men_league: { name: string; tier: number | null } | null
               women_league: { name: string; tier: number | null } | null
@@ -213,7 +215,7 @@ export default function OpportunitiesPage() {
                 wcMap[vacancy.world_club_id] = {
                   id: vacancy.world_club.id,
                   clubName: vacancy.world_club.club_name,
-                  avatarUrl: vacancy.world_club.avatar_url,
+                  avatarUrl: vacancy.world_club.avatar_url || vacancy.world_club.claimed_profile?.avatar_url || null,
                   countryName: vacancy.world_club.country?.name ?? null,
                   flagEmoji: vacancy.world_club.country?.flag_emoji ?? null,
                   leagueName: vacancy.world_club.men_league?.name ?? vacancy.world_club.women_league?.name ?? null,

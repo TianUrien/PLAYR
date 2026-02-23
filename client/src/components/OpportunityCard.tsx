@@ -1,7 +1,7 @@
 import { MapPin, Calendar, Clock, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, AlertTriangle, BadgeCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Vacancy } from '../lib/supabase'
-import { Avatar, StorageImage } from './index'
+import { Avatar } from './index'
 import Button from './Button'
 import { getCountryColor, formatCountryBanner } from '@/lib/countryColors'
 import { getTimeAgo } from '@/lib/utils'
@@ -210,20 +210,12 @@ export default function VacancyCard({
                 onClick={handleWorldClubClick}
                 className="flex items-center gap-2.5 hover:opacity-80 transition-opacity min-w-0"
               >
-                {worldClub.avatarUrl ? (
-                  <StorageImage
-                    src={worldClub.avatarUrl}
-                    alt={worldClub.clubName}
-                    className="w-7 h-7 rounded-full object-cover flex-shrink-0"
-                    containerClassName="w-7 h-7 flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-7 h-7 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0 border border-orange-200">
-                    <span className="text-[9px] font-bold text-orange-600">
-                      {worldClub.clubName.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                    </span>
-                  </div>
-                )}
+                <Avatar
+                  src={worldClub.avatarUrl}
+                  alt={worldClub.clubName}
+                  initials={worldClub.clubName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                  size="sm"
+                />
                 <span className="text-xs font-medium text-gray-700 truncate hover:text-[#8026FA] transition-colors">
                   {worldClub.clubName}
                 </span>

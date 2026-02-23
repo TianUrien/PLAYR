@@ -24,7 +24,7 @@ async function fetchLogo(worldClubId: string): Promise<string | null> {
 
   const promise = supabase
     .from('world_clubs')
-    .select('avatar_url')
+    .select('avatar_url, claimed_profile:profiles!world_clubs_claimed_profile_id_fkey(avatar_url)')
     .eq('id', worldClubId)
     .single()
     .then(({ data, error }) => {
@@ -32,7 +32,9 @@ async function fetchLogo(worldClubId: string): Promise<string | null> {
         logger.error('[useWorldClubLogo] Failed to fetch:', error)
         return null
       }
-      const url = data?.avatar_url ?? null
+      // COALESCE: prefer world club logo, fall back to claimed profile avatar
+      const claimedAvatar = (data?.claimed_profile as { avatar_url: string | null } | null)?.avatar_url
+      const url = data?.avatar_url || claimedAvatar || null
       logoCache.set(worldClubId, url)
       return url
     })
