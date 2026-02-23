@@ -574,11 +574,16 @@ export function PostComposerModal({
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
-                          type="text"
+                          type="search"
                           value={clubSearch}
                           onChange={(e) => handleClubSearch(e.target.value)}
                           placeholder="Search for a club..."
                           className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#8026FA]/30 focus:border-[#8026FA]"
+                          autoComplete="off"
+                          enterKeyHint="search"
+                          autoCapitalize="none"
+                          autoCorrect="off"
+                          spellCheck={false}
                         />
                         {isSearching && (
                           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
@@ -757,6 +762,8 @@ export function PostComposerModal({
                 placeholder={mode === 'transfer' ? 'Share something about your transfer... (optional)' : "What's on your mind?"}
                 rows={mode === 'transfer' ? 3 : 4}
                 maxLength={MAX_CONTENT_LENGTH}
+                autoCapitalize="sentences"
+                spellCheck
                 className="w-full px-0 py-2 text-gray-900 text-base placeholder-gray-400 border-0 focus:outline-none focus:ring-0 resize-none"
                 style={{ minHeight: mode === 'transfer' ? '60px' : '100px' }}
               />

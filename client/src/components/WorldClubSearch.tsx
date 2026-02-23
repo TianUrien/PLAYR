@@ -304,7 +304,7 @@ export default function WorldClubSearch({
         <input
           ref={inputRef}
           id={inputId}
-          type="text"
+          type="search"
           value={value}
           onChange={e => handleInputChange(e.target.value)}
           onFocus={() => { if (value.trim().length >= 2 && !isLinked) searchClubs(value) }}
@@ -312,6 +312,10 @@ export default function WorldClubSearch({
           disabled={disabled}
           placeholder={placeholder}
           autoComplete="off"
+          enterKeyHint="search"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           className={`w-full rounded-lg border py-2.5 pl-10 pr-10 focus:border-transparent focus:ring-2 focus:ring-indigo-500 ${
             error ? 'border-red-400' : isLinked ? 'border-emerald-300 bg-emerald-50/30' : 'border-gray-300'
           } ${disabled ? 'cursor-not-allowed bg-gray-50' : ''}`}

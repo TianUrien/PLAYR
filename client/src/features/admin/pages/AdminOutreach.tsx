@@ -187,11 +187,16 @@ export function AdminOutreach() {
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex flex-wrap items-center gap-3">
           <input
-            type="text"
+            type="search"
             placeholder="Search by email, name, or club..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1 min-w-[200px] text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            autoComplete="off"
+            enterKeyHint="search"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
           />
           <select
             value={filterStatus}

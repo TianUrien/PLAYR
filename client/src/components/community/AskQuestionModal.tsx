@@ -122,6 +122,8 @@ export function AskQuestionModal({
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., How do I find trials abroad?"
                 maxLength={120}
+                autoCapitalize="sentences"
+                spellCheck
                 className={`w-full px-4 py-3 rounded-lg border transition-colors ${
                   titleLength > 120
                     ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
@@ -167,6 +169,8 @@ export function AskQuestionModal({
                 placeholder="Add any context that might help others understand your question better..."
                 rows={4}
                 maxLength={1500}
+                autoCapitalize="sentences"
+                spellCheck
                 className={`w-full px-4 py-3 rounded-lg border transition-colors resize-none ${
                   bodyLength > 1500
                     ? 'border-red-300 focus:border-red-500 focus:ring-red-500'

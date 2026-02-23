@@ -153,14 +153,17 @@ export default function NewMessageModal({ isOpen, onClose }: NewMessageModalProp
         <div className="relative mb-4">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
-            type="text"
+            type="search"
             placeholder="Search by name or club..."
             className="w-full rounded-xl border border-gray-200 bg-gray-50 py-3 pl-10 pr-4 text-sm placeholder:text-gray-400 focus:border-[#8026FA] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#8026FA]/20"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             autoFocus
-            autoCapitalize="sentences"
-            inputMode="search"
+            autoComplete="off"
+            enterKeyHint="search"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
           />
           {isSearching && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2">

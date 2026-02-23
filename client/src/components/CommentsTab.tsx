@@ -413,6 +413,8 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
                   onChange={(event) => setComposerContent(event.target.value.slice(0, MAX_LENGTH))}
                   rows={4}
                   placeholder="Tell clubs, coaches, and players why this profile stands out..."
+                  autoCapitalize="sentences"
+                  spellCheck
                   className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-[#8026FA] focus:ring-[#8026FA]"
                 />
                 <div className="mt-1 flex justify-between text-xs text-gray-500">
@@ -518,6 +520,8 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
                         value={editContent}
                         onChange={(event) => setEditContent(event.target.value.slice(0, MAX_LENGTH))}
                         rows={4}
+                        autoCapitalize="sentences"
+                        spellCheck
                         className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 focus:border-[#8026FA] focus:ring-[#8026FA]"
                       />
                       <div className="flex justify-between text-xs text-gray-500">

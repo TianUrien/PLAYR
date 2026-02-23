@@ -404,7 +404,7 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
       <div ref={searchContainerRef} className="max-w-2xl mx-auto relative mb-4">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 z-10" />
         <input
-          type="text"
+          type="search"
           data-keyboard-shortcut="search"
           value={searchQuery}
           onChange={(e) => {
@@ -414,8 +414,11 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
           onFocus={() => { if (searchQuery.trim()) setShowSuggestions(true) }}
           placeholder="Search by name, location, position, or club..."
           className="w-full pl-12 pr-4 py-2.5 sm:py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm sm:text-base"
-          autoCapitalize="sentences"
-          inputMode="search"
+          autoComplete="off"
+          enterKeyHint="search"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
         />
         {isSearching && (
           <div className="absolute right-4 top-1/2 -translate-y-1/2">

@@ -317,17 +317,21 @@ export function SearchOverlay() {
               <ArrowLeft className="w-5 h-5" />
             </button>
 
-            <div className="relative flex-1">
+            <form onSubmit={(e) => { e.preventDefault(); if (query.trim().length >= 2) handleSeeAllResults(); else inputRef.current?.blur() }} className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
               <input
                 ref={inputRef}
-                type="text"
+                type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search players, clubs, posts..."
                 className="w-full pl-9 pr-9 py-2 text-sm bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-[#8026FA]/30 focus:bg-white focus:border-[#8026FA] border border-transparent transition-colors"
                 autoComplete="off"
                 autoFocus
+                enterKeyHint="search"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
               />
               {query && (
                 <button
@@ -339,7 +343,7 @@ export function SearchOverlay() {
                   <X className="w-4 h-4" />
                 </button>
               )}
-            </div>
+            </form>
           </div>
 
           {/* Tab bar (visible when searching) */}
