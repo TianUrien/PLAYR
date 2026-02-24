@@ -1,4 +1,3 @@
-import { X } from 'lucide-react'
 import type { ParsedFilters } from '@/hooks/useDiscover'
 
 interface DiscoverFilterChipsProps {

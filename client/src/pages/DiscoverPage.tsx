@@ -34,7 +34,7 @@ export default function DiscoverPage() {
   const [query, setQuery] = useState('')
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
-  const { mutate: search, data: response, isPending, error, reset } = useDiscover()
+  const { mutate: search, data: response, isPending, error } = useDiscover()
 
   // Rotate placeholder examples
   useEffect(() => {
