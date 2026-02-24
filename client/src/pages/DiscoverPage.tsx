@@ -60,7 +60,7 @@ export default function DiscoverPage() {
   const hasSearched = !!response || !!error
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-[var(--app-header-offset)]">
       <Header />
       {/* Search section */}
       <div className="bg-white border-b border-gray-200">
