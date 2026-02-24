@@ -33,42 +33,32 @@ interface UseCoachProfileStrengthOptions {
  * - References (15%): at least 1 accepted reference
  */
 export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOptions) {
-  const [journeyCount, setJourneyCount] = useState<number | null>(null)
   const [galleryCount, setGalleryCount] = useState<number | null>(null)
-  const [referenceCount, setReferenceCount] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
 
   const profileId = profile?.id ?? null
 
-  // Fetch counts for journey and gallery
+  // Read denormalized counts directly from the profile row (trigger-maintained).
+  // Only gallery_photos still requires a query since it's not denormalized.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const profileAny = profile as any
+  const journeyCount: number = profileAny?.career_entry_count ?? 0
+  const referenceCount: number = profileAny?.accepted_reference_count ?? 0
+
+  // Fetch gallery count (only remaining query needed)
   const fetchCounts = useCallback(async () => {
     if (!profileId) {
-      setJourneyCount(null)
       setGalleryCount(null)
-      setReferenceCount(null)
       setLoading(false)
       return
     }
     setLoading(true)
     try {
-      const [journeyRes, galleryRes, referencesRes] = await Promise.all([
-        supabase
-          .from('career_history')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', profileId),
-        supabase
-          .from('gallery_photos')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', profileId),
-        supabase
-          .from('profile_references')
-          .select('id', { count: 'exact', head: true })
-          .eq('requester_id', profileId)
-          .eq('status', 'accepted'),
-      ])
-      setJourneyCount(journeyRes.count ?? 0)
+      const galleryRes = await supabase
+        .from('gallery_photos')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', profileId)
       setGalleryCount(galleryRes.count ?? 0)
-      setReferenceCount(referencesRes.count ?? 0)
     } finally {
       setLoading(false)
     }

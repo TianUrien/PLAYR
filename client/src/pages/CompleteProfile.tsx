@@ -875,10 +875,10 @@ export default function CompleteProfile() {
                       required
                     >
                       <option value="">Select your position</option>
-                      <option value="Goalkeeper">Goalkeeper</option>
-                      <option value="Defender">Defender</option>
-                      <option value="Midfielder">Midfielder</option>
-                      <option value="Forward">Forward</option>
+                      <option value="goalkeeper">Goalkeeper</option>
+                      <option value="defender">Defender</option>
+                      <option value="midfielder">Midfielder</option>
+                      <option value="forward">Forward</option>
                     </select>
                   </div>
 
@@ -893,9 +893,9 @@ export default function CompleteProfile() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                     >
                       <option value="">No secondary position</option>
-                      {['Goalkeeper', 'Defender', 'Midfielder', 'Forward'].map((option) => (
+                      {['goalkeeper', 'defender', 'midfielder', 'forward'].map((option) => (
                         <option key={option} value={option} disabled={option === formData.position}>
-                          {option}
+                          {option.charAt(0).toUpperCase() + option.slice(1)}
                         </option>
                       ))}
                     </select>
@@ -979,9 +979,9 @@ export default function CompleteProfile() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
                     >
                       <option value="">Select your role (optional)</option>
-                      <option value="Head Coach">Head Coach</option>
-                      <option value="Assistant Coach">Assistant Coach</option>
-                      <option value="Youth Coach">Youth Coach</option>
+                      <option value="head coach">Head Coach</option>
+                      <option value="assistant coach">Assistant Coach</option>
+                      <option value="youth coach">Youth Coach</option>
                     </select>
                   </div>
 
