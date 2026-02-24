@@ -1371,6 +1371,7 @@ export type Database = {
           title: string
           updated_at: string
           version: number
+          world_club_id: string | null
         }
         Insert: {
           application_deadline?: string | null
@@ -1398,6 +1399,7 @@ export type Database = {
           title: string
           updated_at?: string
           version?: number
+          world_club_id?: string | null
         }
         Update: {
           application_deadline?: string | null
@@ -1425,6 +1427,7 @@ export type Database = {
           title?: string
           updated_at?: string
           version?: number
+          world_club_id?: string | null
         }
         Relationships: [
           {
@@ -1439,6 +1442,13 @@ export type Database = {
             columns: ["club_id"]
             isOneToOne: false
             referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_world_club_id_fkey"
+            columns: ["world_club_id"]
+            isOneToOne: false
+            referencedRelation: "world_clubs"
             referencedColumns: ["id"]
           },
         ]
@@ -2065,7 +2075,10 @@ export type Database = {
       }
       profiles: {
         Row: {
+          accepted_friend_count: number
+          accepted_reference_count: number
           avatar_url: string | null
+          base_city: string | null
           base_country_id: number | null
           base_location: string | null
           bio: string | null
@@ -2073,6 +2086,7 @@ export type Database = {
           blocked_by: string | null
           blocked_reason: string | null
           brand_representation: string | null
+          career_entry_count: number
           club_bio: string | null
           club_history: string | null
           contact_email: string | null
@@ -2110,6 +2124,7 @@ export type Database = {
           open_to_opportunities: boolean
           open_to_play: boolean
           position: string | null
+          post_count: number
           role: string
           search_vector: unknown
           secondary_position: string | null
@@ -2124,7 +2139,10 @@ export type Database = {
           year_founded: number | null
         }
         Insert: {
+          accepted_friend_count?: number
+          accepted_reference_count?: number
           avatar_url?: string | null
+          base_city?: string | null
           base_country_id?: number | null
           base_location?: string | null
           bio?: string | null
@@ -2132,6 +2150,7 @@ export type Database = {
           blocked_by?: string | null
           blocked_reason?: string | null
           brand_representation?: string | null
+          career_entry_count?: number
           club_bio?: string | null
           club_history?: string | null
           contact_email?: string | null
@@ -2169,6 +2188,7 @@ export type Database = {
           open_to_opportunities?: boolean
           open_to_play?: boolean
           position?: string | null
+          post_count?: number
           role: string
           search_vector?: unknown
           secondary_position?: string | null
@@ -2183,7 +2203,10 @@ export type Database = {
           year_founded?: number | null
         }
         Update: {
+          accepted_friend_count?: number
+          accepted_reference_count?: number
           avatar_url?: string | null
+          base_city?: string | null
           base_country_id?: number | null
           base_location?: string | null
           bio?: string | null
@@ -2191,6 +2214,7 @@ export type Database = {
           blocked_by?: string | null
           blocked_reason?: string | null
           brand_representation?: string | null
+          career_entry_count?: number
           club_bio?: string | null
           club_history?: string | null
           contact_email?: string | null
@@ -2228,6 +2252,7 @@ export type Database = {
           open_to_opportunities?: boolean
           open_to_play?: boolean
           position?: string | null
+          post_count?: number
           role?: string
           search_vector?: unknown
           secondary_position?: string | null
@@ -3029,6 +3054,9 @@ export type Database = {
           requirements: string[] | null
           start_date: string | null
           title: string | null
+          world_club_avatar_url: string | null
+          world_club_league: string | null
+          world_club_name: string | null
         }
         Relationships: []
       }
@@ -3776,7 +3804,10 @@ export type Database = {
           p_year_founded?: number
         }
         Returns: {
+          accepted_friend_count: number
+          accepted_reference_count: number
           avatar_url: string | null
+          base_city: string | null
           base_country_id: number | null
           base_location: string | null
           bio: string | null
@@ -3784,6 +3815,7 @@ export type Database = {
           blocked_by: string | null
           blocked_reason: string | null
           brand_representation: string | null
+          career_entry_count: number
           club_bio: string | null
           club_history: string | null
           contact_email: string | null
@@ -3821,6 +3853,7 @@ export type Database = {
           open_to_opportunities: boolean
           open_to_play: boolean
           position: string | null
+          post_count: number
           role: string
           search_vector: unknown
           secondary_position: string | null
@@ -3885,7 +3918,10 @@ export type Database = {
       create_profile_for_new_user: {
         Args: { user_email: string; user_id: string; user_role?: string }
         Returns: {
+          accepted_friend_count: number
+          accepted_reference_count: number
           avatar_url: string | null
+          base_city: string | null
           base_country_id: number | null
           base_location: string | null
           bio: string | null
@@ -3893,6 +3929,7 @@ export type Database = {
           blocked_by: string | null
           blocked_reason: string | null
           brand_representation: string | null
+          career_entry_count: number
           club_bio: string | null
           club_history: string | null
           contact_email: string | null
@@ -3930,6 +3967,7 @@ export type Database = {
           open_to_opportunities: boolean
           open_to_play: boolean
           position: string | null
+          post_count: number
           role: string
           search_vector: unknown
           secondary_position: string | null
@@ -3987,6 +4025,29 @@ export type Database = {
         Returns: number
       }
       delete_user_post: { Args: { p_post_id: string }; Returns: Json }
+      discover_profiles: {
+        Args: {
+          p_availability?: string
+          p_base_country_ids?: number[]
+          p_base_location?: string
+          p_country_ids?: number[]
+          p_eu_passport?: boolean
+          p_gender?: string
+          p_league_ids?: number[]
+          p_limit?: number
+          p_max_age?: number
+          p_min_age?: number
+          p_min_career_entries?: number
+          p_min_references?: number
+          p_nationality_country_ids?: number[]
+          p_offset?: number
+          p_positions?: string[]
+          p_roles?: string[]
+          p_search_text?: string
+          p_sort_by?: string
+        }
+        Returns: Json
+      }
       edit_endorsement: {
         Args: { p_endorsement: string; p_reference_id: string }
         Returns: {
@@ -4135,6 +4196,28 @@ export type Database = {
           p_search?: string
         }
         Returns: Json
+      }
+      get_club_members: {
+        Args: { p_limit?: number; p_offset?: number; p_profile_id: string }
+        Returns: {
+          avatar_url: string
+          base_location: string
+          created_at: string
+          current_club: string
+          current_world_club_id: string
+          full_name: string
+          id: string
+          is_test_account: boolean
+          nationality: string
+          nationality_country_id: number
+          nationality2_country_id: number
+          open_to_coach: boolean
+          open_to_play: boolean
+          position: string
+          role: string
+          secondary_position: string
+          total_count: number
+        }[]
       }
       get_home_feed: {
         Args: { p_item_type?: string; p_limit?: number; p_offset?: number }

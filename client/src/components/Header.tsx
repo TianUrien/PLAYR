@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { MessageCircle, Home, Users, Briefcase, Bell, Globe } from 'lucide-react'
+import { MessageCircle, Home, Users, Briefcase, Bell, Globe, Sparkles } from 'lucide-react'
 import { Avatar, NotificationBadge } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
@@ -97,9 +97,20 @@ export default function Header() {
             </span>
           </div>
 
-          {/* Mobile Navigation - Messages + Notifications (rest in bottom nav) */}
+          {/* Mobile Navigation - Discover + Messages + Notifications (rest in bottom nav) */}
           {user && profile && (
             <div className="flex md:hidden items-center gap-1">
+              <button
+                onClick={() => handleNavigate('/discover')}
+                className={`relative p-2 rounded-lg transition-colors ${
+                  isActive('/discover')
+                    ? 'text-[#8026FA] bg-[#8026FA]/10'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+                aria-label="Discover"
+              >
+                <Sparkles className="w-5 h-5" />
+              </button>
               <button
                 onClick={() => handleNavigate('/messages')}
                 className="relative p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
@@ -151,7 +162,19 @@ export default function Header() {
                 {/* Separator */}
                 <div className="w-px h-6 bg-gray-200 mx-1" />
 
-                {/* Icon-only cluster: Messages + Notifications */}
+                {/* Icon-only cluster: Discover + Messages + Notifications */}
+                <button
+                  onClick={() => handleNavigate('/discover')}
+                  className={`relative p-2 rounded-lg transition-colors ${
+                    isActive('/discover')
+                      ? 'text-[#8026FA] bg-[#8026FA]/10'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                  aria-label="Discover"
+                  aria-current={isActive('/discover') ? 'page' : undefined}
+                >
+                  <Sparkles className="w-5 h-5" />
+                </button>
                 <button
                   onClick={() => handleNavigate('/messages')}
                   className={`relative p-2 rounded-lg transition-colors ${

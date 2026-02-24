@@ -247,10 +247,10 @@ export function EditUserModal({
                       aria-label="Position"
                     >
                       <option value="">Select position</option>
-                      <option value="Goalkeeper">Goalkeeper</option>
-                      <option value="Defender">Defender</option>
-                      <option value="Midfielder">Midfielder</option>
-                      <option value="Forward">Forward</option>
+                      <option value="goalkeeper">Goalkeeper</option>
+                      <option value="defender">Defender</option>
+                      <option value="midfielder">Midfielder</option>
+                      <option value="forward">Forward</option>
                     </select>
                   </div>
 
@@ -266,10 +266,10 @@ export function EditUserModal({
                       aria-label="Secondary position"
                     >
                       <option value="">None</option>
-                      <option value="Goalkeeper">Goalkeeper</option>
-                      <option value="Defender">Defender</option>
-                      <option value="Midfielder">Midfielder</option>
-                      <option value="Forward">Forward</option>
+                      <option value="goalkeeper">Goalkeeper</option>
+                      <option value="defender">Defender</option>
+                      <option value="midfielder">Midfielder</option>
+                      <option value="forward">Forward</option>
                     </select>
                   </div>
 

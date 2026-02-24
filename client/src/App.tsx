@@ -37,6 +37,7 @@ const PublicPlayerProfile = lazy(() => import('@/pages/PublicPlayerProfile'))
 const PublicClubProfile = lazy(() => import('@/pages/PublicClubProfile'))
 const MessagesPage = lazy(() => import('@/pages/MessagesPage'))
 const SearchPage = lazy(() => import('@/pages/SearchPage'))
+const DiscoverPage = lazy(() => import('@/pages/DiscoverPage'))
 
 // World directory pages
 const WorldPage = lazy(() => import('@/pages/WorldPage'))
@@ -228,6 +229,7 @@ function App() {
                 <Route path="/complete-profile" element={<CompleteProfile />} />
                 <Route path="/home" element={<ErrorBoundary fallback={<RouteErrorFallback />}><HomePage /></ErrorBoundary>} />
                 <Route path="/search" element={<ErrorBoundary fallback={<RouteErrorFallback />}><SearchPage /></ErrorBoundary>} />
+                <Route path="/discover" element={<ErrorBoundary fallback={<RouteErrorFallback />}><DiscoverPage /></ErrorBoundary>} />
                 <Route path="/community" element={<ErrorBoundary fallback={<RouteErrorFallback />}><CommunityPage /></ErrorBoundary>} />
                 <Route path="/community/:tab" element={<ErrorBoundary fallback={<RouteErrorFallback />}><CommunityPage /></ErrorBoundary>} />
                 <Route path="/community/questions/:questionId" element={<ErrorBoundary fallback={<RouteErrorFallback />}><QuestionDetailPage /></ErrorBoundary>} />

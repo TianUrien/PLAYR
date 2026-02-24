@@ -69,10 +69,15 @@ function hasHighlightVideo(profile: Profile): boolean {
  */
 export function useProfileStrength(profile: Profile | null): ProfileStrengthResult {
   const [loading, setLoading] = useState(true)
-  const [journeyCount, setJourneyCount] = useState<number>(0)
   const [galleryCount, setGalleryCount] = useState<number>(0)
-  const [friendCount, setFriendCount] = useState<number>(0)
-  const [referenceCount, setReferenceCount] = useState<number>(0)
+
+  // Read denormalized counts directly from the profile row (trigger-maintained).
+  // Only gallery_photos still requires a query since it's not denormalized.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const profileAny = profile as any
+  const journeyCount: number = profileAny?.career_entry_count ?? 0
+  const friendCount: number = profileAny?.accepted_friend_count ?? 0
+  const referenceCount: number = profileAny?.accepted_reference_count ?? 0
 
   const fetchCounts = useCallback(async () => {
     if (!profile?.id) {
@@ -82,49 +87,15 @@ export function useProfileStrength(profile: Profile | null): ProfileStrengthResu
 
     setLoading(true)
     try {
-      const [journeyRes, galleryRes, friendsRes, referencesRes] = await Promise.all([
-        supabase
-          .from('career_history')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', profile.id),
-        supabase
-          .from('gallery_photos')
-          .select('id', { count: 'exact', head: true })
-          .eq('user_id', profile.id),
-        supabase
-          .from('profile_friendships')
-          .select('id', { count: 'exact', head: true })
-          .or(`user_one.eq.${profile.id},user_two.eq.${profile.id}`)
-          .eq('status', 'accepted'),
-        supabase
-          .from('profile_references')
-          .select('id', { count: 'exact', head: true })
-          .eq('requester_id', profile.id)
-          .eq('status', 'accepted'),
-      ])
-
-      if (journeyRes.error) {
-        logger.error('Error fetching journey count:', journeyRes.error)
-      } else {
-        setJourneyCount(journeyRes.count ?? 0)
-      }
+      const galleryRes = await supabase
+        .from('gallery_photos')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', profile.id)
 
       if (galleryRes.error) {
         logger.error('Error fetching gallery count:', galleryRes.error)
       } else {
         setGalleryCount(galleryRes.count ?? 0)
-      }
-
-      if (friendsRes.error) {
-        logger.error('Error fetching friend count:', friendsRes.error)
-      } else {
-        setFriendCount(friendsRes.count ?? 0)
-      }
-
-      if (referencesRes.error) {
-        logger.error('Error fetching reference count:', referencesRes.error)
-      } else {
-        setReferenceCount(referencesRes.count ?? 0)
       }
     } catch (error) {
       logger.error('Error fetching profile strength data:', error)
