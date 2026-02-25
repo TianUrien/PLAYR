@@ -12,6 +12,8 @@ export interface DiscoverResult {
   secondary_position: string | null
   gender: string | null
   age: number | null
+  nationality_country_id: number | null
+  nationality2_country_id: number | null
   nationality_name: string | null
   nationality2_name: string | null
   flag_emoji: string | null

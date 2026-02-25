@@ -148,6 +148,8 @@ export default function DiscoverPage() {
                 full_name={result.full_name ?? 'Unknown'}
                 role={result.role as 'player' | 'coach' | 'club' | 'brand'}
                 nationality={result.nationality_name}
+                nationality_country_id={result.nationality_country_id}
+                nationality2_country_id={result.nationality2_country_id}
                 base_location={result.base_location}
                 position={result.position}
                 secondary_position={result.secondary_position}
