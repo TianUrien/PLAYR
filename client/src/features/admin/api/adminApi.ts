@@ -32,6 +32,10 @@ import type {
   FriendshipMetrics,
   ReferenceMetrics,
   FeatureUsageMetrics,
+  CommandCenterStats,
+  RetentionCohort,
+  ActivationFunnelData,
+  UserGrowthPoint,
 } from '../types'
 
 // Helper to call RPC functions that aren't in generated types yet
@@ -1601,5 +1605,33 @@ export async function getFeatureUsageMetrics(
   })
   if (error) throw new Error(`Failed to get feature usage metrics: ${error.message}`)
   return data as FeatureUsageMetrics
+}
+
+// ============================================================================
+// FOUNDER COMMAND CENTER
+// ============================================================================
+
+export async function getCommandCenterStats(days = 30): Promise<CommandCenterStats> {
+  const { data, error } = await adminRpc('admin_get_command_center', { p_days: days })
+  if (error) throw new Error(`Failed to get command center stats: ${error.message}`)
+  return data as CommandCenterStats
+}
+
+export async function getRetentionCohorts(months = 3): Promise<RetentionCohort[]> {
+  const { data, error } = await adminRpc('admin_get_retention_cohorts', { p_months: months })
+  if (error) throw new Error(`Failed to get retention cohorts: ${error.message}`)
+  return (data ?? []) as RetentionCohort[]
+}
+
+export async function getActivationFunnel(days?: number): Promise<ActivationFunnelData> {
+  const { data, error } = await adminRpc('admin_get_activation_funnel', { p_days: days ?? null })
+  if (error) throw new Error(`Failed to get activation funnel: ${error.message}`)
+  return data as ActivationFunnelData
+}
+
+export async function getUserGrowthChart(days = 30): Promise<UserGrowthPoint[]> {
+  const { data, error } = await adminRpc('admin_get_user_growth_chart', { p_days: days })
+  if (error) throw new Error(`Failed to get user growth chart: ${error.message}`)
+  return (data ?? []) as UserGrowthPoint[]
 }
 
