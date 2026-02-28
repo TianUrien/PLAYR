@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { User, MapPin, Calendar, Building2, Camera, UserRound, Briefcase, Users, Store } from 'lucide-react'
 import * as Sentry from '@sentry/react'
-import { Input, Button, CountrySelect } from '@/components'
+import { Input, Button, CountrySelect, LocationAutocomplete } from '@/components'
+import type { LocationSelection } from '@/components/LocationAutocomplete'
 import { useCountries } from '@/hooks/useCountries'
 import ClubClaimStep, { type ClubClaimResult } from '@/components/ClubClaimStep'
 import { supabase } from '@/lib/supabase'
@@ -56,6 +57,9 @@ export default function CompleteProfile() {
     fullName: '',
     clubName: '',
     city: '',
+    baseCity: '',
+    baseCountryId: null as number | null,
+    locationSelected: false,
     nationality: '',
     nationalityCountryId: null as number | null,
     nationality2CountryId: null as number | null,
@@ -237,6 +241,9 @@ export default function CompleteProfile() {
     setFormData(prev => {
       const next = { ...prev }
       next.city = profile.base_location ?? prev.city
+      next.baseCity = (profile as unknown as { base_city?: string | null }).base_city ?? prev.baseCity
+      next.baseCountryId = (profile as unknown as { base_country_id?: number | null }).base_country_id ?? prev.baseCountryId
+      next.locationSelected = !!(next.baseCity && next.baseCountryId)
       next.nationality = profile.nationality ?? prev.nationality
 
       if (profile.role === 'club') {
@@ -294,6 +301,36 @@ export default function CompleteProfile() {
     setShowClubClaimStep(false)
   }
 
+  // Location autocomplete handlers
+  const handleLocationChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      city: value,
+      baseCity: '',
+      baseCountryId: null,
+      locationSelected: false,
+    }))
+  }
+
+  const handleLocationSelect = (location: LocationSelection) => {
+    setFormData(prev => ({
+      ...prev,
+      city: location.displayName,
+      baseCity: location.city,
+      baseCountryId: location.countryId,
+      locationSelected: true,
+    }))
+  }
+
+  const handleLocationClear = () => {
+    setFormData(prev => ({
+      ...prev,
+      city: '',
+      baseCity: '',
+      baseCountryId: null,
+      locationSelected: false,
+    }))
+  }
 
   // Handle avatar upload
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -421,6 +458,8 @@ export default function CompleteProfile() {
         role: userRole, // IMPORTANT: Always include role in update
         full_name: formData.fullName || formData.clubName || '',
         base_location: formData.city || '',
+        base_city: formData.baseCity || null,
+        base_country_id: formData.baseCountryId || null,
         nationality: nationalityText, // Synced from country_id for backward compatibility
         nationality_country_id: formData.nationalityCountryId,
         onboarding_completed: true, // Mark onboarding as complete
@@ -843,12 +882,15 @@ export default function CompleteProfile() {
                     required
                   />
 
-                  <Input
+                  <LocationAutocomplete
                     label="Base Location (City)"
                     icon={<MapPin className="w-5 h-5" />}
                     placeholder="Where are you currently based?"
                     value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    onChange={handleLocationChange}
+                    onLocationSelect={handleLocationSelect}
+                    onLocationClear={handleLocationClear}
+                    isSelected={formData.locationSelected}
                     required
                   />
 
@@ -940,12 +982,15 @@ export default function CompleteProfile() {
                     required
                   />
 
-                  <Input
+                  <LocationAutocomplete
                     label="Base Location (City)"
                     icon={<MapPin className="w-5 h-5" />}
                     placeholder="Where are you currently based?"
                     value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    onChange={handleLocationChange}
+                    onLocationSelect={handleLocationSelect}
+                    onLocationClear={handleLocationClear}
+                    isSelected={formData.locationSelected}
                     required
                   />
 
@@ -1025,12 +1070,15 @@ export default function CompleteProfile() {
                     required
                   />
 
-                  <Input
+                  <LocationAutocomplete
                     label="City"
                     icon={<MapPin className="w-5 h-5" />}
                     placeholder="Club location"
                     value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    onChange={handleLocationChange}
+                    onLocationSelect={handleLocationSelect}
+                    onLocationClear={handleLocationClear}
+                    isSelected={formData.locationSelected}
                     required
                   />
 

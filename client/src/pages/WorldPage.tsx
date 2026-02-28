@@ -8,8 +8,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, Globe, Building2, MapPin, Trophy, RefreshCw } from 'lucide-react'
+import { Globe, Building2, MapPin, Trophy, RefreshCw } from 'lucide-react'
 import { Header } from '@/components'
+import WorldSearchDropdown from '@/components/WorldSearchDropdown'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 
@@ -134,22 +135,12 @@ export default function WorldPage() {
 
         {/* Search */}
         <div className="max-w-xl mx-auto mb-8">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="search"
-              data-keyboard-shortcut="search"
-              placeholder="Search countries..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
-              autoComplete="off"
-              enterKeyHint="search"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-            />
-          </div>
+          <WorldSearchDropdown
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            countries={countries}
+            getFlagUrl={getFlagUrl}
+          />
         </div>
 
         {/* Countries Grid */}

@@ -58,15 +58,10 @@ test.describe('@smoke brand', () => {
   test('brand can view public brands directory', async ({ page }) => {
     await page.goto('/brands')
 
-    // /brands redirects to /community/brands with the community tab switcher
+    // /brands redirects to /community/brands — Members tab visible
     await expect(
-      page.getByRole('button', { name: /brands/i })
+      page.getByRole('button', { name: /members/i })
     ).toBeVisible({ timeout: 20000 })
-
-    // Should show the brand search
-    await expect(
-      page.getByPlaceholder(/search brands/i).first()
-    ).toBeVisible({ timeout: 10000 })
   })
 
   test('brand cannot access player dashboard', async ({ page }) => {

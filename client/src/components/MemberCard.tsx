@@ -181,7 +181,7 @@ export default function MemberCard({
           <div className="pt-1">
             <div className="flex items-center gap-2.5">
               <Building2 className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-              <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Team</span>
+              <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Current Team</span>
             </div>
             <div className="flex items-center gap-2 mt-1.5 ml-[22px]">
               {clubLogo && (

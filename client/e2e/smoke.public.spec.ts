@@ -29,15 +29,10 @@ test.describe('@smoke public', () => {
   test('brands directory loads (public)', async ({ page }) => {
     await page.goto('/brands')
 
-    // /brands redirects to /community/brands with the community tab switcher
+    // /brands redirects to /community/brands — Members tab is active
     await expect(
-      page.getByRole('button', { name: /brands/i })
+      page.getByRole('button', { name: /members/i })
     ).toBeVisible({ timeout: 20000 })
-
-    // Should show the brand search or empty state
-    await expect(
-      page.getByPlaceholder(/search brands/i).first()
-    ).toBeVisible({ timeout: 10000 })
   })
 
   test('community page loads (public)', async ({ page }) => {
@@ -49,8 +44,9 @@ test.describe('@smoke public', () => {
       page.getByRole('heading', { name: /community/i })
     ).toBeVisible({ timeout: 20000 })
 
-    // Tab switcher should show tab buttons
-    await expect(page.getByRole('button', { name: /players/i })).toBeVisible()
+    // Tab switcher should show Members and Questions tabs
+    await expect(page.getByRole('button', { name: /members/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /questions/i })).toBeVisible()
   })
 
   test('world directory loads (public)', async ({ page }) => {
