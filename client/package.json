@@ -26,6 +26,7 @@
     "test:e2e:staging": "E2E_STAGING_MODE=1 playwright test --project=setup --project=staging"
   },
   "dependencies": {
+    "@googlemaps/js-api-loader": "^2.0.2",
     "@hookform/resolvers": "^5.2.2",
     "@sentry/react": "^10.26.0",
     "@supabase/supabase-js": "^2.81.1",

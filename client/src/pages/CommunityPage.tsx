@@ -1,11 +1,8 @@
 /**
  * CommunityPage
  *
- * Container page for the Community section with five tabs:
- * - Players: Player directory
- * - Coaches: Coach directory
- * - Clubs: Club directory
- * - Brands: Brand directory
+ * Container page for the Community section with two tabs:
+ * - Members: Unified directory of players, coaches, clubs, and brands
  * - Questions: Q&A for sharing knowledge
  */
 

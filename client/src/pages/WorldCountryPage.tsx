@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { ArrowLeft, MapPin, Building2, Trophy, CheckCircle, Clock, RefreshCw } from 'lucide-react'
 import { Header } from '@/components'
 import { supabase } from '@/lib/supabase'
@@ -78,7 +78,11 @@ export default function WorldCountryPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
-  const [genderFilter, setGenderFilter] = useState<'women' | 'men'>('women')
+  const [searchParams] = useSearchParams()
+  const highlightClubId = searchParams.get('club')
+  const targetLeagueId = searchParams.get('league')
+  const targetGender = searchParams.get('gender') as 'women' | 'men' | null
+  const [genderFilter, setGenderFilter] = useState<'women' | 'men'>(targetGender === 'men' ? 'men' : 'women')
 
   // Compute the correct flag URL based on country code
   const flagUrl = useMemo(() => {
@@ -98,16 +102,23 @@ export default function WorldCountryPage() {
     return rawLeagues.map(l => ({ ...l, club_count: counts.get(l.id) || 0 }))
   }, [rawLeagues, allClubData, genderFilter])
 
-  // Auto-select first league with clubs when leagues change (gender toggle or initial load)
+  // Auto-select league: prefer target from search params, else first with clubs
   useEffect(() => {
     if (leagues.length === 0) {
       setSelectedLeague(null)
       setClubs([])
       return
     }
+    if (targetLeagueId) {
+      const target = leagues.find(l => l.id === Number(targetLeagueId))
+      if (target) {
+        setSelectedLeague(target)
+        return
+      }
+    }
     const firstWithClubs = leagues.find(l => l.club_count > 0)
     setSelectedLeague(firstWithClubs || leagues[0])
-  }, [leagues])
+  }, [leagues, targetLeagueId])
 
   useEffect(() => {
     if (!countrySlug) return
@@ -253,6 +264,17 @@ export default function WorldCountryPage() {
       setClubsLoading(false)
     }
   }
+
+  // Scroll to highlighted club from search params (once)
+  useEffect(() => {
+    if (!highlightClubId || clubs.length === 0) return
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-club-id="${highlightClubId}"]`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    })
+  }, [clubs, highlightClubId])
 
   const handleClubClick = (club: Club) => {
     if (club.is_claimed && club.profile_username) {
@@ -506,12 +528,15 @@ export default function WorldCountryPage() {
                 {clubs.map((club) => (
                   <button
                     key={club.id}
+                    data-club-id={club.id}
                     onClick={() => handleClubClick(club)}
                     disabled={!club.is_claimed}
                     className={`w-full text-left p-4 rounded-xl border transition-all ${
-                      club.is_claimed
-                        ? 'bg-white border-gray-200 hover:border-[#8026FA] hover:shadow-md cursor-pointer'
-                        : 'bg-gray-50 border-gray-100 cursor-not-allowed opacity-60'
+                      highlightClubId === club.id
+                        ? 'bg-white border-[#8026FA] ring-2 ring-[#8026FA] ring-offset-2 shadow-md'
+                        : club.is_claimed
+                          ? 'bg-white border-gray-200 hover:border-[#8026FA] hover:shadow-md cursor-pointer'
+                          : 'bg-gray-50 border-gray-100 cursor-not-allowed opacity-60'
                     }`}
                   >
                     <div className="flex items-center justify-between">

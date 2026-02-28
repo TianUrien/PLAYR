@@ -17,6 +17,9 @@ export interface WorldClubSearchResult {
   flag_emoji: string | null
   province_id: number | null
   province_name: string | null
+  province_slug: string | null
+  men_league_id: number | null
+  women_league_id: number | null
   men_league_name: string | null
   women_league_name: string | null
   men_league_tier: number | null

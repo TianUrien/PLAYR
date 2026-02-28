@@ -4,7 +4,8 @@ import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
-import { Button, Input, CountrySelect, StorageImage } from '@/components'
+import { Button, Input, CountrySelect, StorageImage, LocationAutocomplete } from '@/components'
+import type { LocationSelection } from '@/components/LocationAutocomplete'
 import { logger } from '@/lib/logger'
 import { optimizeAvatarImage, validateImage } from '@/lib/imageOptimization'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
@@ -27,6 +28,9 @@ interface EditProfileModalProps {
 type ProfileFormData = {
   full_name: string
   base_location: string
+  base_city: string
+  base_country_id: number | null
+  location_selected: boolean
   nationality: string
   nationality_country_id: number | null
   nationality2_country_id: number | null
@@ -97,6 +101,9 @@ function validateFormData(formData: ProfileFormData, role: string): string | nul
 const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   full_name: profile?.full_name || '',
   base_location: profile?.base_location || '',
+  base_city: (profile as unknown as { base_city?: string | null })?.base_city || '',
+  base_country_id: (profile as unknown as { base_country_id?: number | null })?.base_country_id ?? null,
+  location_selected: !!((profile as unknown as { base_city?: string | null })?.base_city && (profile as unknown as { base_country_id?: number | null })?.base_country_id),
   nationality: profile?.nationality || '',
   nationality_country_id: profile?.nationality_country_id ?? null,
   nationality2_country_id: profile?.nationality2_country_id ?? null,
@@ -231,6 +238,37 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       nationality: country?.nationality_name || '', // Use demonym for nationality text
     }))
   }, [getCountryById])
+
+  // Location autocomplete handlers
+  const handleLocationChange = useCallback((value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      base_location: value,
+      base_city: '',
+      base_country_id: null,
+      location_selected: false,
+    }))
+  }, [])
+
+  const handleLocationSelect = useCallback((location: LocationSelection) => {
+    setFormData(prev => ({
+      ...prev,
+      base_location: location.displayName,
+      base_city: location.city,
+      base_country_id: location.countryId,
+      location_selected: true,
+    }))
+  }, [])
+
+  const handleLocationClear = useCallback(() => {
+    setFormData(prev => ({
+      ...prev,
+      base_location: '',
+      base_city: '',
+      base_country_id: null,
+      location_selected: false,
+    }))
+  }, [])
 
   const captureOnboardingError = (error: unknown, payload: Record<string, unknown>, sourceComponent: string) => {
     Sentry.captureException(toSentryError(error), {
@@ -383,6 +421,8 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
     const optimisticUpdate: Record<string, unknown> = {
       full_name: formData.full_name,
       base_location: formData.base_location,
+      base_city: formData.base_city || null,
+      base_country_id: formData.base_country_id || null,
       avatar_url: formData.avatar_url || null,
       contact_email: normalizedContactEmail,
       contact_email_public: formData.contact_email_public,
@@ -599,11 +639,15 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
               required
             />
 
-            <Input
+            <LocationAutocomplete
               label="Base Location (City)"
+              icon={<MapPin className="w-5 h-5" />}
               placeholder="Where are you currently based?"
               value={formData.base_location}
-              onChange={(e) => setFormData({ ...formData, base_location: e.target.value })}
+              onChange={handleLocationChange}
+              onLocationSelect={handleLocationSelect}
+              onLocationClear={handleLocationClear}
+              isSelected={formData.location_selected}
               required
             />
 
