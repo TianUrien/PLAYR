@@ -247,7 +247,7 @@ export default function WorldSearchDropdown({
                             alt=""
                             className="w-full h-full object-cover"
                             containerClassName="w-full h-full"
-                            showLoading={false}
+                            loading="eager"
                           />
                         ) : (
                           <Building2 className="w-4 h-4 text-gray-400" />
