@@ -242,7 +242,7 @@ export default function WorldSearchDropdown({
                     >
                       <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center flex-shrink-0 overflow-hidden">
                         {club.avatar_url ? (
-                          <StorageImage path={club.avatar_url} alt="" className="w-full h-full object-cover" />
+                          <StorageImage src={club.avatar_url} alt="" className="w-full h-full object-cover" />
                         ) : (
                           <Building2 className="w-4 h-4 text-gray-400" />
                         )}
