@@ -242,6 +242,56 @@ export type AdminAction =
   | 'revoke_admin'
 
 // ============================================================================
+// FOUNDER COMMAND CENTER TYPES
+// ============================================================================
+
+export interface CommandCenterStats {
+  total_users: number
+  total_users_prev: number
+  mau: number
+  wau: number
+  dau: number
+  wau_mau_ratio: number
+  live_opportunities: number
+  live_opportunities_prev: number
+  applications_period: number
+  applications_prev: number
+  application_conversion: number
+  profile_completion_pct: number
+  role_distribution: {
+    player: number
+    coach: number
+    club: number
+    brand: number
+  }
+  d7_retention: number
+  generated_at: string
+}
+
+export interface RetentionCohort {
+  signup_month: string
+  cohort_size: number
+  d1_pct: number | null
+  d7_pct: number | null
+  d14_pct: number | null
+  d30_pct: number | null
+}
+
+export interface ActivationFunnelData {
+  signed_up: number
+  profile_complete: number
+  browsed_opportunity: number
+  applied: number
+  messaged: number
+}
+
+export interface UserGrowthPoint {
+  day: string
+  new_users: number
+  cumulative_total: number
+}
+
+// ============================================================================
 // VACANCY ANALYTICS TYPES
 // ============================================================================
 

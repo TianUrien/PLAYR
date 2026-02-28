@@ -8,6 +8,7 @@ import Button from './Button'
 import CountryNameSelect from './CountryNameSelect'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { useToastStore } from '@/lib/toast'
+import { trackDbEvent } from '@/lib/trackDbEvent'
 
 interface CreateVacancyModalProps {
   isOpen: boolean
@@ -353,6 +354,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
           .insert(vacancyData as never)
 
         if (error) throw error
+        trackDbEvent('opportunity_create', 'vacancy', undefined, { type: vacancyData.opportunity_type })
         addToast('Draft saved — publish when you\'re ready to go live.', 'info')
         clearVacancyDraft()
       }

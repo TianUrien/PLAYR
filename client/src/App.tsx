@@ -10,6 +10,7 @@ import { ProfileImagePreviewProvider } from '@/components/ProfileImagePreviewPro
 import InstallPrompt from '@/components/InstallPrompt'
 import PushPrompt from '@/components/PushPrompt'
 import { useEngagementTracking } from '@/hooks/useEngagementTracking'
+import { trackDbEvent } from '@/lib/trackDbEvent'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import KeyboardShortcutsModal from '@/components/KeyboardShortcutsModal'
 import Landing from '@/pages/Landing'
@@ -133,6 +134,50 @@ function AnalyticsTracker() {
   return null
 }
 
+// Track page views to the DB events table (separate from GA4 tracking above)
+function DbPageViewTracker() {
+  const location = useLocation()
+  const isFirstRender = useRef(true)
+
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    trackDbEvent('page_view', undefined, undefined, { path: location.pathname })
+  }, [location])
+
+  return null
+}
+
+// Track session starts to the DB events table
+function SessionTracker() {
+  const lastActiveRef = useRef<number>(Date.now())
+
+  useEffect(() => {
+    const sessionId = sessionStorage.getItem('playr_engagement_session_id')
+    trackDbEvent('session_start', undefined, undefined, { session_id: sessionId })
+
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        const elapsed = Date.now() - lastActiveRef.current
+        if (elapsed > 30 * 60 * 1000) {
+          trackDbEvent('session_start', undefined, undefined, {
+            session_id: sessionStorage.getItem('playr_engagement_session_id'),
+            resumption: true,
+          })
+        }
+      }
+      lastActiveRef.current = Date.now()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [])
+
+  return null
+}
+
 // Scroll to top on forward navigation; skip on back/forward (POP) to allow scroll restoration
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -192,6 +237,8 @@ function App() {
           <PushPrompt />
           <EngagementTracker />
           <AnalyticsTracker />
+          <DbPageViewTracker />
+          <SessionTracker />
           <ScrollToTop />
           <KeyboardShortcutsManager />
           {!isProduction && <SentryTestButton />}
