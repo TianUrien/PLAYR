@@ -24,6 +24,7 @@ import type {
 import { logger } from '@/lib/logger'
 import { supabase } from '@/lib/supabase'
 import { deleteStorageObject } from '@/lib/storage'
+import { optimizeAvatarImage } from '@/lib/imageOptimization'
 
 interface EditWorldClubModalProps {
   isOpen: boolean
@@ -180,12 +181,14 @@ export function EditWorldClubModal({
     setError(null)
 
     try {
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      // Optimize to 512x512 square before uploading
+      const optimized = await optimizeAvatarImage(file)
+      const ext = optimized.name.split('.').pop()?.toLowerCase() || 'jpg'
       const path = `${clubId}/${Date.now()}.${ext}`
 
       const { error: uploadError } = await supabase.storage
         .from('world-club-logos')
-        .upload(path, file, { upsert: true })
+        .upload(path, optimized, { upsert: true })
 
       if (uploadError) throw uploadError
 
@@ -280,13 +283,13 @@ export function EditWorldClubModal({
 
         // If a file was pending, upload it now that we have the club ID
         if (pendingFileRef.current && newClub?.id) {
-          const file = pendingFileRef.current
-          const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+          const optimized = await optimizeAvatarImage(pendingFileRef.current)
+          const ext = optimized.name.split('.').pop()?.toLowerCase() || 'jpg'
           const path = `${newClub.id}/${Date.now()}.${ext}`
 
           const { error: uploadError } = await supabase.storage
             .from('world-club-logos')
-            .upload(path, file, { upsert: true })
+            .upload(path, optimized, { upsert: true })
 
           if (!uploadError) {
             const { data: urlData } = supabase.storage
