@@ -5,12 +5,12 @@
  * Follows the same structural pattern as PlayerDashboard, CoachDashboard, and ClubDashboard.
  */
 
-import { useEffect, useState, useRef } from 'react'
-import { Globe, Instagram, ExternalLink, Eye, Edit, MessageCircle, Store, Package, Users, Plus, FileText } from 'lucide-react'
+import { useEffect, useState, useRef, useCallback } from 'react'
+import { Globe, Instagram, ExternalLink, Eye, Edit, Store, Package, Users, Plus, FileText, Loader2, Award, X } from 'lucide-react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import Header from '@/components/Header'
 import { Avatar, Button, DashboardMenu, ProfileStrengthCard, RoleBadge, ScrollableTabs } from '@/components'
-import { BrandForm, type BrandFormData, ProductCard, AddProductModal, BrandPostCard, AddPostModal } from '@/components/brands'
+import { BrandForm, type BrandFormData, ProductCard, AddProductModal, BrandPostCard, AddPostModal, AddAmbassadorModal } from '@/components/brands'
 import ProfilePostsTab from '@/components/ProfilePostsTab'
 import ConfirmActionModal from '@/components/ConfirmActionModal'
 import { useBrandProfileStrength } from '@/hooks/useBrandProfileStrength'
@@ -19,18 +19,23 @@ import type { BrandProduct, CreateProductInput, UpdateProductInput } from '@/hoo
 import { useBrandPosts } from '@/hooks/useBrandPosts'
 import type { BrandPost, CreatePostInput, UpdatePostInput } from '@/hooks/useBrandPosts'
 import { useMyBrand } from '@/hooks/useMyBrand'
+import { useBrandAnalytics } from '@/hooks/useBrandAnalytics'
+import { useBrandAmbassadors } from '@/hooks/useBrandAmbassadors'
 import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
+import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
+import { getTimeAgo } from '@/lib/utils'
 import Skeleton from '@/components/Skeleton'
 
-type TabType = 'overview' | 'products' | 'posts' | 'messages' | 'followers'
+type TabType = 'overview' | 'products' | 'posts' | 'messages' | 'ambassadors' | 'followers'
 
 const TABS: { id: TabType; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'products', label: 'Products' },
   { id: 'posts', label: 'Posts' },
   { id: 'messages', label: 'Messages' },
+  { id: 'ambassadors', label: 'Ambassadors' },
   { id: 'followers', label: 'Followers' },
 ]
 
@@ -62,10 +67,77 @@ export default function BrandDashboard() {
   const [postToDelete, setPostToDelete] = useState<BrandPost | null>(null)
   const [isDeletingPost, setIsDeletingPost] = useState(false)
 
+  // Analytics
+  const { analytics, isLoading: analyticsLoading } = useBrandAnalytics(30)
+
+  // Ambassadors
+  const {
+    ambassadors,
+    total: ambassadorsTotal,
+    isLoading: ambassadorsLoading,
+    addAmbassador,
+    removeAmbassador,
+    loadMore: loadMoreAmbassadors,
+    hasMore: hasMoreAmbassadors,
+  } = useBrandAmbassadors(brand?.id)
+  const [showAddAmbassadorModal, setShowAddAmbassadorModal] = useState(false)
+  const [ambassadorToRemove, setAmbassadorToRemove] = useState<{ player_id: string; full_name: string | null } | null>(null)
+  const [isRemovingAmbassador, setIsRemovingAmbassador] = useState(false)
+
+  // Followers
+  interface FollowerItem {
+    profile_id: string
+    full_name: string | null
+    avatar_url: string | null
+    role: string
+    followed_at: string
+  }
+  const [followers, setFollowers] = useState<FollowerItem[]>([])
+  const [followersTotal, setFollowersTotal] = useState(0)
+  const [followersLoading, setFollowersLoading] = useState(false)
+  const [followersOffset, setFollowersOffset] = useState(0)
+  const FOLLOWERS_PAGE = 20
+
+  const fetchFollowers = useCallback(async (offset: number, append: boolean) => {
+    if (!brand?.id) return
+    setFollowersLoading(true)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.rpc as any)('get_brand_followers', {
+        p_brand_id: brand.id,
+        p_limit: FOLLOWERS_PAGE,
+        p_offset: offset,
+      })
+      if (error) throw error
+      const result = data as { followers: FollowerItem[]; total: number }
+      setFollowers(prev => append ? [...prev, ...result.followers] : result.followers)
+      setFollowersTotal(result.total)
+    } catch (err) {
+      logger.error('[BrandDashboard] fetchFollowers error:', err)
+    } finally {
+      setFollowersLoading(false)
+    }
+  }, [brand?.id])
+
+  // Fetch followers when tab is active
+  useEffect(() => {
+    if (activeTab === 'followers' && brand?.id) {
+      setFollowersOffset(0)
+      fetchFollowers(0, false)
+    }
+  }, [activeTab, brand?.id, fetchFollowers])
+
+  const loadMoreFollowers = useCallback(() => {
+    const nextOffset = followersOffset + FOLLOWERS_PAGE
+    setFollowersOffset(nextOffset)
+    fetchFollowers(nextOffset, true)
+  }, [followersOffset, fetchFollowers])
+
   // Profile strength for brand
   const { percentage, buckets, loading: strengthLoading, refresh: refreshStrength } = useBrandProfileStrength({
     brand,
     productCount: products.length,
+    ambassadorCount: ambassadors.length,
   })
 
   // Snapshot ref for action-triggered strength toasts: set to current percentage
@@ -122,6 +194,11 @@ export default function BrandDashboard() {
   }, [percentage, strengthLoading, addToast])
 
   const handleTabChange = (tab: TabType) => {
+    // Messages tab redirects to messaging page
+    if (tab === 'messages') {
+      navigate('/messages')
+      return
+    }
     setActiveTab(tab)
     const next = new URLSearchParams(searchParams)
     next.set('tab', tab)
@@ -196,6 +273,33 @@ export default function BrandDashboard() {
     }
   }
 
+  const handleAddAmbassador = async (playerId: string) => {
+    const result = await addAmbassador(playerId)
+    if (result.success) {
+      addToast('Ambassador added', 'success')
+      strengthSnapshotRef.current = percentage
+      await refreshStrength()
+    }
+    return result
+  }
+
+  const handleRemoveAmbassador = async () => {
+    if (!ambassadorToRemove) return
+    setIsRemovingAmbassador(true)
+    try {
+      const result = await removeAmbassador(ambassadorToRemove.player_id)
+      if (!result.success) throw new Error(result.error)
+      addToast('Ambassador removed', 'success')
+      setAmbassadorToRemove(null)
+      strengthSnapshotRef.current = percentage
+      await refreshStrength()
+    } catch {
+      addToast('Failed to remove ambassador', 'error')
+    } finally {
+      setIsRemovingAmbassador(false)
+    }
+  }
+
   const handleUpdateBrand = async (data: BrandFormData) => {
     setIsSubmitting(true)
     try {
@@ -203,6 +307,7 @@ export default function BrandDashboard() {
         name: data.name,
         bio: data.bio || undefined,
         logo_url: data.logo_url || undefined,
+        cover_url: data.cover_url || undefined,
         website_url: data.website_url || undefined,
         instagram_url: data.instagram_url || undefined,
         category: data.category,
@@ -391,6 +496,60 @@ export default function BrandDashboard() {
             {/* Overview Tab */}
             {activeTab === 'overview' && (
               <div className="space-y-8 animate-fade-in">
+                {/* Analytics Cards */}
+                {!analyticsLoading && analytics && (
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-center gap-2 text-gray-500 mb-1">
+                        <Eye className="w-4 h-4" />
+                        <span className="text-xs font-medium">Profile Views</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-900">{analytics.profile_views}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Last 30 days
+                        {analytics.profile_views_previous > 0 && (
+                          <span className={analytics.profile_views >= analytics.profile_views_previous ? 'text-emerald-600' : 'text-red-500'}>
+                            {' '}({analytics.profile_views >= analytics.profile_views_previous ? '+' : ''}
+                            {Math.round(((analytics.profile_views - analytics.profile_views_previous) / analytics.profile_views_previous) * 100)}%)
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-center gap-2 text-gray-500 mb-1">
+                        <Users className="w-4 h-4" />
+                        <span className="text-xs font-medium">Followers</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-900">{analytics.follower_count}</p>
+                      <p className="text-xs text-gray-500 mt-1">Total</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-center gap-2 text-gray-500 mb-1">
+                        <Package className="w-4 h-4" />
+                        <span className="text-xs font-medium">Products</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-900">{analytics.product_count}</p>
+                      <p className="text-xs text-gray-500 mt-1">Published</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-center gap-2 text-gray-500 mb-1">
+                        <FileText className="w-4 h-4" />
+                        <span className="text-xs font-medium">Posts</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-900">{analytics.post_count}</p>
+                      <p className="text-xs text-gray-500 mt-1">Published</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="flex items-center gap-2 text-gray-500 mb-1">
+                        <Award className="w-4 h-4" />
+                        <span className="text-xs font-medium">Ambassadors</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-900">{analytics.ambassador_count}</p>
+                      <p className="text-xs text-gray-500 mt-1">Active</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Profile Strength Card */}
                 <ProfileStrengthCard
                   percentage={percentage}
@@ -403,6 +562,9 @@ export default function BrandDashboard() {
                       handleTabChange('products')
                       setEditingProduct(null)
                       setShowAddProductModal(true)
+                    } else if (bucket.actionId === 'add-ambassador') {
+                      handleTabChange('ambassadors')
+                      setShowAddAmbassadorModal(true)
                     }
                   }}
                 />
@@ -538,7 +700,10 @@ export default function BrandDashboard() {
             {activeTab === 'posts' && (
               <div className="space-y-6 animate-fade-in">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-gray-900">Posts</h2>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">Brand Announcements</h2>
+                    <p className="text-sm text-gray-500 mt-0.5">Appear on your brand profile and in the global feed</p>
+                  </div>
                   <Button
                     variant="primary"
                     size="sm"
@@ -605,28 +770,119 @@ export default function BrandDashboard() {
               </div>
             )}
 
-            {/* Messages Tab */}
-            {activeTab === 'messages' && (
+            {/* Ambassadors Tab */}
+            {activeTab === 'ambassadors' && (
               <div className="space-y-6 animate-fade-in">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-gray-900">Messages</h2>
-                  <Link to="/messages">
-                    <Button variant="primary" size="sm" className="gap-2">
-                      <MessageCircle className="w-4 h-4" />
-                      Open Messages
+                  <h2 className="text-2xl font-bold text-gray-900">Ambassadors</h2>
+                  <div className="flex items-center gap-3">
+                    {ambassadorsTotal > 0 && (
+                      <span className="text-sm text-gray-500">{ambassadorsTotal} total</span>
+                    )}
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setShowAddAmbassadorModal(true)}
+                      className="gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Ambassador
                     </Button>
-                  </Link>
+                  </div>
                 </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-                  <MessageCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Your Conversations</h3>
-                  <p className="text-gray-600 max-w-md mx-auto mb-4">
-                    Athletes and clubs can reach out to you. View and respond to your messages in the Messages section.
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Note: As a brand, you can reply to conversations but cannot initiate them.
-                  </p>
-                </div>
+
+                {ambassadorsLoading && ambassadors.length === 0 ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
+                        <Skeleton width={40} height={40} className="rounded-full" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton width="40%" height={16} />
+                          <Skeleton width="25%" height={12} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : ambassadors.length === 0 ? (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                    <Award className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No ambassadors yet</h3>
+                    <p className="text-gray-600 max-w-md mx-auto mb-4">
+                      Add the players you sponsor as brand ambassadors. They'll appear on your public brand profile.
+                    </p>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setShowAddAmbassadorModal(true)}
+                      className="gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Your First Ambassador
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      {ambassadors.map(ambassador => (
+                        <div
+                          key={ambassador.player_id}
+                          className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors"
+                        >
+                          <Link
+                            to={`/players/id/${ambassador.player_id}`}
+                            className="flex items-center gap-3 flex-1 min-w-0"
+                          >
+                            <Avatar
+                              src={ambassador.avatar_url}
+                              initials={ambassador.full_name?.slice(0, 2) || '?'}
+                              size="sm"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 truncate">
+                                {ambassador.full_name || 'Unknown'}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {[ambassador.position, ambassador.current_club]
+                                  .filter(Boolean)
+                                  .join(' \u00B7 ') || 'Player'}
+                              </p>
+                            </div>
+                            <RoleBadge role="player" />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => setAmbassadorToRemove({
+                              player_id: ambassador.player_id,
+                              full_name: ambassador.full_name,
+                            })}
+                            className="ml-2 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            aria-label="Remove ambassador"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Load more */}
+                    {hasMoreAmbassadors && (
+                      <div className="flex justify-center pt-2">
+                        <button
+                          type="button"
+                          onClick={loadMoreAmbassadors}
+                          disabled={ambassadorsLoading}
+                          className="px-6 py-2 text-sm font-medium text-[#8026FA] bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        >
+                          {ambassadorsLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            'Load more'
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
 
@@ -635,14 +891,83 @@ export default function BrandDashboard() {
               <div className="space-y-6 animate-fade-in">
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-bold text-gray-900">Followers</h2>
+                  {followersTotal > 0 && (
+                    <span className="text-sm text-gray-500">{followersTotal} total</span>
+                  )}
                 </div>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-                  <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Coming Soon</h3>
-                  <p className="text-gray-600 max-w-md mx-auto">
-                    Soon athletes will be able to follow your brand. You'll see your followers here and be able to connect with them.
-                  </p>
-                </div>
+
+                {followersLoading && followers.length === 0 ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 flex items-center gap-3">
+                        <Skeleton width={40} height={40} className="rounded-full" />
+                        <div className="flex-1 space-y-2">
+                          <Skeleton width="40%" height={16} />
+                          <Skeleton width="25%" height={12} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : followers.length === 0 ? (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+                    <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No followers yet</h3>
+                    <p className="text-gray-600 max-w-md mx-auto">
+                      Share your brand profile to grow your audience. Athletes and clubs can follow your brand from your profile page.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      {followers.map(follower => (
+                        <Link
+                          key={follower.profile_id}
+                          to={
+                            follower.role === 'club'
+                              ? `/clubs/id/${follower.profile_id}`
+                              : follower.role === 'coach'
+                                ? `/coaches/id/${follower.profile_id}`
+                                : `/players/id/${follower.profile_id}`
+                          }
+                          className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors"
+                        >
+                          <Avatar
+                            src={follower.avatar_url}
+                            initials={follower.full_name?.slice(0, 2) || '?'}
+                            size="sm"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {follower.full_name || 'Unknown'}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Followed {getTimeAgo(follower.followed_at, true)}
+                            </p>
+                          </div>
+                          <RoleBadge role={follower.role} />
+                        </Link>
+                      ))}
+                    </div>
+
+                    {/* Load more */}
+                    {followers.length < followersTotal && (
+                      <div className="flex justify-center pt-2">
+                        <button
+                          type="button"
+                          onClick={loadMoreFollowers}
+                          disabled={followersLoading}
+                          className="px-6 py-2 text-sm font-medium text-[#8026FA] bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        >
+                          {followersLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            'Load more'
+                          )}
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -658,8 +983,10 @@ export default function BrandDashboard() {
               <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-gray-900">Edit Brand Profile</h2>
                 <button
+                  type="button"
                   onClick={() => setShowEditModal(false)}
                   className="text-gray-400 hover:text-gray-600"
+                  aria-label="Close"
                 >
                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -726,6 +1053,30 @@ export default function BrandDashboard() {
           onConfirm={handleDeletePost}
           onClose={() => setPostToDelete(null)}
           confirmLoading={isDeletingPost}
+        />
+      )}
+
+      {/* Add Ambassador Modal */}
+      {brand && (
+        <AddAmbassadorModal
+          isOpen={showAddAmbassadorModal}
+          onClose={() => setShowAddAmbassadorModal(false)}
+          onAdd={handleAddAmbassador}
+          existingPlayerIds={ambassadors.map(a => a.player_id)}
+        />
+      )}
+
+      {/* Remove Ambassador Confirmation */}
+      {ambassadorToRemove && (
+        <ConfirmActionModal
+          isOpen={Boolean(ambassadorToRemove)}
+          title="Remove Ambassador"
+          description={`Remove ${ambassadorToRemove.full_name || 'this player'} as a brand ambassador?`}
+          confirmLabel="Remove"
+          confirmTone="danger"
+          onConfirm={handleRemoveAmbassador}
+          onClose={() => setAmbassadorToRemove(null)}
+          confirmLoading={isRemovingAmbassador}
         />
       )}
     </div>

@@ -6,12 +6,15 @@
 
 import { useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Loader2, Store, MessageCircle } from 'lucide-react'
-import { Header, Layout, Button } from '@/components'
-import { BrandHeader, ProductCard } from '@/components/brands'
+import { ArrowLeft, Loader2, Store, MessageCircle, UserPlus, UserCheck, Award } from 'lucide-react'
+import { Header, Layout, Button, Avatar } from '@/components'
+import { BrandHeader, ProductCard, BrandPostCard } from '@/components/brands'
 import Breadcrumbs from '@/components/Breadcrumbs'
 import { useBrand } from '@/hooks/useBrand'
 import { useBrandProducts } from '@/hooks/useBrandProducts'
+import { useBrandPosts } from '@/hooks/useBrandPosts'
+import { useFollowBrand } from '@/hooks/useFollowBrand'
+import { useBrandAmbassadorsPublic } from '@/hooks/useBrandAmbassadorsPublic'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { useAuthStore } from '@/lib/auth'
 import { trackDbEvent } from '@/lib/trackDbEvent'
@@ -25,6 +28,9 @@ export default function BrandProfilePage() {
   const { user, profile } = useAuthStore()
   const { brand, isLoading, error } = useBrand(slug)
   const { products, isLoading: productsLoading } = useBrandProducts(brand?.id)
+  const { posts, isLoading: postsLoading } = useBrandPosts(brand?.id)
+  const { isFollowing, followerCount, toggleFollow, isToggling } = useFollowBrand(brand?.id)
+  const { ambassadors, total: ambassadorTotal, isLoading: ambassadorsLoading } = useBrandAmbassadorsPublic(brand?.id)
 
   // Track brand profile view (skip if brand owner)
   const isOwnBrand = profile?.role === 'brand' && brand?.profile_id === user?.id
@@ -35,9 +41,6 @@ export default function BrandProfilePage() {
     trackProfileView('brand', brand.profile_id)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brand?.id])
-
-  // Check if current user can message this brand
-  const canMessage = user && profile?.role !== 'brand' && brand
 
   return (
     <Layout>
@@ -110,15 +113,37 @@ export default function BrandProfilePage() {
 
             {/* Content */}
             <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-              {/* Message Button */}
-              {canMessage && (
-                <div className="mb-6">
-                  <Link to={`/messages?to=${brand.profile_id}`}>
-                    <Button className="w-full sm:w-auto">
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      Send Message
-                    </Button>
-                  </Link>
+              {/* Action Buttons */}
+              {user && profile?.role !== 'brand' && (
+                <div className="flex flex-wrap gap-3 mb-6">
+                  {brand && (
+                    <Link to={`/messages?to=${brand.profile_id}`}>
+                      <Button className="gap-2">
+                        <MessageCircle className="w-4 h-4" />
+                        Send Message
+                      </Button>
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    onClick={toggleFollow}
+                    disabled={isToggling}
+                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      isFollowing
+                        ? 'bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-600 border border-gray-200'
+                        : 'bg-[#E11D48]/10 text-[#E11D48] hover:bg-[#E11D48]/20 border border-[#E11D48]/20'
+                    }`}
+                  >
+                    {isFollowing ? (
+                      <UserCheck className="w-4 h-4" />
+                    ) : (
+                      <UserPlus className="w-4 h-4" />
+                    )}
+                    {isFollowing ? 'Following' : 'Follow'}
+                    {followerCount > 0 && (
+                      <span className="text-xs opacity-70">{followerCount}</span>
+                    )}
+                  </button>
                 </div>
               )}
 
@@ -131,6 +156,77 @@ export default function BrandProfilePage() {
                   <p className="text-gray-600 whitespace-pre-wrap">
                     {brand.bio}
                   </p>
+                </div>
+              )}
+
+              {/* Brand Ambassadors */}
+              {!ambassadorsLoading && ambassadors.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Award className="w-5 h-5 text-[#E11D48]" />
+                      <h2 className="text-lg font-semibold text-gray-900">
+                        Brand Ambassadors
+                      </h2>
+                    </div>
+                    {ambassadorTotal > 0 && (
+                      <span className="text-sm text-gray-500">{ambassadorTotal}</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {ambassadors.map(ambassador => (
+                      <Link
+                        key={ambassador.player_id}
+                        to={`/players/id/${ambassador.player_id}`}
+                        className="flex flex-col items-center text-center p-3 rounded-xl hover:bg-gray-50 transition-colors"
+                      >
+                        <Avatar
+                          src={ambassador.avatar_url}
+                          initials={ambassador.full_name?.slice(0, 2) || '?'}
+                          size="lg"
+                        />
+                        <p className="text-sm font-semibold text-gray-900 mt-2 truncate w-full">
+                          {ambassador.full_name || 'Unknown'}
+                        </p>
+                        {ambassador.position && (
+                          <p className="text-xs text-gray-500 truncate w-full">
+                            {ambassador.position.charAt(0).toUpperCase() + ambassador.position.slice(1)}
+                          </p>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Latest Updates (brand posts) */}
+              {!postsLoading && posts.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                    Latest Updates
+                  </h2>
+                  <div className="space-y-4">
+                    {posts.slice(0, 3).map(post => (
+                      <BrandPostCard
+                        key={post.id}
+                        post={post}
+                        brandName={brand.name}
+                        brandSlug={brand.slug}
+                        brandLogoUrl={brand.logo_url}
+                        brandIsVerified={brand.is_verified}
+                      />
+                    ))}
+                  </div>
+                  {posts.length > 3 && (
+                    <div className="mt-4 text-center">
+                      <Link
+                        to={`/brands?view=feed`}
+                        className="text-sm font-medium text-[#8026FA] hover:text-[#6b1fd4]"
+                      >
+                        View all updates
+                      </Link>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -2,7 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 
-export type SearchResultType = 'post' | 'person' | 'club'
+export type SearchResultType = 'post' | 'person' | 'club' | 'brand'
 
 export interface SearchPostResult {
   result_type: 'post'
@@ -44,7 +44,18 @@ export interface SearchClubResult {
   claimed_profile_id: string | null
 }
 
-export type SearchResult = SearchPostResult | SearchPersonResult | SearchClubResult
+export interface SearchBrandResult {
+  result_type: 'brand'
+  brand_id: string
+  brand_slug: string
+  brand_name: string
+  brand_logo_url: string | null
+  brand_category: string | null
+  brand_is_verified: boolean
+  brand_bio: string | null
+}
+
+export type SearchResult = SearchPostResult | SearchPersonResult | SearchClubResult | SearchBrandResult
 
 interface SearchResponse {
   results: SearchResult[]
@@ -53,6 +64,7 @@ interface SearchResponse {
     posts: number
     people: number
     clubs: number
+    brands: number
   }
 }
 
