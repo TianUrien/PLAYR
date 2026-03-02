@@ -6,17 +6,19 @@ import { SearchBar } from '@/components/search/SearchBar'
 import { SearchPostResult } from '@/components/search/SearchPostResult'
 import { SearchPersonResult } from '@/components/search/SearchPersonResult'
 import { SearchClubResult } from '@/components/search/SearchClubResult'
+import { SearchBrandResult } from '@/components/search/SearchBrandResult'
 import { useSearch } from '@/hooks/useSearch'
 import { trackDbEvent } from '@/lib/trackDbEvent'
 import type { SearchResult } from '@/hooks/useSearch'
 
-type TabType = 'all' | 'posts' | 'people' | 'clubs'
+type TabType = 'all' | 'posts' | 'people' | 'clubs' | 'brands'
 
 const TABS: { key: TabType; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'posts', label: 'Posts' },
   { key: 'people', label: 'People' },
   { key: 'clubs', label: 'Clubs' },
+  { key: 'brands', label: 'Brands' },
 ]
 
 export default function SearchPage() {
@@ -76,6 +78,8 @@ export default function SearchPage() {
         return <SearchPersonResult key={`person-${result.profile_id}-${index}`} result={result} />
       case 'club':
         return <SearchClubResult key={`club-${result.world_club_id}-${index}`} result={result} />
+      case 'brand':
+        return <SearchBrandResult key={`brand-${result.brand_id}-${index}`} result={result} />
       default:
         return null
     }
@@ -101,7 +105,7 @@ export default function SearchPage() {
             {TABS.map((tab) => {
               const count = typeCounts
                 ? tab.key === 'all'
-                  ? typeCounts.posts + typeCounts.people + typeCounts.clubs
+                  ? typeCounts.posts + typeCounts.people + typeCounts.clubs + (typeCounts.brands ?? 0)
                   : typeCounts[tab.key as keyof typeof typeCounts]
                 : null
 

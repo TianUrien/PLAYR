@@ -4647,6 +4647,8 @@ export type Database = {
         | "system_announcement"
         | "reference_request_rejected"
         | "opportunity_published"
+        | "ambassador_request_received"
+        | "ambassador_request_accepted"
       profile_reference_status: "pending" | "accepted" | "declined" | "revoked"
       question_category:
         | "trials_club_selection"
@@ -4837,6 +4839,8 @@ export const Constants = {
         "system_announcement",
         "reference_request_rejected",
         "opportunity_published",
+        "ambassador_request_received",
+        "ambassador_request_accepted",
       ],
       profile_reference_status: ["pending", "accepted", "declined", "revoked"],
       question_category: [

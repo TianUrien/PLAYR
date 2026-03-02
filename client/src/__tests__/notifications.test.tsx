@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
 import NotificationBadge from '@/components/NotificationBadge'
 import NotificationsDrawer from '@/components/NotificationsDrawer'
+import { getNotificationConfig, resolveNotificationRoute } from '@/components/notifications/config'
 import type { NotificationRecord } from '@/lib/api/notifications'
 
 type NotificationStoreSlice = {
@@ -194,5 +195,133 @@ describe('NotificationsDrawer', () => {
 
     expect(toggleDrawer).toHaveBeenCalledWith(false)
     expect(mockNavigate).toHaveBeenCalledWith('/dashboard/profile?tab=comments')
+  })
+})
+
+describe('getNotificationConfig', () => {
+  it('returns ambassador_request_received config with brand name', () => {
+    const notification = createNotification({
+      kind: 'ambassador_request_received',
+      metadata: { brand_name: 'Nike Hockey' },
+    })
+    const config = getNotificationConfig(notification)
+    expect(config.badgeText).toBe('Ambassador invite')
+    expect(config.getTitle(notification)).toBe('Nike Hockey invited you to become a brand ambassador')
+    expect(config.getRoute?.(notification)).toBe('/dashboard/profile')
+  })
+
+  it('returns ambassador_request_received config without brand name', () => {
+    const notification = createNotification({
+      kind: 'ambassador_request_received',
+      metadata: {},
+    })
+    const config = getNotificationConfig(notification)
+    expect(config.getTitle(notification)).toBe('Jordan Hall invited you to become a brand ambassador')
+  })
+
+  it('returns ambassador_request_accepted config', () => {
+    const notification = createNotification({
+      kind: 'ambassador_request_accepted',
+    })
+    const config = getNotificationConfig(notification)
+    expect(config.badgeText).toBe('Ambassador update')
+    expect(config.getTitle(notification)).toBe('Jordan Hall accepted your ambassador invitation')
+    expect(config.getRoute?.(notification)).toBe('/dashboard?tab=ambassadors')
+  })
+
+  it('returns default config for unknown notification kinds', () => {
+    const notification = createNotification({
+      kind: 'unknown_kind' as NotificationRecord['kind'],
+    })
+    const config = getNotificationConfig(notification)
+    expect(config.badgeText).toBe('Notification')
+    expect(config.getTitle(notification)).toBe('You have a new update')
+  })
+
+  it('returns message_received config with multiple messages', () => {
+    const notification = createNotification({
+      kind: 'message_received',
+      metadata: { message_count: 3, conversation_id: 'conv-1' },
+    })
+    const config = getNotificationConfig(notification)
+    expect(config.getTitle(notification)).toBe('Jordan Hall sent 3 new messages')
+    expect(config.getRoute?.(notification)).toBe('/messages/conv-1')
+  })
+
+  it('returns message_received config with single message', () => {
+    const notification = createNotification({
+      kind: 'message_received',
+      metadata: { conversation_id: 'conv-2' },
+    })
+    const config = getNotificationConfig(notification)
+    expect(config.getTitle(notification)).toBe('Jordan Hall sent you a message')
+  })
+
+  it('returns opportunity_published config with full metadata', () => {
+    const notification = createNotification({
+      kind: 'opportunity_published',
+      metadata: {
+        opportunity_title: 'Goalkeeper Coach',
+        club_name: 'Amsterdam HC',
+        opportunity_id: 'opp-1',
+        position: 'goalkeeper',
+        location_city: 'Amsterdam',
+        location_country: 'Netherlands',
+      },
+    })
+    const config = getNotificationConfig(notification)
+    expect(config.getTitle(notification)).toBe('Amsterdam HC published: Goalkeeper Coach')
+    expect(config.getDescription?.(notification)).toBe('Goalkeeper \u2022 Amsterdam, Netherlands')
+    expect(config.getRoute?.(notification)).toBe('/opportunities/opp-1')
+  })
+
+  it('returns opportunity_published config without metadata', () => {
+    const notification = createNotification({
+      kind: 'opportunity_published',
+      metadata: {},
+    })
+    const config = getNotificationConfig(notification)
+    expect(config.getTitle(notification)).toBe('A new opportunity was published')
+    expect(config.getDescription?.(notification)).toBeNull()
+  })
+
+  it('returns vacancy_application_received config', () => {
+    const notification = createNotification({
+      kind: 'vacancy_application_received',
+      metadata: { vacancy_title: 'Midfielder', opportunity_id: 'opp-2' },
+    })
+    const config = getNotificationConfig(notification)
+    expect(config.getTitle(notification)).toBe('New applicant for Midfielder')
+    expect(config.getRoute?.(notification)).toBe('/dashboard/opportunities/opp-2/applicants')
+  })
+
+  it('returns vacancy_application_status config with status', () => {
+    const notification = createNotification({
+      kind: 'vacancy_application_status',
+      metadata: { status: 'accepted', vacancy_title: 'Defender' },
+    })
+    const config = getNotificationConfig(notification)
+    expect(config.getTitle(notification)).toBe('Application accepted')
+  })
+})
+
+describe('resolveNotificationRoute', () => {
+  it('uses targetUrl as fallback when config has no route', () => {
+    const notification = createNotification({
+      kind: 'unknown_kind' as NotificationRecord['kind'],
+      targetUrl: '/custom-route',
+    })
+    const route = resolveNotificationRoute(notification)
+    expect(route).toBe('/custom-route')
+  })
+
+  it('uses metadata target_url as last fallback', () => {
+    const notification = createNotification({
+      kind: 'unknown_kind' as NotificationRecord['kind'],
+      targetUrl: null,
+      metadata: { target_url: '/meta-route' },
+    })
+    const route = resolveNotificationRoute(notification)
+    expect(route).toBe('/meta-route')
   })
 })

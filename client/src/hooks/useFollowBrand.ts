@@ -1,0 +1,93 @@
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
+
+interface FollowStatus {
+  isFollowing: boolean
+  followerCount: number
+}
+
+interface FollowResult {
+  success: boolean
+  followed: boolean
+  follower_count: number
+}
+
+export function useFollowBrand(brandId: string | undefined) {
+  const [isFollowing, setIsFollowing] = useState(false)
+  const [followerCount, setFollowerCount] = useState(0)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isToggling, setIsToggling] = useState(false)
+
+  // Check initial follow status
+  useEffect(() => {
+    if (!brandId) return
+
+    let cancelled = false
+    setIsLoading(true)
+
+    const check = async () => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data, error } = await (supabase.rpc as any)('check_brand_follow_status', {
+          p_brand_id: brandId,
+        })
+
+        if (error) throw error
+        if (cancelled) return
+
+        const status = data as FollowStatus
+        setIsFollowing(status.is_following)
+        setFollowerCount(status.follower_count)
+      } catch (err) {
+        logger.error('[useFollowBrand] check status error:', err)
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+
+    check()
+    return () => { cancelled = true }
+  }, [brandId])
+
+  const toggleFollow = useCallback(async () => {
+    if (!brandId || isToggling) return
+
+    setIsToggling(true)
+
+    // Optimistic update
+    const wasFollowing = isFollowing
+    const prevCount = followerCount
+    setIsFollowing(!wasFollowing)
+    setFollowerCount(wasFollowing ? Math.max(prevCount - 1, 0) : prevCount + 1)
+
+    try {
+      const rpcName = wasFollowing ? 'unfollow_brand' : 'follow_brand'
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase.rpc as any)(rpcName, {
+        p_brand_id: brandId,
+      })
+
+      if (error) throw error
+
+      const result = data as FollowResult
+      if (result.success) {
+        setIsFollowing(result.followed)
+        setFollowerCount(result.follower_count)
+      } else {
+        // Revert optimistic update
+        setIsFollowing(wasFollowing)
+        setFollowerCount(prevCount)
+      }
+    } catch (err) {
+      logger.error('[useFollowBrand] toggle error:', err)
+      // Revert optimistic update
+      setIsFollowing(wasFollowing)
+      setFollowerCount(prevCount)
+    } finally {
+      setIsToggling(false)
+    }
+  }, [brandId, isFollowing, followerCount, isToggling])
+
+  return { isFollowing, followerCount, toggleFollow, isLoading, isToggling }
+}

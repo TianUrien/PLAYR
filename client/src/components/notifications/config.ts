@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react'
 import {
+  Award,
   BadgeCheck,
   Bell,
   Briefcase,
@@ -222,6 +223,27 @@ const notificationConfigs: Partial<Record<NotificationKind, NotificationRenderCo
     getTitle: () => 'Your account has been verified',
     getDescription: () => 'You now have full access to the PLAYR platform.',
     getRoute: () => '/settings',
+  },
+  ambassador_request_received: {
+    icon: Award,
+    badgeText: 'Ambassador invite',
+    accentClassName: 'bg-rose-50 text-rose-600',
+    getTitle: (notification) => {
+      const brandName = getMetadataString(notification, 'brand_name')
+      return brandName
+        ? `${brandName} invited you to become a brand ambassador`
+        : `${getActorName(notification)} invited you to become a brand ambassador`
+    },
+    getDescription: () => 'Review and respond to this invitation.',
+    getRoute: () => '/dashboard/profile',
+  },
+  ambassador_request_accepted: {
+    icon: Award,
+    badgeText: 'Ambassador update',
+    accentClassName: 'bg-rose-50 text-rose-600',
+    getTitle: (notification) => `${getActorName(notification)} accepted your ambassador invitation`,
+    getDescription: () => 'They now appear on your brand profile.',
+    getRoute: () => '/dashboard?tab=ambassadors',
   },
   system_announcement: {
     icon: Megaphone,

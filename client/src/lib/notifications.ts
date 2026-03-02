@@ -102,6 +102,7 @@ interface NotificationState {
   userId: string | null
   channel: RealtimeChannel | null
   pendingFriendshipId: string | null
+  pendingAmbassadorRequestId: string | null
   pendingCommentHighlights: Set<string>
   commentHighlightVersion: number
   heartbeatIntervalId: number | null
@@ -114,6 +115,7 @@ interface NotificationState {
   clearCommentNotifications: () => Promise<void>
   claimCommentHighlights: () => string[]
   respondToFriendRequest: (params: { friendshipId: string; action: 'accept' | 'decline' }) => Promise<boolean>
+  respondToAmbassadorRequest: (params: { ambassadorId: string; action: 'accept' | 'decline' }) => Promise<boolean>
   dismissBySource: (kind: NotificationKind, sourceId: string | null) => void
 }
 
@@ -396,6 +398,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
     userId: null,
     channel: null,
     pendingFriendshipId: null,
+    pendingAmbassadorRequestId: null,
     pendingCommentHighlights: new Set<string>(),
     commentHighlightVersion: 0,
     heartbeatIntervalId: null,
@@ -427,6 +430,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
           channel: null,
           notifications: [],
           unreadCount: 0,
+          pendingAmbassadorRequestId: null,
           pendingCommentHighlights: new Set<string>(),
           commentHighlightVersion: 0,
           reconnectAttempts: 0,
@@ -586,6 +590,51 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
         return true
       } finally {
         set((state) => (state.pendingFriendshipId === friendshipId ? { pendingFriendshipId: null } : {}))
+      }
+    },
+
+    respondToAmbassadorRequest: async ({ ambassadorId, action }) => {
+      if (!ambassadorId) {
+        return false
+      }
+
+      set({ pendingAmbassadorRequestId: ambassadorId })
+
+      try {
+        const accept = action === 'accept'
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data, error } = await (supabase.rpc as any)('respond_to_ambassador_request', {
+          p_brand_ambassador_id: ambassadorId,
+          p_accept: accept,
+        })
+
+        if (error) {
+          logger.error('[NOTIFICATIONS] Failed to respond to ambassador request', error)
+          return false
+        }
+
+        const result = data as { success: boolean; error?: string }
+        if (!result.success) {
+          logger.error('[NOTIFICATIONS] Ambassador request response failed', result.error)
+          return false
+        }
+
+        // Optimistically remove the notification from local state
+        set((state) => ({
+          pendingAmbassadorRequestId: null,
+          notifications: state.notifications.filter((item) => item.sourceEntityId !== ambassadorId),
+          unreadCount: state.notifications.filter(
+            (item) => item.sourceEntityId !== ambassadorId && !item.readAt && !item.clearedAt
+          ).length,
+        }))
+
+        setTimeout(() => {
+          void get().refresh({ bypassCache: true })
+        }, 500)
+
+        return true
+      } finally {
+        set((state) => (state.pendingAmbassadorRequestId === ambassadorId ? { pendingAmbassadorRequestId: null } : {}))
       }
     },
 

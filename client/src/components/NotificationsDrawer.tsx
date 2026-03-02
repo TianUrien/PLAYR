@@ -12,6 +12,7 @@ import type { NotificationKind, NotificationRecord } from '@/lib/api/notificatio
 import { getNotificationConfig, resolveNotificationRoute } from './notifications/config'
 
 const FRIEND_REQUEST_KINDS = new Set<NotificationKind>(['friend_request_received'])
+const AMBASSADOR_REQUEST_KINDS = new Set<NotificationKind>(['ambassador_request_received'])
 const QUICK_FILTERS = [
   { id: 'all', label: 'All' },
   { id: 'unread', label: 'Unread' },
@@ -37,6 +38,8 @@ export default function NotificationsDrawer() {
   const refreshNotifications = useNotificationStore((state) => state.refresh)
   const respondToFriendRequest = useNotificationStore((state) => state.respondToFriendRequest)
   const pendingFriendshipId = useNotificationStore((state) => state.pendingFriendshipId)
+  const respondToAmbassadorRequest = useNotificationStore((state) => state.respondToAmbassadorRequest)
+  const pendingAmbassadorRequestId = useNotificationStore((state) => state.pendingAmbassadorRequestId)
 
   useFocusTrap({ containerRef: drawerRef, isActive: isOpen })
 
@@ -135,6 +138,19 @@ export default function NotificationsDrawer() {
     )
   }
 
+  const handleAmbassadorRequest = async (ambassadorId: string, action: 'accept' | 'decline') => {
+    const success = await respondToAmbassadorRequest({ ambassadorId, action })
+    if (!success) {
+      addToast('Could not update the ambassador request. Please try again.', 'error')
+      return
+    }
+
+    addToast(
+      action === 'accept' ? 'Ambassador invitation accepted.' : 'Ambassador invitation declined.',
+      'success'
+    )
+  }
+
   const resolvePublicProfilePath = (actor?: NotificationRecord['actor']) => {
     if (!actor?.id) {
       return null
@@ -190,6 +206,44 @@ export default function NotificationsDrawer() {
           className="inline-flex flex-1 items-center justify-center rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-60 sm:flex-none"
         >
           Remove
+        </button>
+      </div>
+    )
+  }
+
+  const renderAmbassadorRequestActions = (notification: NotificationRecord) => {
+    if (!AMBASSADOR_REQUEST_KINDS.has(notification.kind)) {
+      return null
+    }
+
+    const ambassadorId = notification.sourceEntityId
+    const disabled = !ambassadorId || pendingAmbassadorRequestId === ambassadorId
+
+    const onActionClick = (action: 'accept' | 'decline') => (event: ReactMouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation()
+      if (!ambassadorId) {
+        return
+      }
+      void handleAmbassadorRequest(ambassadorId, action)
+    }
+
+    return (
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onActionClick('accept')}
+          disabled={disabled}
+          className="inline-flex flex-1 items-center justify-center rounded-full bg-[#0866FF] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0a58d0] disabled:opacity-60 sm:flex-none"
+        >
+          Accept
+        </button>
+        <button
+          type="button"
+          onClick={onActionClick('decline')}
+          disabled={disabled}
+          className="inline-flex flex-1 items-center justify-center rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-60 sm:flex-none"
+        >
+          Decline
         </button>
       </div>
     )
@@ -280,6 +334,7 @@ export default function NotificationsDrawer() {
             </div>
           </div>
           {renderFriendRequestActions(notification)}
+          {renderAmbassadorRequestActions(notification)}
         </div>
       </div>
     )

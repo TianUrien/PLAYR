@@ -6,6 +6,7 @@ import { Input, Button, CountrySelect, LocationAutocomplete } from '@/components
 import type { LocationSelection } from '@/components/LocationAutocomplete'
 import { useCountries } from '@/hooks/useCountries'
 import ClubClaimStep, { type ClubClaimResult } from '@/components/ClubClaimStep'
+import WorldClubSearch from '@/components/WorldClubSearch'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
@@ -74,6 +75,8 @@ export default function CompleteProfile() {
     contactEmail: '',
     clubBio: '',
     clubHistory: '',
+    currentClub: '',
+    currentWorldClubId: null as string | null,
   })
 
   const normalizeGender = (value: string) => {
@@ -469,11 +472,13 @@ export default function CompleteProfile() {
       if (userRole === 'player') {
         updateData = {
           ...updateData,
-          nationality2_country_id: formData.nationality2CountryId,
+          nationality2_country_id: formData.nationality2CountryId || null,
           position: formData.position,
           secondary_position: formData.secondaryPosition || null,
           gender: normalizeGender(formData.gender),
           date_of_birth: formData.dateOfBirth || null,
+          current_club: formData.currentClub || null,
+          current_world_club_id: formData.currentWorldClubId,
         }
       } else if (userRole === 'coach') {
         updateData = {
@@ -482,6 +487,8 @@ export default function CompleteProfile() {
           position: formData.position || null,
           gender: normalizeGender(formData.gender),
           date_of_birth: formData.dateOfBirth || null,
+          current_club: formData.currentClub || null,
+          current_world_club_id: formData.currentWorldClubId,
         }
       } else if (userRole === 'club') {
         updateData = {
@@ -903,7 +910,29 @@ export default function CompleteProfile() {
                     required
                   />
 
+                  <CountrySelect
+                    label="Second Nationality (Optional)"
+                    value={formData.nationality2CountryId}
+                    onChange={(id) => setFormData({ ...formData, nationality2CountryId: id })}
+                    placeholder="Select second nationality"
+                    showNationality
+                  />
+
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">Hockey Details</p>
+
+                  <WorldClubSearch
+                    value={formData.currentClub}
+                    onChange={(v) => setFormData({ ...formData, currentClub: v })}
+                    onClubSelect={(club) => setFormData({
+                      ...formData,
+                      currentClub: club.club_name,
+                      currentWorldClubId: club.id,
+                    })}
+                    onClubClear={() => setFormData({ ...formData, currentWorldClubId: null })}
+                    selectedClubId={formData.currentWorldClubId}
+                    label="Current Club (Optional)"
+                    placeholder="e.g., Holcombe Hockey Club"
+                  />
 
                   <div>
                     <label htmlFor="position-select" className="block text-sm font-medium text-gray-700 mb-2">
@@ -1012,6 +1041,20 @@ export default function CompleteProfile() {
                   />
 
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">Coaching Details</p>
+
+                  <WorldClubSearch
+                    value={formData.currentClub}
+                    onChange={(v) => setFormData({ ...formData, currentClub: v })}
+                    onClubSelect={(club) => setFormData({
+                      ...formData,
+                      currentClub: club.club_name,
+                      currentWorldClubId: club.id,
+                    })}
+                    onClubClear={() => setFormData({ ...formData, currentWorldClubId: null })}
+                    selectedClubId={formData.currentWorldClubId}
+                    label="Current Club (Optional)"
+                    placeholder="e.g., Holcombe Hockey Club"
+                  />
 
                   <div>
                     <label htmlFor="coach-position-select" className="block text-sm font-medium text-gray-700 mb-2">
