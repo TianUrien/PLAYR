@@ -472,7 +472,7 @@ export default function CompleteProfile() {
       if (userRole === 'player') {
         updateData = {
           ...updateData,
-          nationality2_country_id: formData.nationality2CountryId,
+          nationality2_country_id: formData.nationality2CountryId || null,
           position: formData.position,
           secondary_position: formData.secondaryPosition || null,
           gender: normalizeGender(formData.gender),
@@ -908,6 +908,14 @@ export default function CompleteProfile() {
                     placeholder="Select your nationality"
                     showNationality
                     required
+                  />
+
+                  <CountrySelect
+                    label="Second Nationality (Optional)"
+                    value={formData.nationality2CountryId}
+                    onChange={(id) => setFormData({ ...formData, nationality2CountryId: id })}
+                    placeholder="Select second nationality"
+                    showNationality
                   />
 
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">Hockey Details</p>
