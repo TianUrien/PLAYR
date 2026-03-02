@@ -39,12 +39,15 @@ ALTER TABLE public.brands ADD COLUMN IF NOT EXISTS follower_count INT NOT NULL D
 
 ALTER TABLE public.brand_followers ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS brand_followers_select ON public.brand_followers;
 CREATE POLICY brand_followers_select ON public.brand_followers
   FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS brand_followers_insert ON public.brand_followers;
 CREATE POLICY brand_followers_insert ON public.brand_followers
   FOR INSERT WITH CHECK (follower_id = auth.uid());
 
+DROP POLICY IF EXISTS brand_followers_delete ON public.brand_followers;
 CREATE POLICY brand_followers_delete ON public.brand_followers
   FOR DELETE USING (follower_id = auth.uid());
 
@@ -62,7 +65,6 @@ DECLARE
   v_user_id UUID := auth.uid();
   v_user_role TEXT;
   v_brand_profile_id UUID;
-  v_inserted BOOLEAN;
   v_new_count INT;
 BEGIN
   IF v_user_id IS NULL THEN
@@ -93,14 +95,9 @@ BEGIN
   VALUES (p_brand_id, v_user_id)
   ON CONFLICT (brand_id, follower_id) DO NOTHING;
 
-  GET DIAGNOSTICS v_inserted = ROW_COUNT > 0;
-
-  -- Only increment if actually inserted a new row
-  IF FOUND AND (SELECT COUNT(*) FROM brand_followers WHERE brand_id = p_brand_id AND follower_id = v_user_id) = 1 THEN
-    UPDATE brands SET follower_count = follower_count + 1 WHERE id = p_brand_id;
-  END IF;
-
-  SELECT follower_count INTO v_new_count FROM brands WHERE id = p_brand_id;
+  -- Recount follower_count (safe, avoids drift)
+  SELECT COUNT(*) INTO v_new_count FROM brand_followers WHERE brand_id = p_brand_id;
+  UPDATE brands SET follower_count = v_new_count WHERE id = p_brand_id;
 
   RETURN jsonb_build_object(
     'success', true,
