@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 
 export interface BrandAmbassador {
+  id: string
   player_id: string
   full_name: string | null
   avatar_url: string | null
@@ -10,7 +11,9 @@ export interface BrandAmbassador {
   position: string | null
   base_location: string | null
   current_club: string | null
+  status: 'pending' | 'accepted' | 'declined'
   added_at: string
+  responded_at: string | null
 }
 
 const PAGE_SIZE = 20

@@ -28,13 +28,12 @@ import { logger } from '@/lib/logger'
 import { getTimeAgo } from '@/lib/utils'
 import Skeleton from '@/components/Skeleton'
 
-type TabType = 'overview' | 'products' | 'posts' | 'messages' | 'ambassadors' | 'followers'
+type TabType = 'overview' | 'products' | 'posts' | 'ambassadors' | 'followers'
 
 const TABS: { id: TabType; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'products', label: 'Products' },
   { id: 'posts', label: 'Posts' },
-  { id: 'messages', label: 'Messages' },
   { id: 'ambassadors', label: 'Ambassadors' },
   { id: 'followers', label: 'Followers' },
 ]
@@ -81,8 +80,12 @@ export default function BrandDashboard() {
     hasMore: hasMoreAmbassadors,
   } = useBrandAmbassadors(brand?.id)
   const [showAddAmbassadorModal, setShowAddAmbassadorModal] = useState(false)
-  const [ambassadorToRemove, setAmbassadorToRemove] = useState<{ player_id: string; full_name: string | null } | null>(null)
+  const [ambassadorToRemove, setAmbassadorToRemove] = useState<{ player_id: string; full_name: string | null; status: string } | null>(null)
   const [isRemovingAmbassador, setIsRemovingAmbassador] = useState(false)
+
+  // Derived: split ambassadors by status
+  const pendingAmbassadors = ambassadors.filter(a => a.status === 'pending')
+  const acceptedAmbassadors = ambassadors.filter(a => a.status === 'accepted')
 
   // Followers
   interface FollowerItem {
@@ -137,7 +140,7 @@ export default function BrandDashboard() {
   const { percentage, buckets, loading: strengthLoading, refresh: refreshStrength } = useBrandProfileStrength({
     brand,
     productCount: products.length,
-    ambassadorCount: ambassadors.length,
+    ambassadorCount: acceptedAmbassadors.length,
   })
 
   // Snapshot ref for action-triggered strength toasts: set to current percentage
@@ -194,11 +197,6 @@ export default function BrandDashboard() {
   }, [percentage, strengthLoading, addToast])
 
   const handleTabChange = (tab: TabType) => {
-    // Messages tab redirects to messaging page
-    if (tab === 'messages') {
-      navigate('/messages')
-      return
-    }
     setActiveTab(tab)
     const next = new URLSearchParams(searchParams)
     next.set('tab', tab)
@@ -276,7 +274,7 @@ export default function BrandDashboard() {
   const handleAddAmbassador = async (playerId: string) => {
     const result = await addAmbassador(playerId)
     if (result.success) {
-      addToast('Ambassador added', 'success')
+      addToast('Ambassador request sent', 'success')
       strengthSnapshotRef.current = percentage
       await refreshStrength()
     }
@@ -289,12 +287,18 @@ export default function BrandDashboard() {
     try {
       const result = await removeAmbassador(ambassadorToRemove.player_id)
       if (!result.success) throw new Error(result.error)
-      addToast('Ambassador removed', 'success')
+      addToast(
+        ambassadorToRemove.status === 'pending' ? 'Ambassador request cancelled' : 'Ambassador removed',
+        'success'
+      )
       setAmbassadorToRemove(null)
       strengthSnapshotRef.current = percentage
       await refreshStrength()
     } catch {
-      addToast('Failed to remove ambassador', 'error')
+      addToast(
+        ambassadorToRemove.status === 'pending' ? 'Failed to cancel request' : 'Failed to remove ambassador',
+        'error'
+      )
     } finally {
       setIsRemovingAmbassador(false)
     }
@@ -773,20 +777,25 @@ export default function BrandDashboard() {
             {/* Ambassadors Tab */}
             {activeTab === 'ambassadors' && (
               <div className="space-y-6 animate-fade-in">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-gray-900">Ambassadors</h2>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold text-gray-900">Ambassadors</h2>
+                    {ambassadorsTotal > 0 && (
+                      <span className="text-sm text-gray-500 sm:hidden">{ambassadorsTotal} total</span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-3">
                     {ambassadorsTotal > 0 && (
-                      <span className="text-sm text-gray-500">{ambassadorsTotal} total</span>
+                      <span className="text-sm text-gray-500 hidden sm:inline">{ambassadorsTotal} total</span>
                     )}
                     <Button
                       variant="primary"
                       size="sm"
                       onClick={() => setShowAddAmbassadorModal(true)}
-                      className="gap-2"
+                      className="gap-2 w-full sm:w-auto"
                     >
                       <Plus className="w-4 h-4" />
-                      Add Ambassador
+                      Invite Ambassador
                     </Button>
                   </div>
                 </div>
@@ -808,7 +817,7 @@ export default function BrandDashboard() {
                     <Award className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">No ambassadors yet</h3>
                     <p className="text-gray-600 max-w-md mx-auto mb-4">
-                      Add the players you sponsor as brand ambassadors. They'll appear on your public brand profile.
+                      Invite the players you sponsor to become brand ambassadors. They'll appear on your public profile once they accept.
                     </p>
                     <Button
                       variant="primary"
@@ -817,52 +826,118 @@ export default function BrandDashboard() {
                       className="gap-2"
                     >
                       <Plus className="w-4 h-4" />
-                      Add Your First Ambassador
+                      Invite Your First Ambassador
                     </Button>
                   </div>
                 ) : (
                   <>
-                    <div className="space-y-3">
-                      {ambassadors.map(ambassador => (
-                        <div
-                          key={ambassador.player_id}
-                          className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors"
-                        >
-                          <Link
-                            to={`/players/id/${ambassador.player_id}`}
-                            className="flex items-center gap-3 flex-1 min-w-0"
-                          >
-                            <Avatar
-                              src={ambassador.avatar_url}
-                              initials={ambassador.full_name?.slice(0, 2) || '?'}
-                              size="sm"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-gray-900 truncate">
-                                {ambassador.full_name || 'Unknown'}
-                              </p>
-                              <p className="text-xs text-gray-500 truncate">
-                                {[ambassador.position, ambassador.current_club]
-                                  .filter(Boolean)
-                                  .join(' \u00B7 ') || 'Player'}
-                              </p>
+                    {/* Pending Requests */}
+                    {pendingAmbassadors.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                          Pending Requests ({pendingAmbassadors.length})
+                        </h3>
+                        <div className="space-y-3">
+                          {pendingAmbassadors.map(ambassador => (
+                            <div
+                              key={ambassador.player_id}
+                              className="flex items-center gap-3 bg-amber-50 rounded-xl border border-amber-200 p-4"
+                            >
+                              <Link
+                                to={`/players/id/${ambassador.player_id}`}
+                                className="flex items-center gap-3 flex-1 min-w-0"
+                              >
+                                <Avatar
+                                  src={ambassador.avatar_url}
+                                  initials={ambassador.full_name?.slice(0, 2) || '?'}
+                                  size="sm"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-sm font-semibold text-gray-900 truncate">
+                                      {ambassador.full_name || 'Unknown'}
+                                    </p>
+                                    <span className="inline-flex shrink-0 items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                                      Pending
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {[ambassador.position, ambassador.current_club]
+                                      .filter(Boolean)
+                                      .join(' \u00B7 ') || 'Player'}
+                                  </p>
+                                </div>
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => setAmbassadorToRemove({
+                                  player_id: ambassador.player_id,
+                                  full_name: ambassador.full_name,
+                                  status: ambassador.status,
+                                })}
+                                className="shrink-0 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                aria-label="Cancel request"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
                             </div>
-                            <RoleBadge role="player" />
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => setAmbassadorToRemove({
-                              player_id: ambassador.player_id,
-                              full_name: ambassador.full_name,
-                            })}
-                            className="ml-2 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            aria-label="Remove ambassador"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    )}
+
+                    {/* Active Ambassadors */}
+                    {acceptedAmbassadors.length > 0 && (
+                      <div>
+                        {pendingAmbassadors.length > 0 && (
+                          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                            Active ({acceptedAmbassadors.length})
+                          </h3>
+                        )}
+                        <div className="space-y-3">
+                          {acceptedAmbassadors.map(ambassador => (
+                            <div
+                              key={ambassador.player_id}
+                              className="flex items-center gap-3 bg-white rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors"
+                            >
+                              <Link
+                                to={`/players/id/${ambassador.player_id}`}
+                                className="flex items-center gap-3 flex-1 min-w-0"
+                              >
+                                <Avatar
+                                  src={ambassador.avatar_url}
+                                  initials={ambassador.full_name?.slice(0, 2) || '?'}
+                                  size="sm"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-semibold text-gray-900 truncate">
+                                    {ambassador.full_name || 'Unknown'}
+                                  </p>
+                                  <p className="text-xs text-gray-500 truncate">
+                                    {[ambassador.position, ambassador.current_club]
+                                      .filter(Boolean)
+                                      .join(' \u00B7 ') || 'Player'}
+                                  </p>
+                                </div>
+                                <span className="hidden sm:inline-flex"><RoleBadge role="player" /></span>
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={() => setAmbassadorToRemove({
+                                  player_id: ambassador.player_id,
+                                  full_name: ambassador.full_name,
+                                  status: ambassador.status,
+                                })}
+                                className="shrink-0 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                aria-label="Remove ambassador"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Load more */}
                     {hasMoreAmbassadors && (
@@ -1066,13 +1141,17 @@ export default function BrandDashboard() {
         />
       )}
 
-      {/* Remove Ambassador Confirmation */}
+      {/* Remove Ambassador / Cancel Request Confirmation */}
       {ambassadorToRemove && (
         <ConfirmActionModal
           isOpen={Boolean(ambassadorToRemove)}
-          title="Remove Ambassador"
-          description={`Remove ${ambassadorToRemove.full_name || 'this player'} as a brand ambassador?`}
-          confirmLabel="Remove"
+          title={ambassadorToRemove.status === 'pending' ? 'Cancel Request' : 'Remove Ambassador'}
+          description={
+            ambassadorToRemove.status === 'pending'
+              ? `Cancel the ambassador request to ${ambassadorToRemove.full_name || 'this player'}?`
+              : `Remove ${ambassadorToRemove.full_name || 'this player'} as a brand ambassador?`
+          }
+          confirmLabel={ambassadorToRemove.status === 'pending' ? 'Cancel Request' : 'Remove'}
           confirmTone="danger"
           onConfirm={handleRemoveAmbassador}
           onClose={() => setAmbassadorToRemove(null)}

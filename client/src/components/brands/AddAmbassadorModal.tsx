@@ -119,8 +119,8 @@ export function AddAmbassadorModal({ isOpen, onClose, onAdd, existingPlayerIds }
               <Award className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Add Ambassador</h2>
-              <p className="text-sm text-gray-500">Search for a player to sponsor</p>
+              <h2 className="text-xl font-bold text-gray-900">Invite Ambassador</h2>
+              <p className="text-sm text-gray-500">Search for a player to invite</p>
             </div>
           </div>
         </div>
@@ -222,7 +222,7 @@ export function AddAmbassadorModal({ isOpen, onClose, onAdd, existingPlayerIds }
 
         {/* Help text */}
         <p className="mt-4 text-xs text-gray-400 text-center">
-          Only registered players can be added as ambassadors
+          The player will receive a notification and must accept your invitation
         </p>
       </div>
     </Modal>
