@@ -15,7 +15,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getServiceClient } from '../_shared/supabase-client.ts'
 import { getCorsHeaders } from '../_shared/cors.ts'
 import { captureException } from '../_shared/sentry.ts'
-import { parseSearchQuery, type ParsedFilters } from '../_shared/llm-client.ts'
+import { parseSearchQuery, type ParsedFilters, type LLMResult } from '../_shared/llm-client.ts'
 
 Deno.serve(async (req) => {
   const correlationId = crypto.randomUUID().slice(0, 8)
@@ -100,7 +100,26 @@ Deno.serve(async (req) => {
     }
 
     // ── LLM parsing ─────────────────────────────────────────────────────
-    const parsed: ParsedFilters = await parseSearchQuery(query)
+    const llmResult: LLMResult = await parseSearchQuery(query)
+
+    // ── Conversation-only response (no search needed) ────────────────
+    if (llmResult.type === 'conversation') {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: [],
+          total: 0,
+          has_more: false,
+          parsed_filters: null,
+          summary: null,
+          ai_message: llmResult.message,
+        }),
+        { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── Search intent: resolve filters + call RPC ────────────────────
+    const parsed: ParsedFilters = llmResult.filters
 
     // ── Resolve text values → IDs ───────────────────────────────────────
     let nationalityCountryIds: number[] | null = null
@@ -177,6 +196,15 @@ Deno.serve(async (req) => {
 
     const result = rpcResult as { results: any[]; total: number; has_more: boolean }
 
+    // ── Result-aware AI message ──────────────────────────────────────
+    let aiMessage: string
+    if (result.total === 0) {
+      aiMessage = `I couldn't find any profiles matching that. Try broadening your search or adjusting your filters.`
+    } else {
+      const countPhrase = `I found ${result.total} profile${result.total === 1 ? '' : 's'} for you.`
+      aiMessage = llmResult.message ? `${countPhrase} ${llmResult.message}` : countPhrase
+    }
+
     // ── Response ────────────────────────────────────────────────────────
     return new Response(
       JSON.stringify({
@@ -186,6 +214,7 @@ Deno.serve(async (req) => {
         has_more: result.has_more,
         parsed_filters: parsed,
         summary: parsed.summary || `Found ${result.total} result${result.total === 1 ? '' : 's'}.`,
+        ai_message: aiMessage,
       }),
       { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
     )

@@ -55,8 +55,9 @@ export interface DiscoverResponse {
   data: DiscoverResult[]
   total: number
   has_more: boolean
-  parsed_filters: ParsedFilters
-  summary: string
+  parsed_filters: ParsedFilters | null
+  summary: string | null
+  ai_message: string
   error?: string
 }
 

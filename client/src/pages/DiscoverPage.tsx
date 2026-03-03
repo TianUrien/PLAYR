@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Sparkles, AlertCircle, Loader2 } from 'lucide-react'
+import { Search, Sparkles, AlertCircle, Loader2, Bot } from 'lucide-react'
 import { useDiscover, type DiscoverResult } from '@/hooks/useDiscover'
 import DiscoverFilterChips from '@/components/DiscoverFilterChips'
 import MemberCard from '@/components/MemberCard'
@@ -58,6 +58,7 @@ export default function DiscoverPage() {
 
   const results = response?.data ?? []
   const hasSearched = !!response || !!error
+  const isConversationOnly = !!response && response.parsed_filters === null
 
   return (
     <div className="min-h-screen bg-gray-50 pt-[var(--app-header-offset)]">
@@ -70,7 +71,7 @@ export default function DiscoverPage() {
             <h1 className="text-xl font-bold text-gray-900">Discover</h1>
           </div>
           <p className="text-sm text-gray-500 mb-4">
-            Search PLAYR with natural language. Find players, coaches, clubs, and brands.
+            Ask me anything — search for players, coaches, clubs, and brands using natural language.
           </p>
 
           {/* Search bar */}
@@ -94,7 +95,7 @@ export default function DiscoverPage() {
                 {isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  'Search'
+                  'Ask'
                 )}
               </button>
             </div>
@@ -104,16 +105,24 @@ export default function DiscoverPage() {
 
       {/* Content area */}
       <div className="max-w-4xl mx-auto px-4 py-5">
-        {/* Filter chips + summary */}
-        {response && (
-          <div className="mb-4 space-y-2">
-            <DiscoverFilterChips filters={response.parsed_filters} />
-            <p className="text-sm text-gray-600">
-              {response.summary}
-              {response.total > 0 && (
-                <span className="font-medium text-gray-900"> — {response.total} result{response.total === 1 ? '' : 's'}</span>
-              )}
-            </p>
+        {/* AI message bubble */}
+        {response?.ai_message && (
+          <div className="mb-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#8026FA] to-[#924CEC] flex items-center justify-center">
+                <Bot className="w-4 h-4 text-white" />
+              </div>
+              <div className="flex-1 bg-white border border-gray-200 rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
+                <p className="text-sm text-gray-800 leading-relaxed">
+                  {response.ai_message}
+                </p>
+              </div>
+            </div>
+            {response.parsed_filters && (
+              <div className="pl-11">
+                <DiscoverFilterChips filters={response.parsed_filters} />
+              </div>
+            )}
           </div>
         )}
 
@@ -163,18 +172,17 @@ export default function DiscoverPage() {
           </div>
         )}
 
-        {/* Empty results (after search) */}
-        {!isPending && hasSearched && results.length === 0 && !error && (
-          <div className="text-center py-12">
-            <Search className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">No results found</h3>
-            <p className="text-sm text-gray-500 mb-4">Try adjusting your search or use different terms.</p>
+        {/* Empty results (after search, not conversation-only) */}
+        {!isPending && hasSearched && results.length === 0 && !error && !isConversationOnly && (
+          <div className="text-center py-8">
+            <Search className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+            <p className="text-sm text-gray-500">Try adjusting your filters or ask me in a different way.</p>
           </div>
         )}
 
-        {/* Empty state (before search) — show example queries */}
-        {!hasSearched && !isPending && (
-          <div className="pt-4">
+        {/* Example queries — shown before first search OR after conversation-only response */}
+        {!isPending && (!hasSearched || isConversationOnly) && (
+          <div className="pt-2">
             <h3 className="text-sm font-medium text-gray-700 mb-3">Try one of these searches</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {EXAMPLE_QUERIES.map((example) => (

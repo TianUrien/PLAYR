@@ -30,9 +30,26 @@ export interface ParsedFilters {
   summary?: string
 }
 
-const SYSTEM_PROMPT = `You are a search assistant for PLAYR, a field hockey platform. Extract structured search filters from the user's natural language query.
+export interface SearchIntent {
+  type: 'search'
+  filters: ParsedFilters
+  message: string
+}
 
-IMPORTANT RULES:
+export interface ConversationIntent {
+  type: 'conversation'
+  message: string
+}
+
+export type LLMResult = SearchIntent | ConversationIntent
+
+const SYSTEM_PROMPT = `You are PLAYR Assistant, a friendly AI for PLAYR — a field hockey platform connecting players, coaches, clubs, and brands.
+
+You have two tools:
+1. search_profiles — Use when the user wants to find or discover people/profiles. Extract structured filters from their query. Always include a conversational "message" field describing what you're looking for.
+2. respond — Use for greetings, questions about PLAYR, help requests, or anything that is NOT a profile search. Be warm and helpful. Mention that you can help discover players, coaches, clubs, and brands.
+
+FILTER EXTRACTION RULES (for search_profiles only):
 - Only extract information explicitly stated or clearly implied in the query.
 - For age: "U21" means max_age=20, "U18" means max_age=17, "U23" means max_age=22. "Senior" means min_age=21.
 - For positions: use exactly "goalkeeper", "defender", "midfielder", or "forward" for players. Use "head coach", "assistant coach", or "youth coach" for coaches.
@@ -42,8 +59,7 @@ IMPORTANT RULES:
 - "Verified references" or "references" maps to min_references.
 - If role is not specified, infer from context: positions like "defender" imply role=["player"]; "head coach" implies role=["coach"]; "club" or "team" implies role=["club"]; "brand" or "sponsor" implies role=["brand"].
 - For "playing in [country]" or "based in [country]", use the countries array for league/club country context, and locations for where they live.
-- Always generate a human-readable summary field.
-- Always call the search_profiles tool.`
+- Always generate a human-readable summary field.`
 
 const SEARCH_TOOL = {
   name: 'search_profiles',
@@ -109,13 +125,35 @@ const SEARCH_TOOL = {
         type: 'string',
         description: 'Human-readable summary of the search, e.g. "Showing U21 female defenders with EU passport and 2+ references."',
       },
+      message: {
+        type: 'string',
+        description: 'A conversational message about the search, e.g. "Here are the U21 female defenders I found for you!" Keep it to 1-2 sentences.',
+      },
     },
+    required: ['message', 'summary'],
   },
 }
 
+const RESPOND_TOOL = {
+  name: 'respond',
+  description: 'Respond conversationally when the user is not searching for profiles. Use for greetings, questions about PLAYR, or anything that is not a profile search.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      message: {
+        type: 'string',
+        description: 'A friendly, helpful response to the user. Keep it concise (1-2 sentences).',
+      },
+    },
+    required: ['message'],
+  },
+}
+
+const DEFAULT_CONVERSATION_RESPONSE = "Hey! I'm PLAYR Assistant. I can help you discover players, coaches, clubs, and brands. Try asking something like 'Find U25 midfielders from the Netherlands'."
+
 // ─── Gemini (Google AI Studio — free tier) ────────────────────────────
 
-async function callGemini(query: string): Promise<ParsedFilters> {
+async function callGemini(query: string): Promise<LLMResult> {
   const apiKey = Deno.env.get('GOOGLE_AI_API_KEY')
   if (!apiKey) throw new Error('GOOGLE_AI_API_KEY not configured')
 
@@ -128,14 +166,21 @@ async function callGemini(query: string): Promise<ParsedFilters> {
         system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
         contents: [{ role: 'user', parts: [{ text: query }] }],
         tools: [{
-          function_declarations: [{
-            name: SEARCH_TOOL.name,
-            description: SEARCH_TOOL.description,
-            parameters: SEARCH_TOOL.input_schema,
-          }],
+          function_declarations: [
+            {
+              name: SEARCH_TOOL.name,
+              description: SEARCH_TOOL.description,
+              parameters: SEARCH_TOOL.input_schema,
+            },
+            {
+              name: RESPOND_TOOL.name,
+              description: RESPOND_TOOL.description,
+              parameters: RESPOND_TOOL.input_schema,
+            },
+          ],
         }],
         tool_config: {
-          function_calling_config: { mode: 'ANY', allowed_function_names: ['search_profiles'] },
+          function_calling_config: { mode: 'ANY' },
         },
       }),
     }
@@ -152,18 +197,23 @@ async function callGemini(query: string): Promise<ParsedFilters> {
 
   if (!parts) throw new Error('Gemini returned no content')
 
-  // Find the function call part
   const fnCall = parts.find((p: any) => p.functionCall)
   if (!fnCall?.functionCall?.args) {
     throw new Error('Gemini did not produce a function call')
   }
 
-  return fnCall.functionCall.args as ParsedFilters
+  const { name, args } = fnCall.functionCall
+  if (name === 'respond') {
+    return { type: 'conversation', message: args.message || DEFAULT_CONVERSATION_RESPONSE }
+  }
+
+  const { message, ...filters } = args
+  return { type: 'search', filters: filters as ParsedFilters, message: message || filters.summary || '' }
 }
 
 // ─── Claude (Anthropic — paid) ────────────────────────────────────────
 
-async function callClaude(query: string): Promise<ParsedFilters> {
+async function callClaude(query: string): Promise<LLMResult> {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured')
 
@@ -178,8 +228,11 @@ async function callClaude(query: string): Promise<ParsedFilters> {
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       system: SYSTEM_PROMPT,
-      tools: [{ name: SEARCH_TOOL.name, description: SEARCH_TOOL.description, input_schema: SEARCH_TOOL.input_schema }],
-      tool_choice: { type: 'tool', name: 'search_profiles' },
+      tools: [
+        { name: SEARCH_TOOL.name, description: SEARCH_TOOL.description, input_schema: SEARCH_TOOL.input_schema },
+        { name: RESPOND_TOOL.name, description: RESPOND_TOOL.description, input_schema: RESPOND_TOOL.input_schema },
+      ],
+      tool_choice: { type: 'auto' },
       messages: [{ role: 'user', content: query }],
     }),
   })
@@ -191,14 +244,23 @@ async function callClaude(query: string): Promise<ParsedFilters> {
 
   const data = await response.json()
   const toolUse = data.content?.find((c: any) => c.type === 'tool_use')
-  if (!toolUse?.input) throw new Error('Claude did not produce tool use')
 
-  return toolUse.input as ParsedFilters
+  if (!toolUse?.input) {
+    const textBlock = data.content?.find((c: any) => c.type === 'text')
+    return { type: 'conversation', message: textBlock?.text || DEFAULT_CONVERSATION_RESPONSE }
+  }
+
+  if (toolUse.name === 'respond') {
+    return { type: 'conversation', message: toolUse.input.message || DEFAULT_CONVERSATION_RESPONSE }
+  }
+
+  const { message, ...filters } = toolUse.input
+  return { type: 'search', filters: filters as ParsedFilters, message: message || filters.summary || '' }
 }
 
 // ─── OpenAI (paid) ─────────────────────────────────────────────────────
 
-async function callOpenAI(query: string): Promise<ParsedFilters> {
+async function callOpenAI(query: string): Promise<LLMResult> {
   const apiKey = Deno.env.get('OPENAI_API_KEY')
   if (!apiKey) throw new Error('OPENAI_API_KEY not configured')
 
@@ -214,11 +276,11 @@ async function callOpenAI(query: string): Promise<ParsedFilters> {
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: query },
       ],
-      tools: [{
-        type: 'function',
-        function: { name: SEARCH_TOOL.name, description: SEARCH_TOOL.description, parameters: SEARCH_TOOL.input_schema },
-      }],
-      tool_choice: { type: 'function', function: { name: 'search_profiles' } },
+      tools: [
+        { type: 'function', function: { name: SEARCH_TOOL.name, description: SEARCH_TOOL.description, parameters: SEARCH_TOOL.input_schema } },
+        { type: 'function', function: { name: RESPOND_TOOL.name, description: RESPOND_TOOL.description, parameters: RESPOND_TOOL.input_schema } },
+      ],
+      tool_choice: 'auto',
     }),
   })
 
@@ -229,14 +291,24 @@ async function callOpenAI(query: string): Promise<ParsedFilters> {
 
   const data = await response.json()
   const toolCall = data.choices?.[0]?.message?.tool_calls?.[0]
-  if (!toolCall?.function?.arguments) throw new Error('OpenAI did not produce tool call')
 
-  return JSON.parse(toolCall.function.arguments) as ParsedFilters
+  if (!toolCall?.function) {
+    const content = data.choices?.[0]?.message?.content
+    return { type: 'conversation', message: content || DEFAULT_CONVERSATION_RESPONSE }
+  }
+
+  const args = JSON.parse(toolCall.function.arguments)
+  if (toolCall.function.name === 'respond') {
+    return { type: 'conversation', message: args.message || DEFAULT_CONVERSATION_RESPONSE }
+  }
+
+  const { message, ...filters } = args
+  return { type: 'search', filters: filters as ParsedFilters, message: message || filters.summary || '' }
 }
 
 // ─── Provider dispatcher ───────────────────────────────────────────────
 
-export async function parseSearchQuery(query: string): Promise<ParsedFilters> {
+export async function parseSearchQuery(query: string): Promise<LLMResult> {
   const provider = Deno.env.get('LLM_PROVIDER') || 'gemini'
 
   switch (provider) {
