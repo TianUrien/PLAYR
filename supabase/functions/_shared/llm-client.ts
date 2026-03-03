@@ -43,6 +43,11 @@ export interface ConversationIntent {
 
 export type LLMResult = SearchIntent | ConversationIntent
 
+export interface HistoryTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 const SYSTEM_PROMPT = `You are PLAYR Assistant, a friendly AI for PLAYR — a field hockey platform connecting players, coaches, clubs, and brands.
 
 You have two tools:
@@ -59,7 +64,10 @@ FILTER EXTRACTION RULES (for search_profiles only):
 - "Verified references" or "references" maps to min_references.
 - If role is not specified, infer from context: positions like "defender" imply role=["player"]; "head coach" implies role=["coach"]; "club" or "team" implies role=["club"]; "brand" or "sponsor" implies role=["brand"].
 - For "playing in [country]" or "based in [country]", use the countries array for league/club country context, and locations for where they live.
-- Always generate a human-readable summary field.`
+- Always generate a human-readable summary field.
+
+CONVERSATION CONTEXT:
+When the user refers to previous results or modifies a previous search (e.g., "narrow that down", "show only defenders", "what about in England?"), interpret their request in context of the conversation history. Carry forward relevant filters from the previous search and apply the user's modifications.`
 
 const SEARCH_TOOL = {
   name: 'search_profiles',
@@ -153,9 +161,17 @@ const DEFAULT_CONVERSATION_RESPONSE = "Hey! I'm PLAYR Assistant. I can help you 
 
 // ─── Gemini (Google AI Studio — free tier) ────────────────────────────
 
-async function callGemini(query: string): Promise<LLMResult> {
+async function callGemini(query: string, history: HistoryTurn[] = []): Promise<LLMResult> {
   const apiKey = Deno.env.get('GOOGLE_AI_API_KEY')
   if (!apiKey) throw new Error('GOOGLE_AI_API_KEY not configured')
+
+  const contents = [
+    ...history.map(turn => ({
+      role: turn.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: turn.content }],
+    })),
+    { role: 'user', parts: [{ text: query }] },
+  ]
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
@@ -164,7 +180,7 @@ async function callGemini(query: string): Promise<LLMResult> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: [{ role: 'user', parts: [{ text: query }] }],
+        contents,
         tools: [{
           function_declarations: [
             {
@@ -213,9 +229,14 @@ async function callGemini(query: string): Promise<LLMResult> {
 
 // ─── Claude (Anthropic — paid) ────────────────────────────────────────
 
-async function callClaude(query: string): Promise<LLMResult> {
+async function callClaude(query: string, history: HistoryTurn[] = []): Promise<LLMResult> {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured')
+
+  const messages = [
+    ...history.map(turn => ({ role: turn.role as 'user' | 'assistant', content: turn.content })),
+    { role: 'user' as const, content: query },
+  ]
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -233,7 +254,7 @@ async function callClaude(query: string): Promise<LLMResult> {
         { name: RESPOND_TOOL.name, description: RESPOND_TOOL.description, input_schema: RESPOND_TOOL.input_schema },
       ],
       tool_choice: { type: 'auto' },
-      messages: [{ role: 'user', content: query }],
+      messages,
     }),
   })
 
@@ -260,9 +281,15 @@ async function callClaude(query: string): Promise<LLMResult> {
 
 // ─── OpenAI (paid) ─────────────────────────────────────────────────────
 
-async function callOpenAI(query: string): Promise<LLMResult> {
+async function callOpenAI(query: string, history: HistoryTurn[] = []): Promise<LLMResult> {
   const apiKey = Deno.env.get('OPENAI_API_KEY')
   if (!apiKey) throw new Error('OPENAI_API_KEY not configured')
+
+  const messages = [
+    { role: 'system' as const, content: SYSTEM_PROMPT },
+    ...history.map(turn => ({ role: turn.role as 'user' | 'assistant', content: turn.content })),
+    { role: 'user' as const, content: query },
+  ]
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -272,10 +299,7 @@ async function callOpenAI(query: string): Promise<LLMResult> {
     },
     body: JSON.stringify({
       model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: query },
-      ],
+      messages,
       tools: [
         { type: 'function', function: { name: SEARCH_TOOL.name, description: SEARCH_TOOL.description, parameters: SEARCH_TOOL.input_schema } },
         { type: 'function', function: { name: RESPOND_TOOL.name, description: RESPOND_TOOL.description, parameters: RESPOND_TOOL.input_schema } },
@@ -308,13 +332,13 @@ async function callOpenAI(query: string): Promise<LLMResult> {
 
 // ─── Provider dispatcher ───────────────────────────────────────────────
 
-export async function parseSearchQuery(query: string): Promise<LLMResult> {
+export async function parseSearchQuery(query: string, history: HistoryTurn[] = []): Promise<LLMResult> {
   const provider = Deno.env.get('LLM_PROVIDER') || 'gemini'
 
   switch (provider) {
-    case 'gemini':  return callGemini(query)
-    case 'claude':  return callClaude(query)
-    case 'openai':  return callOpenAI(query)
-    default:        return callGemini(query)
+    case 'gemini':  return callGemini(query, history)
+    case 'claude':  return callClaude(query, history)
+    case 'openai':  return callOpenAI(query, history)
+    default:        return callGemini(query, history)
   }
 }

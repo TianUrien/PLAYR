@@ -7,7 +7,7 @@
  * values to database IDs, and calls the discover_profiles RPC.
  *
  * POST /functions/v1/nl-search
- * Body: { query: string }
+ * Body: { query: string, history?: { role: 'user'|'assistant', content: string }[] }
  * Auth: Bearer token (authenticated users only)
  */
 
@@ -15,7 +15,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getServiceClient } from '../_shared/supabase-client.ts'
 import { getCorsHeaders } from '../_shared/cors.ts'
 import { captureException } from '../_shared/sentry.ts'
-import { parseSearchQuery, type ParsedFilters, type LLMResult } from '../_shared/llm-client.ts'
+import { parseSearchQuery, type ParsedFilters, type LLMResult, type HistoryTurn } from '../_shared/llm-client.ts'
 
 Deno.serve(async (req) => {
   const correlationId = crypto.randomUUID().slice(0, 8)
@@ -84,6 +84,10 @@ Deno.serve(async (req) => {
     // ── Parse body ──────────────────────────────────────────────────────
     const body = await req.json()
     const query = body?.query?.trim()
+    const rawHistory = Array.isArray(body?.history) ? body.history : []
+    const history: HistoryTurn[] = rawHistory
+      .slice(-10)
+      .filter((t: any) => (t?.role === 'user' || t?.role === 'assistant') && typeof t?.content === 'string')
 
     if (!query || typeof query !== 'string') {
       return new Response(
@@ -100,7 +104,7 @@ Deno.serve(async (req) => {
     }
 
     // ── LLM parsing ─────────────────────────────────────────────────────
-    const llmResult: LLMResult = await parseSearchQuery(query)
+    const llmResult: LLMResult = await parseSearchQuery(query, history)
 
     // ── Conversation-only response (no search needed) ────────────────
     if (llmResult.type === 'conversation') {
