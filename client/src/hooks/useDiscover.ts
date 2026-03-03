@@ -123,7 +123,17 @@ export function useDiscoverChat() {
         body: { query: trimmed, history },
       })
 
-      if (error) throw error
+      if (error) {
+        // Extract actual error message from edge function response body
+        let serverMessage = ''
+        if (error.context && typeof error.context.json === 'function') {
+          try {
+            const body = await error.context.json()
+            serverMessage = body?.error || ''
+          } catch { /* response body not parseable */ }
+        }
+        throw new Error(serverMessage || error.message || 'Search failed')
+      }
 
       const result = data as DiscoverResponse
       if (!result.success) {
@@ -145,15 +155,16 @@ export function useDiscoverChat() {
         )
       )
     } catch (err) {
-      logger.error('[useDiscoverChat] Error:', err)
+      const errMsg = err instanceof Error ? err.message : 'Unknown error'
+      logger.error('[useDiscoverChat] Error:', errMsg)
       setMessages(prev =>
         prev.map(m =>
           m.id === assistantId
             ? {
                 ...m,
-                content: 'Something went wrong. Please try again.',
+                content: errMsg || 'Something went wrong. Please try again.',
                 status: 'error' as const,
-                error: err instanceof Error ? err.message : 'Unknown error',
+                error: errMsg,
               }
             : m
         )
