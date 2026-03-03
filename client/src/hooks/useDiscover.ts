@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 
 export interface DiscoverResult {
@@ -64,26 +64,18 @@ export interface DiscoverResponse {
 export function useDiscover() {
   return useMutation({
     mutationFn: async (query: string): Promise<DiscoverResponse> => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) throw new Error('Not authenticated')
-
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/nl-search`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-          'apikey': SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({ query }),
+      const { data, error } = await supabase.functions.invoke('nl-search', {
+        body: { query },
       })
 
-      const result = await response.json()
+      if (error) throw error
 
-      if (!response.ok || !result.success) {
+      const result = data as DiscoverResponse
+      if (!result.success) {
         throw new Error(result.error || 'Search failed')
       }
 
-      return result as DiscoverResponse
+      return result
     },
     onError: (error) => {
       logger.error('[useDiscover] Error:', error)
