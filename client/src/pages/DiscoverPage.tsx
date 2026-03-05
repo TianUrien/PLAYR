@@ -15,11 +15,36 @@ export default function DiscoverPage() {
   const { messages, sendMessage, clearChat, isPending } = useDiscoverChat()
   const [input, setInput] = useState('')
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const hasMessages = messages.length > 0
+
+  // Track visual viewport for mobile keyboard awareness.
+  // On iOS Safari, the keyboard changes visualViewport.height and may scroll
+  // the viewport (offsetTop). We listen to BOTH resize and scroll events and
+  // directly set the container's height + top so it always fills exactly the
+  // visible area above the keyboard.
+  useEffect(() => {
+    const vv = window.visualViewport
+    const el = containerRef.current
+    if (!vv || !el) return
+
+    const sync = () => {
+      el.style.height = `${vv.height}px`
+      el.style.top = `${vv.offsetTop}px`
+    }
+
+    sync()
+    vv.addEventListener('resize', sync)
+    vv.addEventListener('scroll', sync)
+    return () => {
+      vv.removeEventListener('resize', sync)
+      vv.removeEventListener('scroll', sync)
+    }
+  }, [])
 
   // Rotate placeholder text
   useEffect(() => {
@@ -74,8 +99,18 @@ export default function DiscoverPage() {
     sendMessage(query)
   }, [sendMessage])
 
+  const handleFocus = useCallback(() => {
+    setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, 300)
+  }, [])
+
   return (
-    <div className="fixed inset-0 flex flex-col bg-gray-50">
+    <div
+      ref={containerRef}
+      className="fixed inset-x-0 top-0 flex flex-col bg-gray-50"
+      style={{ height: '100dvh' }}
+    >
       {/* ── Chat header ──────────────────────────────────────────── */}
       <header className="flex items-center gap-3 h-14 px-3 border-b border-gray-200 bg-white flex-shrink-0 pt-[env(safe-area-inset-top)]">
         <button
@@ -106,7 +141,7 @@ export default function DiscoverPage() {
       </header>
 
       {/* ── Scrollable chat area ─────────────────────────────────── */}
-      <div ref={scrollAreaRef} className="flex-1 overflow-y-auto">
+      <div ref={scrollAreaRef} className="flex-1 overflow-y-auto overscroll-contain">
         <div className="max-w-2xl mx-auto px-4 py-4">
           {!hasMessages ? (
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -153,6 +188,7 @@ export default function DiscoverPage() {
                 if (e.target.value.length <= 500) setInput(e.target.value)
               }}
               onKeyDown={handleKeyDown}
+              onFocus={handleFocus}
               placeholder={hasMessages ? 'Follow up or ask something new…' : EXAMPLE_QUERIES[placeholderIndex]}
               rows={1}
               disabled={isPending}
