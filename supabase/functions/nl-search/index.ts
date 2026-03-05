@@ -15,7 +15,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getServiceClient } from '../_shared/supabase-client.ts'
 import { getCorsHeaders } from '../_shared/cors.ts'
 import { captureException } from '../_shared/sentry.ts'
-import { parseSearchQuery, synthesizeQualitativeInsights, type ParsedFilters, type LLMResult, type HistoryTurn, type ProfileQualitativeData } from '../_shared/llm-client.ts'
+import { parseSearchQuery, synthesizeQualitativeInsights, LLMRateLimitError, type ParsedFilters, type LLMResult, type HistoryTurn, type ProfileQualitativeData, type UserContext } from '../_shared/llm-client.ts'
 
 Deno.serve(async (req) => {
   const correlationId = crypto.randomUUID().slice(0, 8)
@@ -103,8 +103,85 @@ Deno.serve(async (req) => {
       )
     }
 
+    // ── Fetch user context for LLM ─────────────────────────────────────
+    let userContext: UserContext | undefined
+
+    try {
+      const { data: userProfile } = await adminClient
+        .from('profiles')
+        .select(`
+          role, full_name, gender, position,
+          base_city, base_country_id,
+          nationality_country_id, nationality2_country_id,
+          current_club, current_world_club_id,
+          eu_passport, open_to_play, open_to_coach
+        `)
+        .eq('id', user.id)
+        .single()
+
+      if (userProfile) {
+        const countryIds = [
+          userProfile.base_country_id,
+          userProfile.nationality_country_id,
+          userProfile.nationality2_country_id,
+        ].filter(Boolean)
+
+        const [countriesRes, clubRes] = await Promise.all([
+          countryIds.length > 0
+            ? adminClient.from('countries').select('id, name').in('id', countryIds)
+            : Promise.resolve({ data: [] }),
+          userProfile.current_world_club_id
+            ? adminClient
+                .from('world_clubs')
+                .select(`
+                  club_name,
+                  men_league:world_leagues!world_clubs_men_league_id_fkey(name),
+                  women_league:world_leagues!world_clubs_women_league_id_fkey(name),
+                  country:countries!world_clubs_country_id_fkey(name)
+                `)
+                .eq('id', userProfile.current_world_club_id)
+                .single()
+            : Promise.resolve({ data: null }),
+        ])
+
+        const countryMap = new Map(
+          ((countriesRes.data || []) as any[]).map((c: any) => [c.id, c.name])
+        )
+
+        const club = clubRes.data as any
+        let currentLeague: string | null = null
+        let leagueCountry: string | null = null
+        if (club) {
+          currentLeague = userProfile.gender === 'Women'
+            ? club.women_league?.name || null
+            : club.men_league?.name || null
+          leagueCountry = club.country?.name || null
+        }
+
+        userContext = {
+          role: userProfile.role,
+          full_name: userProfile.full_name,
+          gender: userProfile.gender,
+          position: userProfile.position,
+          base_city: userProfile.base_city,
+          base_country_name: countryMap.get(userProfile.base_country_id) || null,
+          nationality_name: countryMap.get(userProfile.nationality_country_id) || null,
+          nationality2_name: countryMap.get(userProfile.nationality2_country_id) || null,
+          current_club: club?.club_name || userProfile.current_club || null,
+          current_league: currentLeague,
+          league_country: leagueCountry,
+          eu_passport: userProfile.eu_passport || false,
+          open_to_play: userProfile.open_to_play || false,
+          open_to_coach: userProfile.open_to_coach || false,
+        }
+      }
+    } catch (ctxError) {
+      // Non-fatal: AI works generically without user context
+      captureException(ctxError, { functionName: 'nl-search', correlationId, note: 'user-context-fetch' })
+    }
+
     // ── LLM parsing ─────────────────────────────────────────────────────
-    const llmResult: LLMResult = await parseSearchQuery(query, history)
+    const llmResult: LLMResult = await parseSearchQuery(query, history, userContext)
 
     // ── Conversation-only response (no search needed) ────────────────
     if (llmResult.type === 'conversation') {
@@ -294,6 +371,16 @@ Deno.serve(async (req) => {
     )
 
   } catch (error) {
+    if (error instanceof LLMRateLimitError) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'The AI assistant has reached its usage limit for now. Please try again in a few minutes.',
+        }),
+        { status: 429, headers: { ...headers, 'Retry-After': '60', 'Content-Type': 'application/json' } }
+      )
+    }
+
     captureException(error, { functionName: 'nl-search', correlationId })
     return new Response(
       JSON.stringify({

@@ -44,9 +44,65 @@ export interface ConversationIntent {
 
 export type LLMResult = SearchIntent | ConversationIntent
 
+export class LLMRateLimitError extends Error {
+  constructor() {
+    super('AI_RATE_LIMIT')
+    this.name = 'LLMRateLimitError'
+  }
+}
+
 export interface HistoryTurn {
   role: 'user' | 'assistant'
   content: string
+}
+
+export interface UserContext {
+  role: string
+  full_name: string | null
+  gender: string | null
+  position: string | null
+  base_city: string | null
+  base_country_name: string | null
+  nationality_name: string | null
+  nationality2_name: string | null
+  current_club: string | null
+  current_league: string | null
+  league_country: string | null
+  eu_passport: boolean
+  open_to_play: boolean
+  open_to_coach: boolean
+}
+
+function buildUserContextBlock(ctx: UserContext): string {
+  const lines: string[] = ['CURRENT USER CONTEXT:']
+
+  const roleName = ctx.role === 'club' ? 'club representative' : ctx.role
+  lines.push(`- You are speaking with ${ctx.full_name || 'a user'}, a ${roleName} on PLAYR.`)
+
+  if (ctx.current_club) {
+    const parts = [ctx.current_club]
+    if (ctx.current_league) parts.push(ctx.current_league)
+    if (ctx.league_country) parts.push(ctx.league_country)
+    lines.push(`- Club: ${parts.join(', ')}`)
+  }
+
+  const location = [ctx.base_city, ctx.base_country_name].filter(Boolean).join(', ')
+  if (location) lines.push(`- Based in: ${location}`)
+
+  const nationalities = [ctx.nationality_name, ctx.nationality2_name].filter(Boolean)
+  if (nationalities.length) lines.push(`- Nationality: ${nationalities.join(' & ')}`)
+
+  if (ctx.gender) lines.push(`- Gender context: ${ctx.gender}`)
+  lines.push(`- EU passport: ${ctx.eu_passport ? 'Yes' : 'No'}`)
+
+  if (ctx.position) lines.push(`- Position: ${ctx.position}`)
+
+  const availability = []
+  if (ctx.open_to_play) availability.push('open to play')
+  if (ctx.open_to_coach) availability.push('open to coach')
+  if (availability.length) lines.push(`- Availability: ${availability.join(', ')}`)
+
+  return lines.join('\n')
 }
 
 const SYSTEM_PROMPT = `You are PLAYR Assistant, a friendly AI for PLAYR — a field hockey platform connecting players, coaches, clubs, and brands.
@@ -69,7 +125,18 @@ FILTER EXTRACTION RULES (for search_profiles only):
 - Always generate a human-readable summary field.
 
 CONVERSATION CONTEXT:
-When the user refers to previous results or modifies a previous search (e.g., "narrow that down", "show only defenders", "what about in England?"), interpret their request in context of the conversation history. Carry forward relevant filters from the previous search and apply the user's modifications.`
+When the user refers to previous results or modifies a previous search (e.g., "narrow that down", "show only defenders", "what about in England?"), interpret their request in context of the conversation history. Carry forward relevant filters from the previous search and apply the user's modifications.
+
+USER CONTEXT AWARENESS:
+- You know who you're speaking with. Their profile details appear at the end of this prompt under "CURRENT USER CONTEXT". Use it to give smarter, personalized answers.
+- When a coach or club asks "recommend players for my team", "who could fit my club", or similar, use their club's league, country, and gender context to infer relevant filters (e.g., set gender to match their league context).
+- IMPORTANT — field hockey recruitment is global:
+  - Always consider BOTH local players (same country/league) AND international players who could relocate. Do NOT over-filter by location.
+  - EU passport eligibility is a critical factor in European recruitment. When searching for a European club, highlight EU-eligible players but don't exclude non-EU players entirely.
+  - Mention the global nature of recruitment when relevant (e.g., "I found players in England and some international options from Argentina and the Netherlands who could also be a fit").
+- When the user says "my league", "my club", "my team", or "nearby", resolve those from their CURRENT USER CONTEXT.
+- The user's gender context tells you whether to filter by "Men" or "Women" when they don't specify.
+- If no user context is provided, behave generically as before.`
 
 const SEARCH_TOOL = {
   name: 'search_profiles',
@@ -167,9 +234,13 @@ const DEFAULT_CONVERSATION_RESPONSE = "Hey! I'm PLAYR Assistant. I can help you 
 
 // ─── Gemini (Google AI Studio — free tier) ────────────────────────────
 
-async function callGemini(query: string, history: HistoryTurn[] = []): Promise<LLMResult> {
+async function callGemini(query: string, history: HistoryTurn[] = [], userContext?: UserContext): Promise<LLMResult> {
   const apiKey = Deno.env.get('GOOGLE_AI_API_KEY')
   if (!apiKey) throw new Error('GOOGLE_AI_API_KEY not configured')
+
+  const systemPrompt = userContext
+    ? SYSTEM_PROMPT + '\n\n' + buildUserContextBlock(userContext)
+    : SYSTEM_PROMPT
 
   const contents = [
     ...history.map(turn => ({
@@ -185,7 +256,7 @@ async function callGemini(query: string, history: HistoryTurn[] = []): Promise<L
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        system_instruction: { parts: [{ text: systemPrompt }] },
         contents,
         tools: [{
           function_declarations: [
@@ -210,6 +281,9 @@ async function callGemini(query: string, history: HistoryTurn[] = []): Promise<L
 
   if (!response.ok) {
     const errorBody = await response.text()
+    if (response.status === 429 || response.status === 503) {
+      throw new LLMRateLimitError()
+    }
     throw new Error(`Gemini API error (${response.status}): ${errorBody}`)
   }
 
@@ -235,9 +309,13 @@ async function callGemini(query: string, history: HistoryTurn[] = []): Promise<L
 
 // ─── Claude (Anthropic — paid) ────────────────────────────────────────
 
-async function callClaude(query: string, history: HistoryTurn[] = []): Promise<LLMResult> {
+async function callClaude(query: string, history: HistoryTurn[] = [], userContext?: UserContext): Promise<LLMResult> {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured')
+
+  const systemPrompt = userContext
+    ? SYSTEM_PROMPT + '\n\n' + buildUserContextBlock(userContext)
+    : SYSTEM_PROMPT
 
   const messages = [
     ...history.map(turn => ({ role: turn.role as 'user' | 'assistant', content: turn.content })),
@@ -254,7 +332,7 @@ async function callClaude(query: string, history: HistoryTurn[] = []): Promise<L
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       tools: [
         { name: SEARCH_TOOL.name, description: SEARCH_TOOL.description, input_schema: SEARCH_TOOL.input_schema },
         { name: RESPOND_TOOL.name, description: RESPOND_TOOL.description, input_schema: RESPOND_TOOL.input_schema },
@@ -287,12 +365,16 @@ async function callClaude(query: string, history: HistoryTurn[] = []): Promise<L
 
 // ─── OpenAI (paid) ─────────────────────────────────────────────────────
 
-async function callOpenAI(query: string, history: HistoryTurn[] = []): Promise<LLMResult> {
+async function callOpenAI(query: string, history: HistoryTurn[] = [], userContext?: UserContext): Promise<LLMResult> {
   const apiKey = Deno.env.get('OPENAI_API_KEY')
   if (!apiKey) throw new Error('OPENAI_API_KEY not configured')
 
+  const systemPrompt = userContext
+    ? SYSTEM_PROMPT + '\n\n' + buildUserContextBlock(userContext)
+    : SYSTEM_PROMPT
+
   const messages = [
-    { role: 'system' as const, content: SYSTEM_PROMPT },
+    { role: 'system' as const, content: systemPrompt },
     ...history.map(turn => ({ role: turn.role as 'user' | 'assistant', content: turn.content })),
     { role: 'user' as const, content: query },
   ]
@@ -338,14 +420,14 @@ async function callOpenAI(query: string, history: HistoryTurn[] = []): Promise<L
 
 // ─── Provider dispatcher ───────────────────────────────────────────────
 
-export async function parseSearchQuery(query: string, history: HistoryTurn[] = []): Promise<LLMResult> {
+export async function parseSearchQuery(query: string, history: HistoryTurn[] = [], userContext?: UserContext): Promise<LLMResult> {
   const provider = Deno.env.get('LLM_PROVIDER') || 'gemini'
 
   switch (provider) {
-    case 'gemini':  return callGemini(query, history)
-    case 'claude':  return callClaude(query, history)
-    case 'openai':  return callOpenAI(query, history)
-    default:        return callGemini(query, history)
+    case 'gemini':  return callGemini(query, history, userContext)
+    case 'claude':  return callClaude(query, history, userContext)
+    case 'openai':  return callOpenAI(query, history, userContext)
+    default:        return callGemini(query, history, userContext)
   }
 }
 
@@ -429,6 +511,9 @@ async function synthesizeWithGemini(profiles: ProfileQualitativeData[], userQuer
 
   if (!response.ok) {
     const errorBody = await response.text()
+    if (response.status === 429 || response.status === 503) {
+      throw new LLMRateLimitError()
+    }
     throw new Error(`Gemini synthesis error (${response.status}): ${errorBody}`)
   }
 
