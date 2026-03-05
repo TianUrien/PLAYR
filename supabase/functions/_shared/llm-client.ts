@@ -34,6 +34,7 @@ export interface SearchIntent {
   type: 'search'
   filters: ParsedFilters
   message: string
+  include_qualitative?: boolean
 }
 
 export interface ConversationIntent {
@@ -64,6 +65,7 @@ FILTER EXTRACTION RULES (for search_profiles only):
 - "Verified references" or "references" maps to min_references.
 - If role is not specified, infer from context: positions like "defender" imply role=["player"]; "head coach" implies role=["coach"]; "club" or "team" implies role=["club"]; "brand" or "sponsor" implies role=["brand"].
 - For "playing in [country]" or "based in [country]", use the countries array for league/club country context, and locations for where they live.
+- When the user mentions "good feedback", "strong references", "well-regarded", "reputation", "endorsed", "reviewed", "testimonials", "comments about", or any qualitative assessment, set include_qualitative=true. This triggers a deeper analysis of profile comments and endorsements for the top results.
 - Always generate a human-readable summary field.
 
 CONVERSATION CONTEXT:
@@ -136,6 +138,10 @@ const SEARCH_TOOL = {
       message: {
         type: 'string',
         description: 'A conversational message about the search, e.g. "Here are the U21 female defenders I found for you!" Keep it to 1-2 sentences.',
+      },
+      include_qualitative: {
+        type: 'boolean',
+        description: 'Set to true when the user asks about reputation, feedback, references, endorsements, reviews, comments, or qualitative assessment of profiles.',
       },
     },
     required: ['message', 'summary'],
@@ -223,8 +229,8 @@ async function callGemini(query: string, history: HistoryTurn[] = []): Promise<L
     return { type: 'conversation', message: args.message || DEFAULT_CONVERSATION_RESPONSE }
   }
 
-  const { message, ...filters } = args
-  return { type: 'search', filters: filters as ParsedFilters, message: message || filters.summary || '' }
+  const { message, include_qualitative, ...filters } = args
+  return { type: 'search', filters: filters as ParsedFilters, message: message || filters.summary || '', include_qualitative: include_qualitative === true }
 }
 
 // ─── Claude (Anthropic — paid) ────────────────────────────────────────
@@ -275,8 +281,8 @@ async function callClaude(query: string, history: HistoryTurn[] = []): Promise<L
     return { type: 'conversation', message: toolUse.input.message || DEFAULT_CONVERSATION_RESPONSE }
   }
 
-  const { message, ...filters } = toolUse.input
-  return { type: 'search', filters: filters as ParsedFilters, message: message || filters.summary || '' }
+  const { message, include_qualitative, ...filters } = toolUse.input
+  return { type: 'search', filters: filters as ParsedFilters, message: message || filters.summary || '', include_qualitative: include_qualitative === true }
 }
 
 // ─── OpenAI (paid) ─────────────────────────────────────────────────────
@@ -326,8 +332,8 @@ async function callOpenAI(query: string, history: HistoryTurn[] = []): Promise<L
     return { type: 'conversation', message: args.message || DEFAULT_CONVERSATION_RESPONSE }
   }
 
-  const { message, ...filters } = args
-  return { type: 'search', filters: filters as ParsedFilters, message: message || filters.summary || '' }
+  const { message, include_qualitative, ...filters } = args
+  return { type: 'search', filters: filters as ParsedFilters, message: message || filters.summary || '', include_qualitative: include_qualitative === true }
 }
 
 // ─── Provider dispatcher ───────────────────────────────────────────────
@@ -340,5 +346,164 @@ export async function parseSearchQuery(query: string, history: HistoryTurn[] = [
     case 'claude':  return callClaude(query, history)
     case 'openai':  return callOpenAI(query, history)
     default:        return callGemini(query, history)
+  }
+}
+
+// ─── Qualitative synthesis (second LLM pass) ─────────────────────────
+
+export interface ProfileQualitativeData {
+  profile_id: string
+  full_name: string | null
+  role: string
+  position: string | null
+  comments: Array<{
+    content: string
+    rating: string
+    author_name: string | null
+    author_role: string | null
+  }>
+  references: Array<{
+    endorsement_text: string | null
+    relationship_type: string
+    endorser_name: string | null
+    endorser_role: string | null
+  }>
+}
+
+const SYNTHESIS_SYSTEM_PROMPT = `You are PLAYR Assistant analyzing reputation data for field hockey profiles. You will receive profile names with their comments and references. Synthesize this into a brief, helpful summary for someone evaluating these profiles.
+
+RULES:
+- Be concise: 1-2 sentences per profile, max.
+- Focus on patterns: if multiple comments mention the same quality, highlight it.
+- Distinguish between comments (public feedback from anyone) and references (trusted endorsements from connections).
+- If a profile has no comments or references, say so briefly.
+- Use a warm, professional tone. Do not fabricate or exaggerate.
+- Do not use bullet points. Write flowing prose.
+- Start with a brief intro like "Here's what the community says about these profiles:" then cover each person.`
+
+function buildSynthesisUserMessage(profiles: ProfileQualitativeData[], userQuery: string): string {
+  const sections = profiles.map(p => {
+    const name = p.full_name || 'Unknown'
+    const pos = p.position ? ` (${p.position})` : ''
+    let section = `### ${name} — ${p.role}${pos}\n`
+
+    if (p.comments.length > 0) {
+      section += `Comments (${p.comments.length}):\n`
+      section += p.comments.map(c =>
+        `- [${c.rating}] "${c.content}" — ${c.author_name || 'Anonymous'} (${c.author_role || 'member'})`
+      ).join('\n') + '\n'
+    } else {
+      section += 'No comments yet.\n'
+    }
+
+    if (p.references.length > 0) {
+      section += `Trusted References (${p.references.length}):\n`
+      section += p.references.map(r =>
+        `- "${r.endorsement_text || '(no text)'}" — ${r.endorser_name || 'Anonymous'} (${r.endorser_role || 'member'}, ${r.relationship_type})`
+      ).join('\n') + '\n'
+    } else {
+      section += 'No trusted references yet.\n'
+    }
+
+    return section
+  }).join('\n')
+
+  return `The user asked: "${userQuery}"\n\nReputation data for the top ${profiles.length} results:\n\n${sections}\n\nPlease synthesize these reputation signals concisely.`
+}
+
+async function synthesizeWithGemini(profiles: ProfileQualitativeData[], userQuery: string): Promise<string> {
+  const apiKey = Deno.env.get('GOOGLE_AI_API_KEY')
+  if (!apiKey) throw new Error('GOOGLE_AI_API_KEY not configured')
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYNTHESIS_SYSTEM_PROMPT }] },
+        contents: [{ role: 'user', parts: [{ text: buildSynthesisUserMessage(profiles, userQuery) }] }],
+      }),
+    }
+  )
+
+  if (!response.ok) {
+    const errorBody = await response.text()
+    throw new Error(`Gemini synthesis error (${response.status}): ${errorBody}`)
+  }
+
+  const data = await response.json()
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+}
+
+async function synthesizeWithClaude(profiles: ProfileQualitativeData[], userQuery: string): Promise<string> {
+  const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured')
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 512,
+      system: SYNTHESIS_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: buildSynthesisUserMessage(profiles, userQuery) }],
+    }),
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.text()
+    throw new Error(`Claude synthesis error (${response.status}): ${errorBody}`)
+  }
+
+  const data = await response.json()
+  const textBlock = data.content?.find((c: any) => c.type === 'text')
+  return textBlock?.text || ''
+}
+
+async function synthesizeWithOpenAI(profiles: ProfileQualitativeData[], userQuery: string): Promise<string> {
+  const apiKey = Deno.env.get('OPENAI_API_KEY')
+  if (!apiKey) throw new Error('OPENAI_API_KEY not configured')
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      max_tokens: 512,
+      messages: [
+        { role: 'system', content: SYNTHESIS_SYSTEM_PROMPT },
+        { role: 'user', content: buildSynthesisUserMessage(profiles, userQuery) },
+      ],
+    }),
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.text()
+    throw new Error(`OpenAI synthesis error (${response.status}): ${errorBody}`)
+  }
+
+  const data = await response.json()
+  return data.choices?.[0]?.message?.content || ''
+}
+
+export async function synthesizeQualitativeInsights(
+  profiles: ProfileQualitativeData[],
+  userQuery: string
+): Promise<string> {
+  const provider = Deno.env.get('LLM_PROVIDER') || 'gemini'
+
+  switch (provider) {
+    case 'gemini':  return synthesizeWithGemini(profiles, userQuery)
+    case 'claude':  return synthesizeWithClaude(profiles, userQuery)
+    case 'openai':  return synthesizeWithOpenAI(profiles, userQuery)
+    default:        return synthesizeWithGemini(profiles, userQuery)
   }
 }

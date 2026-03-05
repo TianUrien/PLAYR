@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Sparkles, Send, Loader2, RotateCcw } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Sparkles, Send, Loader2, RotateCcw, ChevronLeft } from 'lucide-react'
 import { useDiscoverChat } from '@/hooks/useDiscover'
 import DiscoverChat from '@/components/DiscoverChat'
-import { Header } from '@/components'
 
 const EXAMPLE_QUERIES = [
   'Find U25 defenders with a EU passport and 2+ references',
@@ -11,6 +11,7 @@ const EXAMPLE_QUERIES = [
 ]
 
 export default function DiscoverPage() {
+  const navigate = useNavigate()
   const { messages, sendMessage, clearChat, isPending } = useDiscoverChat()
   const [input, setInput] = useState('')
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
@@ -51,7 +52,6 @@ export default function DiscoverPage() {
     if (!trimmed || isPending) return
     sendMessage(trimmed)
     setInput('')
-    // Reset textarea height after clearing
     requestAnimationFrame(() => {
       if (textareaRef.current) {
         textareaRef.current.style.height = '44px'
@@ -71,24 +71,49 @@ export default function DiscoverPage() {
   }
 
   const handleRetry = useCallback((query: string) => {
-    // Remove the last error assistant message + its user message, then re-send
     sendMessage(query)
   }, [sendMessage])
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-gray-50 pt-[var(--app-header-offset)]">
-      <Header />
+    <div className="fixed inset-0 flex flex-col bg-gray-50">
+      {/* ── Chat header ──────────────────────────────────────────── */}
+      <header className="flex items-center gap-3 h-14 px-3 border-b border-gray-200 bg-white flex-shrink-0 pt-[env(safe-area-inset-top)]">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          aria-label="Go back"
+          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors -ml-1"
+        >
+          <ChevronLeft className="w-5 h-5 text-gray-700" />
+        </button>
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#8026FA] to-[#924CEC] flex items-center justify-center">
+          <Sparkles className="w-4 h-4 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-[15px] font-semibold text-gray-900 leading-tight">Discover</h1>
+          <p className="text-[11px] text-gray-500 leading-tight">AI-powered search</p>
+        </div>
+        {hasMessages && (
+          <button
+            type="button"
+            onClick={clearChat}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-500 hover:text-[#8026FA] hover:bg-[#8026FA]/5 rounded-full transition-colors"
+          >
+            <RotateCcw className="w-3 h-3" />
+            New
+          </button>
+        )}
+      </header>
 
-      {/* Scrollable chat area */}
+      {/* ── Scrollable chat area ─────────────────────────────────── */}
       <div ref={scrollAreaRef} className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto px-4 py-4">
           {!hasMessages ? (
-            /* ── Welcome state ─────────────────────────────────────── */
             <div className="flex flex-col items-center justify-center min-h-[60vh]">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#8026FA] to-[#924CEC] flex items-center justify-center mb-4 shadow-lg shadow-[#8026FA]/20">
                 <Sparkles className="w-7 h-7 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">Discover</h1>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">Discover</h2>
               <p className="text-sm text-gray-500 text-center mb-8 max-w-xs">
                 Ask me anything — search for players, coaches, clubs, and brands using natural language.
               </p>
@@ -111,30 +136,15 @@ export default function DiscoverPage() {
               </div>
             </div>
           ) : (
-            /* ── Chat messages ─────────────────────────────────────── */
             <DiscoverChat messages={messages} onRetry={handleRetry} />
           )}
           <div ref={bottomRef} />
         </div>
       </div>
 
-      {/* ── Composer (fixed bottom) ────────────────────────────────── */}
-      <div className="border-t border-gray-200 bg-white">
-        <div className="max-w-2xl mx-auto px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          {/* New chat button when messages exist */}
-          {hasMessages && (
-            <div className="flex justify-center mb-2">
-              <button
-                type="button"
-                onClick={clearChat}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-[#8026FA] hover:bg-[#8026FA]/5 rounded-full transition-colors"
-              >
-                <RotateCcw className="w-3 h-3" />
-                New chat
-              </button>
-            </div>
-          )}
-
+      {/* ── Composer (fixed bottom) ──────────────────────────────── */}
+      <div className="border-t border-gray-200 bg-white flex-shrink-0 pb-[env(safe-area-inset-bottom)]">
+        <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="relative flex items-end gap-2">
             <textarea
               ref={textareaRef}

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 
@@ -80,17 +80,22 @@ interface HistoryTurn {
   content: string
 }
 
-// ── Conversational chat hook ────────────────────────────────────────────
+// ── Zustand store — persists across navigation ──────────────────────────
 
-export function useDiscoverChat() {
-  const [messages, setMessages] = useState<DiscoverChatMessage[]>([])
-  const [isPending, setIsPending] = useState(false)
-  const messagesRef = useRef(messages)
-  messagesRef.current = messages
+interface DiscoverChatStore {
+  messages: DiscoverChatMessage[]
+  isPending: boolean
+  sendMessage: (query: string) => Promise<void>
+  clearChat: () => void
+}
 
-  const sendMessage = useCallback(async (query: string) => {
+export const useDiscoverChat = create<DiscoverChatStore>((set, get) => ({
+  messages: [],
+  isPending: false,
+
+  sendMessage: async (query: string) => {
     const trimmed = query.trim()
-    if (!trimmed || isPending) return
+    if (!trimmed || get().isPending) return
 
     const userMsg: DiscoverChatMessage = {
       id: crypto.randomUUID(),
@@ -109,12 +114,14 @@ export function useDiscoverChat() {
       status: 'sending',
     }
 
-    setMessages(prev => [...prev, userMsg, assistantPlaceholder])
-    setIsPending(true)
+    set(s => ({
+      messages: [...s.messages, userMsg, assistantPlaceholder],
+      isPending: true,
+    }))
 
     // Build history from completed messages (last 10 turns)
-    const history: HistoryTurn[] = messagesRef.current
-      .filter(m => m.status === 'complete')
+    const history: HistoryTurn[] = get()
+      .messages.filter(m => m.status === 'complete')
       .map(m => ({ role: m.role, content: m.content }))
       .slice(-10)
 
@@ -124,7 +131,6 @@ export function useDiscoverChat() {
       })
 
       if (error) {
-        // Extract actual error message from edge function response body
         let serverMessage = ''
         if (error.context && typeof error.context.json === 'function') {
           try {
@@ -140,8 +146,8 @@ export function useDiscoverChat() {
         throw new Error(result.error || 'Search failed')
       }
 
-      setMessages(prev =>
-        prev.map(m =>
+      set(s => ({
+        messages: s.messages.map(m =>
           m.id === assistantId
             ? {
                 ...m,
@@ -152,13 +158,13 @@ export function useDiscoverChat() {
                 status: 'complete' as const,
               }
             : m
-        )
-      )
+        ),
+      }))
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Unknown error'
       logger.error('[useDiscoverChat] Error:', errMsg)
-      setMessages(prev =>
-        prev.map(m =>
+      set(s => ({
+        messages: s.messages.map(m =>
           m.id === assistantId
             ? {
                 ...m,
@@ -167,17 +173,12 @@ export function useDiscoverChat() {
                 error: errMsg,
               }
             : m
-        )
-      )
+        ),
+      }))
     } finally {
-      setIsPending(false)
+      set({ isPending: false })
     }
-  }, [isPending])
+  },
 
-  const clearChat = useCallback(() => {
-    setMessages([])
-    setIsPending(false)
-  }, [])
-
-  return { messages, sendMessage, clearChat, isPending }
-}
+  clearChat: () => set({ messages: [], isPending: false }),
+}))

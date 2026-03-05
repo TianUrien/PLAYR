@@ -15,7 +15,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getServiceClient } from '../_shared/supabase-client.ts'
 import { getCorsHeaders } from '../_shared/cors.ts'
 import { captureException } from '../_shared/sentry.ts'
-import { parseSearchQuery, type ParsedFilters, type LLMResult, type HistoryTurn } from '../_shared/llm-client.ts'
+import { parseSearchQuery, synthesizeQualitativeInsights, type ParsedFilters, type LLMResult, type HistoryTurn, type ProfileQualitativeData } from '../_shared/llm-client.ts'
 
 Deno.serve(async (req) => {
   const correlationId = crypto.randomUUID().slice(0, 8)
@@ -207,6 +207,76 @@ Deno.serve(async (req) => {
     } else {
       const countPhrase = `I found ${result.total} profile${result.total === 1 ? '' : 's'} for you.`
       aiMessage = llmResult.message ? `${countPhrase} ${llmResult.message}` : countPhrase
+    }
+
+    // ── Qualitative enrichment (opt-in, triggered by LLM) ───────────
+    if (llmResult.include_qualitative && result.results.length > 0) {
+      try {
+        const topIds = result.results.slice(0, 5).map((r: any) => r.id).filter(Boolean)
+
+        if (topIds.length > 0) {
+          const [commentsRes, refsRes] = await Promise.all([
+            adminClient
+              .from('profile_comments')
+              .select('profile_id, content, rating, author:profiles!profile_comments_author_profile_id_fkey(full_name, role)')
+              .in('profile_id', topIds)
+              .eq('status', 'visible')
+              .order('created_at', { ascending: false })
+              .limit(50),
+            adminClient
+              .from('profile_references')
+              .select('requester_id, endorsement_text, relationship_type, endorser:profiles!profile_references_reference_id_fkey(full_name, role)')
+              .in('requester_id', topIds)
+              .eq('status', 'accepted')
+              .order('accepted_at', { ascending: false })
+              .limit(25),
+          ])
+
+          // Group by profile (max 10 comments, 5 references each)
+          const commentsByProfile = new Map<string, any[]>()
+          for (const c of (commentsRes.data || [])) {
+            const arr = commentsByProfile.get(c.profile_id) || []
+            if (arr.length < 10) { arr.push(c); commentsByProfile.set(c.profile_id, arr) }
+          }
+
+          const refsByProfile = new Map<string, any[]>()
+          for (const r of (refsRes.data || [])) {
+            const arr = refsByProfile.get(r.requester_id) || []
+            if (arr.length < 5) { arr.push(r); refsByProfile.set(r.requester_id, arr) }
+          }
+
+          const qualData: ProfileQualitativeData[] = topIds.map((pid: string) => {
+            const profile = result.results.find((r: any) => r.id === pid)
+            return {
+              profile_id: pid,
+              full_name: profile?.full_name || null,
+              role: profile?.role || 'unknown',
+              position: profile?.position || null,
+              comments: (commentsByProfile.get(pid) || []).map((c: any) => ({
+                content: c.content,
+                rating: c.rating,
+                author_name: c.author?.full_name || null,
+                author_role: c.author?.role || null,
+              })),
+              references: (refsByProfile.get(pid) || []).map((r: any) => ({
+                endorsement_text: r.endorsement_text,
+                relationship_type: r.relationship_type,
+                endorser_name: r.endorser?.full_name || null,
+                endorser_role: r.endorser?.role || null,
+              })),
+            }
+          })
+
+          const hasAnyData = qualData.some(p => p.comments.length > 0 || p.references.length > 0)
+          if (hasAnyData) {
+            const synthesis = await synthesizeQualitativeInsights(qualData, query)
+            if (synthesis) aiMessage += `\n\n${synthesis}`
+          }
+        }
+      } catch (qualError) {
+        // Non-fatal: log but don't fail the search
+        captureException(qualError, { functionName: 'nl-search', correlationId })
+      }
     }
 
     // ── Response ────────────────────────────────────────────────────────
