@@ -85,7 +85,7 @@ export default function CompleteProfile() {
     const lower = trimmed.toLowerCase()
     if (lower === 'men' || lower === 'male') return 'Men'
     if (lower === 'women' || lower === 'female') return 'Women'
-    return 'Other'
+    return null
   }
 
   // Use profile data from auth store - no need to fetch again
