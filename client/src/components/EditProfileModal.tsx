@@ -753,10 +753,10 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     aria-label="Select position"
                   >
                     <option value="">Select position</option>
-                    <option value="Goalkeeper">Goalkeeper</option>
-                    <option value="Defender">Defender</option>
-                    <option value="Midfielder">Midfielder</option>
-                    <option value="Forward">Forward</option>
+                    <option value="goalkeeper">Goalkeeper</option>
+                    <option value="defender">Defender</option>
+                    <option value="midfielder">Midfielder</option>
+                    <option value="forward">Forward</option>
                   </select>
                 </div>
 
@@ -772,9 +772,9 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     aria-label="Select secondary position"
                   >
                     <option value="">No secondary position</option>
-                    {['Goalkeeper', 'Defender', 'Midfielder', 'Forward'].map((option) => (
+                    {['goalkeeper', 'defender', 'midfielder', 'forward'].map((option) => (
                       <option key={option} value={option} disabled={option === formData.position}>
-                        {option}
+                        {option.charAt(0).toUpperCase() + option.slice(1)}
                       </option>
                     ))}
                   </select>
