@@ -10,20 +10,21 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Search, ArrowLeft, X, Clock, Loader2, SearchX, Shield, ChevronRight } from 'lucide-react'
+import { Search, ArrowLeft, X, Clock, Loader2, SearchX, Shield, ChevronRight, Briefcase, MapPin } from 'lucide-react'
 import { Avatar, RoleBadge } from '@/components'
 import { useSearch } from '@/hooks/useSearch'
 import { useRecentSearches } from '@/hooks/useRecentSearches'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
-import type { SearchResult, SearchPostResult, SearchPersonResult, SearchClubResult } from '@/hooks/useSearch'
+import type { SearchResult, SearchPostResult, SearchPersonResult, SearchClubResult, SearchOpportunityResult as SearchOpportunityResultType } from '@/hooks/useSearch'
 
-type TabType = 'all' | 'posts' | 'people' | 'clubs'
+type TabType = 'all' | 'posts' | 'people' | 'clubs' | 'opportunities'
 
 const TABS: { key: TabType; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'people', label: 'People' },
   { key: 'clubs', label: 'Clubs' },
   { key: 'posts', label: 'Posts' },
+  { key: 'opportunities', label: 'Opps' },
 ]
 
 function getFlagUrl(countryCode: string): string {
@@ -125,6 +126,42 @@ function CompactPostRow({ result, onSelect }: { result: SearchPostResult; onSele
           <RoleBadge role={result.author_role as 'player' | 'coach' | 'club' | 'brand'} />
         </div>
         <p className="text-xs text-gray-500 truncate">{preview}</p>
+      </div>
+      <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
+    </button>
+  )
+}
+
+function CompactOpportunityRow({ result, onSelect }: { result: SearchOpportunityResultType; onSelect: () => void }) {
+  const location = [result.location_city, result.location_country].filter(Boolean).join(', ')
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="flex items-center gap-3 w-full px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors text-left"
+    >
+      <div className="w-8 h-8 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+        {result.club_avatar_url ? (
+          <img src={result.club_avatar_url} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <Briefcase className="w-4 h-4 text-gray-400" />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-gray-900 truncate">{result.title}</p>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-gray-500 truncate">{result.club_name}</span>
+          {location && (
+            <>
+              <span className="text-xs text-gray-300">&middot;</span>
+              <span className="text-xs text-gray-400 truncate flex items-center gap-0.5">
+                <MapPin className="w-3 h-3" />
+                {location}
+              </span>
+            </>
+          )}
+        </div>
       </div>
       <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
     </button>
@@ -253,6 +290,10 @@ export function SearchOverlay() {
         navigateToResult(authorPath)
         break
       }
+      case 'opportunity': {
+        navigateToResult(`/opportunities/${result.opportunity_id}`)
+        break
+      }
     }
   }, [navigateToResult])
 
@@ -274,6 +315,8 @@ export function SearchOverlay() {
         return <CompactClubRow key={`club-${result.world_club_id}-${index}`} result={result} onSelect={onSelect} />
       case 'post':
         return <CompactPostRow key={`post-${result.post_id}-${index}`} result={result} onSelect={onSelect} />
+      case 'opportunity':
+        return <CompactOpportunityRow key={`opp-${result.opportunity_id}-${index}`} result={result} onSelect={onSelect} />
       default:
         return null
     }
@@ -352,7 +395,7 @@ export function SearchOverlay() {
               {TABS.map((tab) => {
                 const count = typeCounts
                   ? tab.key === 'all'
-                    ? typeCounts.posts + typeCounts.people + typeCounts.clubs
+                    ? typeCounts.posts + typeCounts.people + typeCounts.clubs + (typeCounts.opportunities ?? 0)
                     : typeCounts[tab.key as keyof typeof typeCounts]
                   : null
 

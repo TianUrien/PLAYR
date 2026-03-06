@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
-import { Search, Filter } from 'lucide-react'
+import { Search, Filter, Loader2 } from 'lucide-react'
 import { useNavigate, useNavigationType } from 'react-router-dom'
 import { Avatar, RoleBadge, MemberCard } from '@/components'
 import { logger } from '@/lib/logger'
@@ -82,6 +82,7 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
   const [hasMore, setHasMore] = useState(true)
   const [showSuggestions, setShowSuggestions] = useState(false)
   const searchContainerRef = useRef<HTMLDivElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   // Track whether this is a restored (back/forward) navigation
   const isRestoredRef = useRef(navigationType === 'POP')
@@ -318,16 +319,32 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
   }, [filteredMembers, pageSize]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load more handler
-  const handleLoadMore = () => {
+  const handleLoadMore = useCallback(() => {
     const nextPage = page + 1
     const startIndex = page * pageSize
     const endIndex = startIndex + pageSize
     const newMembers = filteredMembers.slice(0, endIndex)
-    
+
     setDisplayedMembers(newMembers)
     setPage(nextPage)
     setHasMore(filteredMembers.length > endIndex)
-  }
+  }, [page, pageSize, filteredMembers, setPage])
+
+  // Infinite scroll via IntersectionObserver
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore) {
+          handleLoadMore()
+        }
+      },
+      { rootMargin: '200px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore, handleLoadMore])
 
   // Inline suggestions derived from client-filtered results
   const suggestions = useMemo(() => {
@@ -654,14 +671,11 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
                 ))}
               </div>
 
+              {/* Infinite scroll sentinel */}
+              {hasMore && <div ref={sentinelRef} className="h-1" />}
               {hasMore && (
-                <div className="flex justify-center">
-                  <button
-                    onClick={handleLoadMore}
-                    className="px-8 py-3 rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white font-medium hover:opacity-90 transition-opacity"
-                  >
-                    Load More
-                  </button>
+                <div className="flex justify-center py-6">
+                  <Loader2 className="w-6 h-6 text-[#8026FA] animate-spin" />
                 </div>
               )}
             </>
