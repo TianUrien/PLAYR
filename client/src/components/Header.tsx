@@ -102,7 +102,7 @@ export default function Header() {
             <div className="flex md:hidden items-center gap-1">
               <button
                 onClick={() => handleNavigate('/discover')}
-                className={`relative p-2 rounded-lg transition-colors ${
+                className={`relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${
                   isActive('/discover')
                     ? 'text-[#8026FA] bg-[#8026FA]/10'
                     : 'text-gray-700 hover:bg-gray-100'
@@ -113,7 +113,7 @@ export default function Header() {
               </button>
               <button
                 onClick={() => handleNavigate('/messages')}
-                className="relative p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                className="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
                 aria-label="Messages"
               >
                 <MessageCircle className="w-5 h-5" />
@@ -121,7 +121,7 @@ export default function Header() {
               </button>
               <button
                 onClick={() => toggleNotificationDrawer()}
-                className="relative p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                className="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
                 aria-label="Notifications"
               >
                 <Bell className="w-5 h-5" />

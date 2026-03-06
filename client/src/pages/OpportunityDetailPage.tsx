@@ -27,6 +27,7 @@ export default function OpportunityDetailPage() {
   const [showSignInPrompt, setShowSignInPrompt] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [isClosed, setIsClosed] = useState(false)
 
   const fetchVacancyDetails = useCallback(async () => {
     if (!id) return
@@ -57,13 +58,16 @@ export default function OpportunityDetailPage() {
           )
         `)
         .eq('id', id)
-        .eq('status', 'open')
         .single()
 
       if (opportunityError || !opportunityData) {
         logger.error('Opportunity not found:', opportunityError)
         setNotFound(true)
         return
+      }
+
+      if (opportunityData.status !== 'open') {
+        setIsClosed(true)
       }
 
       // Check if this is a test opportunity and current user is not a test account
@@ -242,12 +246,32 @@ export default function OpportunityDetailPage() {
         <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 80px)', paddingTop: '80px' }}>
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Opportunity Not Found</h1>
-            <p className="text-gray-600 mb-6">This opportunity may have been closed or removed.</p>
+            <p className="text-gray-600 mb-6">This opportunity may have been removed.</p>
             <button
               onClick={() => navigate('/opportunities')}
               className="px-6 py-3 bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white rounded-lg hover:opacity-90 transition-opacity"
             >
               Browse Opportunities
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (isClosed) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center" style={{ height: 'calc(100vh - 80px)', paddingTop: '80px' }}>
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">This Opportunity Has Closed</h1>
+            <p className="text-gray-600 mb-6">This position is no longer accepting applications.</p>
+            <button
+              onClick={() => navigate('/opportunities')}
+              className="px-6 py-3 bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white rounded-lg hover:opacity-90 transition-opacity"
+            >
+              Browse Open Opportunities
             </button>
           </div>
         </div>
