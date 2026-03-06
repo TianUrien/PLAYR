@@ -32,7 +32,7 @@ export function usePostInteractions() {
     try {
       const { data, error } = await withTimeout(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        async () => await (supabase.rpc as any)('toggle_post_like', {
+        async () => await supabase.rpc('toggle_post_like', {
           p_post_id: postId,
         }),
         10_000
@@ -59,7 +59,7 @@ export function usePostInteractions() {
     try {
       const { data, error } = await withTimeout(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        async () => await (supabase.rpc as any)('get_post_comments', {
+        async () => await supabase.rpc('get_post_comments', {
           p_post_id: postId,
           p_limit: limit,
           p_offset: offset,
@@ -87,7 +87,7 @@ export function usePostInteractions() {
     try {
       const { data, error } = await withTimeout(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        async () => await (supabase.rpc as any)('create_post_comment', {
+        async () => await supabase.rpc('create_post_comment', {
           p_post_id: postId,
           p_content: content,
         }),
@@ -111,7 +111,7 @@ export function usePostInteractions() {
     try {
       const { data, error } = await withTimeout(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        async () => await (supabase.rpc as any)('delete_post_comment', {
+        async () => await supabase.rpc('delete_post_comment', {
           p_comment_id: commentId,
         }),
         15_000

@@ -157,7 +157,7 @@ export default function Landing() {
 
     try {
       // Check rate limit before attempting login
-      const rateLimit = await checkLoginRateLimit()
+      const rateLimit = await checkLoginRateLimit(email)
       if (rateLimit && !rateLimit.allowed) {
         setError(formatRateLimitError(rateLimit))
         setLoading(false)

@@ -1,11 +1,13 @@
 import { Component, useCallback, useEffect, useRef } from 'react'
 import type { ReactNode, ErrorInfo } from 'react'
-import { ArrowUp, Loader2, Rss } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowUp, Loader2, Rss, Search, Globe, Briefcase, MessageSquare } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { useHomeFeed } from '@/hooks/useHomeFeed'
 import { HomeFeedItemCard } from './HomeFeedItemCard'
 import { FeedSkeleton } from './FeedSkeleton'
 import { PostComposer } from './PostComposer'
+import ProfileCompletionCard from './ProfileCompletionCard'
 
 /**
  * Lightweight error boundary for individual feed items.
@@ -64,6 +66,9 @@ export function HomeFeed() {
 
   return (
     <div>
+      {/* Profile completion nudge */}
+      <ProfileCompletionCard />
+
       {/* Post composer — visually separated from feed */}
       <div className="mb-8">
         <PostComposer onPostCreated={prependItem} />
@@ -111,16 +116,68 @@ export function HomeFeed() {
         </div>
       )}
 
-      {/* Empty state */}
+      {/* Empty state — cold start guidance */}
       {!isLoading && !error && items.length === 0 && (
-        <div className="text-center py-12">
-          <Rss className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No activity yet
-          </h3>
-          <p className="text-gray-500">
-            When members join, post opportunities, or achieve milestones, they'll appear here.
-          </p>
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8">
+          <div className="text-center mb-6">
+            <Rss className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              Welcome to your feed
+            </h3>
+            <p className="text-sm text-gray-500">
+              Your feed fills up as the community grows. In the meantime, start exploring:
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Link
+              to="/opportunities"
+              className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4 transition-colors hover:bg-purple-50 hover:border-purple-200"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-100">
+                <Briefcase className="h-5 w-5 text-[#8026FA]" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Browse Opportunities</p>
+                <p className="text-xs text-gray-500">Find your next move</p>
+              </div>
+            </Link>
+            <Link
+              to="/community"
+              className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4 transition-colors hover:bg-purple-50 hover:border-purple-200"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-100">
+                <MessageSquare className="h-5 w-5 text-[#8026FA]" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Join the Community</p>
+                <p className="text-xs text-gray-500">Ask questions, share knowledge</p>
+              </div>
+            </Link>
+            <Link
+              to="/world"
+              className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4 transition-colors hover:bg-purple-50 hover:border-purple-200"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-100">
+                <Globe className="h-5 w-5 text-[#8026FA]" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Explore World</p>
+                <p className="text-xs text-gray-500">Discover clubs across 8 countries</p>
+              </div>
+            </Link>
+            <Link
+              to="/community?tab=people"
+              className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4 transition-colors hover:bg-purple-50 hover:border-purple-200"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-100">
+                <Search className="h-5 w-5 text-[#8026FA]" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900">Find People</p>
+                <p className="text-xs text-gray-500">Connect with players and coaches</p>
+              </div>
+            </Link>
+          </div>
         </div>
       )}
 

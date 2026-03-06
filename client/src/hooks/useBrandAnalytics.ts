@@ -19,7 +19,7 @@ export function useBrandAnalytics(days: number = 30) {
     try {
       setIsLoading(true)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)('get_my_brand_analytics', {
+      const { data, error } = await supabase.rpc('get_my_brand_analytics', {
         p_days: days,
       })
 

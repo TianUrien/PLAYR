@@ -35,9 +35,7 @@ function detectPlatform(): 'ios' | 'android' | 'desktop' {
 async function persistInstallToDb(platform: 'ios' | 'android' | 'desktop'): Promise<boolean> {
   const userId = useAuthStore.getState().user?.id
   if (!userId) return false
-  // pwa_installs not yet in generated types
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('pwa_installs')
+  const { error } = await supabase.from('pwa_installs')
     .upsert(
       { profile_id: userId, platform, user_agent: navigator.userAgent },
       { onConflict: 'profile_id,platform' }
@@ -165,7 +163,7 @@ export default function InstallPrompt() {
   // iOS Safari instructions
   if (installState === 'ios-safari') {
     return (
-      <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 z-50 animate-slide-up">
+      <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-4 right-4 md:left-auto md:right-4 md:bottom-6 md:w-80 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 z-50 animate-slide-up">
         <button
           onClick={handleDismiss}
           className="absolute top-2 right-2 p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -176,7 +174,7 @@ export default function InstallPrompt() {
 
         <div className="flex items-start gap-3">
           <img
-            src="/pwa-icons/android/android-launchericon-96-96.png"
+            src="/pwa-icons/ios/100.png"
             alt="PLAYR"
             className="w-10 h-10 rounded-xl flex-shrink-0"
           />
@@ -204,7 +202,7 @@ export default function InstallPrompt() {
 
   // Standard install prompt (Chrome, Edge, Samsung, etc.)
   return (
-    <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-4 md:w-80 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 z-50 animate-slide-up">
+    <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-4 right-4 md:left-auto md:right-4 md:bottom-6 md:w-80 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 z-50 animate-slide-up">
       <button
         onClick={handleDismiss}
         className="absolute top-2 right-2 p-1 hover:bg-gray-100 rounded-full transition-colors"

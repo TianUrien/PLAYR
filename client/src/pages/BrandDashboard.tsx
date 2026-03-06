@@ -106,7 +106,7 @@ export default function BrandDashboard() {
     setFollowersLoading(true)
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)('get_brand_followers', {
+      const { data, error } = await supabase.rpc('get_brand_followers', {
         p_brand_id: brand.id,
         p_limit: FOLLOWERS_PAGE,
         p_offset: offset,
@@ -192,7 +192,12 @@ export default function BrandDashboard() {
     strengthSnapshotRef.current = null
 
     if (percentage > before) {
-      addToast(`Profile strength: ${percentage}%`, 'success')
+      const increase = percentage - before
+      if (percentage >= 100) {
+        addToast("Your brand profile is now complete!", 'success')
+      } else {
+        addToast(`Profile strength +${increase}%. Keep going!`, 'success')
+      }
     }
   }, [percentage, strengthLoading, addToast])
 

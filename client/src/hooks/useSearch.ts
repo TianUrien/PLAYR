@@ -2,7 +2,7 @@ import { useInfiniteQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 
-export type SearchResultType = 'post' | 'person' | 'club' | 'brand'
+export type SearchResultType = 'post' | 'person' | 'club' | 'brand' | 'opportunity'
 
 export interface SearchPostResult {
   result_type: 'post'
@@ -55,7 +55,20 @@ export interface SearchBrandResult {
   brand_bio: string | null
 }
 
-export type SearchResult = SearchPostResult | SearchPersonResult | SearchClubResult | SearchBrandResult
+export interface SearchOpportunityResult {
+  result_type: 'opportunity'
+  opportunity_id: string
+  title: string
+  opportunity_type: string
+  position: string | null
+  location_city: string
+  location_country: string
+  club_name: string
+  club_avatar_url: string | null
+  published_at: string | null
+}
+
+export type SearchResult = SearchPostResult | SearchPersonResult | SearchClubResult | SearchBrandResult | SearchOpportunityResult
 
 interface SearchResponse {
   results: SearchResult[]
@@ -65,6 +78,7 @@ interface SearchResponse {
     people: number
     clubs: number
     brands: number
+    opportunities: number
   }
 }
 
@@ -75,7 +89,7 @@ export function useSearch(query: string, type?: string | null) {
     queryKey: ['search', query, type],
     queryFn: async ({ pageParam = 0 }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)('search_content', {
+      const { data, error } = await supabase.rpc('search_content', {
         p_query: query,
         p_type: type || null,
         p_limit: PAGE_SIZE,

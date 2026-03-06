@@ -1,29 +1,21 @@
 import { useEffect, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
 import { MessageCircle, Home, Users, Briefcase, Bell, Globe, Sparkles } from 'lucide-react'
 import { Avatar, NotificationBadge } from '@/components'
-import { useAuthStore } from '@/lib/auth'
-import { useUnreadMessages } from '@/hooks/useUnreadMessages'
-import { useOpportunityNotifications } from '@/hooks/useOpportunityNotifications'
-import { useNotificationStore } from '@/lib/notifications'
+import { useNavigation } from '@/hooks/useNavigation'
 
 export default function Header() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { user, profile } = useAuthStore()
-  const { count: unreadCount } = useUnreadMessages()
-  const { count: opportunityCount } = useOpportunityNotifications()
-  const notificationCount = useNotificationStore((state) => state.unreadCount)
-  const toggleNotificationDrawer = useNotificationStore((state) => state.toggleDrawer)
-  const closeNotificationsDrawer = () => toggleNotificationDrawer(false)
+  const {
+    user,
+    profile,
+    isActive,
+    handleNavigate,
+    toggleNotificationDrawer,
+    unreadCount,
+    opportunityCount,
+    notificationCount,
+    profileInitials,
+  } = useNavigation()
   const headerRef = useRef<HTMLElement>(null)
-  const fullName = profile?.full_name ?? ''
-  const profileInitials = fullName
-    .trim()
-    .split(' ')
-    .filter(Boolean)
-    .map(part => part[0])
-    .join('') || '?'
 
   useEffect(() => {
     if (typeof window === 'undefined' || !headerRef.current) {
@@ -64,14 +56,6 @@ export default function Header() {
     }
   }, [])
 
-  const handleNavigate = (path: string) => {
-    closeNotificationsDrawer()
-    navigate(path)
-  }
-
-  const isActive = (path: string) =>
-    location.pathname === path || location.pathname.startsWith(path + '/')
-
   return (
     <header
       ref={headerRef}
@@ -102,7 +86,7 @@ export default function Header() {
             <div className="flex md:hidden items-center gap-1">
               <button
                 onClick={() => handleNavigate('/discover')}
-                className={`relative p-2 rounded-lg transition-colors ${
+                className={`relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${
                   isActive('/discover')
                     ? 'text-[#8026FA] bg-[#8026FA]/10'
                     : 'text-gray-700 hover:bg-gray-100'
@@ -113,7 +97,7 @@ export default function Header() {
               </button>
               <button
                 onClick={() => handleNavigate('/messages')}
-                className="relative p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                className="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
                 aria-label="Messages"
               >
                 <MessageCircle className="w-5 h-5" />
@@ -121,7 +105,7 @@ export default function Header() {
               </button>
               <button
                 onClick={() => toggleNotificationDrawer()}
-                className="relative p-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+                className="relative min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
                 aria-label="Notifications"
               >
                 <Bell className="w-5 h-5" />

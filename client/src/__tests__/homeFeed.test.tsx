@@ -58,9 +58,10 @@ describe('HomeFeed', () => {
   it('shows empty state when no items and not loading', () => {
     render(<HomeFeed />)
 
-    expect(screen.getByText('No activity yet')).toBeInTheDocument()
-    expect(
-      screen.getByText(/when members join, post opportunities, or achieve milestones/i)
-    ).toBeInTheDocument()
+    expect(screen.getByText('Welcome to your feed')).toBeInTheDocument()
+    expect(screen.getByText('Browse Opportunities')).toBeInTheDocument()
+    expect(screen.getByText('Join the Community')).toBeInTheDocument()
+    expect(screen.getByText('Explore World')).toBeInTheDocument()
+    expect(screen.getByText('Find People')).toBeInTheDocument()
   })
 })

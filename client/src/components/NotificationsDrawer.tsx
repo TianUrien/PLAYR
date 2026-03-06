@@ -354,7 +354,7 @@ export default function NotificationsDrawer() {
         ref={drawerRef}
         role="dialog"
         aria-modal={isOpen || undefined}
-        aria-label="Notifications"
+        aria-labelledby="notifications-drawer-title"
         tabIndex={-1}
         className={cn(
           'fixed inset-y-0 right-0 z-[60] flex w-full max-w-full transform bg-white shadow-2xl transition-transform duration-200 focus:outline-none sm:max-w-md lg:max-w-lg',
@@ -362,10 +362,10 @@ export default function NotificationsDrawer() {
         )}
       >
         <div className="flex h-full w-full flex-col bg-[#f0f2f5]">
-          <header className="border-b border-gray-100 bg-white px-4 py-4 sm:px-6">
+          <header className="border-b border-gray-100 bg-white px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-semibold text-gray-900">Notifications</p>
+                <p id="notifications-drawer-title" className="text-2xl font-semibold text-gray-900">Notifications</p>
                 <p className="text-sm text-gray-500">Stay on top of your network.</p>
               </div>
               <div className="flex items-center gap-2">

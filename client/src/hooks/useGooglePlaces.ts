@@ -24,6 +24,7 @@ export function useGooglePlaces() {
   const [isLoaded, setIsLoaded] = useState(false)
   const [loadError, setLoadError] = useState(false)
   const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null)
+  const failCountRef = useRef(0)
 
   useEffect(() => {
     const apiKey = import.meta.env.VITE_GOOGLE_PLACES_API_KEY
@@ -79,6 +80,12 @@ export function useGooglePlaces() {
         })
     } catch (err) {
       logger.error('[useGooglePlaces] Prediction failed:', err)
+      // Detect persistent failures (e.g. 403 referrer blocked) and fall back to plain input
+      failCountRef.current++
+      if (failCountRef.current >= 2) {
+        logger.warn('[useGooglePlaces] Multiple prediction failures — falling back to plain text input')
+        setLoadError(true)
+      }
       return []
     }
   }

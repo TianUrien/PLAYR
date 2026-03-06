@@ -13,73 +13,64 @@ export interface RateLimitResult {
   limit: number
 }
 
-/**
- * Get client IP address for rate limiting
- * Falls back to a session-based identifier if IP cannot be determined
- */
-const getClientIdentifier = (): string => {
-  // For client-side, we can't reliably get IP
-  // Use a combination of browser fingerprinting as fallback
-  // In production, this should be enhanced with server-side IP detection
-  const sessionId = sessionStorage.getItem('rate_limit_session')
-  if (sessionId) return sessionId
-
-  const newSessionId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36)
-  sessionStorage.setItem('rate_limit_session', newSessionId)
-  return newSessionId
+/** Fail-closed fallback when the rate-limit RPC itself errors out. */
+const FAIL_CLOSED: RateLimitResult = {
+  allowed: false,
+  remaining: 0,
+  reset_at: new Date(Date.now() + 60_000).toISOString(),
+  limit: 0,
 }
 
 /**
- * Check login rate limit
- * @returns RateLimitResult or null if check fails
+ * Check login rate limit (keyed on email, normalized server-side)
+ * @param email - The email address being used to log in
+ * @returns RateLimitResult (fail-closed on RPC error)
  */
-export const checkLoginRateLimit = async (): Promise<RateLimitResult | null> => {
+export const checkLoginRateLimit = async (email: string): Promise<RateLimitResult | null> => {
   try {
-    const identifier = getClientIdentifier()
     const { data, error } = await supabase.rpc('check_login_rate_limit', {
-      p_ip: identifier
+      p_email: email,
     })
 
     if (error) {
       logger.error('[RATE_LIMIT] Login rate limit check failed', { error })
-      // On error, allow the request (fail open)
-      return null
+      return FAIL_CLOSED
     }
 
     return data as RateLimitResult
   } catch (err) {
     logger.error('[RATE_LIMIT] Unexpected error checking login rate limit', { err })
-    return null
+    return FAIL_CLOSED
   }
 }
 
 /**
- * Check signup rate limit
- * @returns RateLimitResult or null if check fails
+ * Check signup rate limit (keyed on email, normalized server-side)
+ * @param email - The email address being used to sign up
+ * @returns RateLimitResult (fail-closed on RPC error)
  */
-export const checkSignupRateLimit = async (): Promise<RateLimitResult | null> => {
+export const checkSignupRateLimit = async (email: string): Promise<RateLimitResult | null> => {
   try {
-    const identifier = getClientIdentifier()
     const { data, error } = await supabase.rpc('check_signup_rate_limit', {
-      p_ip: identifier
+      p_email: email,
     })
 
     if (error) {
       logger.error('[RATE_LIMIT] Signup rate limit check failed', { error })
-      return null
+      return FAIL_CLOSED
     }
 
     return data as RateLimitResult
   } catch (err) {
     logger.error('[RATE_LIMIT] Unexpected error checking signup rate limit', { err })
-    return null
+    return FAIL_CLOSED
   }
 }
 
 /**
  * Check password reset rate limit
  * @param email - User's email address
- * @returns RateLimitResult or null if check fails
+ * @returns RateLimitResult (fail-closed on RPC error)
  */
 export const checkPasswordResetRateLimit = async (email: string): Promise<RateLimitResult | null> => {
   try {
@@ -89,20 +80,20 @@ export const checkPasswordResetRateLimit = async (email: string): Promise<RateLi
 
     if (error) {
       logger.error('[RATE_LIMIT] Password reset rate limit check failed', { error })
-      return null
+      return FAIL_CLOSED
     }
 
     return data as RateLimitResult
   } catch (err) {
     logger.error('[RATE_LIMIT] Unexpected error checking password reset rate limit', { err })
-    return null
+    return FAIL_CLOSED
   }
 }
 
 /**
  * Check opportunity application rate limit
  * @param userId - User's ID
- * @returns RateLimitResult or null if check fails
+ * @returns RateLimitResult (fail-closed on RPC error)
  */
 export const checkApplicationRateLimit = async (userId: string): Promise<RateLimitResult | null> => {
   try {
@@ -112,20 +103,20 @@ export const checkApplicationRateLimit = async (userId: string): Promise<RateLim
 
     if (error) {
       logger.error('[RATE_LIMIT] Application rate limit check failed', { error })
-      return null
+      return FAIL_CLOSED
     }
 
     return data as RateLimitResult
   } catch (err) {
     logger.error('[RATE_LIMIT] Unexpected error checking application rate limit', { err })
-    return null
+    return FAIL_CLOSED
   }
 }
 
 /**
  * Check message sending rate limit
  * @param userId - User's ID
- * @returns RateLimitResult or null if check fails
+ * @returns RateLimitResult (fail-closed on RPC error)
  */
 export const checkMessageRateLimit = async (userId: string): Promise<RateLimitResult | null> => {
   try {
@@ -135,13 +126,13 @@ export const checkMessageRateLimit = async (userId: string): Promise<RateLimitRe
 
     if (error) {
       logger.error('[RATE_LIMIT] Message rate limit check failed', { error })
-      return null
+      return FAIL_CLOSED
     }
 
     return data as RateLimitResult
   } catch (err) {
     logger.error('[RATE_LIMIT] Unexpected error checking message rate limit', { err })
-    return null
+    return FAIL_CLOSED
   }
 }
 

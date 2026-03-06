@@ -5,8 +5,8 @@
  * Displays list of questions with filtering and sorting.
  */
 
-import { useState, useCallback, useRef } from 'react'
-import { Plus, ChevronDown, Search, X } from 'lucide-react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { Plus, ChevronDown, Search, X, Loader2 } from 'lucide-react'
 import { QuestionCard } from './QuestionCard'
 import { AskQuestionModal } from './AskQuestionModal'
 import SignInPromptModal from '@/components/SignInPromptModal'
@@ -29,6 +29,7 @@ export function QuestionsListView() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSignInPrompt, setShowSignInPrompt] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   // Debounce search input (500ms)
   const handleSearchChange = useCallback((value: string) => {
@@ -63,6 +64,22 @@ export function QuestionsListView() {
     setIsSubmitting(false)
     return result !== null
   }, [createQuestion])
+
+  // Infinite scroll via IntersectionObserver
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !isLoading) {
+          loadMore()
+        }
+      },
+      { rootMargin: '200px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore, isLoading, loadMore])
 
   const handleAskQuestionClick = () => {
     if (!user) {
@@ -206,15 +223,11 @@ export function QuestionsListView() {
             ))}
           </div>
 
-          {/* Load more */}
+          {/* Infinite scroll sentinel */}
+          {hasMore && <div ref={sentinelRef} className="h-1" />}
           {hasMore && (
-            <div className="flex justify-center mt-8">
-              <button
-                onClick={loadMore}
-                className="px-8 py-3 rounded-lg bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 hover:border-gray-400 transition-all"
-              >
-                Load More Questions
-              </button>
+            <div className="flex justify-center py-6">
+              <Loader2 className="w-6 h-6 text-[#8026FA] animate-spin" />
             </div>
           )}
         </>

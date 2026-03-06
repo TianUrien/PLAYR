@@ -57,12 +57,6 @@ describe('formatRateLimitError', () => {
 describe('checkLoginRateLimit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Mock sessionStorage for getClientIdentifier
-    const store: Record<string, string> = {}
-    vi.stubGlobal('sessionStorage', {
-      getItem: (key: string) => store[key] ?? null,
-      setItem: (key: string, value: string) => { store[key] = value },
-    })
   })
 
   it('returns data on successful RPC call', async () => {
@@ -74,25 +68,28 @@ describe('checkLoginRateLimit', () => {
     }
     vi.mocked(supabase.rpc).mockResolvedValue({ data: mockResult, error: null } as never)
 
-    const result = await checkLoginRateLimit()
+    const result = await checkLoginRateLimit('test@example.com')
     expect(result).toEqual(mockResult)
+    expect(supabase.rpc).toHaveBeenCalledWith('check_login_rate_limit', { p_email: 'test@example.com' })
   })
 
-  it('returns null on RPC error (fail-open)', async () => {
+  it('returns fail-closed result on RPC error', async () => {
     vi.mocked(supabase.rpc).mockResolvedValue({
       data: null,
       error: { message: 'function not found', code: 'PGRST202' },
     } as never)
 
-    const result = await checkLoginRateLimit()
-    expect(result).toBeNull()
+    const result = await checkLoginRateLimit('test@example.com')
+    expect(result).not.toBeNull()
+    expect(result!.allowed).toBe(false)
   })
 
-  it('returns null on unexpected exception (fail-open)', async () => {
+  it('returns fail-closed result on unexpected exception', async () => {
     vi.mocked(supabase.rpc).mockRejectedValue(new Error('Network failure'))
 
-    const result = await checkLoginRateLimit()
-    expect(result).toBeNull()
+    const result = await checkLoginRateLimit('test@example.com')
+    expect(result).not.toBeNull()
+    expect(result!.allowed).toBe(false)
   })
 })
 
@@ -115,20 +112,22 @@ describe('checkMessageRateLimit', () => {
     expect(supabase.rpc).toHaveBeenCalledWith('check_message_rate_limit', { p_user_id: 'user-123' })
   })
 
-  it('returns null on RPC error (fail-open)', async () => {
+  it('returns fail-closed result on RPC error', async () => {
     vi.mocked(supabase.rpc).mockResolvedValue({
       data: null,
       error: { message: 'function not found', code: 'PGRST202' },
     } as never)
 
     const result = await checkMessageRateLimit('user-123')
-    expect(result).toBeNull()
+    expect(result).not.toBeNull()
+    expect(result!.allowed).toBe(false)
   })
 
-  it('returns null on unexpected exception (fail-open)', async () => {
+  it('returns fail-closed result on unexpected exception', async () => {
     vi.mocked(supabase.rpc).mockRejectedValue(new Error('Network failure'))
 
     const result = await checkMessageRateLimit('user-123')
-    expect(result).toBeNull()
+    expect(result).not.toBeNull()
+    expect(result!.allowed).toBe(false)
   })
 })

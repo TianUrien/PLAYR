@@ -79,6 +79,7 @@ export function useChat({
   const oldestLoadedCursorRef = useRef<MessageCursor | null>(null)
   const pendingReadIdsRef = useRef(new Set<string>())
   const readFlushTimeoutRef = useRef<number | null>(null)
+  const unmountedRef = useRef(false)
   
   const { addToast } = useToastStore()
   const initializeUnreadStore = useUnreadStore(state => state.initialize)
@@ -342,9 +343,12 @@ export function useChat({
       }
     })
 
-    syncMessagesState(prev =>
-      prev.map(msg => (optimisticIds.has(msg.id) ? { ...msg, read_at: now } : msg))
-    )
+    // Only apply optimistic UI update if still mounted
+    if (!unmountedRef.current) {
+      syncMessagesState(prev =>
+        prev.map(msg => (optimisticIds.has(msg.id) ? { ...msg, read_at: now } : msg))
+      )
+    }
 
     try {
       Sentry.addBreadcrumb({
@@ -361,21 +365,23 @@ export function useChat({
       if (error) throw error
       const affectedRows = typeof updatedRows === 'number' ? updatedRows : pendingIds.length
 
-      if (onConversationRead && pendingIds.length > 0) {
-        onConversationRead(conversation.id)
-      }
+      if (!unmountedRef.current) {
+        if (onConversationRead && pendingIds.length > 0) {
+          onConversationRead(conversation.id)
+        }
 
-      requestCache.invalidate(cacheKey)
-      if (onMessageSent && pendingIds.length > 0 && conversation.id) {
-        onMessageSent({
-          type: 'read',
-          conversationId: conversation.id,
-          messageIds: pendingIds
-        })
-      }
+        requestCache.invalidate(cacheKey)
+        if (onMessageSent && pendingIds.length > 0 && conversation.id) {
+          onMessageSent({
+            type: 'read',
+            conversationId: conversation.id,
+            messageIds: pendingIds
+          })
+        }
 
-      if (affectedRows > 0) {
-        void refreshUnreadCount({ bypassCache: true })
+        if (affectedRows > 0) {
+          void refreshUnreadCount({ bypassCache: true })
+        }
       }
     } catch (error) {
       logger.error('Error marking messages as read in database:', error)
@@ -387,9 +393,11 @@ export function useChat({
       operation: 'mark_read'
       })
 
-      syncMessagesState(prev =>
-        prev.map(msg => (optimisticIds.has(msg.id) ? { ...msg, read_at: null } : msg))
-      )
+      if (!unmountedRef.current) {
+        syncMessagesState(prev =>
+          prev.map(msg => (optimisticIds.has(msg.id) ? { ...msg, read_at: null } : msg))
+        )
+      }
 
       pendingIds.forEach(id => pendingReadIdsRef.current.add(id))
     }
@@ -820,9 +828,11 @@ export function useChat({
     }
   }, [conversation.id, conversation.isPending, fetchMessages, flushPendingReadReceipts, markConversationAsRead, syncMessagesState])
 
-  // Cleanup on unmount
+  // Cleanup on unmount — mark as unmounted so async flush skips state updates
   useEffect(() => {
+    unmountedRef.current = false
     return () => {
+      unmountedRef.current = true
       if (readFlushTimeoutRef.current !== null) {
         window.clearTimeout(readFlushTimeoutRef.current)
         readFlushTimeoutRef.current = null

@@ -38,7 +38,7 @@ export function useBrandAmbassadors(brandId: string | null | undefined) {
       setError(null)
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error: rpcError } = await (supabase.rpc as any)('get_brand_ambassadors', {
+      const { data, error: rpcError } = await supabase.rpc('get_brand_ambassadors', {
         p_brand_id: brandId,
         p_limit: PAGE_SIZE,
         p_offset: fetchOffset,
@@ -62,7 +62,7 @@ export function useBrandAmbassadors(brandId: string | null | undefined) {
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error: rpcError } = await (supabase.rpc as any)('add_brand_ambassador', {
+      const { data, error: rpcError } = await supabase.rpc('add_brand_ambassador', {
         p_brand_id: brandId,
         p_player_id: playerId,
       })
@@ -88,7 +88,7 @@ export function useBrandAmbassadors(brandId: string | null | undefined) {
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error: rpcError } = await (supabase.rpc as any)('remove_brand_ambassador', {
+      const { data, error: rpcError } = await supabase.rpc('remove_brand_ambassador', {
         p_brand_id: brandId,
         p_player_id: playerId,
       })

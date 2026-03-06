@@ -5,6 +5,7 @@
  * Extracted from BrandsPage.tsx BrandDirectory component.
  */
 
+import { useRef, useEffect } from 'react'
 import { Search, Store, Loader2 } from 'lucide-react'
 import { BrandCardSkeleton } from '@/components/Skeleton'
 import { BrandCard, BrandCategoryFilter } from '@/components/brands'
@@ -17,12 +18,30 @@ export function BrandListView() {
   const [search, setSearch] = usePageState('brand-search', '')
   const [searchInput, setSearchInput] = usePageState('brand-searchInput', '')
 
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
   const { brands, isLoading, error, total, hasMore, loadMore } = useBrands({
     category,
     search: search || null,
   })
 
   useScrollRestore(!isLoading || brands.length > 0)
+
+  // Infinite scroll via IntersectionObserver
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !isLoading) {
+          loadMore()
+        }
+      },
+      { rootMargin: '200px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore, isLoading, loadMore])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -103,22 +122,11 @@ export function BrandListView() {
         </div>
       )}
 
-      {/* Load More */}
-      {hasMore && !isLoading && (
-        <div className="mt-8 text-center">
-          <button
-            onClick={loadMore}
-            className="px-6 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Load more
-          </button>
-        </div>
-      )}
-
-      {/* Loading More */}
-      {isLoading && brands.length > 0 && (
-        <div className="mt-8 flex items-center justify-center">
-          <Loader2 className="w-6 h-6 text-indigo-500 animate-spin" />
+      {/* Infinite scroll sentinel */}
+      {hasMore && <div ref={sentinelRef} className="h-1" />}
+      {hasMore && (
+        <div className="mt-6 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 text-[#8026FA] animate-spin" />
         </div>
       )}
     </>

@@ -85,8 +85,22 @@ const getInitialContactEmail = (profile?: Profile | null): string => profile?.co
  * Returns an error message string if invalid, or null if valid.
  */
 function validateFormData(formData: ProfileFormData, role: string): string | null {
+  // Universal required field
+  if (!formData.full_name.trim()) {
+    return 'Full name is required.'
+  }
+
+  // Role-specific validation
   if (role === 'player' && formData.secondary_position && formData.secondary_position === formData.position) {
     return 'Primary and secondary positions must be different.'
+  }
+
+  if ((role === 'player' || role === 'coach') && !formData.base_location.trim()) {
+    return 'Location is required.'
+  }
+
+  if (role === 'club' && !formData.base_location.trim()) {
+    return 'Club location is required.'
   }
 
   const cleanedSocialLinks = cleanSocialLinks(formData.social_links)
@@ -101,9 +115,9 @@ function validateFormData(formData: ProfileFormData, role: string): string | nul
 const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   full_name: profile?.full_name || '',
   base_location: profile?.base_location || '',
-  base_city: (profile as unknown as { base_city?: string | null })?.base_city || '',
-  base_country_id: (profile as unknown as { base_country_id?: number | null })?.base_country_id ?? null,
-  location_selected: !!((profile as unknown as { base_city?: string | null })?.base_city && (profile as unknown as { base_country_id?: number | null })?.base_country_id),
+  base_city: profile?.base_city || '',
+  base_country_id: profile?.base_country_id ?? null,
+  location_selected: !!(profile?.base_city && profile?.base_country_id),
   nationality: profile?.nationality || '',
   nationality_country_id: profile?.nationality_country_id ?? null,
   nationality2_country_id: profile?.nationality2_country_id ?? null,
@@ -112,13 +126,13 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   secondary_position: profile?.secondary_position || '',
   gender: profile?.gender || '',
   current_club: profile?.current_club || '',
-  current_world_club_id: (profile as unknown as { current_world_club_id?: string | null })?.current_world_club_id ?? null,
+  current_world_club_id: profile?.current_world_club_id ?? null,
   year_founded: profile?.year_founded?.toString() || '',
-  womens_league_division: (profile as unknown as { womens_league_division?: string | null })?.womens_league_division || '',
-  mens_league_division: (profile as unknown as { mens_league_division?: string | null })?.mens_league_division || '',
-  womens_league_id: (profile as unknown as { womens_league_id?: number | null })?.womens_league_id ?? null,
-  mens_league_id: (profile as unknown as { mens_league_id?: number | null })?.mens_league_id ?? null,
-  world_region_id: (profile as unknown as { world_region_id?: number | null })?.world_region_id ?? null,
+  womens_league_division: profile?.womens_league_division || '',
+  mens_league_division: profile?.mens_league_division || '',
+  womens_league_id: profile?.womens_league_id ?? null,
+  mens_league_id: profile?.mens_league_id ?? null,
+  world_region_id: profile?.world_region_id ?? null,
   website: profile?.website || '',
   contact_email: getInitialContactEmail(profile),
   contact_email_public: Boolean(profile?.contact_email_public),
@@ -195,7 +209,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
 
           // Fetch leagues using the RPC function (works for both region-based and country-only)
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: leagues } = await (supabase.rpc as any)('get_leagues_for_location', {
+          const { data: leagues } = await supabase.rpc('get_leagues_for_location', {
             p_country_id: claimData.country_id,
             p_region_id: claimData.province_id ?? undefined
           }) as { data: { id: number; name: string; tier: number | null; logical_id: string | null }[] | null; error: Error | null }
@@ -281,12 +295,21 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
     })
   }
 
+  const isDirty = useCallback(() => {
+    if (!profile) return false
+    const initial = buildInitialFormData(profile)
+    return JSON.stringify(formData) !== JSON.stringify(initial)
+  }, [formData, profile])
+
   const handleDismiss = useCallback(() => {
     if (loading) {
       return
     }
+    if (isDirty() && !window.confirm('You have unsaved changes. Discard them?')) {
+      return
+    }
     onClose()
-  }, [loading, onClose])
+  }, [loading, onClose, isDirty])
 
   useFocusTrap({ containerRef: dialogRef, isActive: isOpen && Boolean(profile), initialFocusRef: closeButtonRef })
 
@@ -730,10 +753,10 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     aria-label="Select position"
                   >
                     <option value="">Select position</option>
-                    <option value="Goalkeeper">Goalkeeper</option>
-                    <option value="Defender">Defender</option>
-                    <option value="Midfielder">Midfielder</option>
-                    <option value="Forward">Forward</option>
+                    <option value="goalkeeper">Goalkeeper</option>
+                    <option value="defender">Defender</option>
+                    <option value="midfielder">Midfielder</option>
+                    <option value="forward">Forward</option>
                   </select>
                 </div>
 
@@ -749,9 +772,9 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     aria-label="Select secondary position"
                   >
                     <option value="">No secondary position</option>
-                    {['Goalkeeper', 'Defender', 'Midfielder', 'Forward'].map((option) => (
+                    {['goalkeeper', 'defender', 'midfielder', 'forward'].map((option) => (
                       <option key={option} value={option} disabled={option === formData.position}>
-                        {option}
+                        {option.charAt(0).toUpperCase() + option.slice(1)}
                       </option>
                     ))}
                   </select>
