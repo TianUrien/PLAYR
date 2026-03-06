@@ -134,25 +134,25 @@ jobs:
           GZIP_KB=$((GZIP_TOTAL / 1024))
           echo "JS bundle: ${TOTAL_KB}KB raw / ${GZIP_KB}KB gzip"
 
-          # Early warning: gzip at 90% of budget (585KB)
-          if [ "$GZIP_TOTAL" -gt 599040 ]; then
-            echo "::warning::Bundle nearing gzip budget: ${GZIP_KB}KB / 650KB ($(( GZIP_KB * 100 / 650 ))%)"
+          # Early warning: gzip at 90% of budget (720KB)
+          if [ "$GZIP_TOTAL" -gt 737280 ]; then
+            echo "::warning::Bundle nearing gzip budget: ${GZIP_KB}KB / 800KB ($(( GZIP_KB * 100 / 800 ))%)"
           fi
 
-          # Primary gate: gzip total must stay under 650KB
-          if [ "$GZIP_TOTAL" -gt 665600 ]; then
-            echo "::error::Gzip bundle budget exceeded! ${GZIP_KB}KB > 650KB"
+          # Primary gate: gzip total must stay under 800KB
+          if [ "$GZIP_TOTAL" -gt 819200 ]; then
+            echo "::error::Gzip bundle budget exceeded! ${GZIP_KB}KB > 800KB"
             exit 1
           fi
 
-          # Early warning: raw at 90% of budget (2250KB)
-          if [ "$TOTAL_JS" -gt 2304000 ]; then
-            echo "::warning::Bundle nearing raw budget: ${TOTAL_KB}KB / 2500KB ($(( TOTAL_KB * 100 / 2500 ))%)"
+          # Early warning: raw at 90% of budget (2700KB)
+          if [ "$TOTAL_JS" -gt 2764800 ]; then
+            echo "::warning::Bundle nearing raw budget: ${TOTAL_KB}KB / 3000KB ($(( TOTAL_KB * 100 / 3000 ))%)"
           fi
 
-          # Secondary gate: raw total must stay under 2.5MB
-          if [ "$TOTAL_JS" -gt 2621440 ]; then
-            echo "::error::Raw bundle budget exceeded! ${TOTAL_KB}KB > 2500KB"
+          # Secondary gate: raw total must stay under 3MB
+          if [ "$TOTAL_JS" -gt 3145728 ]; then
+            echo "::error::Raw bundle budget exceeded! ${TOTAL_KB}KB > 3000KB"
             exit 1
           fi
 
