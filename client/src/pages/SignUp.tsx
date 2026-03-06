@@ -92,7 +92,7 @@ export default function SignUp() {
           logger.debug('User already registered, showing helpful error')
           setError('This email is already registered. Please sign in instead.')
           setTimeout(() => {
-            navigate(`/?email=${encodeURIComponent(formData.email)}`)
+            navigate('/')
           }, 3000)
           return
         }
@@ -109,8 +109,8 @@ export default function SignUp() {
 
       logger.debug('Redirecting to /verify-email')
 
-      // Redirect to verify email page
-      navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`)
+      // Redirect to verify email page (email already in localStorage, not in URL to avoid browser history leak)
+      navigate('/verify-email')
 
     } catch (err) {
       Sentry.captureException(err, {

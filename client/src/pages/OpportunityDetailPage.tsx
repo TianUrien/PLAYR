@@ -68,6 +68,12 @@ export default function OpportunityDetailPage() {
 
       if (opportunityData.status !== 'open') {
         setIsClosed(true)
+      } else if (opportunityData.application_deadline) {
+        // Check if deadline has passed (treat as closed even if status wasn't updated)
+        const deadline = new Date(opportunityData.application_deadline)
+        if (deadline < new Date()) {
+          setIsClosed(true)
+        }
       }
 
       // Check if this is a test opportunity and current user is not a test account

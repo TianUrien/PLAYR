@@ -148,6 +148,10 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
       return
     }
     if (!profileData) return
+    if (user.id === profileData.id) {
+      addToast('You cannot message yourself.', 'error')
+      return
+    }
 
     setSendingMessage(true)
     try {

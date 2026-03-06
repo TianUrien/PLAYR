@@ -85,8 +85,22 @@ const getInitialContactEmail = (profile?: Profile | null): string => profile?.co
  * Returns an error message string if invalid, or null if valid.
  */
 function validateFormData(formData: ProfileFormData, role: string): string | null {
+  // Universal required field
+  if (!formData.full_name.trim()) {
+    return 'Full name is required.'
+  }
+
+  // Role-specific validation
   if (role === 'player' && formData.secondary_position && formData.secondary_position === formData.position) {
     return 'Primary and secondary positions must be different.'
+  }
+
+  if ((role === 'player' || role === 'coach') && !formData.base_location.trim()) {
+    return 'Location is required.'
+  }
+
+  if (role === 'club' && !formData.base_location.trim()) {
+    return 'Club location is required.'
   }
 
   const cleanedSocialLinks = cleanSocialLinks(formData.social_links)
