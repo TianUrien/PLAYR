@@ -125,8 +125,7 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
             // Resolve brand slugs for navigation
             const brandIds = members.filter(m => m.role === 'brand').map(m => m.id)
             if (brandIds.length > 0) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const { data: brands } = await (supabase as any)
+              const { data: brands } = await supabase
                 .from('brands')
                 .select('profile_id, slug, category')
                 .in('profile_id', brandIds)
@@ -207,8 +206,7 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
             // Resolve brand slugs for navigation
             const brandIds = members.filter(m => m.role === 'brand').map(m => m.id)
             if (brandIds.length > 0) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const { data: brands } = await (supabase as any)
+              const { data: brands } = await supabase
                 .from('brands')
                 .select('profile_id, slug, category')
                 .in('profile_id', brandIds)

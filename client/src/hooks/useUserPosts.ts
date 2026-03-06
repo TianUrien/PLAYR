@@ -32,7 +32,7 @@ export function useUserPosts() {
     try {
       const { data, error } = await withTimeout(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        async () => await (supabase.rpc as any)('create_user_post', {
+        async () => await supabase.rpc('create_user_post', {
           p_content: content,
           p_images: images && images.length > 0 ? images : null,
         }),
@@ -60,7 +60,7 @@ export function useUserPosts() {
     try {
       const { data, error } = await withTimeout(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        async () => await (supabase.rpc as any)('update_user_post', {
+        async () => await supabase.rpc('update_user_post', {
           p_post_id: postId,
           p_content: content,
           p_images: images && images.length > 0 ? images : null,
@@ -85,7 +85,7 @@ export function useUserPosts() {
     try {
       const { data, error } = await withTimeout(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        async () => await (supabase.rpc as any)('delete_user_post', {
+        async () => await supabase.rpc('delete_user_post', {
           p_post_id: postId,
         }),
         15_000
@@ -115,7 +115,7 @@ export function useUserPosts() {
     try {
       const { data, error } = await withTimeout(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        async () => await (supabase.rpc as any)('create_transfer_post', {
+        async () => await supabase.rpc('create_transfer_post', {
           p_club_name: clubName,
           p_club_country_id: clubCountryId,
           p_world_club_id: worldClubId,
@@ -147,7 +147,7 @@ export function useUserPosts() {
     try {
       const { data, error } = await withTimeout(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        async () => await (supabase.rpc as any)('create_signing_post', {
+        async () => await supabase.rpc('create_signing_post', {
           p_person_profile_id: personProfileId,
           p_content: content || null,
           p_images: images && images.length > 0 ? images : null,

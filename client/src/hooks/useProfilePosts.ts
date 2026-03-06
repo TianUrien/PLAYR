@@ -43,7 +43,7 @@ export function useProfilePosts(profileId: string): UseProfilePostsResult {
 
       const { data, error } = await withTimeout(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        async () => await (supabase.rpc as any)('get_profile_posts', {
+        async () => await supabase.rpc('get_profile_posts', {
           p_profile_id: profileId,
           p_limit: DEFAULT_LIMIT,
           p_offset: offset,

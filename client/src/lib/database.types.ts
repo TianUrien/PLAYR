@@ -114,6 +114,98 @@ export type Database = {
         }
         Relationships: []
       }
+      brand_ambassadors: {
+        Row: {
+          brand_id: string
+          created_at: string
+          id: string
+          player_id: string
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          id?: string
+          player_id: string
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          id?: string
+          player_id?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_ambassadors_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_ambassadors_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_ambassadors_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      brand_followers: {
+        Row: {
+          brand_id: string
+          created_at: string
+          follower_id: string
+          id: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string
+          follower_id: string
+          id?: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string
+          follower_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brand_followers_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_followers_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "brand_followers_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brand_posts: {
         Row: {
           brand_id: string
@@ -201,49 +293,58 @@ export type Database = {
       }
       brands: {
         Row: {
+          ambassador_count: number
           bio: string | null
           category: string
           cover_url: string | null
           created_at: string | null
           deleted_at: string | null
+          follower_count: number
           id: string
           instagram_url: string | null
           is_verified: boolean | null
           logo_url: string | null
           name: string
           profile_id: string
+          search_vector: unknown
           slug: string
           updated_at: string | null
           website_url: string | null
         }
         Insert: {
+          ambassador_count?: number
           bio?: string | null
           category?: string
           cover_url?: string | null
           created_at?: string | null
           deleted_at?: string | null
+          follower_count?: number
           id?: string
           instagram_url?: string | null
           is_verified?: boolean | null
           logo_url?: string | null
           name: string
           profile_id: string
+          search_vector?: unknown
           slug: string
           updated_at?: string | null
           website_url?: string | null
         }
         Update: {
+          ambassador_count?: number
           bio?: string | null
           category?: string
           cover_url?: string | null
           created_at?: string | null
           deleted_at?: string | null
+          follower_count?: number
           id?: string
           instagram_url?: string | null
           is_verified?: boolean | null
           logo_url?: string | null
           name?: string
           profile_id?: string
+          search_vector?: unknown
           slug?: string
           updated_at?: string | null
           website_url?: string | null
@@ -2075,7 +2176,10 @@ export type Database = {
       }
       profiles: {
         Row: {
+          accepted_friend_count: number
+          accepted_reference_count: number
           avatar_url: string | null
+          base_city: string | null
           base_country_id: number | null
           base_location: string | null
           bio: string | null
@@ -2083,6 +2187,7 @@ export type Database = {
           blocked_by: string | null
           blocked_reason: string | null
           brand_representation: string | null
+          career_entry_count: number
           club_bio: string | null
           club_history: string | null
           contact_email: string | null
@@ -2120,6 +2225,7 @@ export type Database = {
           open_to_opportunities: boolean
           open_to_play: boolean
           position: string | null
+          post_count: number
           role: string
           search_vector: unknown
           secondary_position: string | null
@@ -2134,7 +2240,10 @@ export type Database = {
           year_founded: number | null
         }
         Insert: {
+          accepted_friend_count?: number
+          accepted_reference_count?: number
           avatar_url?: string | null
+          base_city?: string | null
           base_country_id?: number | null
           base_location?: string | null
           bio?: string | null
@@ -2142,6 +2251,7 @@ export type Database = {
           blocked_by?: string | null
           blocked_reason?: string | null
           brand_representation?: string | null
+          career_entry_count?: number
           club_bio?: string | null
           club_history?: string | null
           contact_email?: string | null
@@ -2179,6 +2289,7 @@ export type Database = {
           open_to_opportunities?: boolean
           open_to_play?: boolean
           position?: string | null
+          post_count?: number
           role: string
           search_vector?: unknown
           secondary_position?: string | null
@@ -2193,7 +2304,10 @@ export type Database = {
           year_founded?: number | null
         }
         Update: {
+          accepted_friend_count?: number
+          accepted_reference_count?: number
           avatar_url?: string | null
+          base_city?: string | null
           base_country_id?: number | null
           base_location?: string | null
           bio?: string | null
@@ -2201,6 +2315,7 @@ export type Database = {
           blocked_by?: string | null
           blocked_reason?: string | null
           brand_representation?: string | null
+          career_entry_count?: number
           club_bio?: string | null
           club_history?: string | null
           contact_email?: string | null
@@ -2238,6 +2353,7 @@ export type Database = {
           open_to_opportunities?: boolean
           open_to_play?: boolean
           position?: string | null
+          post_count?: number
           role?: string
           search_vector?: unknown
           secondary_position?: string | null
@@ -3162,6 +3278,10 @@ export type Database = {
         Returns: undefined
       }
       acquire_profile_lock: { Args: { profile_id: string }; Returns: boolean }
+      add_brand_ambassador: {
+        Args: { p_brand_id: string; p_player_id: string }
+        Returns: Json
+      }
       admin_activate_email_template: {
         Args: { p_template_id: string; p_version_number: number }
         Returns: undefined
@@ -3202,6 +3322,7 @@ export type Database = {
         Args: { p_profile_id: string }
         Returns: Json
       }
+      admin_get_activation_funnel: { Args: { p_days?: number }; Returns: Json }
       admin_get_audit_logs: {
         Args: {
           p_action?: string
@@ -3276,6 +3397,7 @@ export type Database = {
         }[]
       }
       admin_get_club_summary: { Args: never; Returns: Json }
+      admin_get_command_center: { Args: { p_days?: number }; Returns: Json }
       admin_get_dashboard_stats: { Args: never; Returns: Json }
       admin_get_email_campaigns: {
         Args: {
@@ -3487,6 +3609,17 @@ export type Database = {
         Args: { p_days?: number; p_exclude_test?: boolean; p_role?: string }
         Returns: Json
       }
+      admin_get_retention_cohorts: {
+        Args: { p_months?: number }
+        Returns: {
+          cohort_size: number
+          d1_pct: number
+          d14_pct: number
+          d30_pct: number
+          d7_pct: number
+          signup_month: string
+        }[]
+      }
       admin_get_signup_trends: {
         Args: { p_days?: number }
         Returns: {
@@ -3534,6 +3667,14 @@ export type Database = {
       admin_get_user_engagement_detail: {
         Args: { p_days?: number; p_user_id: string }
         Returns: Json
+      }
+      admin_get_user_growth_chart: {
+        Args: { p_days?: number }
+        Returns: {
+          cumulative_total: number
+          day: string
+          new_users: number
+        }[]
       }
       admin_get_vacancies: {
         Args: {
@@ -3725,6 +3866,7 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      check_brand_follow_status: { Args: { p_brand_id: string }; Returns: Json }
       check_login_rate_limit: { Args: { p_ip: string }; Returns: Json }
       check_message_rate_limit: { Args: { p_user_id: string }; Returns: Json }
       check_password_reset_rate_limit: {
@@ -3789,7 +3931,10 @@ export type Database = {
           p_year_founded?: number
         }
         Returns: {
+          accepted_friend_count: number
+          accepted_reference_count: number
           avatar_url: string | null
+          base_city: string | null
           base_country_id: number | null
           base_location: string | null
           bio: string | null
@@ -3797,6 +3942,7 @@ export type Database = {
           blocked_by: string | null
           blocked_reason: string | null
           brand_representation: string | null
+          career_entry_count: number
           club_bio: string | null
           club_history: string | null
           contact_email: string | null
@@ -3834,6 +3980,7 @@ export type Database = {
           open_to_opportunities: boolean
           open_to_play: boolean
           position: string | null
+          post_count: number
           role: string
           search_vector: unknown
           secondary_position: string | null
@@ -3898,7 +4045,10 @@ export type Database = {
       create_profile_for_new_user: {
         Args: { user_email: string; user_id: string; user_role?: string }
         Returns: {
+          accepted_friend_count: number
+          accepted_reference_count: number
           avatar_url: string | null
+          base_city: string | null
           base_country_id: number | null
           base_location: string | null
           bio: string | null
@@ -3906,6 +4056,7 @@ export type Database = {
           blocked_by: string | null
           blocked_reason: string | null
           brand_representation: string | null
+          career_entry_count: number
           club_bio: string | null
           club_history: string | null
           contact_email: string | null
@@ -3943,6 +4094,7 @@ export type Database = {
           open_to_opportunities: boolean
           open_to_play: boolean
           position: string | null
+          post_count: number
           role: string
           search_vector: unknown
           secondary_position: string | null
@@ -3962,6 +4114,14 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      create_signing_post: {
+        Args: {
+          p_content?: string
+          p_images?: Json
+          p_person_profile_id: string
+        }
+        Returns: Json
       }
       create_transfer_post: {
         Args: {
@@ -4000,6 +4160,29 @@ export type Database = {
         Returns: number
       }
       delete_user_post: { Args: { p_post_id: string }; Returns: Json }
+      discover_profiles: {
+        Args: {
+          p_availability?: string
+          p_base_country_ids?: number[]
+          p_base_location?: string
+          p_country_ids?: number[]
+          p_eu_passport?: boolean
+          p_gender?: string
+          p_league_ids?: number[]
+          p_limit?: number
+          p_max_age?: number
+          p_min_age?: number
+          p_min_career_entries?: number
+          p_min_references?: number
+          p_nationality_country_ids?: number[]
+          p_offset?: number
+          p_positions?: string[]
+          p_roles?: string[]
+          p_search_text?: string
+          p_sort_by?: string
+        }
+        Returns: Json
+      }
       edit_endorsement: {
         Args: { p_endorsement: string; p_reference_id: string }
         Returns: {
@@ -4039,7 +4222,7 @@ export type Database = {
       }
       enqueue_onboarding_reminders: { Args: never; Returns: undefined }
       enqueue_orphaned_storage_objects: {
-        Args: { p_limit?: number; p_min_age?: unknown }
+        Args: { p_limit?: number; p_min_age?: string }
         Returns: number
       }
       enqueue_storage_objects_for_prefix: {
@@ -4132,10 +4315,28 @@ export type Database = {
           user_id: string
         }[]
       }
+      follow_brand: { Args: { p_brand_id: string }; Returns: Json }
       generate_brand_slug: { Args: { p_name: string }; Returns: string }
+      get_brand_ambassadors: {
+        Args: {
+          p_brand_id: string
+          p_limit?: number
+          p_offset?: number
+          p_status?: string
+        }
+        Returns: Json
+      }
+      get_brand_ambassadors_public: {
+        Args: { p_brand_id: string; p_limit?: number }
+        Returns: Json
+      }
       get_brand_by_slug: { Args: { p_slug: string }; Returns: Json }
       get_brand_feed: {
         Args: { p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      get_brand_followers: {
+        Args: { p_brand_id: string; p_limit?: number; p_offset?: number }
         Returns: Json
       }
       get_brand_posts: { Args: { p_brand_id: string }; Returns: Json }
@@ -4148,6 +4349,28 @@ export type Database = {
           p_search?: string
         }
         Returns: Json
+      }
+      get_club_members: {
+        Args: { p_limit?: number; p_offset?: number; p_profile_id: string }
+        Returns: {
+          avatar_url: string
+          base_location: string
+          created_at: string
+          current_club: string
+          current_world_club_id: string
+          full_name: string
+          id: string
+          is_test_account: boolean
+          nationality: string
+          nationality_country_id: number
+          nationality2_country_id: number
+          open_to_coach: boolean
+          open_to_play: boolean
+          position: string
+          role: string
+          secondary_position: string
+          total_count: number
+        }[]
       }
       get_home_feed: {
         Args: { p_item_type?: string; p_limit?: number; p_offset?: number }
@@ -4167,7 +4390,9 @@ export type Database = {
         Args: { p_conversation_id: string; p_sender_id: string }
         Returns: string
       }
+      get_my_ambassador_invitations: { Args: never; Returns: Json }
       get_my_brand: { Args: never; Returns: Json }
+      get_my_brand_analytics: { Args: { p_days?: number }; Returns: Json }
       get_my_reference_requests: {
         Args: never
         Returns: {
@@ -4293,6 +4518,10 @@ export type Database = {
         Args: { opportunity_club_id: string }
         Returns: boolean
       }
+      leave_brand_ambassadorship: {
+        Args: { p_brand_ambassador_id: string }
+        Returns: Json
+      }
       log_error: {
         Args: {
           p_correlation_id?: string
@@ -4335,7 +4564,7 @@ export type Database = {
       }
       outreach_status_priority: { Args: { p_status: string }; Returns: number }
       process_storage_cleanup_queue: {
-        Args: { p_batch?: number; p_grace_period?: unknown }
+        Args: { p_batch?: number; p_grace_period?: string }
         Returns: number
       }
       prune_old_heartbeats: {
@@ -4386,6 +4615,10 @@ export type Database = {
         }[]
       }
       release_profile_lock: { Args: { profile_id: string }; Returns: boolean }
+      remove_brand_ambassador: {
+        Args: { p_brand_id: string; p_player_id: string }
+        Returns: Json
+      }
       remove_reference: {
         Args: { p_reference_id: string }
         Returns: {
@@ -4466,6 +4699,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      respond_to_ambassador_request: {
+        Args: { p_accept: boolean; p_brand_ambassador_id: string }
+        Returns: Json
+      }
       search_clubs_for_transfer: {
         Args: { p_limit?: number; p_query: string }
         Returns: Json
@@ -4479,6 +4716,18 @@ export type Database = {
         }
         Returns: Json
       }
+      search_people_for_signing: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          avatar_url: string
+          base_location: string
+          current_club: string
+          full_name: string
+          id: string
+          position: string
+          role: string
+        }[]
+      }
       search_world_clubs: {
         Args: { p_limit?: number; p_query: string }
         Returns: {
@@ -4491,10 +4740,13 @@ export type Database = {
           flag_emoji: string
           id: string
           is_claimed: boolean
+          men_league_id: number
           men_league_name: string
           men_league_tier: number
           province_id: number
           province_name: string
+          province_slug: string
+          women_league_id: number
           women_league_name: string
           women_league_tier: number
         }[]
@@ -4539,6 +4791,7 @@ export type Database = {
         Args: { component: string; years: string }
         Returns: string
       }
+      unfollow_brand: { Args: { p_brand_id: string }; Returns: Json }
       update_brand: {
         Args: {
           p_bio?: string

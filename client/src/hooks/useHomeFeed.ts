@@ -43,7 +43,7 @@ export function useHomeFeed(): UseHomeFeedResult {
 
       const { data, error } = await withTimeout(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        async () => await (supabase.rpc as any)('get_home_feed', {
+        async () => await supabase.rpc('get_home_feed', {
           p_limit: DEFAULT_LIMIT,
           p_offset: offset,
         }),
@@ -86,7 +86,7 @@ export function useHomeFeed(): UseHomeFeedResult {
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)('get_home_feed_new_count', {
+      const { data, error } = await supabase.rpc('get_home_feed_new_count', {
         p_since: latestTimestamp,
       })
       if (!error && typeof data === 'number' && data > 0) {

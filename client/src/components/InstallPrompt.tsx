@@ -35,9 +35,7 @@ function detectPlatform(): 'ios' | 'android' | 'desktop' {
 async function persistInstallToDb(platform: 'ios' | 'android' | 'desktop'): Promise<boolean> {
   const userId = useAuthStore.getState().user?.id
   if (!userId) return false
-  // pwa_installs not yet in generated types
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from('pwa_installs')
+  const { error } = await supabase.from('pwa_installs')
     .upsert(
       { profile_id: userId, platform, user_agent: navigator.userAgent },
       { onConflict: 'profile_id,platform' }

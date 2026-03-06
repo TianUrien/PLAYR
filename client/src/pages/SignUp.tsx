@@ -51,7 +51,7 @@ export default function SignUp() {
       }
 
       // Check rate limit before attempting signup
-      const rateLimit = await checkSignupRateLimit()
+      const rateLimit = await checkSignupRateLimit(formData.email)
       if (rateLimit && !rateLimit.allowed) {
         setError(formatRateLimitError(rateLimit))
         setLoading(false)

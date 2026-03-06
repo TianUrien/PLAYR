@@ -106,7 +106,7 @@ export default function BrandDashboard() {
     setFollowersLoading(true)
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)('get_brand_followers', {
+      const { data, error } = await supabase.rpc('get_brand_followers', {
         p_brand_id: brand.id,
         p_limit: FOLLOWERS_PAGE,
         p_offset: offset,

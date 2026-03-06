@@ -40,10 +40,8 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
 
   // Read denormalized counts directly from the profile row (trigger-maintained).
   // Only gallery_photos still requires a query since it's not denormalized.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const profileAny = profile as any
-  const journeyCount: number = profileAny?.career_entry_count ?? 0
-  const referenceCount: number = profileAny?.accepted_reference_count ?? 0
+  const journeyCount: number = profile?.career_entry_count ?? 0
+  const referenceCount: number = profile?.accepted_reference_count ?? 0
 
   // Fetch gallery count (only remaining query needed)
   const fetchCounts = useCallback(async () => {

@@ -104,7 +104,7 @@ export default function WorldClubSearch({
     setIsSearching(true)
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error: rpcError } = await (supabase.rpc as any)('search_world_clubs', {
+      const { data, error: rpcError } = await supabase.rpc('search_world_clubs', {
         p_query: query.trim(),
       }) as { data: WorldClubSearchResult[] | null; error: Error | null }
 
@@ -201,7 +201,7 @@ export default function WorldClubSearch({
     setIsCreating(true)
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error: rpcError } = await (supabase.rpc as any)('create_world_club_from_career', {
+      const { data, error: rpcError } = await supabase.rpc('create_world_club_from_career', {
         p_club_name: value.trim(),
         p_country_id: addCountryId,
         p_province_id: addRegionId ?? undefined,

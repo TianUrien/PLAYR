@@ -75,7 +75,7 @@ export function useSearch(query: string, type?: string | null) {
     queryKey: ['search', query, type],
     queryFn: async ({ pageParam = 0 }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)('search_content', {
+      const { data, error } = await supabase.rpc('search_content', {
         p_query: query,
         p_type: type || null,
         p_limit: PAGE_SIZE,

@@ -14,13 +14,13 @@ export interface RateLimitResult {
 }
 
 /**
- * Get client IP address for rate limiting
- * Falls back to a session-based identifier if IP cannot be determined
+ * Get a stable identifier for rate limiting.
+ * Uses email (normalized) when available for pre-auth flows,
+ * falls back to session-based identifier.
  */
-const getClientIdentifier = (): string => {
-  // For client-side, we can't reliably get IP
-  // Use a combination of browser fingerprinting as fallback
-  // In production, this should be enhanced with server-side IP detection
+const getClientIdentifier = (email?: string): string => {
+  if (email) return email.trim().toLowerCase()
+
   const sessionId = sessionStorage.getItem('rate_limit_session')
   if (sessionId) return sessionId
 
@@ -33,9 +33,9 @@ const getClientIdentifier = (): string => {
  * Check login rate limit
  * @returns RateLimitResult or null if check fails
  */
-export const checkLoginRateLimit = async (): Promise<RateLimitResult | null> => {
+export const checkLoginRateLimit = async (email?: string): Promise<RateLimitResult | null> => {
   try {
-    const identifier = getClientIdentifier()
+    const identifier = getClientIdentifier(email)
     const { data, error } = await supabase.rpc('check_login_rate_limit', {
       p_ip: identifier
     })
@@ -57,9 +57,9 @@ export const checkLoginRateLimit = async (): Promise<RateLimitResult | null> => 
  * Check signup rate limit
  * @returns RateLimitResult or null if check fails
  */
-export const checkSignupRateLimit = async (): Promise<RateLimitResult | null> => {
+export const checkSignupRateLimit = async (email?: string): Promise<RateLimitResult | null> => {
   try {
-    const identifier = getClientIdentifier()
+    const identifier = getClientIdentifier(email)
     const { data, error } = await supabase.rpc('check_signup_rate_limit', {
       p_ip: identifier
     })

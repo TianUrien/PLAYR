@@ -603,7 +603,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
       try {
         const accept = action === 'accept'
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data, error } = await (supabase.rpc as any)('respond_to_ambassador_request', {
+        const { data, error } = await supabase.rpc('respond_to_ambassador_request', {
           p_brand_ambassador_id: ambassadorId,
           p_accept: accept,
         })

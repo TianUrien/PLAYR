@@ -29,7 +29,7 @@ export function useFollowBrand(brandId: string | undefined) {
     const check = async () => {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data, error } = await (supabase.rpc as any)('check_brand_follow_status', {
+        const { data, error } = await supabase.rpc('check_brand_follow_status', {
           p_brand_id: brandId,
         })
 
@@ -64,7 +64,7 @@ export function useFollowBrand(brandId: string | undefined) {
     try {
       const rpcName = wasFollowing ? 'unfollow_brand' : 'follow_brand'
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase.rpc as any)(rpcName, {
+      const { data, error } = await supabase.rpc(rpcName, {
         p_brand_id: brandId,
       })
 
