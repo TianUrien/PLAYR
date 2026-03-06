@@ -26,7 +26,7 @@ export function useBrandAmbassadorsPublic(brandId: string | null | undefined) {
     try {
       setIsLoading(true)
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { data, error } = await supabase.rpc('get_brand_ambassadors_public', {
         p_brand_id: brandId,
       })

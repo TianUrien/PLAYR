@@ -37,7 +37,7 @@ export function useBrandAmbassadors(brandId: string | null | undefined) {
       if (!append) setIsLoading(true)
       setError(null)
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { data, error: rpcError } = await supabase.rpc('get_brand_ambassadors', {
         p_brand_id: brandId,
         p_limit: PAGE_SIZE,
@@ -61,7 +61,7 @@ export function useBrandAmbassadors(brandId: string | null | undefined) {
     if (!brandId) return { success: false, error: 'No brand ID' }
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { data, error: rpcError } = await supabase.rpc('add_brand_ambassador', {
         p_brand_id: brandId,
         p_player_id: playerId,
@@ -87,7 +87,7 @@ export function useBrandAmbassadors(brandId: string | null | undefined) {
     if (!brandId) return { success: false, error: 'No brand ID' }
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { data, error: rpcError } = await supabase.rpc('remove_brand_ambassador', {
         p_brand_id: brandId,
         p_player_id: playerId,

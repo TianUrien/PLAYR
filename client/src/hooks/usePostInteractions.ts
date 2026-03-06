@@ -31,7 +31,7 @@ export function usePostInteractions() {
   const toggleLike = useCallback(async (postId: string): Promise<LikeResult> => {
     try {
       const { data, error } = await withTimeout(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         async () => await supabase.rpc('toggle_post_like', {
           p_post_id: postId,
         }),
@@ -58,7 +58,7 @@ export function usePostInteractions() {
   ): Promise<CommentsResult> => {
     try {
       const { data, error } = await withTimeout(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         async () => await supabase.rpc('get_post_comments', {
           p_post_id: postId,
           p_limit: limit,
@@ -86,7 +86,7 @@ export function usePostInteractions() {
   ): Promise<CommentCreateResult> => {
     try {
       const { data, error } = await withTimeout(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         async () => await supabase.rpc('create_post_comment', {
           p_post_id: postId,
           p_content: content,
@@ -110,7 +110,7 @@ export function usePostInteractions() {
   const deleteComment = useCallback(async (commentId: string): Promise<SimpleResult> => {
     try {
       const { data, error } = await withTimeout(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         async () => await supabase.rpc('delete_post_comment', {
           p_comment_id: commentId,
         }),

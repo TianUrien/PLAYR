@@ -55,7 +55,7 @@ export default function WorldSearchDropdown({
 
     setIsSearching(true)
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { data, error } = await supabase.rpc('search_world_clubs', {
         p_query: input.trim(),
         p_limit: 8,

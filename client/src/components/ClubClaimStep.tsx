@@ -214,7 +214,7 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
 
   // Fetch leagues using the RPC function
   const fetchLeaguesForLocation = async (countryId: number, regionId: number | null) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data, error } = await supabase.rpc('get_leagues_for_location', {
       p_country_id: countryId,
       p_region_id: regionId ?? undefined
@@ -288,7 +288,7 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
     try {
       if (selectedClub) {
         // Claim existing club
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const { data, error } = await supabase.rpc('claim_world_club', {
           p_world_club_id: selectedClub.id,
           p_profile_id: profileId,
@@ -319,7 +319,7 @@ export default function ClubClaimStep({ onComplete, onSkip, profileId }: ClubCla
         })
       } else if (isCreatingNew && newClubName.trim()) {
         // Create and claim new club
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const { data, error } = await supabase.rpc('create_and_claim_world_club', {
           p_club_name: newClubName.trim(),
           p_country_id: selectedCountry.country_id,

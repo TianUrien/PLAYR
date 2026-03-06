@@ -63,7 +63,7 @@ export function useBrandFeed(): UseBrandFeedResult {
     queryFn: async ({ pageParam }) => {
       const offset = typeof pageParam === 'number' ? pageParam : 0
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { data, error } = await supabase.rpc('get_brand_feed', {
         p_limit: DEFAULT_LIMIT,
         p_offset: offset,

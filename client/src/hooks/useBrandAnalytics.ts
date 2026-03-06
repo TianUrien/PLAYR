@@ -18,7 +18,7 @@ export function useBrandAnalytics(days: number = 30) {
   const fetchAnalytics = useCallback(async () => {
     try {
       setIsLoading(true)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { data, error } = await supabase.rpc('get_my_brand_analytics', {
         p_days: days,
       })

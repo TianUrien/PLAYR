@@ -208,7 +208,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
           }
 
           // Fetch leagues using the RPC function (works for both region-based and country-only)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           const { data: leagues } = await supabase.rpc('get_leagues_for_location', {
             p_country_id: claimData.country_id,
             p_region_id: claimData.province_id ?? undefined

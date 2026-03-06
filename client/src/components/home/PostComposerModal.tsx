@@ -176,7 +176,7 @@ export function PostComposerModal({
     setIsSearching(true)
     searchTimeoutRef.current = setTimeout(async () => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const { data, error: rpcError } = await supabase.rpc(
           'search_clubs_for_transfer',
           { p_query: query.trim(), p_limit: 8 }
@@ -210,7 +210,7 @@ export function PostComposerModal({
     setIsSearchingPeople(true)
     personSearchTimeoutRef.current = setTimeout(async () => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const { data, error: rpcError } = await supabase.rpc(
           'search_people_for_signing',
           { p_query: query.trim(), p_limit: 8 }

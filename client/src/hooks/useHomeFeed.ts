@@ -42,7 +42,7 @@ export function useHomeFeed(): UseHomeFeedResult {
       const offset = typeof pageParam === 'number' ? pageParam : 0
 
       const { data, error } = await withTimeout(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         async () => await supabase.rpc('get_home_feed', {
           p_limit: DEFAULT_LIMIT,
           p_offset: offset,
@@ -85,7 +85,7 @@ export function useHomeFeed(): UseHomeFeedResult {
     lastCheckRef.current = now
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const { data, error } = await supabase.rpc('get_home_feed_new_count', {
         p_since: latestTimestamp,
       })
