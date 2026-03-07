@@ -198,7 +198,7 @@ export default function GalleryManager({
 
         const { error: uploadError } = await supabase.storage
           .from(config.bucket)
-          .upload(fileName, processedFile)
+          .upload(fileName, processedFile, { cacheControl: '31536000' })
 
         if (uploadError) throw uploadError
 

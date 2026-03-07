@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
+import { getImageUrl } from '@/lib/imageUrl'
 import type { ClubMedia } from '@/lib/supabase'
 
 interface ClubMediaGalleryProps {
@@ -82,10 +83,11 @@ export default function ClubMediaGallery({ clubId, itemsPerPage = 12 }: ClubMedi
             {/* Image */}
             <div className="relative aspect-square bg-gray-100">
               <img
-                src={item.file_url}
+                src={getImageUrl(item.file_url, 'feed-thumb') ?? undefined}
                 alt={item.alt_text || item.file_name}
                 className="w-full h-full object-cover"
                 loading="lazy"
+                decoding="async"
               />
             </div>
 

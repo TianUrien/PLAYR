@@ -360,7 +360,7 @@ export default function CompleteProfile() {
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(filePath, optimizedFile, { upsert: true })
+        .upload(filePath, optimizedFile, { upsert: true, cacheControl: '31536000' })
 
       if (uploadError) {
         captureOnboardingError(uploadError, {

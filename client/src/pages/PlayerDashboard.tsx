@@ -231,12 +231,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
       navigate(`/messages?conversation=${newConv.id}`)
     } catch (error) {
       logger.error('Error creating conversation:', error)
-      const msg = error instanceof Error ? error.message : typeof error === 'object' && error !== null && 'message' in error ? String((error as Record<string, unknown>).message) : ''
-      if (msg.includes('Brands cannot initiate')) {
-        addToast('Brands cannot start conversations yet. Players and clubs can message you first.', 'error')
-      } else {
-        addToast('Failed to start conversation. Please try again.', 'error')
-      }
+      addToast('Failed to start conversation. Please try again.', 'error')
     } finally {
       setSendingMessage(false)
     }

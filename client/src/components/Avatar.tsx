@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { cn } from '@/lib/utils'
+import { getImageUrl, AVATAR_SIZE_MAP } from '@/lib/imageUrl'
 import { useProfileImagePreview } from './ProfileImagePreviewProvider'
 
 interface AvatarProps {
@@ -37,6 +38,11 @@ export default function Avatar({
   const [imageError, setImageError] = useState(false)
   const { openPreview } = useProfileImagePreview()
   const canPreview = Boolean(enablePreview && src)
+
+  const optimizedSrc = useMemo(
+    () => getImageUrl(src, AVATAR_SIZE_MAP[size] ?? 'avatar-sm'),
+    [src, size]
+  )
 
   const triggerPreview = () => {
     if (!canPreview || !src) return
@@ -91,14 +97,15 @@ export default function Avatar({
           {!imageLoaded && (
             <div className="absolute inset-0 bg-gray-200 animate-pulse" />
           )}
-          <img 
-            src={src} 
-            alt={alt || 'Avatar'} 
+          <img
+            src={optimizedSrc ?? undefined}
+            alt={alt || 'Avatar'}
             className={cn(
               'absolute inset-0 h-full w-full object-cover transition-opacity duration-200',
               imageLoaded ? "opacity-100" : "opacity-0"
             )}
             loading={loading}
+            decoding="async"
             onLoad={() => setImageLoaded(true)}
             onError={() => setImageError(true)}
           />

@@ -8,6 +8,7 @@
 
 import { useNavigate } from 'react-router-dom'
 import { ExternalLink } from 'lucide-react'
+import { getImageUrl } from '@/lib/imageUrl'
 import Avatar from '@/components/Avatar'
 import RoleBadge from '@/components/RoleBadge'
 import { cn } from '@/lib/utils'
@@ -80,10 +81,11 @@ export function SharedPostCard({
       {thumbnailUrl && (
         <div className="mt-2 overflow-hidden rounded-lg">
           <img
-            src={thumbnailUrl}
+            src={getImageUrl(thumbnailUrl, 'feed-thumb') ?? undefined}
             alt=""
             className="w-full h-28 object-cover"
             loading="lazy"
+            decoding="async"
           />
         </div>
       )}

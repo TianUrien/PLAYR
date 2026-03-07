@@ -75,6 +75,7 @@ export function ProductImageUploader({
         .upload(fileName, optimized, {
           contentType: optimized.type,
           upsert: false,
+          cacheControl: '31536000',
         })
 
       if (uploadError) throw uploadError

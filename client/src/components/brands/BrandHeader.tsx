@@ -5,6 +5,7 @@
  */
 
 import { Store, CheckCircle, Globe, Instagram } from 'lucide-react'
+import { getImageUrl } from '@/lib/imageUrl'
 import type { BrandDetail } from '@/hooks/useBrand'
 
 interface BrandHeaderProps {
@@ -28,9 +29,10 @@ export function BrandHeader({ brand }: BrandHeaderProps) {
       <div className="h-32 sm:h-48 bg-gradient-to-br from-indigo-500 to-purple-600 relative overflow-hidden">
         {brand.cover_url && (
           <img
-            src={brand.cover_url}
+            src={getImageUrl(brand.cover_url, 'feed-full') ?? undefined}
             alt=""
             className="w-full h-full object-cover"
+            decoding="async"
           />
         )}
       </div>
@@ -42,9 +44,10 @@ export function BrandHeader({ brand }: BrandHeaderProps) {
           <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-xl shadow-lg border-4 border-white flex items-center justify-center overflow-hidden flex-shrink-0">
             {brand.logo_url ? (
               <img
-                src={brand.logo_url}
+                src={getImageUrl(brand.logo_url, 'avatar-lg') ?? undefined}
                 alt={brand.name}
                 className="w-full h-full object-contain p-2"
+                decoding="async"
               />
             ) : (
               <Store className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300" />

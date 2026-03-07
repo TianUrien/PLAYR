@@ -8,6 +8,7 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { ExternalLink, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { getImageUrl } from '@/lib/imageUrl'
 import type { BrandProduct } from '@/hooks/useBrandProducts'
 
 interface ProductCardProps {
@@ -74,10 +75,11 @@ export function ProductCard({
               >
                 <div className="aspect-[4/3] bg-gray-100">
                   <img
-                    src={img.url}
+                    src={getImageUrl(img.url, 'feed-full') ?? undefined}
                     alt={`${product.name} - image ${i + 1}`}
                     className="w-full h-full object-cover"
                     loading="lazy"
+                    decoding="async"
                   />
                 </div>
               </div>
