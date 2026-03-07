@@ -120,6 +120,7 @@ export function UserPostCard({ item, onLikeUpdate, onDelete }: UserPostCardProps
             <div className="relative">
               <button
                 type="button"
+                aria-label="Post options"
                 onClick={() => setShowMenu(!showMenu)}
                 className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               >

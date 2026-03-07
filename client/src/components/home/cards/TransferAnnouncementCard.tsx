@@ -104,6 +104,7 @@ export function TransferAnnouncementCard({ item, onLikeUpdate, onDelete }: Trans
           <div className="relative ml-1">
             <button
               type="button"
+              aria-label="Post options"
               onClick={() => setShowMenu(!showMenu)}
               className="p-1 text-white/70 hover:text-white rounded transition-colors"
             >

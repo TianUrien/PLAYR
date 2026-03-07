@@ -37,6 +37,7 @@ interface Profile {
   is_test_account?: boolean
   open_to_play?: boolean
   open_to_coach?: boolean
+  accepted_reference_count?: number
   brand_slug?: string | null
   brand_category?: string | null
 }
