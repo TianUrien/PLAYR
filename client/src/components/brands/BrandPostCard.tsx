@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { MoreHorizontal, Pencil, Trash2, CheckCircle, Store } from 'lucide-react'
+import { getImageUrl } from '@/lib/imageUrl'
 import type { BrandPost } from '@/hooks/useBrandPosts'
 import { getTimeAgo } from '@/lib/utils'
 
@@ -53,9 +54,10 @@ export function BrandPostCard({
           <Link to={`/brands/${brandSlug}`} className="flex-shrink-0">
             {brandLogoUrl ? (
               <img
-                src={brandLogoUrl}
+                src={getImageUrl(brandLogoUrl, 'avatar-sm') ?? undefined}
                 alt={brandName}
                 className="w-10 h-10 rounded-full object-cover border border-gray-200"
+                decoding="async"
               />
             ) : (
               <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
@@ -132,10 +134,11 @@ export function BrandPostCard({
       {post.image_url && (
         <div className="px-4 pb-4">
           <img
-            src={post.image_url}
+            src={getImageUrl(post.image_url, 'feed-full') ?? undefined}
             alt="Post image"
             className="w-full rounded-lg object-cover max-h-[400px]"
             loading="lazy"
+            decoding="async"
           />
         </div>
       )}

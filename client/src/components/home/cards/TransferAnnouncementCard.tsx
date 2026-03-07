@@ -6,6 +6,7 @@ import { usePostInteractions } from '@/hooks/usePostInteractions'
 import { useUserPosts } from '@/hooks/useUserPosts'
 import { Avatar, RoleBadge } from '@/components'
 import { getTimeAgo } from '@/lib/utils'
+import { getImageUrl } from '@/lib/imageUrl'
 import { FeedMediaGrid } from '../FeedMediaGrid'
 import { MediaLightbox } from '../MediaLightbox'
 import { PostInteractionBar } from '../PostInteractionBar'
@@ -164,7 +165,7 @@ export function TransferAnnouncementCard({ item, onLikeUpdate, onDelete }: Trans
               <Link to={clubPath} className="inline-block mx-auto">
                 <div className="w-16 h-16 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center overflow-hidden">
                   {meta.club_avatar_url ? (
-                    <img src={meta.club_avatar_url} alt={meta.club_name} className="w-full h-full object-cover" />
+                    <img src={getImageUrl(meta.club_avatar_url, 'avatar-md') ?? undefined} alt={meta.club_name} className="w-full h-full object-cover" decoding="async" />
                   ) : (
                     <Shield className="w-7 h-7 text-gray-400" />
                   )}
@@ -173,7 +174,7 @@ export function TransferAnnouncementCard({ item, onLikeUpdate, onDelete }: Trans
             ) : (
               <div className="w-16 h-16 rounded-full bg-gray-100 border-2 border-gray-200 flex items-center justify-center mx-auto overflow-hidden">
                 {meta.club_avatar_url ? (
-                  <img src={meta.club_avatar_url} alt={meta.club_name} className="w-full h-full object-cover" />
+                  <img src={getImageUrl(meta.club_avatar_url, 'avatar-md') ?? undefined} alt={meta.club_name} className="w-full h-full object-cover" decoding="async" />
                 ) : (
                   <Shield className="w-7 h-7 text-gray-400" />
                 )}

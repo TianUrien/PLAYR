@@ -196,6 +196,7 @@ export default function Header() {
                     src={profile.avatar_url}
                     initials={profileInitials}
                     size="sm"
+                    loading="eager"
                   />
                 </button>
               </>

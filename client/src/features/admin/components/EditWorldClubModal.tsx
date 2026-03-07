@@ -188,7 +188,7 @@ export function EditWorldClubModal({
 
       const { error: uploadError } = await supabase.storage
         .from('world-club-logos')
-        .upload(path, optimized, { upsert: true })
+        .upload(path, optimized, { upsert: true, cacheControl: '31536000' })
 
       if (uploadError) throw uploadError
 
@@ -289,7 +289,7 @@ export function EditWorldClubModal({
 
           const { error: uploadError } = await supabase.storage
             .from('world-club-logos')
-            .upload(path, optimized, { upsert: true })
+            .upload(path, optimized, { upsert: true, cacheControl: '31536000' })
 
           if (!uploadError) {
             const { data: urlData } = supabase.storage

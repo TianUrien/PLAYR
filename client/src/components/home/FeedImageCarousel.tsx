@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect, useCallback } from 'react'
+import { getImageUrl } from '@/lib/imageUrl'
 
 interface CarouselImage {
   url: string
@@ -38,10 +39,11 @@ export function FeedImageCarousel({ images, altPrefix }: FeedImageCarouselProps)
           <div key={i} className="flex-shrink-0 w-full snap-start">
             <div className="aspect-[4/3] bg-gray-100">
               <img
-                src={img.url}
+                src={getImageUrl(img.url, 'feed-full') ?? undefined}
                 alt={`${altPrefix} - image ${i + 1}`}
                 className="w-full h-full object-cover"
                 loading="lazy"
+                decoding="async"
               />
             </div>
           </div>

@@ -162,6 +162,7 @@ export function BrandForm({
         .upload(fileName, optimizedBlob, {
           contentType: 'image/webp',
           upsert: true,
+          cacheControl: '31536000',
         })
 
       if (uploadError) {
@@ -206,6 +207,7 @@ export function BrandForm({
         .upload(fileName, optimizedBlob, {
           contentType: 'image/webp',
           upsert: true,
+          cacheControl: '31536000',
         })
 
       if (uploadError) throw uploadError

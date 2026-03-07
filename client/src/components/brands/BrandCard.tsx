@@ -6,6 +6,7 @@
 
 import { Link } from 'react-router-dom'
 import { Store, ExternalLink, CheckCircle } from 'lucide-react'
+import { getImageUrl } from '@/lib/imageUrl'
 import type { Brand } from '@/hooks/useBrands'
 
 interface BrandCardProps {
@@ -32,9 +33,11 @@ export function BrandCard({ brand }: BrandCardProps) {
       <div className="aspect-square bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-6 relative">
         {brand.logo_url ? (
           <img
-            src={brand.logo_url}
+            src={getImageUrl(brand.logo_url, 'avatar-lg') ?? undefined}
             alt={brand.name}
             className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200"
+            loading="lazy"
+            decoding="async"
           />
         ) : (
           <Store className="w-16 h-16 text-gray-300 group-hover:text-gray-400 transition-colors" />

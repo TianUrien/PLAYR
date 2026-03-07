@@ -2,6 +2,8 @@ import { useState, useEffect, type ImgHTMLAttributes } from 'react'
 import { ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { logger } from '@/lib/logger'
+import { getImageUrl } from '@/lib/imageUrl'
+import type { ImageSize } from '@/lib/imageUrl'
 
 interface StorageImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'onError' | 'onLoad' | 'src'> {
   /** The image source URL */
@@ -26,6 +28,8 @@ interface StorageImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'o
   onImageLoad?: () => void
   /** Fetch priority hint for the browser */
   fetchPriority?: 'high' | 'low' | 'auto'
+  /** Image size preset for Supabase Image Transformations */
+  imageSize?: ImageSize
 }
 
 /**
@@ -46,6 +50,7 @@ export default function StorageImage({
   onImageLoad,
   loading = 'lazy',
   fetchPriority,
+  imageSize,
   ...rest
 }: StorageImageProps) {
   const [imageLoaded, setImageLoaded] = useState(false)
@@ -79,7 +84,8 @@ export default function StorageImage({
     onImageError?.()
   }
 
-  const activeSrc = usingFallbackSrc ? fallbackSrc : src
+  const rawSrc = usingFallbackSrc ? fallbackSrc : src
+  const activeSrc = imageSize ? getImageUrl(rawSrc, imageSize) : rawSrc
 
   // No src provided - show fallback immediately
   if (!activeSrc) {
@@ -115,6 +121,7 @@ export default function StorageImage({
         )}
         loading={fetchPriority === 'high' ? 'eager' : loading}
         fetchPriority={fetchPriority}
+        decoding="async"
         onLoad={handleLoad}
         onError={handleError}
         {...rest}

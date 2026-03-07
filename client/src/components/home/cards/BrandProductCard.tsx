@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Store, BadgeCheck, ExternalLink } from 'lucide-react'
 import { getTimeAgo } from '@/lib/utils'
+import { getImageUrl } from '@/lib/imageUrl'
 import { FeedImageCarousel } from '../FeedImageCarousel'
 import type { BrandProductFeedItem } from '@/types/homeFeed'
 
@@ -24,9 +25,10 @@ export function BrandProductCard({ item }: BrandProductCardProps) {
         >
           {item.brand_logo_url ? (
             <img
-              src={item.brand_logo_url}
+              src={getImageUrl(item.brand_logo_url, 'avatar-sm') ?? undefined}
               alt={item.brand_name || ''}
               className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+              decoding="async"
             />
           ) : (
             <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">

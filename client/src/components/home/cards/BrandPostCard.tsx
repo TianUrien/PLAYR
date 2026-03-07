@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Store, BadgeCheck } from 'lucide-react'
 import { getTimeAgo } from '@/lib/utils'
+import { getImageUrl } from '@/lib/imageUrl'
 import type { BrandPostFeedItem } from '@/types/homeFeed'
 
 interface BrandPostCardProps {
@@ -20,9 +21,10 @@ export function BrandPostCard({ item }: BrandPostCardProps) {
         >
           {item.brand_logo_url ? (
             <img
-              src={item.brand_logo_url}
+              src={getImageUrl(item.brand_logo_url, 'avatar-sm') ?? undefined}
               alt={item.brand_name || ''}
               className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+              decoding="async"
             />
           ) : (
             <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
@@ -56,10 +58,11 @@ export function BrandPostCard({ item }: BrandPostCardProps) {
         {item.post_image_url && (
           <div className="rounded-lg overflow-hidden -mx-1">
             <img
-              src={item.post_image_url}
+              src={getImageUrl(item.post_image_url, 'feed-full') ?? undefined}
               alt=""
               className="w-full h-auto max-h-96 object-cover"
               loading="lazy"
+              decoding="async"
             />
           </div>
         )}
