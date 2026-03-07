@@ -5,6 +5,7 @@
  * Displays items in reverse-chronological order with infinite scroll.
  */
 
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Loader2, Rss, Store, ExternalLink, CheckCircle, ArrowRight } from 'lucide-react'
 import { useBrandFeed, type FeedItem, type ProductFeedItem, type PostFeedItem } from '@/hooks/useBrandFeed'
@@ -14,6 +15,22 @@ import { getTimeAgo } from '@/lib/utils'
 
 export function GlobalBrandFeed() {
   const { items, isLoading, error, hasMore, loadMore } = useBrandFeed()
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !isLoading) {
+          void loadMore()
+        }
+      },
+      { rootMargin: '200px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [hasMore, isLoading, loadMore])
 
   if (isLoading && items.length === 0) {
     return (
@@ -53,17 +70,8 @@ export function GlobalBrandFeed() {
         <FeedCard key={`${item.type}-${item.id}`} item={item} />
       ))}
 
-      {/* Load More */}
-      {hasMore && !isLoading && (
-        <div className="text-center pt-4">
-          <button
-            onClick={loadMore}
-            className="px-6 py-2 bg-white border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Load more
-          </button>
-        </div>
-      )}
+      {/* Infinite scroll sentinel */}
+      {hasMore && <div ref={sentinelRef} />}
 
       {isLoading && items.length > 0 && (
         <div className="flex items-center justify-center py-4">
