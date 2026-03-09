@@ -47,6 +47,7 @@ function MediaItem({
   return (
     <button
       type="button"
+      aria-label="View image"
       className={`overflow-hidden cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8026FA] ${className}`}
       onClick={onClick}
     >

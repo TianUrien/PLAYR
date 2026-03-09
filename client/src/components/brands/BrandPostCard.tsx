@@ -85,6 +85,7 @@ export function BrandPostCard({
             <div className="relative">
               <button
                 type="button"
+                aria-label="Post options"
                 onClick={(e) => {
                   e.stopPropagation()
                   setShowMenu(!showMenu)

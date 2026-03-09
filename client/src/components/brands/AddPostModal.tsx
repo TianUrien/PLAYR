@@ -244,6 +244,7 @@ export function AddPostModal({
                   />
                   <button
                     type="button"
+                    aria-label="Remove image"
                     onClick={() => setImageUrl(null)}
                     className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-full text-white hover:bg-black/80 transition-colors"
                   >
@@ -278,6 +279,7 @@ export function AddPostModal({
                 accept=".jpg,.jpeg,.png"
                 onChange={handleImageUpload}
                 className="hidden"
+                aria-label="Upload post image"
               />
             </div>
 
