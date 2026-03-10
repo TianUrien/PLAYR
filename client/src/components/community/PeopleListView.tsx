@@ -18,6 +18,7 @@ import { monitor } from '@/lib/monitor'
 import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { usePageState } from '@/hooks/usePageState'
 import { useScrollRestore } from '@/hooks/useScrollRestore'
+import { prefetchWorldClubLogos } from '@/hooks/useWorldClubLogo'
 
 interface Profile {
   id: string
@@ -143,11 +144,19 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
               }
             }
 
+            // Batch-prefetch world club logos to avoid N+1 queries in MemberCard
+            const worldClubIds = members
+              .map(m => m.current_world_club_id)
+              .filter((id): id is string => !!id)
+            if (worldClubIds.length > 0) {
+              prefetchWorldClubLogos(worldClubIds)
+            }
+
             return members
           },
           30000 // 30 second cache for community members
         )
-        
+
         setBaseMembers(members)
         setAllMembers(members)
         setDisplayedMembers(members.slice(0, pageSize))
@@ -224,11 +233,19 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
               }
             }
 
+            // Batch-prefetch world club logos to avoid N+1 queries in MemberCard
+            const worldClubIds = members
+              .map(m => m.current_world_club_id)
+              .filter((id): id is string => !!id)
+            if (worldClubIds.length > 0) {
+              prefetchWorldClubLogos(worldClubIds)
+            }
+
             return members
           },
           20000 // 20 second cache for searches
         )
-        
+
         setAllMembers(members)
         setDisplayedMembers(members.slice(0, pageSize))
         setPage(1)

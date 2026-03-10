@@ -456,9 +456,9 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.nationality = formData.nationality
       optimisticUpdate.nationality_country_id = formData.nationality_country_id
       optimisticUpdate.nationality2_country_id = formData.nationality2_country_id
-      optimisticUpdate.position = formData.position
+      optimisticUpdate.position = formData.position || null
       optimisticUpdate.secondary_position = formData.secondary_position || null
-      optimisticUpdate.gender = formData.gender
+      optimisticUpdate.gender = formData.gender || null
       optimisticUpdate.date_of_birth = formData.date_of_birth || null
       optimisticUpdate.current_club = formData.current_club || null
       optimisticUpdate.current_world_club_id = formData.current_world_club_id
