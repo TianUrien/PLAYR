@@ -65,6 +65,7 @@ const AdminBrands = lazy(() => import('@/features/admin/pages/AdminBrands').then
 const AdminPlayers = lazy(() => import('@/features/admin/pages/AdminPlayers').then(m => ({ default: m.AdminPlayers })))
 const AdminEngagement = lazy(() => import('@/features/admin/pages/AdminEngagement').then(m => ({ default: m.AdminEngagement })))
 const AdminFeatureUsage = lazy(() => import('@/features/admin/pages/AdminFeatureUsage').then(m => ({ default: m.AdminFeatureUsage })))
+const AdminDiscovery = lazy(() => import('@/features/admin/pages/AdminDiscovery').then(m => ({ default: m.AdminDiscovery })))
 const AdminNetworking = lazy(() => import('@/features/admin/pages/AdminNetworking').then(m => ({ default: m.AdminNetworking })))
 const AdminInvestorDashboard = lazy(() => import('@/features/admin/pages/AdminInvestorDashboard').then(m => ({ default: m.AdminInvestorDashboard })))
 const AdminWorld = lazy(() => import('@/features/admin/pages/AdminWorld'))
@@ -308,6 +309,7 @@ function App() {
                   <Route path="players" element={<AdminPlayers />} />
                   <Route path="engagement" element={<AdminEngagement />} />
                   <Route path="feature-usage" element={<AdminFeatureUsage />} />
+                  <Route path="discovery" element={<AdminDiscovery />} />
                   <Route path="networking" element={<AdminNetworking />} />
                   <Route path="email" element={<AdminEmail />} />
                   <Route path="email/template/:templateId" element={<AdminEmailTemplateEditor />} />

@@ -32,6 +32,7 @@ import type {
   FriendshipMetrics,
   ReferenceMetrics,
   FeatureUsageMetrics,
+  DiscoveryAnalyticsData,
   CommandCenterStats,
   RetentionCohort,
   ActivationFunnelData,
@@ -1623,6 +1624,21 @@ export async function getFeatureUsageMetrics(
   })
   if (error) throw new Error(`Failed to get feature usage metrics: ${error.message}`)
   return data as FeatureUsageMetrics
+}
+
+// ============================================================================
+// DISCOVERY ANALYTICS
+// ============================================================================
+
+export async function getDiscoveryAnalytics(
+  days?: number,
+): Promise<DiscoveryAnalyticsData> {
+  const { data, error } = await adminRpc('admin_get_discovery_analytics', {
+    p_days: days ?? 30,
+    p_exclude_test: true,
+  })
+  if (error) throw new Error(`Failed to get discovery analytics: ${error.message}`)
+  return data as DiscoveryAnalyticsData
 }
 
 // ============================================================================

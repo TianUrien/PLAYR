@@ -17,10 +17,47 @@ import { getCorsHeaders } from '../_shared/cors.ts'
 import { captureException } from '../_shared/sentry.ts'
 import { parseSearchQuery, synthesizeQualitativeInsights, LLMRateLimitError, type ParsedFilters, type LLMResult, type HistoryTurn, type ProfileQualitativeData, type UserContext } from '../_shared/llm-client.ts'
 
+/** Fire-and-forget: log a discovery event for admin analytics. */
+async function logDiscoveryEvent(
+  // deno-lint-ignore no-explicit-any
+  client: any,
+  params: {
+    user_id: string
+    role: string | null
+    query_text: string
+    intent: string
+    parsed_filters: ParsedFilters | null
+    result_count: number
+    has_qualitative: boolean
+    llm_provider: string
+    response_time_ms: number
+    error_message: string | null
+  }
+): Promise<void> {
+  try {
+    await client.from('discovery_events').insert({
+      user_id: params.user_id,
+      role: params.role,
+      query_text: params.query_text,
+      intent: params.intent,
+      parsed_filters: params.parsed_filters,
+      result_count: params.result_count,
+      has_qualitative: params.has_qualitative,
+      llm_provider: params.llm_provider,
+      response_time_ms: params.response_time_ms,
+      error_message: params.error_message,
+    })
+  } catch {
+    // Never fail the response over analytics logging
+  }
+}
+
 Deno.serve(async (req) => {
   const correlationId = crypto.randomUUID().slice(0, 8)
   const origin = req.headers.get('origin')
   const headers = getCorsHeaders(origin)
+  const startTime = Date.now()
+  const llmProvider = Deno.env.get('LLM_PROVIDER') || 'gemini'
 
   // CORS preflight
   if (req.method === 'OPTIONS') {
@@ -185,6 +222,18 @@ Deno.serve(async (req) => {
 
     // ── Conversation or knowledge response (no search needed) ────────
     if (llmResult.type === 'conversation' || llmResult.type === 'knowledge') {
+      await logDiscoveryEvent(adminClient, {
+        user_id: user.id,
+        role: userContext?.role ?? null,
+        query_text: query,
+        intent: llmResult.type,
+        parsed_filters: null,
+        result_count: 0,
+        has_qualitative: false,
+        llm_provider: llmProvider,
+        response_time_ms: Date.now() - startTime,
+        error_message: null,
+      })
       return new Response(
         JSON.stringify({
           success: true,
@@ -358,6 +407,20 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Analytics logging ────────────────────────────────────────────────
+    await logDiscoveryEvent(adminClient, {
+      user_id: user.id,
+      role: userContext?.role ?? null,
+      query_text: query,
+      intent: 'search',
+      parsed_filters: parsed,
+      result_count: result.total,
+      has_qualitative: llmResult.include_qualitative === true && result.results.length > 0,
+      llm_provider: llmProvider,
+      response_time_ms: Date.now() - startTime,
+      error_message: null,
+    })
+
     // ── Response ────────────────────────────────────────────────────────
     return new Response(
       JSON.stringify({
@@ -384,6 +447,44 @@ Deno.serve(async (req) => {
     }
 
     captureException(error, { functionName: 'nl-search', correlationId })
+
+    // Log failed queries for analytics (guard: variables may not be defined if error was early)
+    try {
+      const adminClientForLog = getServiceClient()
+      const body = await req.clone().json().catch(() => null)
+      const queryText = body?.query?.trim()
+      if (queryText) {
+        const token = req.headers.get('authorization')?.slice(7)
+        // deno-lint-ignore no-explicit-any
+        let userId: string | undefined
+        if (token) {
+          const tempClient = createClient(
+            Deno.env.get('SUPABASE_URL')!,
+            Deno.env.get('SUPABASE_ANON_KEY')!,
+            { global: { headers: { Authorization: `Bearer ${token}` } } }
+          )
+          const { data: { user: errUser } } = await tempClient.auth.getUser(token)
+          userId = errUser?.id
+        }
+        if (userId) {
+          await logDiscoveryEvent(adminClientForLog, {
+            user_id: userId,
+            role: null,
+            query_text: queryText,
+            intent: 'error',
+            parsed_filters: null,
+            result_count: 0,
+            has_qualitative: false,
+            llm_provider: llmProvider,
+            response_time_ms: Date.now() - startTime,
+            error_message: error instanceof Error ? error.message : 'Unknown error',
+          })
+        }
+      }
+    } catch {
+      // Never let analytics logging interfere with error response
+    }
+
     return new Response(
       JSON.stringify({
         success: false,
