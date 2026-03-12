@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
+import { reportSupabaseError } from '@/lib/sentryHelpers'
 
 export interface DiscoverResult {
   id: string
@@ -163,6 +164,7 @@ export const useDiscoverChat = create<DiscoverChatStore>((set, get) => ({
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Unknown error'
       logger.error('[useDiscoverChat] Error:', errMsg)
+      reportSupabaseError('discovery', err, { query: trimmed })
       set(s => ({
         messages: s.messages.map(m =>
           m.id === assistantId

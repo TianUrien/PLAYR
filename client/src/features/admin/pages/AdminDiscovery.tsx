@@ -30,6 +30,7 @@ import type {
   DiscoveryFilterFrequency,
 } from '../types'
 import { logger } from '@/lib/logger'
+import { reportSupabaseError } from '@/lib/sentryHelpers'
 import { formatAdminDate } from '../utils/formatDate'
 
 type DaysFilter = 7 | 30 | 90
@@ -87,6 +88,7 @@ export function AdminDiscovery() {
       setData(analytics)
     } catch (err) {
       logger.error('[AdminDiscovery] Failed to fetch data:', err)
+      reportSupabaseError('admin.discovery', err, { daysFilter })
       setError(err instanceof Error ? err.message : 'Failed to load discovery analytics')
     } finally {
       setIsLoading(false)
