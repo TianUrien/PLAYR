@@ -1214,3 +1214,77 @@ export interface OutreachImportResult {
   total: number
 }
 
+// ============================================================================
+// DISCOVERY ANALYTICS TYPES
+// ============================================================================
+
+export interface DiscoverySummary {
+  total_queries: number
+  unique_users: number
+  avg_result_count: number
+  zero_result_queries: number
+  avg_response_time_ms: number
+  error_count: number
+}
+
+export interface DiscoveryIntentBreakdown {
+  intent: string
+  count: number
+  percentage: number
+}
+
+export interface DiscoveryFilterFrequency {
+  filter_name: string
+  count: number
+}
+
+export interface DiscoveryDailyTrend {
+  date: string
+  queries: number
+  unique_users: number
+}
+
+export interface DiscoveryTopUser {
+  user_id: string
+  display_name: string | null
+  email: string
+  role: string
+  avatar_url: string | null
+  query_count: number
+  last_query_at: string
+}
+
+export interface DiscoveryZeroResultQuery {
+  id: string
+  user_id: string
+  display_name: string | null
+  query_text: string
+  parsed_filters: Record<string, unknown> | null
+  created_at: string
+}
+
+export interface DiscoveryRecentQuery {
+  id: string
+  user_id: string
+  display_name: string | null
+  role: string
+  query_text: string
+  intent: string
+  result_count: number
+  parsed_filters: Record<string, unknown> | null
+  response_time_ms: number | null
+  created_at: string
+}
+
+export interface DiscoveryAnalyticsData {
+  summary: DiscoverySummary
+  intent_breakdown: DiscoveryIntentBreakdown[]
+  filter_frequency: DiscoveryFilterFrequency[]
+  daily_trend: DiscoveryDailyTrend[]
+  top_users: DiscoveryTopUser[]
+  zero_result_queries: DiscoveryZeroResultQuery[]
+  recent_queries: DiscoveryRecentQuery[]
+  period_days: number
+  generated_at: string
+}
+
