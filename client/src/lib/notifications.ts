@@ -5,6 +5,7 @@ import { requestCache, generateCacheKey } from './requestCache'
 import { logger } from './logger'
 import {
   fetchNotificationsPage,
+  markNotificationRead as markNotificationReadRpc,
   markAllNotificationsRead as markAllNotificationsReadRpc,
   clearNotifications as clearNotificationsRpc,
   type NotificationKind,
@@ -111,6 +112,7 @@ interface NotificationState {
   initialize: (userId: string | null, options?: { force?: boolean }) => Promise<void>
   toggleDrawer: (open?: boolean) => void
   refresh: (options?: RefreshOptions) => Promise<void>
+  markRead: (notificationId: string) => Promise<void>
   markAllRead: () => Promise<void>
   clearCommentNotifications: () => Promise<void>
   claimCommentHighlights: () => string[]
@@ -491,6 +493,30 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
         pendingCommentHighlights: pendingHighlights,
         commentHighlightVersion: highlightVersion,
       })
+    },
+
+    markRead: async (notificationId: string) => {
+      const { notifications } = get()
+      const target = notifications.find((n) => n.id === notificationId)
+      if (!target || target.readAt) return
+
+      const nowIso = new Date().toISOString()
+      // Optimistic update
+      set((state) => {
+        const next = state.notifications.map((n) =>
+          n.id === notificationId ? { ...n, readAt: n.readAt ?? nowIso, seenAt: n.seenAt ?? nowIso } : n
+        )
+        return {
+          notifications: next,
+          unreadCount: next.filter((n) => !n.readAt && !n.clearedAt).length,
+        }
+      })
+
+      try {
+        await markNotificationReadRpc(notificationId)
+      } catch (error) {
+        logger.error('[NOTIFICATIONS] Failed to mark notification read', error)
+      }
     },
 
     markAllRead: async () => {

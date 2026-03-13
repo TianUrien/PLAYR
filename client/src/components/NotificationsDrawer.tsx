@@ -34,7 +34,7 @@ export default function NotificationsDrawer() {
   const isOpen = useNotificationStore((state) => state.isDrawerOpen)
   const toggleDrawer = useNotificationStore((state) => state.toggleDrawer)
   const notifications = useNotificationStore((state) => state.notifications)
-  const markAllRead = useNotificationStore((state) => state.markAllRead)
+  const markRead = useNotificationStore((state) => state.markRead)
   const refreshNotifications = useNotificationStore((state) => state.refresh)
   const respondToFriendRequest = useNotificationStore((state) => state.respondToFriendRequest)
   const pendingFriendshipId = useNotificationStore((state) => state.pendingFriendshipId)
@@ -83,11 +83,6 @@ export default function NotificationsDrawer() {
     void refreshNotifications({ bypassCache: true })
   }, [isOpen, refreshNotifications])
 
-  useEffect(() => {
-    if (isOpen) {
-      void markAllRead()
-    }
-  }, [isOpen, markAllRead])
 
   useEffect(() => {
     if (lastLocationKey.current !== locationKey) {
@@ -169,6 +164,9 @@ export default function NotificationsDrawer() {
   }
 
   const handleNotificationNavigate = (notification: NotificationRecord) => {
+    if (!notification.readAt) {
+      void markRead(notification.id)
+    }
     const route = resolveNotificationRoute(notification)
     navigateToRoute(route)
   }
@@ -292,8 +290,10 @@ export default function NotificationsDrawer() {
         key={notification.id}
         {...interactiveProps}
         className={cn(
-          'group relative flex gap-3 rounded-3xl border border-transparent bg-white p-4 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0866FF]/40 hover:shadow-md',
-          isUnread && 'border-[#c9dafc] bg-[#eaf3ff]'
+          'group relative flex gap-3 rounded-3xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0866FF]/40',
+          isUnread
+            ? 'border-[#c9dafc] bg-[#eaf3ff] shadow-sm hover:shadow-md'
+            : 'border-transparent bg-white/60 opacity-75 hover:opacity-100 hover:shadow-sm'
         )}
       >
         <button
@@ -311,8 +311,8 @@ export default function NotificationsDrawer() {
         <div className="flex-1">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <p className="text-[15px] font-semibold leading-snug text-gray-900">{config.getTitle(notification)}</p>
-              {description && <p className="text-sm text-gray-600">{description}</p>}
+              <p className={cn('text-[15px] leading-snug', isUnread ? 'font-semibold text-gray-900' : 'font-medium text-gray-700')}>{config.getTitle(notification)}</p>
+              {description && <p className={cn('text-sm', isUnread ? 'text-gray-600' : 'text-gray-500')}>{description}</p>}
               <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                 <span className="font-medium">{displayTime}</span>
                 <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
