@@ -103,6 +103,11 @@ const AdminFeedAnalytics = lazyWithRetry(() => import('@/features/admin/pages/Ad
 const AdminFunnels = lazyWithRetry(() => import('@/features/admin/pages/AdminFunnels').then(m => ({ default: m.AdminFunnels })))
 const AdminCommunity = lazyWithRetry(() => import('@/features/admin/pages/AdminCommunity').then(m => ({ default: m.AdminCommunity })))
 const AdminMonthlyReport = lazyWithRetry(() => import('@/features/admin/pages/AdminMonthlyReport').then(m => ({ default: m.AdminMonthlyReport })))
+const AdminOnboardingFunnel = lazyWithRetry(() => import('@/features/admin/pages/AdminOnboardingFunnel').then(m => ({ default: m.AdminOnboardingFunnel })))
+const AdminSearchQuality = lazyWithRetry(() => import('@/features/admin/pages/AdminSearchQuality').then(m => ({ default: m.AdminSearchQuality })))
+const AdminMessagingHealth = lazyWithRetry(() => import('@/features/admin/pages/AdminMessagingHealth').then(m => ({ default: m.AdminMessagingHealth })))
+const AdminAttribution = lazyWithRetry(() => import('@/features/admin/pages/AdminAttribution').then(m => ({ default: m.AdminAttribution })))
+const AdminChurn = lazyWithRetry(() => import('@/features/admin/pages/AdminChurn').then(m => ({ default: m.AdminChurn })))
 
 // Public investor dashboard (no auth required)
 const PublicInvestorDashboard = lazyWithRetry(() => import('@/pages/PublicInvestorDashboard'))
@@ -166,6 +171,22 @@ function AnalyticsTracker() {
   return null
 }
 
+// Map route paths to feature categories for analytics attribution
+function getFeatureFromPath(path: string): string {
+  if (path.startsWith('/home') || path === '/') return 'feed'
+  if (path.startsWith('/messages')) return 'messaging'
+  if (path.startsWith('/opportunities')) return 'marketplace'
+  if (path.startsWith('/community')) return 'community'
+  if (path.startsWith('/search')) return 'search'
+  if (path.startsWith('/discover')) return 'discovery'
+  if (path.startsWith('/player/') || path.startsWith('/club/') || path.startsWith('/coach/') || path.startsWith('/brand/')) return 'profiles'
+  if (path.startsWith('/dashboard/profile')) return 'profiles'
+  if (path.startsWith('/dashboard')) return 'dashboard'
+  if (path.startsWith('/settings')) return 'settings'
+  if (path.startsWith('/admin')) return 'admin'
+  return 'other'
+}
+
 // Track page views to the DB events table (separate from GA4 tracking above)
 function DbPageViewTracker() {
   const location = useLocation()
@@ -176,7 +197,10 @@ function DbPageViewTracker() {
       isFirstRender.current = false
       return
     }
-    trackDbEvent('page_view', undefined, undefined, { path: location.pathname })
+    trackDbEvent('page_view', undefined, undefined, {
+      path: location.pathname,
+      feature: getFeatureFromPath(location.pathname),
+    })
   }, [location])
 
   return null
@@ -350,6 +374,11 @@ function App() {
                   <Route path="funnels" element={<AdminFunnels />} />
                   <Route path="community" element={<AdminCommunity />} />
                   <Route path="monthly-report" element={<AdminMonthlyReport />} />
+                  <Route path="onboarding" element={<AdminOnboardingFunnel />} />
+                  <Route path="search-quality" element={<AdminSearchQuality />} />
+                  <Route path="messaging-health" element={<AdminMessagingHealth />} />
+                  <Route path="attribution" element={<AdminAttribution />} />
+                  <Route path="churn" element={<AdminChurn />} />
                   <Route path="investors" element={<AdminInvestorDashboard />} />
                   <Route path="world" element={<AdminWorld />} />
                   <Route path="data-issues" element={<AdminDataIssues />} />

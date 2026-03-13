@@ -46,3 +46,47 @@ export async function getMarketplaceHealth(days = 30): Promise<MarketplaceHealth
   if (error) throw new Error(`Failed to get marketplace health: ${error.message}`)
   return data as MarketplaceHealth
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getOnboardingFunnelDetail(days = 30, role?: string): Promise<any> {
+  const params: Record<string, unknown> = { p_days: days }
+  if (role) params.p_role = role
+  const { data, error } = await adminRpc('admin_get_onboarding_funnel_detail', params)
+  if (error) throw new Error(`Failed to get onboarding funnel: ${error.message}`)
+  return data
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getSearchQuality(days = 30): Promise<any> {
+  const { data, error } = await adminRpc('admin_get_search_quality', { p_days: days })
+  if (error) throw new Error(`Failed to get search quality: ${error.message}`)
+  return data
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getMessagingHealth(days = 30): Promise<any> {
+  const { data, error } = await adminRpc('admin_get_messaging_health', { p_days: days })
+  if (error) throw new Error(`Failed to get messaging health: ${error.message}`)
+  return data
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getCrossFeatureAttribution(days = 30, windowHours = 24): Promise<any> {
+  const { data, error } = await adminRpc('admin_get_cross_feature_attribution', { p_days: days, p_window_hours: windowHours })
+  if (error) throw new Error(`Failed to get attribution: ${error.message}`)
+  return data
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getChurnAnalysis(days = 30): Promise<any> {
+  const { data, error } = await adminRpc('admin_get_churn_analysis', { p_days: days })
+  if (error) throw new Error(`Failed to get churn analysis: ${error.message}`)
+  return data
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function getRetentionByRole(cohortWeeks = 8): Promise<any> {
+  const { data, error } = await adminRpc('admin_get_retention_by_role', { p_cohort_weeks: cohortWeeks })
+  if (error) throw new Error(`Failed to get retention by role: ${error.message}`)
+  return data
+}

@@ -37,6 +37,11 @@ import {
   X,
   Search,
   Loader2,
+  UserPlus,
+  SearchCheck,
+  MessageSquare,
+  Share2,
+  TrendingDown,
 } from 'lucide-react'
 import { searchProfiles } from '../api/adminApi'
 import type { AdminProfileListItem } from '../types'
@@ -51,6 +56,11 @@ const NAV_ITEMS = [
   { path: '/admin/feature-usage', icon: BarChart3, label: 'Feature Usage' },
   { path: '/admin/feed', icon: Heart, label: 'Feed & Content' },
   { path: '/admin/funnels', icon: GitBranch, label: 'Funnels & Health' },
+  { path: '/admin/onboarding', icon: UserPlus, label: 'Onboarding Funnel' },
+  { path: '/admin/churn', icon: TrendingDown, label: 'Churn & Retention' },
+  { path: '/admin/attribution', icon: Share2, label: 'Attribution' },
+  { path: '/admin/search-quality', icon: SearchCheck, label: 'Search Quality' },
+  { path: '/admin/messaging-health', icon: MessageSquare, label: 'Messaging Health' },
   { path: '/admin/community', icon: HelpCircle, label: 'Community' },
   { path: '/admin/preferences', icon: ToggleRight, label: 'User Preferences' },
   { path: '/admin/discovery', icon: Sparkles, label: 'Discovery' },
