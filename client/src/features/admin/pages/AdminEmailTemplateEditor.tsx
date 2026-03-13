@@ -84,6 +84,7 @@ export function AdminEmailTemplateEditor() {
         else if (name.includes('title')) samples[v.name] = 'Sample Title'
         else if (name.includes('location')) samples[v.name] = 'Melbourne, Australia'
         else if (name.includes('position')) samples[v.name] = 'Forward'
+        else if (name.includes('country')) samples[v.name] = 'Argentina'
         else if (name.includes('note')) samples[v.name] = 'Looking forward to working together!'
         else if (name.includes('type')) samples[v.name] = 'Teammate'
         else if (name.includes('count')) samples[v.name] = '3'
