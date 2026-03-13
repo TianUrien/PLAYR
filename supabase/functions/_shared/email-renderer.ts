@@ -326,7 +326,8 @@ function renderBlock(block: ContentBlock, vars: Record<string, string>): string 
  */
 export function renderContentBlocks(
   blocks: ContentBlock[],
-  variables: Record<string, string>
+  variables: Record<string, string>,
+  options?: { isOutreach?: boolean }
 ): { html: string; text: string | null } {
   const bodyContent = blocks
     .map(block => renderBlock(block, variables))
@@ -334,6 +335,17 @@ export function renderContentBlocks(
     .join('\n    ')
 
   const settingsUrl = variables.settings_url || `${PLAYR_BASE_URL}/settings`
+  const isOutreach = options?.isOutreach ?? false
+
+  const footerHtml = isOutreach
+    ? `<p style="color: #9ca3af; font-size: 12px; margin: 0;">
+      You received this email because we believe your organization may benefit from PLAYR.<br>
+      <a href="https://oplayr.com" style="color: #8026FA; text-decoration: none;">Learn more about PLAYR</a>
+    </p>`
+    : `<p style="color: #9ca3af; font-size: 12px; margin: 0;">
+      You're receiving this because you're on PLAYR.<br>
+      <a href="${settingsUrl}" style="color: #8026FA; text-decoration: none;">Manage notification preferences</a>
+    </p>`
 
   const html = `
 <!DOCTYPE html>
@@ -356,10 +368,7 @@ export function renderContentBlocks(
 
   <!-- Footer -->
   <div style="background: #f3f4f6; padding: 20px 24px; border-radius: 0 0 16px 16px; border: 1px solid #e5e7eb; border-top: none; text-align: center;">
-    <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-      You're receiving this because you're on PLAYR.<br>
-      <a href="${settingsUrl}" style="color: #8026FA; text-decoration: none;">Manage notification preferences</a>
-    </p>
+    ${footerHtml}
   </div>
 
 </body>
@@ -385,8 +394,9 @@ export async function renderTemplate(
     variables.settings_url = `${PLAYR_BASE_URL}/settings`
   }
 
+  const isOutreach = template.template_key.startsWith('outreach_')
   const subject = interpolateVariables(template.subject_template, variables)
-  const { html } = renderContentBlocks(template.content_json, variables)
+  const { html } = renderContentBlocks(template.content_json, variables, { isOutreach })
   const text = template.text_template
     ? interpolateVariables(template.text_template, variables)
     : subject // Fallback plain text is just the subject
