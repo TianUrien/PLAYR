@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
   Save,
-  Rocket,
   SendHorizonal,
   History,
   RotateCcw,
@@ -42,7 +41,6 @@ export function AdminEmailTemplateEditor() {
   const [testEmail, setTestEmail] = useState('')
   const [testVars, setTestVars] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
-  const [isActivating, setIsActivating] = useState(false)
   const [isSendingTest, setIsSendingTest] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
@@ -106,49 +104,28 @@ export function AdminEmailTemplateEditor() {
     setIsDirty(true)
   }
 
-  const handleSaveDraft = async () => {
+  const handleSave = async () => {
     if (!templateId) return
     setIsSaving(true)
     setSaveMessage(null)
     try {
+      // Save as new version, then immediately activate it
       const result = await saveEmailTemplateDraft({
         templateId,
         subject,
         contentJson: blocks,
         text: textTemplate || undefined,
         variables,
-        changeNote: 'Draft saved from admin editor',
+        changeNote: 'Saved from admin editor',
       })
-      setSaveMessage({ type: 'success', text: `Saved as version ${result.version_number}` })
+      await activateEmailTemplate(templateId, result.version_number)
+      setSaveMessage({ type: 'success', text: 'Template saved' })
       setIsDirty(false)
       await fetchDetail()
     } catch (err) {
       setSaveMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to save' })
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  const handleActivate = async () => {
-    if (!detail) return
-    const latestVersion = detail.versions[0]?.version_number
-    if (!latestVersion) {
-      setSaveMessage({ type: 'error', text: 'No version to activate. Save a draft first.' })
-      return
-    }
-
-    if (!window.confirm(`Activate version ${latestVersion}? This will make it the live template.`)) return
-
-    setIsActivating(true)
-    setSaveMessage(null)
-    try {
-      await activateEmailTemplate(templateId!, latestVersion)
-      setSaveMessage({ type: 'success', text: `Version ${latestVersion} is now live` })
-      await fetchDetail()
-    } catch (err) {
-      setSaveMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to activate' })
-    } finally {
-      setIsActivating(false)
     }
   }
 
@@ -238,21 +215,12 @@ export function AdminEmailTemplateEditor() {
           </button>
           <button
             type="button"
-            onClick={handleSaveDraft}
+            onClick={handleSave}
             disabled={isSaving || !isDirty}
-            className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-gray-800 rounded-lg hover:bg-gray-900 disabled:opacity-50 transition-colors"
-          >
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save Draft
-          </button>
-          <button
-            type="button"
-            onClick={handleActivate}
-            disabled={isActivating}
             className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-purple-600 rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
           >
-            {isActivating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
-            Activate
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Save
           </button>
         </div>
       </div>
