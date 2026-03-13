@@ -99,6 +99,9 @@ const AdminEmail = lazyWithRetry(() => import('@/features/admin/pages/AdminEmail
 const AdminEmailTemplateEditor = lazyWithRetry(() => import('@/features/admin/pages/AdminEmailTemplateEditor').then(m => ({ default: m.AdminEmailTemplateEditor })))
 const AdminOutreach = lazyWithRetry(() => import('@/features/admin/pages/AdminOutreach'))
 const AdminPreferences = lazyWithRetry(() => import('@/features/admin/pages/AdminPreferences'))
+const AdminFeedAnalytics = lazyWithRetry(() => import('@/features/admin/pages/AdminFeedAnalytics').then(m => ({ default: m.AdminFeedAnalytics })))
+const AdminFunnels = lazyWithRetry(() => import('@/features/admin/pages/AdminFunnels').then(m => ({ default: m.AdminFunnels })))
+const AdminCommunity = lazyWithRetry(() => import('@/features/admin/pages/AdminCommunity').then(m => ({ default: m.AdminCommunity })))
 const AdminMonthlyReport = lazyWithRetry(() => import('@/features/admin/pages/AdminMonthlyReport').then(m => ({ default: m.AdminMonthlyReport })))
 
 // Public investor dashboard (no auth required)
@@ -343,6 +346,9 @@ function App() {
                   <Route path="email/template/:templateId" element={<AdminEmailTemplateEditor />} />
                   <Route path="outreach" element={<AdminOutreach />} />
                   <Route path="preferences" element={<AdminPreferences />} />
+                  <Route path="feed" element={<AdminFeedAnalytics />} />
+                  <Route path="funnels" element={<AdminFunnels />} />
+                  <Route path="community" element={<AdminCommunity />} />
                   <Route path="monthly-report" element={<AdminMonthlyReport />} />
                   <Route path="investors" element={<AdminInvestorDashboard />} />
                   <Route path="world" element={<AdminWorld />} />
