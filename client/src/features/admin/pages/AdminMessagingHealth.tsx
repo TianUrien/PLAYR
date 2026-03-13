@@ -80,10 +80,10 @@ export function AdminMessagingHealth() {
 
   // Top messengers
   const topMessengers: Array<{
-    name: string
+    display_name: string
     role: string
-    messages: number
-    conversations: number
+    message_count: number
+    conversation_count: number
   }> = data?.top_messengers ?? []
 
   if (error) {
@@ -305,7 +305,7 @@ export function AdminMessagingHealth() {
                             <Users className="w-3.5 h-3.5 text-purple-600" />
                           </div>
                           <span className="font-medium text-gray-900 text-sm">
-                            {user.name}
+                            {user.display_name}
                           </span>
                         </div>
                       </td>
@@ -325,12 +325,12 @@ export function AdminMessagingHealth() {
 
                       {/* Messages */}
                       <td className="py-3 px-2 text-right font-mono text-gray-900">
-                        {user.messages.toLocaleString()}
+                        {Number(user.message_count).toLocaleString()}
                       </td>
 
                       {/* Conversations */}
                       <td className="py-3 px-2 text-right font-mono text-gray-900">
-                        {user.conversations.toLocaleString()}
+                        {Number(user.conversation_count).toLocaleString()}
                       </td>
                     </tr>
                   )
