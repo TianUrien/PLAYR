@@ -124,6 +124,7 @@ export default function OpportunitiesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user, profile } = useAuthStore()
   const isCurrentUserTestAccount = profile?.is_test_account ?? false
+  const isStaging = import.meta.env.VITE_SUPABASE_URL?.includes('ivjkdaylalhsteyyclvl')
   const { countries } = useCountries()
 
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
@@ -252,7 +253,7 @@ export default function OpportunitiesPage() {
             }
 
             let filteredVacancies = vacanciesData as VacancyWithClub[]
-            if (!isCurrentUserTestAccount) {
+            if (!isStaging && !isCurrentUserTestAccount) {
               filteredVacancies = filteredVacancies.filter(v => !v.club?.is_test_account)
             }
 
@@ -298,7 +299,7 @@ export default function OpportunitiesPage() {
         if (!options?.silent) setIsLoading(false)
       }
     })
-  }, [isCurrentUserTestAccount, filters])
+  }, [isCurrentUserTestAccount, isStaging, filters])
 
   const fetchUserApplications = useCallback(async (options?: { skipCache?: boolean }) => {
     if (!user || (profile?.role !== 'player' && profile?.role !== 'coach')) return
