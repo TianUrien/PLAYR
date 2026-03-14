@@ -180,24 +180,50 @@ describe.skipIf(skip)('State Machine Transitions', () => {
       }
 
       // Create and accept friendship
-      const { data: f } = await player.client
+      // Check if an accepted friendship already exists (left over from the
+      // friendship describe block that runs right before this one).
+      const { data: existing } = await player.client
         .from('profile_friendships')
-        .insert({
-          user_one: player.userId,
-          user_two: coach.userId,
-          requester_id: player.userId,
-          status: 'pending',
-        })
-        .select('id')
+        .select('id, status')
+        .or(
+          `and(user_one.eq.${player.userId},user_two.eq.${coach.userId}),and(user_one.eq.${coach.userId},user_two.eq.${player.userId})`
+        )
         .single()
 
-      friendshipId = f?.id ?? null
+      if (existing?.status === 'accepted') {
+        // Already accepted — reuse it
+        friendshipId = existing.id
+      } else {
+        // Delete any non-accepted leftover and create fresh
+        if (existing) {
+          await player.client
+            .from('profile_friendships')
+            .delete()
+            .eq('id', existing.id)
+        }
 
-      if (friendshipId) {
-        await coach.client
+        const { data: f, error: fErr } = await player.client
           .from('profile_friendships')
-          .update({ status: 'accepted' })
-          .eq('id', friendshipId)
+          .insert({
+            user_one: player.userId,
+            user_two: coach.userId,
+            requester_id: player.userId,
+            status: 'pending',
+          })
+          .select('id')
+          .single()
+
+        if (fErr) throw new Error(`Friendship insert failed: ${fErr.message}`)
+        friendshipId = f?.id ?? null
+
+        if (friendshipId) {
+          const { error: acceptErr } = await coach.client
+            .from('profile_friendships')
+            .update({ status: 'accepted' })
+            .eq('id', friendshipId)
+
+          if (acceptErr) throw new Error(`Friendship accept failed: ${acceptErr.message}`)
+        }
       }
     })
 
