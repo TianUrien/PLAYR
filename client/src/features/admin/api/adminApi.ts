@@ -1632,23 +1632,13 @@ export async function sendCampaign(campaignId: string): Promise<{
   failed: number
   duration_ms: number
 }> {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) throw new Error('No active session')
-
-  const response = await fetch(`${SUPABASE_URL}/functions/v1/admin-send-campaign`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({ campaign_id: campaignId }),
+  const { data, error } = await supabase.functions.invoke('admin-send-campaign', {
+    body: { campaign_id: campaignId },
   })
 
-  const result = await response.json()
-  if (!result.success) {
-    throw new Error(result.error || 'Failed to send campaign')
-  }
-  return { sent: result.sent, failed: result.failed, duration_ms: result.duration_ms }
+  if (error) throw new Error(error.message || 'Failed to send campaign')
+  if (!data?.success) throw new Error(data?.error || 'Failed to send campaign')
+  return { sent: data.sent, failed: data.failed, duration_ms: data.duration_ms }
 }
 
 /**
