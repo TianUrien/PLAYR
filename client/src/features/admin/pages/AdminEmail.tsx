@@ -25,7 +25,7 @@ import { EmailTemplateBreakdownChart } from '../components/EmailTemplateBreakdow
 import { EmailDeliveryFunnelChart } from '../components/EmailDeliveryFunnelChart'
 import { CreateCampaignModal } from '../components/CreateCampaignModal'
 import { useEmailOverview, useEmailTemplates, useEmailCampaigns, useEmailEngagement, useEmailContactsSummary, useEmailContacts } from '../hooks/useEmailStats'
-import { sendCampaign, previewCampaignAudience, getAllCountries, toggleEmailTemplateActive } from '../api/adminApi'
+import { sendCampaign, previewCampaignAudience, getAllCountries, toggleEmailTemplateActive, diagnoseEmailMetrics, backfillEmailStatuses } from '../api/adminApi'
 import type {
   EmailTemplate,
   EmailCampaign,
@@ -86,6 +86,14 @@ export function AdminEmail() {
 
   // Template toggle loading state
   const [togglingTemplateId, setTogglingTemplateId] = useState<string | null>(null)
+
+  // Diagnostic state
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [diagResult, setDiagResult] = useState<any>(null)
+  const [diagLoading, setDiagLoading] = useState(false)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [backfillResult, setBackfillResult] = useState<any>(null)
+  const [backfillLoading, setBackfillLoading] = useState(false)
 
   // Contacts filters
   const [contactRole, setContactRole] = useState<string>('')
@@ -661,6 +669,69 @@ export function AdminEmail() {
                 },
               ]}
             />
+          </div>
+
+          {/* Diagnostic & Repair Panel */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Metrics Diagnostic & Repair</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <button
+                type="button"
+                onClick={async () => {
+                  setDiagLoading(true)
+                  setDiagResult(null)
+                  try {
+                    const result = await diagnoseEmailMetrics()
+                    setDiagResult(result)
+                  } catch (err) {
+                    setDiagResult({ error: err instanceof Error ? err.message : 'Unknown error' })
+                  } finally {
+                    setDiagLoading(false)
+                  }
+                }}
+                disabled={diagLoading}
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 disabled:opacity-50"
+              >
+                {diagLoading ? 'Running...' : 'Diagnose Metrics'}
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!confirm('This will update email_sends statuses from email_events. Proceed?')) return
+                  setBackfillLoading(true)
+                  setBackfillResult(null)
+                  try {
+                    const result = await backfillEmailStatuses()
+                    setBackfillResult(result)
+                    templates.refetch()
+                  } catch (err) {
+                    setBackfillResult({ error: err instanceof Error ? err.message : 'Unknown error' })
+                  } finally {
+                    setBackfillLoading(false)
+                  }
+                }}
+                disabled={backfillLoading}
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-50"
+              >
+                {backfillLoading ? 'Repairing...' : 'Repair Statuses'}
+              </button>
+            </div>
+            {diagResult && (
+              <details open className="mb-3">
+                <summary className="text-sm font-medium text-gray-600 cursor-pointer">Diagnostic Results</summary>
+                <pre className="mt-2 p-3 bg-gray-50 rounded-lg text-xs overflow-auto max-h-80 whitespace-pre-wrap">
+                  {JSON.stringify(diagResult, null, 2)}
+                </pre>
+              </details>
+            )}
+            {backfillResult && (
+              <details open>
+                <summary className="text-sm font-medium text-gray-600 cursor-pointer">Repair Results</summary>
+                <pre className="mt-2 p-3 bg-gray-50 rounded-lg text-xs overflow-auto max-h-80 whitespace-pre-wrap">
+                  {JSON.stringify(backfillResult, null, 2)}
+                </pre>
+              </details>
+            )}
           </div>
         </div>
       )}

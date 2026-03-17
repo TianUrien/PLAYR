@@ -1367,6 +1367,26 @@ export async function getEmailTemplates(): Promise<EmailTemplate[]> {
 }
 
 /**
+ * Diagnose email metrics — shows status breakdown per template + orphaned events
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function diagnoseEmailMetrics(): Promise<any> {
+  const { data, error } = await adminRpc('admin_diagnose_email_metrics')
+  if (error) throw new Error(`Failed to diagnose email metrics: ${error.message}`)
+  return data
+}
+
+/**
+ * Backfill email statuses from email_events to email_sends
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function backfillEmailStatuses(): Promise<any> {
+  const { data, error } = await adminRpc('admin_backfill_email_statuses')
+  if (error) throw new Error(`Failed to backfill email statuses: ${error.message}`)
+  return data
+}
+
+/**
  * Get template detail with versions and per-template stats
  */
 export async function getEmailTemplateDetail(templateId: string): Promise<EmailTemplateDetail> {
