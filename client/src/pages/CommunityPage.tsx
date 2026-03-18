@@ -6,8 +6,10 @@
  * - Questions: Q&A for sharing knowledge
  */
 
+import { useState, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { Header } from '@/components'
+import { PullToRefresh } from '@/components/PullToRefresh'
 import {
   CommunityTabSwitcher,
   PeopleListView,
@@ -20,6 +22,7 @@ const VALID_TABS: CommunityTab[] = ['all', 'players', 'coaches', 'clubs', 'brand
 
 export default function CommunityPage() {
   const { tab } = useParams<{ tab?: string }>()
+  const [refreshKey, setRefreshKey] = useState(0)
 
   // Determine active tab from URL param — default to 'all' (open ecosystem view)
   const activeTab: CommunityTab =
@@ -27,10 +30,15 @@ export default function CommunityPage() {
       ? (tab as CommunityTab)
       : 'all'
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshKey(k => k + 1)
+  }, [])
+
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       <Header />
 
+      <PullToRefresh onRefresh={handleRefresh}>
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-24 pb-12">
         {/* Hero Section */}
         <div className="text-center mb-5 sm:mb-8">
@@ -48,7 +56,7 @@ export default function CommunityPage() {
         </div>
 
         {/* Content based on active tab */}
-        <div key={activeTab} className="mt-6 sm:mt-10 animate-fade-in">
+        <div key={`${activeTab}-${refreshKey}`} className="mt-6 sm:mt-10 animate-fade-in">
           {activeTab === 'all' && <PeopleListView />}
           {activeTab === 'players' && <PeopleListView roleFilter="player" />}
           {activeTab === 'coaches' && <PeopleListView roleFilter="coach" />}
@@ -57,6 +65,7 @@ export default function CommunityPage() {
           {activeTab === 'questions' && <QuestionsListView />}
         </div>
       </main>
+      </PullToRefresh>
     </div>
   )
 }

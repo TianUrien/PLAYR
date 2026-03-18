@@ -1,8 +1,10 @@
-import { useRef } from 'react'
+import { useRef, useCallback } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Header } from '@/components'
 import { HomeFeed } from '@/components/home/HomeFeed'
 import { PostComposer } from '@/components/home/PostComposer'
 import { SearchOverlay } from '@/components/search/SearchOverlay'
+import { PullToRefresh } from '@/components/PullToRefresh'
 import { useScrollRestore } from '@/hooks/useScrollRestore'
 import { useScrollDirection } from '@/hooks/useScrollDirection'
 import type { HomeFeedItem } from '@/types/homeFeed'
@@ -11,11 +13,17 @@ export default function HomePage() {
   useScrollRestore()
   const scrollDirection = useScrollDirection()
   const prependItemRef = useRef<((item: HomeFeedItem) => void) | null>(null)
+  const queryClient = useQueryClient()
+
+  const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['home-feed'] })
+  }, [queryClient])
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
 
+      <PullToRefresh onRefresh={handleRefresh}>
       <main className="max-w-2xl mx-auto px-4 md:px-6 pt-24 pb-24">
         <div
           className={`sticky top-[var(--app-header-height,60px)] z-40 bg-gray-50 pb-4 transition-all duration-200 ${
@@ -31,6 +39,7 @@ export default function HomePage() {
         </div>
         <HomeFeed prependItemRef={prependItemRef} />
       </main>
+      </PullToRefresh>
     </div>
   )
 }
