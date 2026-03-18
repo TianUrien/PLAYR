@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { X, MapPin, Calendar, Clock, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, Mail, Phone, CheckCircle, AlertTriangle, DollarSign, Dumbbell, Award, Share2 } from 'lucide-react'
+import { X, MapPin, Calendar, Clock, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, Mail, Phone, CheckCircle, AlertTriangle, DollarSign, Dumbbell, Award, Share2, Flag } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Vacancy } from '../lib/supabase'
 import { Avatar, StorageImage } from './index'
@@ -312,6 +312,17 @@ export default function VacancyDetailView({
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+
+            {/* EU Passport Requirement */}
+            {(vacancy as Record<string, unknown>).eu_passport_required === true && (
+              <div className="mb-5">
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Requirements</p>
+                <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                  <Flag className="w-4 h-4 text-blue-500" />
+                  EU Passport Required
+                </span>
               </div>
             )}
 

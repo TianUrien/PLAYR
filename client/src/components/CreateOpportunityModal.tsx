@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import { X, Plus, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, CreditCard, Trophy } from 'lucide-react'
+import { X, Plus, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, CreditCard, Trophy, Flag } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { logger } from '../lib/logger'
 import { useAuthStore } from '../lib/auth'
@@ -31,7 +31,8 @@ const BENEFIT_OPTIONS = [
   { id: 'equipment', label: 'Equipment', icon: Trophy },
 ]
 
-const buildInitialFormData = (vacancy?: Vacancy | null): Partial<VacancyInsert> => ({
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const buildInitialFormData = (vacancy?: Vacancy | null): Record<string, any> => ({
   opportunity_type: vacancy?.opportunity_type || 'player',
   title: vacancy?.title || '',
   position: vacancy?.position || undefined,
@@ -50,12 +51,16 @@ const buildInitialFormData = (vacancy?: Vacancy | null): Partial<VacancyInsert> 
   contact_email: vacancy?.contact_email || '',
   contact_phone: vacancy?.contact_phone || '',
   organization_name: vacancy?.organization_name || '',
+  eu_passport_required: (vacancy as Record<string, unknown>)?.eu_passport_required === true,
 })
 
 const getVacancyDraftKey = (profileId: string) => `vacancyDraft:new:${profileId}`
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type OpportunityFormData = Record<string, any>
+
 type VacancyDraftStorage = {
-  formData: Partial<VacancyInsert>
+  formData: OpportunityFormData
   newRequirement: string
   newCustomBenefit: string
 }
@@ -66,7 +71,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
   const [errors, setErrors] = useState<Record<string, string>>({})
   const { addToast } = useToastStore()
 
-  const [formData, setFormData] = useState<Partial<VacancyInsert>>(buildInitialFormData(editingVacancy))
+  const [formData, setFormData] = useState<OpportunityFormData>(buildInitialFormData(editingVacancy))
 
   const [newRequirement, setNewRequirement] = useState('')
   const [newCustomBenefit, setNewCustomBenefit] = useState('')
@@ -220,7 +225,8 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
 
   if (!isOpen) return null
 
-  const handleInputChange = (field: keyof VacancyInsert, value: VacancyInsert[typeof field]) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleInputChange = (field: string, value: any) => {
     setFormData(prev => {
       const next = { ...prev, [field]: value }
       if (field === 'opportunity_type' && value === 'coach') {
@@ -311,7 +317,8 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
 
     setIsLoading(true)
     try {
-      const vacancyData: Partial<VacancyInsert> = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const vacancyData: Record<string, any> = {
         club_id: user.id,
         opportunity_type: formData.opportunity_type || 'player',
         title: formData.title!,
@@ -332,6 +339,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
         contact_phone: formData.contact_phone || null,
         organization_name: formData.organization_name?.trim() || null,
         world_club_id: profile?.role === 'coach' ? profile.current_world_club_id ?? null : null,
+        eu_passport_required: formData.eu_passport_required || false,
       }
 
       if (editingVacancy) {
@@ -675,7 +683,24 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
           {/* Requirements */}
           <section className="border-t border-gray-200 pt-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Requirements</h3>
-            
+
+            {/* EU Passport toggle */}
+            <button
+              type="button"
+              onClick={() => handleInputChange('eu_passport_required', !formData.eu_passport_required)}
+              className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-colors mb-4 ${
+                formData.eu_passport_required
+                  ? 'bg-blue-50 border-blue-300 text-blue-800'
+                  : 'bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300'
+              }`}
+            >
+              <Flag className={`w-5 h-5 flex-shrink-0 ${formData.eu_passport_required ? 'text-blue-600' : 'text-gray-400'}`} />
+              <span className="flex-1 text-left text-sm font-medium">EU Passport Required</span>
+              <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${formData.eu_passport_required ? 'bg-blue-600' : 'bg-gray-300'}`}>
+                <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${formData.eu_passport_required ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
+              </div>
+            </button>
+
             <div className="space-y-3">
               {(formData.requirements || []).map((req, index) => (
                 <div key={index} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">

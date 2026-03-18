@@ -1,4 +1,4 @@
-import { MapPin, Calendar, Clock, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, AlertTriangle, Share2, Award, DollarSign, Dumbbell, Eye } from 'lucide-react'
+import { MapPin, Calendar, Clock, Home, Car, Globe as GlobeIcon, Plane, Utensils, Briefcase, Shield, GraduationCap, AlertTriangle, Share2, Award, DollarSign, Dumbbell, Eye, Flag } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Vacancy } from '../lib/supabase'
 import { Avatar } from './index'
@@ -403,6 +403,16 @@ export default function OpportunityCard({
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* EU Passport Requirement */}
+        {(vacancy as Record<string, unknown>).eu_passport_required === true && (
+          <div className="mb-4">
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
+              <Flag className="w-4 h-4 text-blue-500" />
+              EU Passport Required
+            </span>
           </div>
         )}
 
