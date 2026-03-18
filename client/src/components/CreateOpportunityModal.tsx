@@ -5,7 +5,9 @@ import { logger } from '../lib/logger'
 import { useAuthStore } from '../lib/auth'
 import type { Vacancy, VacancyInsert } from '../lib/supabase'
 import Button from './Button'
-import CountryNameSelect from './CountryNameSelect'
+import LocationAutocomplete from './LocationAutocomplete'
+import type { LocationSelection } from './LocationAutocomplete'
+import { useCountries } from '@/hooks/useCountries'
 import { useFocusTrap } from '@/hooks/useFocusTrap'
 import { useToastStore } from '@/lib/toast'
 import { trackDbEvent } from '@/lib/trackDbEvent'
@@ -72,6 +74,15 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
   const { addToast } = useToastStore()
 
   const [formData, setFormData] = useState<OpportunityFormData>(buildInitialFormData(editingVacancy))
+  const { getCountryById } = useCountries()
+
+  // Location autocomplete state
+  const [locationText, setLocationText] = useState(() => {
+    const city = editingVacancy?.location_city || ''
+    const country = editingVacancy?.location_country || ''
+    return city && country ? `${city}, ${country}` : city || ''
+  })
+  const [locationSelected, setLocationSelected] = useState(() => !!(editingVacancy?.location_city && editingVacancy?.location_country))
 
   const [newRequirement, setNewRequirement] = useState('')
   const [newCustomBenefit, setNewCustomBenefit] = useState('')
@@ -84,7 +95,7 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
   const priorityFieldId = useId()
   const opportunityTitleFieldId = useId()
   const descriptionFieldId = useId()
-  const locationCityFieldId = useId()
+
   const startDateFieldId = useId()
   const durationFieldId = useId()
   const applicationDeadlineFieldId = useId()
@@ -382,12 +393,6 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
   const benefitsCount = (formData.benefits || []).length
   const benefitsPercentage = Math.round((benefitsCount / BENEFIT_OPTIONS.length) * 100)
   const titleErrorId = errors.title ? `${opportunityTitleFieldId}-error` : undefined
-  const hasLocationError = Boolean(errors.location_city || errors.location_country)
-  const locationErrorId = hasLocationError ? `${locationCityFieldId}-error` : undefined
-  const locationAccessibilityProps = hasLocationError
-    ? { 'aria-invalid': 'true' as const, 'aria-describedby': locationErrorId }
-    : {}
-
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" role="presentation">
       <div
@@ -614,37 +619,26 @@ export default function CreateVacancyModal({ isOpen, onClose, onSuccess, editing
             <div className="space-y-4">
               {/* Location */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Location <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <label htmlFor={locationCityFieldId} className="sr-only">
-                    City
-                  </label>
-                  <input
-                    id={locationCityFieldId}
-                    type="text"
-                    value={formData.location_city}
-                    onChange={(e) => handleInputChange('location_city', e.target.value)}
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-[#10b981] focus:border-transparent ${
-                      errors.location_city ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                    placeholder="City"
-                    autoCapitalize="words"
-                    inputMode="text"
-                    {...locationAccessibilityProps}
-                  />
-                  <CountryNameSelect
-                    value={formData.location_country || null}
-                    onChange={(countryName) => handleInputChange('location_country', countryName || '')}
-                    placeholder="Select country"
-                    required
-                    error={errors.location_country}
-                  />
-                </div>
-                {(errors.location_city || errors.location_country) && (
-                  <p id={locationErrorId} className="mt-1 text-sm text-red-600">Both city and country are required</p>
-                )}
+                <LocationAutocomplete
+                  label="Location"
+                  value={locationText}
+                  onChange={setLocationText}
+                  onLocationSelect={(loc: LocationSelection) => {
+                    const country = loc.countryId ? getCountryById(loc.countryId) : null
+                    handleInputChange('location_city', loc.city)
+                    handleInputChange('location_country', country?.name || '')
+                    setLocationSelected(true)
+                  }}
+                  onLocationClear={() => {
+                    handleInputChange('location_city', '')
+                    handleInputChange('location_country', '')
+                    setLocationSelected(false)
+                  }}
+                  isSelected={locationSelected}
+                  placeholder="Search for a city..."
+                  required
+                  error={errors.location_city || errors.location_country ? 'Location is required' : undefined}
+                />
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
