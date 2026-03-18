@@ -223,7 +223,8 @@ export function CreateCampaignModal({ templates, editCampaign, onClose, onCreate
   }, [])
 
   const handleSave = async () => {
-    if (!name.trim() || !templateId) return
+    if (!name.trim()) return
+    if (!templateId && !(isAbTest && (variantATemplateId || variantBTemplateId))) return
     if (isOutreach && selectedContactIds.size === 0) return
     setCreating(true)
     setError(null)
