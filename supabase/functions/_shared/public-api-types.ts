@@ -59,6 +59,7 @@ export interface PublicOpportunity {
   priority: string | null
   requirements: string[]
   benefits: string[]
+  eu_passport_required: boolean
   club: PublicOpportunityClub
   published_at: string | null
   created_at: string
@@ -114,6 +115,7 @@ export interface PublicOpportunityRow {
   club_logo_url: string | null
   club_location: string | null
   club_league: string | null
+  eu_passport_required: boolean
 }
 
 // =============================================================================
@@ -167,6 +169,7 @@ export function transformToPublicOpportunity(row: PublicOpportunityRow): PublicO
     application_deadline: row.application_deadline,
     priority: row.priority,
     requirements: row.requirements || [],
+    eu_passport_required: row.eu_passport_required || false,
     benefits: [
       ...(row.benefits || []),
       ...(row.custom_benefits || []),
