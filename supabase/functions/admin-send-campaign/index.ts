@@ -370,6 +370,8 @@ Deno.serve(async (req: Request) => {
           if (tmpl) {
             variantTemplates[key] = tmpl
             logger.info(`Loaded variant ${key} template`, { templateKey: vKey })
+          } else {
+            logger.warn(`Variant ${key} template not found, falling back to base template`, { templateKey: vKey })
           }
         }
       }

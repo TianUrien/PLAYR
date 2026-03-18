@@ -75,8 +75,8 @@ export function CreateCampaignModal({ templates, editCampaign, onClose, onCreate
   const [isAbTest, setIsAbTest] = useState(() => !!editCampaign?.ab_variants)
   const [variantASubject, setVariantASubject] = useState(() => editCampaign?.ab_variants?.A?.subject ?? '')
   const [variantBSubject, setVariantBSubject] = useState(() => editCampaign?.ab_variants?.B?.subject ?? '')
-  const [variantATemplateId, setVariantATemplateId] = useState(() => (editCampaign?.ab_variants?.A as Record<string, unknown>)?.template_id as string ?? '')
-  const [variantBTemplateId, setVariantBTemplateId] = useState(() => (editCampaign?.ab_variants?.B as Record<string, unknown>)?.template_id as string ?? '')
+  const [variantATemplateId, setVariantATemplateId] = useState(() => editCampaign?.ab_variants?.A?.template_id ?? '')
+  const [variantBTemplateId, setVariantBTemplateId] = useState(() => editCampaign?.ab_variants?.B?.template_id ?? '')
 
   // Users audience preview
   const { preview: usersPreview, isLoading: usersPreviewLoading, error: usersPreviewError, fetchPreview: fetchUsersPreview, reset: resetUsersPreview } = useAudiencePreview()

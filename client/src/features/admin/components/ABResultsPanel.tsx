@@ -75,11 +75,17 @@ export function ABResultsPanel({ campaign, onClose }: ABResultsPanelProps) {
             {campaign.ab_variants && (
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-xs font-medium text-blue-600 mb-1">Variant A — Subject</p>
+                  <p className="text-xs font-medium text-blue-600 mb-1">Variant A</p>
+                  {campaign.ab_variants.A.template_key && (
+                    <p className="text-xs text-blue-500 mb-0.5">Template: {campaign.ab_variants.A.template_key}</p>
+                  )}
                   <p className="text-sm text-blue-900">{campaign.ab_variants.A.subject}</p>
                 </div>
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                  <p className="text-xs font-medium text-amber-600 mb-1">Variant B — Subject</p>
+                  <p className="text-xs font-medium text-amber-600 mb-1">Variant B</p>
+                  {campaign.ab_variants.B.template_key && (
+                    <p className="text-xs text-amber-500 mb-0.5">Template: {campaign.ab_variants.B.template_key}</p>
+                  )}
                   <p className="text-sm text-amber-900">{campaign.ab_variants.B.subject}</p>
                 </div>
               </div>

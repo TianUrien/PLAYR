@@ -1051,8 +1051,8 @@ export interface EmailCampaign {
   total_clicked: number
   total_count: number
   ab_variants: {
-    A: { subject: string; content_json?: unknown[] }
-    B: { subject: string; content_json?: unknown[] }
+    A: { subject: string; template_id?: string; template_key?: string; content_json?: unknown[] }
+    B: { subject: string; template_id?: string; template_key?: string; content_json?: unknown[] }
   } | null
 }
 
@@ -1159,8 +1159,8 @@ export interface CreateCampaignParams {
   audience_filter: { role?: string; roles?: string[]; country?: string; status?: string; club?: string; contact_ids?: string[] }
   audience_source?: 'users' | 'outreach'
   ab_variants?: {
-    A: { subject: string; content_json?: unknown[] }
-    B: { subject: string; content_json?: unknown[] }
+    A: { subject: string; template_id?: string; template_key?: string; content_json?: unknown[] }
+    B: { subject: string; template_id?: string; template_key?: string; content_json?: unknown[] }
   } | null
 }
 
