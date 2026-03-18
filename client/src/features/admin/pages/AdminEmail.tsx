@@ -250,6 +250,11 @@ export function AdminEmail() {
       render: (_, row) => <span className="text-sm text-gray-700">{row.total_opened.toLocaleString()}</span>,
     },
     {
+      key: 'total_clicked',
+      label: 'Clicked',
+      render: (_, row) => <span className="text-sm text-gray-700">{row.total_clicked.toLocaleString()}</span>,
+    },
+    {
       key: 'created_at',
       label: 'Created',
       render: (_, row) => <span className="text-xs text-gray-500">{new Date(row.created_at).toLocaleDateString()}</span>,
