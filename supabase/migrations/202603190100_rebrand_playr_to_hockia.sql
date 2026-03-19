@@ -58,11 +58,11 @@ WHERE
 
 UPDATE public.email_campaigns
 SET
-  subject = REPLACE(REPLACE(subject, 'PLAYR', 'HOCKIA'), 'oplayr.com', 'inhockia.com'),
+  name = REPLACE(REPLACE(name, 'PLAYR', 'HOCKIA'), 'oplayr.com', 'inhockia.com'),
   updated_at = now()
 WHERE
-  subject ILIKE '%playr%'
-  OR subject ILIKE '%oplayr%';
+  name ILIKE '%playr%'
+  OR name ILIKE '%oplayr%';
 
 -- ============================================================================
 -- 5. Update outreach contact templates (if stored in outreach_contacts table)
