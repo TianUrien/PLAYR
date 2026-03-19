@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { Bell, MoreHorizontal, Search } from 'lucide-react'
+import { Bell, CheckCheck, MoreHorizontal, Search } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import Avatar from './Avatar'
 import { useNotificationStore } from '@/lib/notifications'
@@ -36,7 +36,8 @@ export default function NotificationsDrawer() {
   const toggleDrawer = useNotificationStore((state) => state.toggleDrawer)
   const notifications = useNotificationStore((state) => state.notifications)
   const markRead = useNotificationStore((state) => state.markRead)
-  const refreshNotifications = useNotificationStore((state) => state.refresh)
+  const markAllRead = useNotificationStore((state) => state.markAllRead)
+  const unreadCount = useNotificationStore((state) => state.unreadCount)
   const respondToFriendRequest = useNotificationStore((state) => state.respondToFriendRequest)
   const pendingFriendshipId = useNotificationStore((state) => state.pendingFriendshipId)
   const respondToAmbassadorRequest = useNotificationStore((state) => state.respondToAmbassadorRequest)
@@ -76,14 +77,6 @@ export default function NotificationsDrawer() {
       { title: 'Earlier', data: earlierNotifications },
     ]
   }, [activeFilter, unreadNotifications, earlierNotifications])
-
-  useEffect(() => {
-    if (!isOpen) {
-      return
-    }
-    void refreshNotifications({ bypassCache: true })
-  }, [isOpen, refreshNotifications])
-
 
   useEffect(() => {
     if (lastLocationKey.current !== locationKey) {
@@ -397,7 +390,7 @@ export default function NotificationsDrawer() {
                 </button>
               </div>
             </div>
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 flex items-center gap-2">
               {QUICK_FILTERS.map((filter) => (
                 <button
                   key={filter.id}
@@ -413,6 +406,16 @@ export default function NotificationsDrawer() {
                   {filter.label}
                 </button>
               ))}
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void markAllRead()}
+                  className="ml-auto flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-[#0866FF] transition hover:bg-blue-50"
+                >
+                  <CheckCheck className="h-4 w-4" />
+                  Mark all as read
+                </button>
+              )}
             </div>
           </header>
           <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6">

@@ -109,6 +109,8 @@ interface NotificationState {
   heartbeatIntervalId: number | null
   reconnectTimeoutId: number | null
   reconnectAttempts: number
+  /** IDs optimistically marked as read but not yet confirmed by the server */
+  pendingReadIds: Set<string>
   initialize: (userId: string | null, options?: { force?: boolean }) => Promise<void>
   toggleDrawer: (open?: boolean) => void
   refresh: (options?: RefreshOptions) => Promise<void>
@@ -406,6 +408,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
     heartbeatIntervalId: null,
     reconnectTimeoutId: null,
     reconnectAttempts: 0,
+    pendingReadIds: new Set<string>(),
 
     toggleDrawer: (open) => {
       const currentOpen = get().isDrawerOpen
@@ -433,6 +436,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
           notifications: [],
           unreadCount: 0,
           pendingAmbassadorRequestId: null,
+          pendingReadIds: new Set<string>(),
           pendingCommentHighlights: new Set<string>(),
           commentHighlightVersion: 0,
           reconnectAttempts: 0,
@@ -469,10 +473,21 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
       set({ loading: true })
       const rows = await fetchNotifications(userId, options)
 
+      // Preserve optimistic reads that haven't been confirmed by the server yet
+      const { pendingReadIds } = get()
+      const mergedRows = pendingReadIds.size > 0
+        ? rows.map((row) => {
+            if (pendingReadIds.has(row.id) && !row.readAt) {
+              return { ...row, readAt: new Date().toISOString(), seenAt: row.seenAt ?? new Date().toISOString() }
+            }
+            return row
+          })
+        : rows
+
       let pendingHighlights = get().pendingCommentHighlights
       let highlightVersion = get().commentHighlightVersion
 
-      rows.forEach((notification) => {
+      mergedRows.forEach((notification) => {
         const commentId = extractCommentId(notification)
         if (commentId && !notification.readAt && !notification.clearedAt) {
           if (!pendingHighlights.has(commentId)) {
@@ -484,10 +499,10 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
         }
       })
 
-      const unreadCount = rows.filter((item) => !item.readAt && !item.clearedAt).length
+      const unreadCount = mergedRows.filter((item) => !item.readAt && !item.clearedAt).length
 
       set({
-        notifications: rows,
+        notifications: mergedRows,
         unreadCount,
         loading: false,
         pendingCommentHighlights: pendingHighlights,
@@ -501,14 +516,18 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
       if (!target || target.readAt) return
 
       const nowIso = new Date().toISOString()
-      // Optimistic update
+
+      // Track this ID so concurrent refreshes won't overwrite the optimistic update
       set((state) => {
+        const nextPending = new Set(state.pendingReadIds)
+        nextPending.add(notificationId)
         const next = state.notifications.map((n) =>
           n.id === notificationId ? { ...n, readAt: n.readAt ?? nowIso, seenAt: n.seenAt ?? nowIso } : n
         )
         return {
           notifications: next,
           unreadCount: next.filter((n) => !n.readAt && !n.clearedAt).length,
+          pendingReadIds: nextPending,
         }
       })
 
@@ -516,6 +535,22 @@ export const useNotificationStore = create<NotificationState>((set, get) => {
         await markNotificationReadRpc(notificationId)
       } catch (error) {
         logger.error('[NOTIFICATIONS] Failed to mark notification read', error)
+      } finally {
+        // Remove from pending set and ensure readAt is still applied
+        set((state) => {
+          const nextPending = new Set(state.pendingReadIds)
+          nextPending.delete(notificationId)
+          const next = state.notifications.map((n) =>
+            n.id === notificationId && !n.readAt
+              ? { ...n, readAt: nowIso, seenAt: n.seenAt ?? nowIso }
+              : n
+          )
+          return {
+            notifications: next,
+            unreadCount: next.filter((n) => !n.readAt && !n.clearedAt).length,
+            pendingReadIds: nextPending,
+          }
+        })
       }
     },
 
