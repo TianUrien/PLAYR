@@ -3,7 +3,7 @@
     "apps": [],
     "details": [
       {
-        "appIDs": ["TEAM_ID.com.inhockia.app"],
+        "appIDs": ["TXN8KM3Q3B.com.inhockia.app"],
         "paths": [
           "/auth/callback",
           "/auth/callback/*",
@@ -43,9 +43,9 @@
     ]
   },
   "webcredentials": {
-    "apps": ["TEAM_ID.com.inhockia.app"]
+    "apps": ["TXN8KM3Q3B.com.inhockia.app"]
   },
   "activitycontinuation": {
-    "apps": ["TEAM_ID.com.inhockia.app"]
+    "apps": ["TXN8KM3Q3B.com.inhockia.app"]
   }
 }
