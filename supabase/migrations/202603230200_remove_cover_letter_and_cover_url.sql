@@ -4,7 +4,9 @@
 
 -- ============================================================================
 -- 1. Update admin_get_vacancy_applicants to remove cover_letter from RETURNS
+--    Must DROP first because CREATE OR REPLACE cannot change return type.
 -- ============================================================================
+DROP FUNCTION IF EXISTS public.admin_get_vacancy_applicants(UUID, application_status, INTEGER, INTEGER);
 CREATE OR REPLACE FUNCTION public.admin_get_vacancy_applicants(
   p_vacancy_id UUID,
   p_status application_status DEFAULT NULL,
@@ -222,6 +224,8 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_brands(TEXT, TEXT, INT, INT) TO anon, authenticated;
 
 -- update_brand: remove p_cover_url parameter
+-- Must DROP old signature first (different param count = different overload)
+DROP FUNCTION IF EXISTS public.update_brand(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT);
 CREATE OR REPLACE FUNCTION public.update_brand(
   p_name TEXT DEFAULT NULL,
   p_bio TEXT DEFAULT NULL,
