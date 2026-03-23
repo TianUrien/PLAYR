@@ -25,6 +25,7 @@ export interface ParsedFilters {
   min_career_entries?: number
   leagues?: string[]
   countries?: string[]
+  coach_specializations?: string[]
   text_query?: string
   sort_by?: string
   summary?: string
@@ -127,7 +128,8 @@ TOOL SELECTION RULES:
 FILTER EXTRACTION RULES (for search_profiles only):
 - Only extract information explicitly stated or clearly implied in the query.
 - For age: "U21" means max_age=20, "U18" means max_age=17, "U23" means max_age=22. "Senior" means min_age=21.
-- For positions: use exactly "goalkeeper", "defender", "midfielder", or "forward" for players. Use "head coach", "assistant coach", or "youth coach" for coaches.
+- For positions: use exactly "goalkeeper", "defender", "midfielder", or "forward" for players.
+- For coach specializations: use "head_coach", "assistant_coach", "goalkeeper_coach", "youth_coach", "strength_conditioning", "performance_analyst", "sports_scientist", or "other". Map natural language like "S&C coach" → "strength_conditioning", "video analyst" → "performance_analyst", "GK coach" → "goalkeeper_coach". Set roles=["coach"] when a specialization is used.
 - For gender: use "Men" or "Women" exactly (capital first letter).
 - "EU passport" means eu_passport=true. Do NOT list individual EU countries unless the user specifically names them.
 - "Open to play", "available", or "looking for opportunities" means availability="open_to_play".
@@ -201,6 +203,11 @@ const SEARCH_TOOL = {
         type: 'array',
         items: { type: 'string' },
         description: 'Country names where clubs/leagues are based (for "playing in X" queries).',
+      },
+      coach_specializations: {
+        type: 'array',
+        items: { type: 'string', enum: ['head_coach', 'assistant_coach', 'goalkeeper_coach', 'youth_coach', 'strength_conditioning', 'performance_analyst', 'sports_scientist', 'other'] },
+        description: 'Coach specialization filter. Use when searching for specific types of coaches (e.g., "find me an S&C coach" → ["strength_conditioning"]).',
       },
       text_query: {
         type: 'string',

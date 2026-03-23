@@ -64,7 +64,9 @@ const PUBLIC_PROFILE_FIELDS = [
   'social_links',
   'is_test_account',
   'open_to_play',
-  'open_to_coach'
+  'open_to_coach',
+  'coach_specialization',
+  'coach_specialization_custom'
 ].join(',')
 
 export default function PublicPlayerProfile() {

@@ -174,6 +174,8 @@ export interface AdminProfileDetails {
     highlight_video_url: string | null
     current_club: string | null
     current_world_club_id: string | null
+    coach_specialization: string | null
+    coach_specialization_custom: string | null
     league_division: string | null
     is_blocked: boolean
     is_test_account: boolean

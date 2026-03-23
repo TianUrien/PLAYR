@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { CoachProfileShape } from '@/pages/CoachDashboard'
+import type { Profile } from '@/lib/supabase'
 
 export interface ProfileBucket {
   id: string
@@ -25,9 +26,10 @@ interface UseCoachProfileStrengthOptions {
  * Coach-specific profile strength calculation.
  *
  * Buckets:
- * - Basic Info (20%): full_name, nationality, base_location, date_of_birth, gender
+ * - Basic Info (15%): full_name, nationality, base_location, date_of_birth, gender
+ * - Specialization (10%): coach_specialization selected
  * - Profile Photo (15%): avatar_url present
- * - Professional Bio (20%): bio field filled
+ * - Professional Bio (15%): bio field filled
  * - Experience/Journey (20%): at least 1 career_history entry
  * - Media Gallery (10%): at least 1 gallery_photos entry
  * - References (15%): at least 1 accepted reference
@@ -87,6 +89,12 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
     return Boolean(profile.avatar_url?.trim())
   }, [profile])
 
+  // Check specialization
+  const hasSpecialization = useCallback(() => {
+    if (!profile) return false
+    return Boolean((profile as Partial<Profile>).coach_specialization)
+  }, [profile])
+
   // Check professional bio
   const hasProfessionalBio = useCallback(() => {
     if (!profile) return false
@@ -96,6 +104,7 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
   // Build buckets
   const buckets: ProfileBucket[] = useMemo(() => {
     const basicComplete = isBasicInfoComplete()
+    const specializationComplete = hasSpecialization()
     const photoComplete = hasProfilePhoto()
     const bioComplete = hasProfessionalBio()
     const journeyComplete = (journeyCount ?? 0) >= 1
@@ -107,10 +116,19 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
         id: 'basic',
         label: 'Basic Info',
         hint: 'Complete name, nationality, location, DOB, and gender',
-        weight: 20,
+        weight: 15,
         completed: basicComplete,
         actionId: 'edit-profile',
         actionLabel: 'Edit Profile',
+      },
+      {
+        id: 'specialization',
+        label: 'Specialization',
+        hint: 'Select your coaching specialization',
+        weight: 10,
+        completed: specializationComplete,
+        actionId: 'edit-profile',
+        actionLabel: 'Set Specialization',
       },
       {
         id: 'photo',
@@ -125,7 +143,7 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
         id: 'bio',
         label: 'Professional Bio',
         hint: 'Add a bio about your coaching background',
-        weight: 20,
+        weight: 15,
         completed: bioComplete,
         actionId: 'edit-profile',
         actionLabel: 'Add Bio',
@@ -158,7 +176,7 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
         actionLabel: 'Get Reference',
       },
     ]
-  }, [isBasicInfoComplete, hasProfilePhoto, hasProfessionalBio, journeyCount, galleryCount, referenceCount])
+  }, [isBasicInfoComplete, hasSpecialization, hasProfilePhoto, hasProfessionalBio, journeyCount, galleryCount, referenceCount])
 
   // Calculate total percentage
   const percentage = useMemo(() => {

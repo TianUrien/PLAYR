@@ -11,6 +11,7 @@ import WorldClubSearch from '@/components/WorldClubSearch'
 import type { WorldClubSearchResult } from '@/components/WorldClubSearch'
 import { useCountries } from '@/hooks/useCountries'
 import type { AdminProfileDetails } from '../types'
+import { COACH_SPECIALIZATIONS, type CoachSpecialization } from '@/lib/coachSpecializations'
 
 interface EditUserModalProps {
   isOpen: boolean
@@ -42,6 +43,8 @@ export function EditUserModal({
     gender: '',
     current_club: '',
     current_world_club_id: null as string | null,
+    coach_specialization: '' as CoachSpecialization | '',
+    coach_specialization_custom: '',
   })
 
   // Initialize form when profile changes
@@ -58,6 +61,8 @@ export function EditUserModal({
         gender: profile.gender || '',
         current_club: profile.current_club || '',
         current_world_club_id: profile.current_world_club_id ?? null,
+        coach_specialization: (profile.coach_specialization as CoachSpecialization) || '',
+        coach_specialization_custom: profile.coach_specialization_custom || '',
       })
       setReason('')
       setError(null)
@@ -128,6 +133,14 @@ export function EditUserModal({
       }
       if (formData.current_world_club_id !== (profile.current_world_club_id ?? null)) {
         updates.current_world_club_id = formData.current_world_club_id
+      }
+      if (formData.coach_specialization !== (profile.coach_specialization || '')) {
+        updates.coach_specialization = formData.coach_specialization || null
+      }
+      if (formData.coach_specialization_custom !== (profile.coach_specialization_custom || '')) {
+        updates.coach_specialization_custom = formData.coach_specialization === 'other'
+          ? formData.coach_specialization_custom.trim() || null
+          : null
       }
 
       if (Object.keys(updates).length === 0) {
@@ -306,6 +319,46 @@ export function EditUserModal({
                     <option value="Women">Women</option>
                   </select>
                 </div>
+              )}
+
+              {/* Coach Specialization (for coaches) */}
+              {profile.role === 'coach' && (
+                <>
+                  <div>
+                    <label htmlFor="admin-edit-specialization" className="block text-sm font-medium text-gray-700 mb-1">
+                      Specialization
+                    </label>
+                    <select
+                      id="admin-edit-specialization"
+                      value={formData.coach_specialization}
+                      onChange={(e) => setFormData(prev => ({ ...prev, coach_specialization: e.target.value as CoachSpecialization | '' }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      aria-label="Coach specialization"
+                    >
+                      <option value="">No specialization</option>
+                      {COACH_SPECIALIZATIONS.map((spec) => (
+                        <option key={spec.value} value={spec.value}>{spec.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {formData.coach_specialization === 'other' && (
+                    <div>
+                      <label htmlFor="admin-edit-specialization-custom" className="block text-sm font-medium text-gray-700 mb-1">
+                        Custom Role Title
+                      </label>
+                      <input
+                        id="admin-edit-specialization-custom"
+                        type="text"
+                        value={formData.coach_specialization_custom}
+                        onChange={(e) => setFormData(prev => ({ ...prev, coach_specialization_custom: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="e.g., Team Manager"
+                        aria-label="Custom specialization title"
+                      />
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Reason for edit */}

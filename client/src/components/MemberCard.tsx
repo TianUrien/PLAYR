@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { useToastStore } from '@/lib/toast'
 import { useWorldClubLogo } from '@/hooks/useWorldClubLogo'
+import { getSpecializationLabel } from '@/lib/coachSpecializations'
 
 interface MemberCardProps {
   id: string
@@ -28,6 +29,8 @@ interface MemberCardProps {
   open_to_play?: boolean
   open_to_coach?: boolean
   accepted_reference_count?: number
+  coach_specialization?: string | null
+  coach_specialization_custom?: string | null
 }
 
 export default function MemberCard({
@@ -48,6 +51,8 @@ export default function MemberCard({
   open_to_play,
   open_to_coach,
   accepted_reference_count,
+  coach_specialization,
+  coach_specialization_custom,
 }: MemberCardProps) {
   const navigate = useNavigate()
   const { user } = useAuthStore()
@@ -177,13 +182,19 @@ export default function MemberCard({
           </div>
         )}
 
-        {positions.length > 0 && (role === 'player' || role === 'coach') && (
+        {role === 'coach' && coach_specialization ? (
+          <div className="flex items-center gap-2.5">
+            <Shield className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+            <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider min-w-[68px]">Role</span>
+            <span className="text-gray-700">{getSpecializationLabel(coach_specialization, coach_specialization_custom)}</span>
+          </div>
+        ) : positions.length > 0 && (role === 'player' || role === 'coach') ? (
           <div className="flex items-center gap-2.5">
             <Shield className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
             <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider min-w-[68px]">Position</span>
             <span className="text-gray-700">{positions.map(capitalizeFirst).join(' • ')}</span>
           </div>
-        )}
+        ) : null}
 
         {current_team && (
           <div className="pt-1">

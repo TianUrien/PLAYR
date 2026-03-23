@@ -19,6 +19,7 @@ import { trackDbEvent } from '@/lib/trackDbEvent'
 import SocialLinksInput from './SocialLinksInput'
 import WorldClubSearch from './WorldClubSearch'
 import { type SocialLinks, cleanSocialLinks, validateSocialLinks } from '@/lib/socialLinks'
+import { COACH_SPECIALIZATIONS, type CoachSpecialization } from '@/lib/coachSpecializations'
 
 interface EditProfileModalProps {
   isOpen: boolean
@@ -58,6 +59,8 @@ type ProfileFormData = {
   open_to_play: boolean
   open_to_coach: boolean
   brand_representation: string
+  coach_specialization: CoachSpecialization | ''
+  coach_specialization_custom: string
 }
 
 interface WorldRegion {
@@ -145,6 +148,8 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   open_to_play: Boolean(profile?.open_to_play),
   open_to_coach: Boolean(profile?.open_to_coach),
   brand_representation: profile?.brand_representation || '',
+  coach_specialization: (profile?.coach_specialization as CoachSpecialization) || '',
+  coach_specialization_custom: profile?.coach_specialization_custom || '',
 })
 
 export default function EditProfileModal({ isOpen, onClose, role }: EditProfileModalProps) {
@@ -476,6 +481,10 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.current_world_club_id = formData.current_world_club_id
       optimisticUpdate.bio = formData.bio || null
       optimisticUpdate.open_to_coach = formData.open_to_coach
+      optimisticUpdate.coach_specialization = formData.coach_specialization || null
+      optimisticUpdate.coach_specialization_custom = formData.coach_specialization === 'other'
+        ? formData.coach_specialization_custom.trim() || null
+        : null
     } else if (role === 'club') {
       optimisticUpdate.nationality = formData.nationality
       optimisticUpdate.nationality_country_id = formData.nationality_country_id
@@ -875,8 +884,34 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
               <>
                 {/* ── Coaching Details ── */}
                 <div className="pt-3 mt-1 border-t border-gray-100">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Details</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Coaching Details</p>
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Specialization
+                  </label>
+                  <select
+                    value={formData.coach_specialization}
+                    onChange={(e) => setFormData({ ...formData, coach_specialization: e.target.value as CoachSpecialization | '' })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
+                    aria-label="Select coaching specialization"
+                  >
+                    <option value="">Select specialization</option>
+                    {COACH_SPECIALIZATIONS.map((spec) => (
+                      <option key={spec.value} value={spec.value}>{spec.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {formData.coach_specialization === 'other' && (
+                  <Input
+                    label="Your Role Title"
+                    placeholder="e.g., Team Manager, Umpire Coach"
+                    value={formData.coach_specialization_custom}
+                    onChange={(e) => setFormData({ ...formData, coach_specialization_custom: e.target.value })}
+                  />
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="coach-gender-edit">

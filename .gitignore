@@ -24,11 +24,16 @@ client/dist/
 .vite/
 client/.vite/
 
+# Android signing keys (NEVER commit)
+*.jks
+*.keystore
+
 # iOS build artifacts
 client/ios/App/App/public/
 client/ios/App/Pods/
 *.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/
+**/xcshareddata/swiftpm/
 DerivedData/
 
 # Test coverage

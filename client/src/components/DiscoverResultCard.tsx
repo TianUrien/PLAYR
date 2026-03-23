@@ -4,6 +4,7 @@ import Avatar from '@/components/Avatar'
 import RoleBadge from '@/components/RoleBadge'
 import AvailabilityPill from '@/components/AvailabilityPill'
 import type { DiscoverResult } from '@/hooks/useDiscover'
+import { getSpecializationLabel } from '@/lib/coachSpecializations'
 
 interface DiscoverResultCardProps {
   result: DiscoverResult
@@ -22,8 +23,12 @@ export default function DiscoverResultCard({ result }: DiscoverResultCardProps) 
     }
   }
 
+  const specializationLabel = result.role === 'coach' && result.coach_specialization
+    ? getSpecializationLabel(result.coach_specialization, result.coach_specialization_custom)
+    : null
+
   const subtitle = [
-    result.position,
+    specializationLabel || result.position,
     result.base_location || result.base_country_name,
   ]
     .filter(Boolean)

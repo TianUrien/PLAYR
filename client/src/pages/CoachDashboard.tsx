@@ -24,6 +24,7 @@ import AvailabilityToggleStrip from '@/components/AvailabilityToggleStrip'
 import ClubLinkPrompt from '@/components/ClubLinkPrompt'
 import { useWorldClubLogo } from '@/hooks/useWorldClubLogo'
 import { calculateAge, formatDateOfBirth } from '@/lib/utils'
+import { getSpecializationLabel } from '@/lib/coachSpecializations'
 
 type TabType = 'profile' | 'vacancies' | 'journey' | 'friends' | 'comments' | 'posts'
 
@@ -259,6 +260,14 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                   </h1>
                   <div className="mb-3 flex flex-wrap items-center gap-3">
                     <RoleBadge role="coach" />
+                    {(profile as Partial<Profile>).coach_specialization && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-700">
+                        {getSpecializationLabel(
+                          (profile as Partial<Profile>).coach_specialization,
+                          (profile as Partial<Profile>).coach_specialization_custom
+                        )}
+                      </span>
+                    )}
                     {profile.open_to_coach && <AvailabilityPill variant="coach" />}
                     <SocialLinksDisplay 
                       links={profile.social_links as SocialLinks | null | undefined} 

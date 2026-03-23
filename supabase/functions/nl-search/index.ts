@@ -311,6 +311,7 @@ Deno.serve(async (req) => {
       p_league_ids: leagueIds,
       p_country_ids: countryIds,
       p_search_text: parsed.text_query || null,
+      p_coach_specializations: parsed.coach_specializations || null,
       p_sort_by: parsed.sort_by || 'relevance',
       p_limit: 20,
       p_offset: 0,

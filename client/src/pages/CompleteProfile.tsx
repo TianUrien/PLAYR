@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, MapPin, Calendar, Building2, Camera, UserRound, Briefcase, Users, Store } from 'lucide-react'
+import { User, MapPin, Calendar, Building2, Camera, UserRound, Briefcase, Users, Store, ChevronRight } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { Input, Button, CountrySelect, LocationAutocomplete } from '@/components'
 import type { LocationSelection } from '@/components/LocationAutocomplete'
@@ -16,6 +16,7 @@ import { deleteStorageObject } from '@/lib/storage'
 import { toSentryError } from '@/lib/sentryHelpers'
 import { trackOnboardingComplete } from '@/lib/analytics'
 import { trackDbEvent } from '@/lib/trackDbEvent'
+import { COACH_SPECIALIZATIONS, type CoachSpecialization } from '@/lib/coachSpecializations'
 
 type UserRole = 'player' | 'coach' | 'club' | 'brand'
 
@@ -79,6 +80,8 @@ export default function CompleteProfile() {
     clubHistory: '',
     currentClub: '',
     currentWorldClubId: null as string | null,
+    coachSpecialization: '' as CoachSpecialization | '',
+    coachSpecializationCustom: '',
   })
 
   const normalizeGender = (value: string) => {
@@ -414,6 +417,10 @@ export default function CompleteProfile() {
       if (!formData.city.trim()) return 'Base location is required.'
       if (!formData.nationalityCountryId) return 'Nationality is required.'
       if (!formData.gender) return 'Gender is required.'
+      if (!formData.coachSpecialization) return 'Please select your coaching specialization.'
+      if (formData.coachSpecialization === 'other' && !formData.coachSpecializationCustom.trim()) {
+        return 'Please enter your role title.'
+      }
     } else if (userRole === 'club') {
       if (!formData.clubName.trim()) return 'Club name is required.'
       if (!formData.city.trim()) return 'City is required.'
@@ -502,6 +509,10 @@ export default function CompleteProfile() {
           date_of_birth: formData.dateOfBirth || null,
           current_club: formData.currentClub || null,
           current_world_club_id: formData.currentWorldClubId,
+          coach_specialization: formData.coachSpecialization || null,
+          coach_specialization_custom: formData.coachSpecialization === 'other'
+            ? formData.coachSpecializationCustom.trim()
+            : null,
         }
       } else if (userRole === 'club') {
         updateData = {
@@ -1057,6 +1068,50 @@ export default function CompleteProfile() {
 
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">Coaching Details</p>
 
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Specialization <span className="text-red-500">*</span>
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">What best describes your professional role?</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {COACH_SPECIALIZATIONS.map((spec) => (
+                        <button
+                          key={spec.value}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, coachSpecialization: spec.value })}
+                          className={`p-3 rounded-lg border-2 text-left transition-all ${
+                            formData.coachSpecialization === spec.value
+                              ? 'border-[#8026FA] bg-purple-50'
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className={`text-sm font-medium ${
+                              formData.coachSpecialization === spec.value ? 'text-[#8026FA]' : 'text-gray-900'
+                            }`}>
+                              {spec.label}
+                            </span>
+                            {formData.coachSpecialization === spec.value && (
+                              <ChevronRight className="w-4 h-4 text-[#8026FA]" />
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">{spec.description}</p>
+                        </button>
+                      ))}
+                    </div>
+                    {formData.coachSpecialization === 'other' && (
+                      <div className="mt-3">
+                        <Input
+                          label="Your Role Title"
+                          placeholder="e.g., Team Manager, Umpire Coach"
+                          value={formData.coachSpecializationCustom}
+                          onChange={(e) => setFormData({ ...formData, coachSpecializationCustom: e.target.value })}
+                          required
+                        />
+                      </div>
+                    )}
+                  </div>
+
                   <WorldClubSearch
                     value={formData.currentClub}
                     onChange={(v) => setFormData({ ...formData, currentClub: v })}
@@ -1070,23 +1125,6 @@ export default function CompleteProfile() {
                     label="Current Club (Optional)"
                     placeholder="e.g., Holcombe Hockey Club"
                   />
-
-                  <div>
-                    <label htmlFor="coach-position-select" className="block text-sm font-medium text-gray-700 mb-2">
-                      Coaching Role
-                    </label>
-                    <select
-                      id="coach-position-select"
-                      value={formData.position}
-                      onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
-                    >
-                      <option value="">Select your role (optional)</option>
-                      <option value="head coach">Head Coach</option>
-                      <option value="assistant coach">Assistant Coach</option>
-                      <option value="youth coach">Youth Coach</option>
-                    </select>
-                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="coach-gender">

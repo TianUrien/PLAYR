@@ -30,6 +30,8 @@ export interface DiscoverResult {
   career_entry_count: number
   accepted_friend_count: number
   last_active_at: string | null
+  coach_specialization: string | null
+  coach_specialization_custom: string | null
 }
 
 export interface ParsedFilters {
@@ -46,6 +48,7 @@ export interface ParsedFilters {
   min_career_entries?: number
   leagues?: string[]
   countries?: string[]
+  coach_specializations?: string[]
   text_query?: string
   sort_by?: string
   summary?: string

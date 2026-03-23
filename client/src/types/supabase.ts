@@ -2089,6 +2089,8 @@ export type Database = {
           career_entry_count: number
           club_bio: string | null
           club_history: string | null
+          coach_specialization: string | null
+          coach_specialization_custom: string | null
           contact_email: string | null
           contact_email_public: boolean
           created_at: string
@@ -2153,6 +2155,8 @@ export type Database = {
           career_entry_count?: number
           club_bio?: string | null
           club_history?: string | null
+          coach_specialization?: string | null
+          coach_specialization_custom?: string | null
           contact_email?: string | null
           contact_email_public?: boolean
           created_at?: string
@@ -2217,6 +2221,8 @@ export type Database = {
           career_entry_count?: number
           club_bio?: string | null
           club_history?: string | null
+          coach_specialization?: string | null
+          coach_specialization_custom?: string | null
           contact_email?: string | null
           contact_email_public?: boolean
           created_at?: string
@@ -3818,6 +3824,8 @@ export type Database = {
           career_entry_count: number
           club_bio: string | null
           club_history: string | null
+          coach_specialization: string | null
+          coach_specialization_custom: string | null
           contact_email: string | null
           contact_email_public: boolean
           created_at: string
@@ -3932,6 +3940,8 @@ export type Database = {
           career_entry_count: number
           club_bio: string | null
           club_history: string | null
+          coach_specialization: string | null
+          coach_specialization_custom: string | null
           contact_email: string | null
           contact_email_public: boolean
           created_at: string
@@ -4030,6 +4040,7 @@ export type Database = {
           p_availability?: string
           p_base_country_ids?: number[]
           p_base_location?: string
+          p_coach_specializations?: string[]
           p_country_ids?: number[]
           p_eu_passport?: boolean
           p_gender?: string

@@ -1,4 +1,5 @@
 import type { ParsedFilters } from '@/hooks/useDiscover'
+import { getSpecializationLabel } from '@/lib/coachSpecializations'
 
 interface DiscoverFilterChipsProps {
   filters: ParsedFilters
@@ -75,6 +76,13 @@ export default function DiscoverFilterChips({ filters }: DiscoverFilterChipsProp
     filters.leagues.forEach(l => chips.push({
       label: l,
       color: 'bg-yellow-100 text-yellow-800',
+    }))
+  }
+
+  if (filters.coach_specializations?.length) {
+    filters.coach_specializations.forEach(s => chips.push({
+      label: getSpecializationLabel(s),
+      color: 'bg-teal-100 text-teal-800',
     }))
   }
 
