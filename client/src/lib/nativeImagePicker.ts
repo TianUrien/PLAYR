@@ -44,6 +44,7 @@ export async function pickImageNative(source?: 'camera' | 'photos' | 'prompt'): 
       width: 1024,
       height: 1024,
       correctOrientation: true,
+      presentationStyle: 'popover', // Required for iPad — fullScreen can crash
     })
 
     if (!photo.base64String) {
