@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
-import { supabase } from '@/lib/supabase'
+import { supabase, AUTH_STORAGE_KEY } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { useAuthStore } from '@/lib/auth'
 import { reportSupabaseError } from '@/lib/sentryHelpers'
@@ -73,7 +73,7 @@ export default function AuthCallback() {
     logger.debug('[AUTH_CALLBACK] Error in hash:', hasError)
 
     if (typeof window !== 'undefined') {
-      const storageKey = 'hockia-auth'
+      const storageKey = AUTH_STORAGE_KEY
       const codeVerifierKey = `${storageKey}-code-verifier`
       const localCodeVerifier = window.localStorage.getItem(codeVerifierKey)
       const sessionSnapshot = window.localStorage.getItem(storageKey)
@@ -151,7 +151,7 @@ export default function AuthCallback() {
 
         if (error) {
           if (typeof window !== 'undefined') {
-            const storageKey = 'hockia-auth'
+            const storageKey = AUTH_STORAGE_KEY
             const codeVerifierKey = `${storageKey}-code-verifier`
             logger.debug('[AUTH_CALLBACK] Exchange failed; code verifier present:', !!window.localStorage.getItem(codeVerifierKey))
           }
