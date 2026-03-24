@@ -10,7 +10,8 @@ import { queryClient } from './lib/queryClient'
 import { logger } from './lib/logger'
 import { initSentryInAppBrowserContext } from './lib/sentryHelpers'
 import UpdatePrompt from './components/UpdatePrompt'
-import CookieConsent, { hasAnalyticsConsent, enableGA4 } from './components/CookieConsent'
+import CookieConsent from './components/CookieConsent'
+import { hasAnalyticsConsent, enableGA4 } from './lib/cookieConsent'
 
 // Create a container for the update prompt (outside main React tree)
 let updatePromptRoot: ReturnType<typeof createRoot> | null = null

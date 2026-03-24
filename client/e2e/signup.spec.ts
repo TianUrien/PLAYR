@@ -231,7 +231,7 @@ test.describe('Public Pages Access', () => {
   test('privacy policy page loads', async ({ page }) => {
     await page.goto('/privacy-policy')
 
-    await expect(page.getByRole('heading', { name: /privacy/i })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Privacy Policy', exact: true })).toBeVisible()
   })
 
   test('terms page loads', async ({ page }) => {
