@@ -25,7 +25,7 @@ export function hasAnalyticsConsent(): boolean {
  * Only called after explicit user consent.
  */
 export function enableGA4() {
-  const GA_ID = 'G-1QZ48FMV1V'
+  const GA_ID = import.meta.env.VITE_GA_MEASUREMENT_ID ?? 'G-NE620GQKTX'
 
   // Don't load twice
   if (document.querySelector(`script[src*="googletagmanager"]`)) return
@@ -39,13 +39,13 @@ export function enableGA4() {
   // Initialize dataLayer
   window.dataLayer = window.dataLayer || []
   function gtag(...args: unknown[]) {
-    window.dataLayer.push(args)
+    window.dataLayer!.push(args)
   }
   gtag('js', new Date())
   gtag('config', GA_ID, { send_page_view: true })
 
   // Expose gtag globally for analytics.ts
-  ;(window as Record<string, unknown>).gtag = gtag
+  ;(window as unknown as Record<string, unknown>).gtag = gtag
 }
 
 /**
