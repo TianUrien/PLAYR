@@ -93,6 +93,12 @@ export function detectInAppBrowser(): InAppBrowserInfo {
  * Checks if the browser supports reliable OAuth (popups, redirects)
  */
 export function supportsReliableOAuth(): boolean {
+  // Native apps use SFSafariViewController/Chrome Custom Tabs — always reliable
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cap = (window as any)?.Capacitor
+    if (cap?.isNativePlatform?.()) return true
+  } catch { /* fall through */ }
   const info = detectInAppBrowser()
   return !info.isInAppBrowser
 }
