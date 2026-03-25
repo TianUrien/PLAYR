@@ -7,6 +7,7 @@ import { useUserPosts, type PostImage } from '@/hooks/useUserPosts'
 import { validateImage, optimizeImage } from '@/lib/imageOptimization'
 import { useUploadManager } from '@/lib/uploadManager'
 import { logger } from '@/lib/logger'
+import { checkContent } from '@/lib/contentFilter'
 import { Avatar, RoleBadge } from '@/components'
 import { PostMediaUploader, type UploadedMedia } from './PostMediaUploader'
 import type { HomeFeedItem, UserPostFeedItem, TransferMetadata, SigningMetadata } from '@/types/homeFeed'
@@ -407,6 +408,12 @@ export function PostComposerModal({
           return
         }
 
+        // Content filter on optional caption
+        if (content.trim()) {
+          const filterResult = checkContent(content.trim())
+          if (!filterResult.allowed) { setError(filterResult.reason || 'Content violates community guidelines.'); return }
+        }
+
         setIsSubmitting(true)
         setError(null)
 
@@ -469,6 +476,12 @@ export function PostComposerModal({
       if (!clubName) {
         setError('Please select or enter a club name')
         return
+      }
+
+      // Content filter on optional caption
+      if (content.trim()) {
+        const filterResult = checkContent(content.trim())
+        if (!filterResult.allowed) { setError(filterResult.reason || 'Content violates community guidelines.'); return }
       }
 
       setIsSubmitting(true)
@@ -544,6 +557,13 @@ export function PostComposerModal({
 
     if (trimmed.length > MAX_CONTENT_LENGTH) {
       setError(`Content exceeds ${MAX_CONTENT_LENGTH} character limit`)
+      return
+    }
+
+    // Content filter — block objectionable text (Apple Guideline 1.2)
+    const filterResult = checkContent(trimmed)
+    if (!filterResult.allowed) {
+      setError(filterResult.reason || 'Content violates community guidelines.')
       return
     }
 
