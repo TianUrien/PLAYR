@@ -33,7 +33,7 @@ export async function signInWithOAuthNative(provider: 'apple' | 'google'): Promi
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: 'https://inhockia.com/auth/callback',
+      redirectTo: 'hockia://auth/callback',
       skipBrowserRedirect: true,
     },
   })
