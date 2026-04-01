@@ -155,6 +155,22 @@ export default function Landing() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    // Client-side validation
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail) {
+      setError('Email is required.')
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError('Please enter a valid email address.')
+      return
+    }
+    if (!password) {
+      setError('Password is required.')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -339,7 +355,7 @@ export default function Landing() {
           >
             <h2 className="text-lg font-bold text-white text-center mb-3">Sign In</h2>
             
-            <form onSubmit={handleSignIn} className="space-y-2.5">
+            <form onSubmit={handleSignIn} noValidate className="space-y-2.5">
               <div>
                 <label className="block text-[11px] font-medium text-gray-400 mb-1">Email</label>
                 <Input
@@ -487,7 +503,7 @@ export default function Landing() {
             >
               <h2 className="text-2xl font-bold text-white text-center mb-6">Sign In</h2>
               
-              <form onSubmit={handleSignIn} className="space-y-4">
+              <form onSubmit={handleSignIn} noValidate className="space-y-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Email</label>
                   <Input
@@ -508,14 +524,14 @@ export default function Landing() {
                       onClick={() => navigate('/forgot-password')}
                       className="text-xs text-gray-400 hover:text-white transition-colors"
                     >
-                      Forgot?
+                      Forgot password?
                     </button>
                   </div>
                   <Input
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="Password"
                     className="!bg-white border-0 text-gray-900 placeholder:text-gray-400 !h-12 !rounded-xl"
                     required
                   />
