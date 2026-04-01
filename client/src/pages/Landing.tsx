@@ -355,7 +355,7 @@ export default function Landing() {
           >
             <h2 className="text-lg font-bold text-white text-center mb-3">Sign In</h2>
             
-            <form onSubmit={handleSignIn} className="space-y-2.5">
+            <form onSubmit={handleSignIn} noValidate className="space-y-2.5">
               <div>
                 <label className="block text-[11px] font-medium text-gray-400 mb-1">Email</label>
                 <Input
@@ -503,7 +503,7 @@ export default function Landing() {
             >
               <h2 className="text-2xl font-bold text-white text-center mb-6">Sign In</h2>
               
-              <form onSubmit={handleSignIn} className="space-y-4">
+              <form onSubmit={handleSignIn} noValidate className="space-y-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Email</label>
                   <Input
@@ -524,7 +524,7 @@ export default function Landing() {
                       onClick={() => navigate('/forgot-password')}
                       className="text-xs text-gray-400 hover:text-white transition-colors"
                     >
-                      Forgot?
+                      Forgot password?
                     </button>
                   </div>
                   <Input
