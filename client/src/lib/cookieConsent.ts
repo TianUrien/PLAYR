@@ -21,6 +21,9 @@ export function hasAnalyticsConsent(): boolean {
 /**
  * Enable GA4 by loading the gtag script dynamically.
  * Only called after explicit user consent.
+ *
+ * IMPORTANT: The gtag function MUST use `arguments` (not rest params)
+ * because gtag.js expects Arguments objects in the dataLayer, not arrays.
  */
 export function enableGA4() {
   const GA_ID = import.meta.env.VITE_GA_MEASUREMENT_ID ?? 'G-NE620GQKTX'
@@ -34,11 +37,10 @@ export function enableGA4() {
   script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_ID}`
   document.head.appendChild(script)
 
-  // Initialize dataLayer
+  // Initialize dataLayer — must use `arguments` object, not rest params
   window.dataLayer = window.dataLayer || []
-  function gtag(...args: unknown[]) {
-    window.dataLayer!.push(args)
-  }
+  // eslint-disable-next-line prefer-rest-params
+  function gtag() { window.dataLayer!.push(arguments) }
   gtag('js', new Date())
   gtag('config', GA_ID, { send_page_view: true })
 
