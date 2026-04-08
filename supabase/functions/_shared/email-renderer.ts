@@ -258,11 +258,11 @@ function renderBlock(block: ContentBlock, vars: Record<string, string>): string 
       const url = interpolate(block.url)
       if (!url) return ''
       return `
-    <div style="text-align: center; margin-bottom: 24px;">
-      <a href="${url}" style="display: inline-block; background: linear-gradient(135deg, #8026FA 0%, #924CEC 100%); color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px;">
-        ${escapeHtml(text)}
+    <p style="margin: 0 0 24px 0;">
+      <a href="${url}" style="color: #8026FA; font-weight: 600; font-size: 16px; text-decoration: none;">
+        ${escapeHtml(text)} &rarr;
       </a>
-    </div>`
+    </p>`
     }
 
     case 'divider':
