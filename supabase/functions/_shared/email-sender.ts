@@ -30,6 +30,7 @@ const SENDER_EMAIL = 'HOCKIA <team@inhockia.com>'
 const REPLY_TO_EMAIL = 'team@inhockia.com'
 const HOCKIA_BASE_URL = Deno.env.get('PUBLIC_SITE_URL') ?? 'https://inhockia.com'
 const UNSUBSCRIBE_URL = `${HOCKIA_BASE_URL}/settings`
+const UNSUBSCRIBE_MAILTO = 'mailto:team@inhockia.com?subject=Unsubscribe'
 
 const BATCH_SIZE = 100
 const BATCH_API_DELAY_MS = 600
@@ -221,7 +222,7 @@ export async function sendTrackedEmail(params: {
           text,
           tags,
           headers: {
-            'List-Unsubscribe': `<${UNSUBSCRIBE_URL}>`,
+            'List-Unsubscribe': `<${UNSUBSCRIBE_URL}>, <${UNSUBSCRIBE_MAILTO}>`,
             'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
           },
         }),
@@ -485,7 +486,7 @@ export async function sendTrackedBatch(params: {
         text: content.text,
         tags,
         headers: {
-          'List-Unsubscribe': `<${UNSUBSCRIBE_URL}>`,
+          'List-Unsubscribe': `<${UNSUBSCRIBE_URL}>, <${UNSUBSCRIBE_MAILTO}>`,
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
         },
       }

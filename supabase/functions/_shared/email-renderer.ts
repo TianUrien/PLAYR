@@ -339,35 +339,35 @@ export function renderContentBlocks(
 
   const footerHtml = isOutreach
     ? `<p style="color: #9ca3af; font-size: 12px; margin: 0;">
-      You received this email because we believe your organization may benefit from HOCKIA.<br>
-      <a href="https://inhockia.com" style="color: #8026FA; text-decoration: none;">Learn more about HOCKIA</a>
+      You received this email because we thought your organization might be interested in HOCKIA.<br>
+      <a href="mailto:team@inhockia.com?subject=Unsubscribe" style="color: #8026FA; text-decoration: none;">Unsubscribe</a> · <a href="https://inhockia.com" style="color: #8026FA; text-decoration: none;">Learn more</a>
     </p>`
     : `<p style="color: #9ca3af; font-size: 12px; margin: 0;">
-      You're receiving this because you're on HOCKIA.<br>
-      <a href="${settingsUrl}" style="color: #8026FA; text-decoration: none;">Manage notification preferences</a>
+      You're receiving this because you have a HOCKIA account.<br>
+      <a href="${settingsUrl}" style="color: #8026FA; text-decoration: none;">Notification settings</a>
     </p>`
 
   const html = `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
 
   <!-- Header -->
-  <div style="background: linear-gradient(135deg, #8026FA 0%, #924CEC 100%); padding: 32px 24px; border-radius: 16px 16px 0 0; text-align: center;">
-    <img src="https://www.inhockia.com/hockia-logo-white.png" alt="HOCKIA" width="120" height="29" style="height: 29px; width: 120px;" />
+  <div style="padding: 16px 0 24px 0; text-align: left;">
+    <img src="https://www.inhockia.com/hockia-logo-white.png" alt="HOCKIA" width="100" height="24" style="height: 24px; width: 100px; background: #8026FA; padding: 8px 12px; border-radius: 6px;" />
   </div>
 
   <!-- Main Content -->
-  <div style="background: #ffffff; padding: 32px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
+  <div style="padding: 0 0 24px 0;">
     ${bodyContent}
   </div>
 
   <!-- Footer -->
-  <div style="background: #f3f4f6; padding: 20px 24px; border-radius: 0 0 16px 16px; border: 1px solid #e5e7eb; border-top: none; text-align: center;">
+  <div style="border-top: 1px solid #e5e7eb; padding: 16px 0 0 0; text-align: left;">
     ${footerHtml}
   </div>
 

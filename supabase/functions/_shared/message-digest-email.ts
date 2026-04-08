@@ -115,45 +115,36 @@ export function generateEmailHtml(
 
   return `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${heading}</title>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
 
-  <!-- Header -->
-  <div style="background: linear-gradient(135deg, #8026FA 0%, #924CEC 100%); padding: 32px 24px; border-radius: 16px 16px 0 0; text-align: center;">
-    <img src="https://www.inhockia.com/hockia-logo-white.png" alt="HOCKIA" width="120" height="29" style="height: 29px; width: 120px;" />
+  <div style="padding: 16px 0 24px 0; text-align: left;">
+    <img src="https://www.inhockia.com/hockia-logo-white.png" alt="HOCKIA" width="100" height="24" style="height: 24px; width: 100px; background: #8026FA; padding: 8px 12px; border-radius: 6px;" />
   </div>
 
-  <!-- Main Content -->
-  <div style="background: #ffffff; padding: 32px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
+  <div style="padding: 0 0 24px 0;">
 
-    <h1 style="color: #1f2937; margin: 0 0 8px 0; font-size: 24px; font-weight: 700;">${heading}</h1>
+    <h1 style="color: #1f2937; margin: 0 0 8px 0; font-size: 22px; font-weight: 700;">${heading}</h1>
     <p style="color: #6b7280; margin: 0 0 24px 0; font-size: 16px;">Hi ${firstName}, you have unread messages on HOCKIA.</p>
 
-    <!-- Conversation Cards -->
     <div style="margin-bottom: 24px;">
       ${conversationCards}
     </div>
 
-    <!-- CTA Button -->
-    <div style="text-align: center; margin-bottom: 24px;">
-      <a href="${ctaUrl}"
-         style="display: inline-block; background: linear-gradient(135deg, #8026FA 0%, #924CEC 100%); color: #ffffff; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px;">
-        ${ctaLabel}
-      </a>
-    </div>
+    <p style="margin: 0;">
+      <a href="${ctaUrl}" style="color: #8026FA; font-weight: 600; text-decoration: none;">${ctaLabel} &rarr;</a>
+    </p>
 
   </div>
 
-  <!-- Footer -->
-  <div style="background: #f3f4f6; padding: 20px 24px; border-radius: 0 0 16px 16px; border: 1px solid #e5e7eb; border-top: none; text-align: center;">
+  <div style="border-top: 1px solid #e5e7eb; padding: 16px 0 0 0; text-align: left;">
     <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-      You're receiving this because you're on HOCKIA.<br>
-      <a href="${UNSUBSCRIBE_URL}" style="color: #8026FA; text-decoration: none;">Manage notification preferences</a>
+      You're receiving this because you have a HOCKIA account.<br>
+      <a href="${UNSUBSCRIBE_URL}" style="color: #8026FA; text-decoration: none;">Notification settings</a>
     </p>
   </div>
 
@@ -272,7 +263,7 @@ export async function sendEmail(
         html,
         text,
         headers: {
-          'List-Unsubscribe': `<${UNSUBSCRIBE_URL}>`,
+          'List-Unsubscribe': `<${UNSUBSCRIBE_URL}>, <mailto:team@inhockia.com?subject=Unsubscribe>`,
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
         },
       }),

@@ -3,145 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Verify your HOCKIA email</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      line-height: 1.6;
-      color: #1f2937;
-      background-color: #f3f4f6;
-      margin: 0;
-      padding: 0;
-    }
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .card {
-      background-color: #ffffff;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      padding: 40px;
-      margin: 20px 0;
-    }
-    .logo {
-      text-align: center;
-      margin-bottom: 30px;
-    }
-    .logo img {
-      height: 48px;
-    }
-    h1 {
-      color: #111827;
-      font-size: 24px;
-      font-weight: 700;
-      margin: 0 0 16px;
-      text-align: center;
-    }
-    p {
-      margin: 0 0 16px;
-      color: #4b5563;
-    }
-    .button-container {
-      text-align: center;
-      margin: 32px 0;
-    }
-    .button {
-      display: inline-block;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-      color: #ffffff !important;
-      text-decoration: none;
-      padding: 16px 32px;
-      border-radius: 8px;
-      font-weight: 600;
-      font-size: 16px;
-    }
-    .mobile-tip {
-      background-color: #fef3c7;
-      border: 1px solid #fcd34d;
-      border-radius: 8px;
-      padding: 16px;
-      margin: 24px 0;
-    }
-    .mobile-tip-title {
-      color: #92400e;
-      font-weight: 600;
-      font-size: 14px;
-      margin: 0 0 8px;
-    }
-    .mobile-tip-text {
-      color: #a16207;
-      font-size: 13px;
-      margin: 0;
-    }
-    .footer {
-      text-align: center;
-      color: #9ca3af;
-      font-size: 12px;
-      margin-top: 32px;
-    }
-    .footer a {
-      color: #6366f1;
-      text-decoration: none;
-    }
-    .divider {
-      border: none;
-      border-top: 1px solid #e5e7eb;
-      margin: 24px 0;
-    }
-  </style>
 </head>
-<body>
-  <div class="container">
-    <div class="card">
-      <div class="logo">
-        <img src="https://inhockia.com/hockia-logo-white.png" alt="HOCKIA" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 12px 24px; border-radius: 8px;">
-      </div>
-      
-      <h1>Verify your email address</h1>
-      
-      <p>Welcome to HOCKIA! You're one step away from joining the field hockey community.</p>
-      
-      <p>Click the button below to verify your email address and complete your account setup:</p>
-      
-      <div class="button-container">
-        <a href="{{ .ConfirmationURL }}" class="button">Verify Email Address</a>
-      </div>
-      
-      <!-- Mobile tip for in-app browser users -->
-      <div class="mobile-tip">
-        <p class="mobile-tip-title">📱 Opening on mobile?</p>
-        <p class="mobile-tip-text">
-          If you're opening this email from Instagram, WhatsApp, or another app, 
-          <strong>tap and hold</strong> the button above, then select 
-          <strong>"Open in Safari"</strong> or <strong>"Open in Browser"</strong> 
-          for the best experience.
-        </p>
-      </div>
-      
-      <hr class="divider">
-      
-      <p style="font-size: 13px; color: #6b7280;">
-        If the button doesn't work, copy and paste this link into your browser:
-      </p>
-      <p style="font-size: 12px; word-break: break-all; color: #6366f1;">
-        {{ .ConfirmationURL }}
-      </p>
-      
-      <hr class="divider">
-      
-      <p style="font-size: 13px; color: #9ca3af;">
-        This verification link will expire in 24 hours. If you didn't create a HOCKIA account,
-        you can safely ignore this email.
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; background-color: #ffffff; margin: 0; padding: 0;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="padding: 16px 0 24px 0;">
+      <img src="https://inhockia.com/hockia-logo-white.png" alt="HOCKIA" style="height: 24px; width: 100px; background: #8026FA; padding: 8px 12px; border-radius: 6px;">
+    </div>
+
+    <h1 style="color: #111827; font-size: 22px; font-weight: 700; margin: 0 0 16px;">Verify your email address</h1>
+
+    <p style="margin: 0 0 16px; color: #4b5563;">Welcome to HOCKIA! Click the button below to verify your email and complete your account setup:</p>
+
+    <div style="margin: 24px 0;">
+      <a href="{{ .ConfirmationURL }}" style="display: inline-block; background: #8026FA; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">Verify Email Address</a>
+    </div>
+
+    <div style="background-color: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px 16px; margin: 24px 0;">
+      <p style="color: #92400e; font-weight: 600; font-size: 14px; margin: 0 0 4px;">Opening on mobile?</p>
+      <p style="color: #a16207; font-size: 13px; margin: 0;">
+        If you're opening this from Instagram, WhatsApp, or another app,
+        <strong>tap and hold</strong> the button above, then select
+        <strong>"Open in Safari"</strong> or <strong>"Open in Browser"</strong>.
       </p>
     </div>
-    
-    <div class="footer">
-      <p>HOCKIA – The Home of Field Hockey</p>
-      <p>
-        <a href="https://inhockia.com/privacy-policy">Privacy Policy</a> ·
-        <a href="https://inhockia.com/terms">Terms of Service</a>
+
+    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;">
+
+    <p style="font-size: 13px; color: #6b7280; margin: 0 0 8px;">
+      If the button doesn't work, copy and paste this link into your browser:
+    </p>
+    <p style="font-size: 12px; word-break: break-all; color: #8026FA; margin: 0 0 16px;">
+      {{ .ConfirmationURL }}
+    </p>
+
+    <p style="font-size: 13px; color: #9ca3af; margin: 0 0 24px;">
+      This link expires in 24 hours. If you didn't create a HOCKIA account, you can ignore this email.
+    </p>
+
+    <div style="border-top: 1px solid #e5e7eb; padding: 16px 0 0 0;">
+      <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+        HOCKIA &mdash; The Home of Field Hockey<br>
+        <a href="https://inhockia.com/privacy-policy" style="color: #8026FA; text-decoration: none;">Privacy Policy</a> &middot;
+        <a href="https://inhockia.com/terms" style="color: #8026FA; text-decoration: none;">Terms of Service</a>
       </p>
     </div>
   </div>

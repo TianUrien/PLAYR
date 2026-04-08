@@ -44,25 +44,25 @@ interface ReminderContent {
 
 const REMINDER_CONTENT: Record<number, ReminderContent> = {
   1: {
-    subject: 'Complete your HOCKIA profile and start connecting',
-    heading: 'Your profile is waiting for you \uD83C\uDFD1',
+    subject: 'Finish setting up your HOCKIA profile',
+    heading: 'Your profile is waiting for you',
     bodyText:
       "You're one step away from joining the field hockey community. Complete your profile to discover opportunities, connect with players and coaches, and showcase your skills.",
     ctaLabel: 'Complete My Profile',
   },
   2: {
     subject: 'Your HOCKIA profile is almost ready',
-    heading: 'Don\'t miss out \uD83C\uDFD1',
+    heading: 'Pick up where you left off',
     bodyText:
-      "Players and coaches on HOCKIA are already connecting and finding opportunities. Don't miss out — finish setting up your profile to get started.",
+      "Players and coaches on HOCKIA are connecting and finding opportunities. Finish setting up your profile to get started.",
     ctaLabel: 'Finish Setup',
   },
   3: {
-    subject: 'Last chance to complete your HOCKIA profile',
-    heading: 'We\'re still waiting for you \uD83C\uDFD1',
+    subject: 'Your HOCKIA profile is still incomplete',
+    heading: 'Quick reminder about your profile',
     bodyText:
-      "We noticed you haven't finished setting up your HOCKIA profile. Complete it now to start receiving opportunity notifications and connect with the community.",
-    ctaLabel: 'Complete Profile Now',
+      "We noticed you haven't finished setting up your HOCKIA profile yet. Complete it to start receiving opportunity notifications and connect with the community.",
+    ctaLabel: 'Complete Profile',
   },
 }
 

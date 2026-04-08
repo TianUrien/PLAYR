@@ -121,35 +121,30 @@ export function generateEmailHtml(
 
   return `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Application on HOCKIA</title>
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
-  
-  <!-- Header -->
-  <div style="background: linear-gradient(135deg, #8026FA 0%, #924CEC 100%); padding: 32px 24px; border-radius: 16px 16px 0 0; text-align: center;">
-    <img src="https://www.inhockia.com/hockia-logo-white.png" alt="HOCKIA" width="120" height="29" style="height: 29px; width: 120px;" />
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+
+  <div style="padding: 16px 0 24px 0; text-align: left;">
+    <img src="https://www.inhockia.com/hockia-logo-white.png" alt="HOCKIA" width="100" height="24" style="height: 24px; width: 100px; background: #8026FA; padding: 8px 12px; border-radius: 6px;" />
   </div>
-  
-  <!-- Main Content -->
-  <div style="background: #ffffff; padding: 32px 24px; border-left: 1px solid #e5e7eb; border-right: 1px solid #e5e7eb;">
-    
-    <h1 style="color: #1f2937; margin: 0 0 8px 0; font-size: 24px; font-weight: 700;">You've received a new application! 🏑</h1>
-    <p style="color: #6b7280; margin: 0 0 24px 0; font-size: 16px;">You have a new application for one of your opportunities.</p>
-    
-    <!-- Opportunity Card -->
+
+  <div style="padding: 0 0 24px 0;">
+
+    <h1 style="color: #1f2937; margin: 0 0 8px 0; font-size: 22px; font-weight: 700;">New application received</h1>
+    <p style="color: #6b7280; margin: 0 0 24px 0; font-size: 16px;">Someone applied to one of your opportunities.</p>
+
     <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px;">
       <p style="color: #6b7280; margin: 0 0 4px 0; font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Opportunity</p>
       <h2 style="color: #1f2937; margin: 0; font-size: 18px; font-weight: 600;">${opportunity.title}</h2>
     </div>
-    
-    <!-- Applicant Card -->
+
     <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
       <p style="color: #6b7280; margin: 0 0 12px 0; font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;">Applicant</p>
-      
+
       <table cellpadding="0" cellspacing="0" border="0" style="width: 100%;">
         <tr>
           <td style="vertical-align: top; width: 60px;">
@@ -162,29 +157,19 @@ export function generateEmailHtml(
         </tr>
       </table>
     </div>
-    
-    <!-- CTA Button -->
-    <div style="text-align: center;">
-      <a href="${profileUrl}" style="display: inline-block; background: linear-gradient(135deg, #8026FA 0%, #924CEC 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-        View Profile
-      </a>
-    </div>
-    
-    <p style="color: #9ca3af; font-size: 13px; margin: 24px 0 0 0; text-align: center;">
-      Open their profile to learn more.
+
+    <p style="margin: 0;">
+      <a href="${profileUrl}" style="color: #8026FA; font-weight: 600; text-decoration: none;">View profile &rarr;</a>
     </p>
   </div>
-  
-  <!-- Footer -->
-  <div style="background: #f3f4f6; padding: 24px; border-radius: 0 0 16px 16px; border: 1px solid #e5e7eb; border-top: none; text-align: center;">
-    <p style="color: #6b7280; font-size: 13px; margin: 0 0 8px 0;">
-      You're receiving this because you're on HOCKIA.
-    </p>
+
+  <div style="border-top: 1px solid #e5e7eb; padding: 16px 0 0 0; text-align: left;">
     <p style="color: #9ca3af; font-size: 12px; margin: 0;">
-      <a href="${HOCKIA_BASE_URL}/settings" style="color: #8026FA; text-decoration: none;">Manage notification preferences</a>
+      You're receiving this because you have a HOCKIA account.<br>
+      <a href="${HOCKIA_BASE_URL}/settings" style="color: #8026FA; text-decoration: none;">Notification settings</a>
     </p>
   </div>
-  
+
 </body>
 </html>
   `.trim()
@@ -215,7 +200,7 @@ export function generateEmailText(
 
   // Build text content
   const lines: string[] = [
-    "You've received a new application on HOCKIA! 🏑",
+    "New application received on HOCKIA",
     '',
     'You have a new application for one of your opportunities.',
     '',
@@ -335,7 +320,7 @@ export async function sendEmail(
         html,
         text,
         headers: {
-          'List-Unsubscribe': `<${UNSUBSCRIBE_URL}>`,
+          'List-Unsubscribe': `<${UNSUBSCRIBE_URL}>, <mailto:team@inhockia.com?subject=Unsubscribe>`,
           'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
         },
       }),
