@@ -21,8 +21,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(title, {
       body: body || 'You have a new notification',
-      icon: icon || '/Favicon-logo.svg',
-      badge: badge || '/Favicon-logo.svg',
+      icon: icon || '/favicon-96x96.png',
+      badge: badge || '/favicon-96x96.png',
       tag: tag || undefined,
       renotify: !!tag,
       data: { url: url || '/home' },

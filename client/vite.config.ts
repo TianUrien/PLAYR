@@ -33,7 +33,7 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: 'prompt',
-        includeAssets: ['favicon.ico', 'Favicon-logo.svg', 'New-LogoBlack.svg', 'WhiteLogo.svg'],
+        includeAssets: ['favicon.ico', 'WhiteLogo.svg', 'HockiaLogoBlack.svg', 'apple-touch-icon.png'],
         manifest: false, // We use our own manifest.json
         workbox: {
           importScripts: ['/push-sw.js'],
