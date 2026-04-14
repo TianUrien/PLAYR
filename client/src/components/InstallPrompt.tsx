@@ -168,7 +168,7 @@ export default function InstallPrompt() {
 
         <div className="flex items-start gap-3">
           <img
-            src="/pwa-icons/ios/100.png"
+            src="/apple-touch-icon.png"
             alt="HOCKIA"
             className="w-10 h-10 rounded-xl flex-shrink-0"
           />
