@@ -69,9 +69,8 @@ export function SharePostSheet({
     const fetchRecentContacts = async () => {
       setIsLoadingRecent(true)
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not in generated types
-        const { data, error } = await (supabase.rpc as any)('get_conversations_for_user', {
-          user_uuid: user.id,
+        const { data, error } = await supabase.rpc('get_user_conversations', {
+          p_user_id: user.id,
         })
 
         if (error) throw error
@@ -81,15 +80,15 @@ export function SharePostSheet({
           .slice(0, 8)
           .map(
             (conv: {
-              other_user_id: string
-              other_user_name: string
-              other_user_avatar: string | null
-              other_user_role: string
+              other_participant_id: string
+              other_participant_name: string
+              other_participant_avatar: string | null
+              other_participant_role: string
             }) => ({
-              id: conv.other_user_id,
-              full_name: conv.other_user_name,
-              avatar_url: conv.other_user_avatar,
-              role: conv.other_user_role as ContactResult['role'],
+              id: conv.other_participant_id,
+              full_name: conv.other_participant_name,
+              avatar_url: conv.other_participant_avatar,
+              role: conv.other_participant_role as ContactResult['role'],
             }),
           )
 

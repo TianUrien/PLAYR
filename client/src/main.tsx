@@ -103,6 +103,8 @@ if ('serviceWorker' in navigator) {
 
 const sentryEnvironment = import.meta.env.MODE === 'production' ? 'production' : 'development'
 
+const isNativePlatform = Capacitor.isNativePlatform()
+
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
   enabled: Boolean(import.meta.env.VITE_SENTRY_DSN),
@@ -112,11 +114,13 @@ Sentry.init({
   release: import.meta.env.VITE_APP_VERSION || import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || 'unknown',
   integrations: [
     Sentry.browserTracingIntegration(),
-    Sentry.replayIntegration(),
+    // Disable session replay on native — sends user interaction data to sentry.io
+    // which Apple considers third-party tracking (Guideline 5.1.2)
+    ...(!isNativePlatform ? [Sentry.replayIntegration()] : []),
   ],
   tracesSampleRate: sentryEnvironment === 'production' ? 0.3 : 1.0,
-  replaysSessionSampleRate: sentryEnvironment === 'production' ? 0.05 : 1.0,
-  replaysOnErrorSampleRate: 1.0,
+  replaysSessionSampleRate: isNativePlatform ? 0 : (sentryEnvironment === 'production' ? 0.05 : 1.0),
+  replaysOnErrorSampleRate: isNativePlatform ? 0 : 1.0,
   beforeSend(event) {
     // Scrub PII from error events before sending to Sentry
     if (event.user) {
