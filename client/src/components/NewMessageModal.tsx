@@ -54,7 +54,8 @@ export default function NewMessageModal({ isOpen, onClose }: NewMessageModalProp
         if (error) throw error
 
         // Extract the other users from conversations
-        const contacts: SearchResult[] = (data || [])
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC return type not generated
+        const contacts: SearchResult[] = ((data || []) as any[])
           .slice(0, 5)
           .map((conv: { other_participant_id: string; other_participant_name: string; other_participant_avatar: string | null; other_participant_role: string }) => ({
             id: conv.other_participant_id,
@@ -90,7 +91,7 @@ export default function NewMessageModal({ isOpen, onClose }: NewMessageModalProp
         .from('profiles')
         .select('id, full_name, avatar_url, role, base_location, current_club')
         .eq('onboarding_completed', true)
-        .neq('id', user?.id) // Exclude current user
+        .neq('id', user?.id ?? '') // Exclude current user
         .or(`full_name.ilike.${searchPattern},current_club.ilike.${searchPattern}`)
         .limit(10)
 
