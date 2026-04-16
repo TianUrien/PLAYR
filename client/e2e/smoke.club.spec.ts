@@ -39,6 +39,12 @@ test.describe('@smoke club', () => {
     await page.waitForURL(url => !url.pathname.includes('/complete-profile'), { timeout: CLUB_H1_TIMEOUT_MS })
     await waitForAppReady(page)
 
+    // Debug: log what the page shows if the assertion will fail
+    const url = page.url()
+    const bodyText = await page.locator('body').innerText().catch(() => '[could not read body]')
+    console.log(`[DEBUG club-dashboard] URL: ${url}`)
+    console.log(`[DEBUG club-dashboard] Body text (first 500 chars): ${bodyText.slice(0, 500)}`)
+
     // Club name should render as H1
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: CLUB_H1_TIMEOUT_MS })
 
