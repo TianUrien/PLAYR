@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       admin_audit_logs: {
@@ -813,6 +788,7 @@ export type Database = {
       }
       email_campaigns: {
         Row: {
+          ab_variants: Json | null
           audience_filter: Json | null
           audience_source: string
           category: string
@@ -831,6 +807,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ab_variants?: Json | null
           audience_filter?: Json | null
           audience_source?: string
           category?: string
@@ -849,6 +826,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ab_variants?: Json | null
           audience_filter?: Json | null
           audience_source?: string
           category?: string
@@ -946,6 +924,7 @@ export type Database = {
           status: string
           subject: string
           template_key: string
+          variant: string | null
         }
         Insert: {
           bounced_at?: string | null
@@ -965,6 +944,7 @@ export type Database = {
           status?: string
           subject: string
           template_key: string
+          variant?: string | null
         }
         Update: {
           bounced_at?: string | null
@@ -984,6 +964,7 @@ export type Database = {
           status?: string
           subject?: string
           template_key?: string
+          variant?: string | null
         }
         Relationships: [
           {
@@ -1514,6 +1495,7 @@ export type Database = {
           custom_benefits: string[]
           description: string | null
           duration_text: string | null
+          eu_passport_required: boolean
           gender: Database["public"]["Enums"]["opportunity_gender"] | null
           id: string
           location_city: string
@@ -1543,6 +1525,7 @@ export type Database = {
           custom_benefits?: string[]
           description?: string | null
           duration_text?: string | null
+          eu_passport_required?: boolean
           gender?: Database["public"]["Enums"]["opportunity_gender"] | null
           id?: string
           location_city: string
@@ -1572,6 +1555,7 @@ export type Database = {
           custom_benefits?: string[]
           description?: string | null
           duration_text?: string | null
+          eu_passport_required?: boolean
           gender?: Database["public"]["Enums"]["opportunity_gender"] | null
           id?: string
           location_city?: string
@@ -1718,6 +1702,7 @@ export type Database = {
           first_contacted_at: string | null
           id: string
           imported_by: string | null
+          instagram: string | null
           last_contacted_at: string | null
           notes: string | null
           phone: string | null
@@ -1738,6 +1723,7 @@ export type Database = {
           first_contacted_at?: string | null
           id?: string
           imported_by?: string | null
+          instagram?: string | null
           last_contacted_at?: string | null
           notes?: string | null
           phone?: string | null
@@ -1758,6 +1744,7 @@ export type Database = {
           first_contacted_at?: string | null
           id?: string
           imported_by?: string | null
+          instagram?: string | null
           last_contacted_at?: string | null
           notes?: string | null
           phone?: string | null
@@ -2295,9 +2282,9 @@ export type Database = {
           browse_anonymously: boolean
           career_entry_count: number
           club_bio: string | null
+          club_history: string | null
           coach_specialization: string | null
           coach_specialization_custom: string | null
-          club_history: string | null
           contact_email: string | null
           contact_email_public: boolean
           created_at: string
@@ -2314,6 +2301,7 @@ export type Database = {
           is_test_account: boolean
           last_active_at: string | null
           last_message_email_at: string | null
+          last_platform: string | null
           last_profile_view_email_at: string | null
           league_division: string | null
           mens_league_division: string | null
@@ -2364,9 +2352,9 @@ export type Database = {
           browse_anonymously?: boolean
           career_entry_count?: number
           club_bio?: string | null
+          club_history?: string | null
           coach_specialization?: string | null
           coach_specialization_custom?: string | null
-          club_history?: string | null
           contact_email?: string | null
           contact_email_public?: boolean
           created_at?: string
@@ -2383,6 +2371,7 @@ export type Database = {
           is_test_account?: boolean
           last_active_at?: string | null
           last_message_email_at?: string | null
+          last_platform?: string | null
           last_profile_view_email_at?: string | null
           league_division?: string | null
           mens_league_division?: string | null
@@ -2433,9 +2422,9 @@ export type Database = {
           browse_anonymously?: boolean
           career_entry_count?: number
           club_bio?: string | null
+          club_history?: string | null
           coach_specialization?: string | null
           coach_specialization_custom?: string | null
-          club_history?: string | null
           contact_email?: string | null
           contact_email_public?: boolean
           created_at?: string
@@ -2452,6 +2441,7 @@ export type Database = {
           is_test_account?: boolean
           last_active_at?: string | null
           last_message_email_at?: string | null
+          last_platform?: string | null
           last_profile_view_email_at?: string | null
           league_division?: string | null
           mens_league_division?: string | null
@@ -2569,32 +2559,38 @@ export type Database = {
       }
       push_subscriptions: {
         Row: {
-          auth: string
+          auth: string | null
           created_at: string
-          endpoint: string
+          endpoint: string | null
+          fcm_token: string | null
           id: string
           last_used_at: string | null
-          p256dh: string
+          p256dh: string | null
+          platform: string | null
           profile_id: string
           user_agent: string | null
         }
         Insert: {
-          auth: string
+          auth?: string | null
           created_at?: string
-          endpoint: string
+          endpoint?: string | null
+          fcm_token?: string | null
           id?: string
           last_used_at?: string | null
-          p256dh: string
+          p256dh?: string | null
+          platform?: string | null
           profile_id: string
           user_agent?: string | null
         }
         Update: {
-          auth?: string
+          auth?: string | null
           created_at?: string
-          endpoint?: string
+          endpoint?: string | null
+          fcm_token?: string | null
           id?: string
           last_used_at?: string | null
-          p256dh?: string
+          p256dh?: string | null
+          platform?: string | null
           profile_id?: string
           user_agent?: string | null
         }
@@ -2710,6 +2706,93 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      terms_acceptance: {
+        Row: {
+          accepted_at: string
+          id: string
+          user_id: string
+          version: string
+        }
+        Insert: {
+          accepted_at?: string
+          id?: string
+          user_id: string
+          version?: string
+        }
+        Update: {
+          accepted_at?: string
+          id?: string
+          user_id?: string
+          version?: string
+        }
+        Relationships: []
+      }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      user_devices: {
+        Row: {
+          created_at: string
+          id: string
+          is_pwa: boolean
+          last_seen_at: string
+          platform: string
+          profile_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_pwa?: boolean
+          last_seen_at?: string
+          platform: string
+          profile_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_pwa?: boolean
+          last_seen_at?: string
+          platform?: string
+          profile_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_devices_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_devices_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_engagement_daily: {
         Row: {
@@ -2852,6 +2935,63 @@ export type Database = {
           {
             foreignKeyName: "user_posts_author_id_fkey"
             columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_reports: {
+        Row: {
+          category: string
+          content_id: string | null
+          content_type: string | null
+          created_at: string
+          id: string
+          reason: string
+          reporter_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          target_id: string
+        }
+        Insert: {
+          category?: string
+          content_id?: string | null
+          content_type?: string | null
+          created_at?: string
+          id?: string
+          reason: string
+          reporter_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          target_id: string
+        }
+        Update: {
+          category?: string
+          content_id?: string | null
+          content_type?: string | null
+          created_at?: string
+          id?: string
+          reason?: string
+          reporter_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          target_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_reports_target_id_fkey"
+            columns: ["target_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_reports_target_id_fkey"
+            columns: ["target_id"]
             isOneToOne: false
             referencedRelation: "profiles_pending_country_review"
             referencedColumns: ["id"]
@@ -3259,6 +3399,7 @@ export type Database = {
           custom_benefits: string[] | null
           description: string | null
           duration_text: string | null
+          eu_passport_required: boolean | null
           gender: Database["public"]["Enums"]["opportunity_gender"] | null
           id: string | null
           location_city: string | null
@@ -3397,6 +3538,7 @@ export type Database = {
         Args: { p_images: Json; p_post_id: string; p_reason: string }
         Returns: undefined
       }
+      accept_terms: { Args: { p_version?: string }; Returns: undefined }
       acquire_profile_lock: { Args: { profile_id: string }; Returns: boolean }
       add_brand_ambassador: {
         Args: { p_brand_id: string; p_player_id: string }
@@ -3406,6 +3548,19 @@ export type Database = {
         Args: { p_template_id: string; p_version_number: number }
         Returns: undefined
       }
+      admin_add_outreach_contact: {
+        Args: {
+          p_club_name: string
+          p_contact_name?: string
+          p_country?: string
+          p_email: string
+          p_instagram?: string
+          p_notes?: string
+          p_role_at_club?: string
+        }
+        Returns: Json
+      }
+      admin_backfill_email_statuses: { Args: never; Returns: Json }
       admin_block_user: {
         Args: { p_profile_id: string; p_reason?: string }
         Returns: Json
@@ -3413,6 +3568,10 @@ export type Database = {
       admin_bulk_import_outreach_contacts: {
         Args: { p_contacts: Json }
         Returns: Json
+      }
+      admin_count_campaign_recipients: {
+        Args: { p_audience_filter?: Json; p_audience_source?: string }
+        Returns: number
       }
       admin_create_email_campaign:
         | {
@@ -3434,12 +3593,36 @@ export type Database = {
             }
             Returns: Json
           }
+        | {
+            Args: {
+              p_ab_variants?: Json
+              p_audience_filter?: Json
+              p_audience_source?: string
+              p_category?: string
+              p_name: string
+              p_template_id: string
+            }
+            Returns: Json
+          }
       admin_create_investor_token: {
         Args: { p_expires_in_days?: number; p_name?: string }
         Returns: Json
       }
+      admin_delete_email_campaign: {
+        Args: { p_campaign_id: string }
+        Returns: Json
+      }
       admin_delete_orphan_profile: {
         Args: { p_profile_id: string }
+        Returns: Json
+      }
+      admin_diagnose_email_metrics: { Args: never; Returns: Json }
+      admin_duplicate_email_campaign: {
+        Args: { p_campaign_id: string }
+        Returns: Json
+      }
+      admin_duplicate_email_template: {
+        Args: { p_template_id: string }
         Returns: Json
       }
       admin_get_activation_funnel: { Args: { p_days?: number }; Returns: Json }
@@ -3500,6 +3683,31 @@ export type Database = {
         Args: { p_campaign_id: string }
         Returns: Json
       }
+      admin_get_campaign_email_metrics: {
+        Args: { p_campaign_id: string }
+        Returns: {
+          bounced: number
+          clicked: number
+          delivered: number
+          opened: number
+          total: number
+        }[]
+      }
+      admin_get_campaign_variant_metrics: {
+        Args: { p_campaign_id: string }
+        Returns: {
+          bounced: number
+          clicked: number
+          delivered: number
+          opened: number
+          total: number
+          variant: string
+        }[]
+      }
+      admin_get_churn_analysis: {
+        Args: { p_days?: number; p_exclude_test?: boolean }
+        Returns: Json
+      }
       admin_get_club_activity: {
         Args: { p_days?: number; p_limit?: number; p_offset?: number }
         Returns: {
@@ -3518,7 +3726,32 @@ export type Database = {
       }
       admin_get_club_summary: { Args: never; Returns: Json }
       admin_get_command_center: { Args: { p_days?: number }; Returns: Json }
+      admin_get_community_analytics: {
+        Args: { p_days?: number; p_exclude_test?: boolean }
+        Returns: Json
+      }
+      admin_get_conversion_funnels: {
+        Args: { p_days?: number; p_exclude_test?: boolean }
+        Returns: Json
+      }
+      admin_get_cross_feature_attribution: {
+        Args: {
+          p_days?: number
+          p_exclude_test?: boolean
+          p_window_hours?: number
+        }
+        Returns: Json
+      }
       admin_get_dashboard_stats: { Args: never; Returns: Json }
+      admin_get_device_users: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_platform?: string
+          p_search?: string
+        }
+        Returns: Json
+      }
       admin_get_discovery_analytics: {
         Args: { p_days?: number; p_exclude_test?: boolean }
         Returns: Json
@@ -3532,18 +3765,44 @@ export type Database = {
         }
         Returns: Json[]
       }
-      admin_get_email_engagement_explorer: {
+      admin_get_email_contacts: {
         Args: {
-          p_campaign_id?: string
           p_country?: string
           p_limit?: number
           p_offset?: number
           p_role?: string
-          p_status?: string
-          p_template_key?: string
+          p_search?: string
         }
         Returns: Json[]
       }
+      admin_get_email_contacts_summary: { Args: never; Returns: Json }
+      admin_get_email_engagement_explorer:
+        | {
+            Args: {
+              p_campaign_id?: string
+              p_country?: string
+              p_limit?: number
+              p_offset?: number
+              p_role?: string
+              p_status?: string
+              p_template_key?: string
+            }
+            Returns: Json[]
+          }
+        | {
+            Args: {
+              p_campaign_id?: string
+              p_country?: string
+              p_limit?: number
+              p_offset?: number
+              p_role?: string
+              p_since?: string
+              p_status?: string
+              p_template_key?: string
+              p_until?: string
+            }
+            Returns: Json[]
+          }
       admin_get_email_overview: { Args: { p_days?: number }; Returns: Json }
       admin_get_email_send_stats: {
         Args: {
@@ -3573,6 +3832,10 @@ export type Database = {
         Args: { p_days?: number; p_exclude_test?: boolean }
         Returns: Json
       }
+      admin_get_feed_analytics: {
+        Args: { p_days?: number; p_exclude_test?: boolean }
+        Returns: Json
+      }
       admin_get_friendship_metrics: {
         Args: { p_days?: number; p_exclude_test?: boolean; p_role?: string }
         Returns: Json
@@ -3589,6 +3852,14 @@ export type Database = {
           total_signups: number
         }[]
       }
+      admin_get_marketplace_health: {
+        Args: { p_days?: number; p_exclude_test?: boolean }
+        Returns: Json
+      }
+      admin_get_messaging_health: {
+        Args: { p_days?: number; p_exclude_test?: boolean }
+        Returns: Json
+      }
       admin_get_messaging_metrics: {
         Args: { p_days?: number; p_exclude_test?: boolean; p_role?: string }
         Returns: Json
@@ -3597,107 +3868,69 @@ export type Database = {
         Args: { p_month?: number; p_year?: number }
         Returns: Json
       }
-      admin_get_opportunities:
-        | {
-            Args: {
-              p_limit?: number
-              p_offset?: number
-              p_search?: string
-              p_sort?: string
-              p_status?: Database["public"]["Enums"]["opportunity_status"]
-            }
-            Returns: {
-              application_count: number
-              club_avatar_url: string
-              club_id: string
-              club_name: string
-              created_at: string
-              gender: Database["public"]["Enums"]["opportunity_gender"]
-              id: string
-              location_city: string
-              location_country: string
-              opportunity_type: string
-              position: Database["public"]["Enums"]["opportunity_position"]
-              priority: Database["public"]["Enums"]["opportunity_priority"]
-              published_at: string
-              status: Database["public"]["Enums"]["opportunity_status"]
-              title: string
-              total_count: number
-              updated_at: string
-            }[]
-          }
-        | {
-            Args: {
-              p_club_id?: string
-              p_days?: number
-              p_limit?: number
-              p_offset?: number
-              p_status?: Database["public"]["Enums"]["opportunity_status"]
-            }
-            Returns: {
-              application_count: number
-              application_deadline: string
-              club_avatar_url: string
-              club_id: string
-              club_name: string
-              created_at: string
-              first_application_at: string
-              id: string
-              location_city: string
-              location_country: string
-              opportunity_type: Database["public"]["Enums"]["opportunity_type"]
-              pending_count: number
-              position: Database["public"]["Enums"]["opportunity_position"]
-              published_at: string
-              shortlisted_count: number
-              status: Database["public"]["Enums"]["opportunity_status"]
-              time_to_first_app_minutes: number
-              title: string
-              total_count: number
-            }[]
-          }
-      admin_get_opportunity_applicants: {
-        Args: { p_limit?: number; p_offset?: number; p_opportunity_id: string }
+      admin_get_notification_effectiveness: {
+        Args: { p_days?: number; p_exclude_test?: boolean }
+        Returns: Json
+      }
+      admin_get_onboarding_funnel_detail: {
+        Args: { p_days?: number; p_exclude_test?: boolean; p_role?: string }
+        Returns: Json
+      }
+      admin_get_opportunities: {
+        Args: {
+          p_club_id?: string
+          p_days?: number
+          p_limit?: number
+          p_offset?: number
+          p_status?: Database["public"]["Enums"]["opportunity_status"]
+        }
         Returns: {
-          applicant_avatar_url: string
-          applicant_id: string
-          applicant_name: string
-          applicant_role: string
+          application_count: number
+          application_deadline: string
+          club_avatar_url: string
+          club_id: string
+          club_name: string
+          created_at: string
+          first_application_at: string
+          id: string
+          location_city: string
+          location_country: string
+          opportunity_type: Database["public"]["Enums"]["opportunity_type"]
+          pending_count: number
+          position: Database["public"]["Enums"]["opportunity_position"]
+          published_at: string
+          shortlisted_count: number
+          status: Database["public"]["Enums"]["opportunity_status"]
+          time_to_first_app_minutes: number
+          title: string
+          total_count: number
+        }[]
+      }
+      admin_get_opportunity_applicants: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_opportunity_id: string
+          p_status?: Database["public"]["Enums"]["application_status"]
+        }
+        Returns: {
           application_id: string
-          application_message: string
-          application_status: string
           applied_at: string
+          avatar_url: string
+          highlight_video_url: string
+          nationality: string
+          onboarding_completed: boolean
+          player_email: string
+          player_id: string
+          player_name: string
+          position: string
+          status: Database["public"]["Enums"]["application_status"]
           total_count: number
         }[]
       }
       admin_get_opportunity_detail: {
         Args: { p_opportunity_id: string }
-        Returns: {
-          application_count: number
-          benefits: string[]
-          closed_at: string
-          club_avatar_url: string
-          club_id: string
-          club_name: string
-          created_at: string
-          description: string
-          gender: Database["public"]["Enums"]["opportunity_gender"]
-          id: string
-          location_city: string
-          location_country: string
-          opportunity_type: string
-          pending_count: number
-          position: Database["public"]["Enums"]["opportunity_position"]
-          priority: Database["public"]["Enums"]["opportunity_priority"]
-          published_at: string
-          rejected_count: number
-          requirements: string[]
-          shortlisted_count: number
-          start_date: string
-          status: Database["public"]["Enums"]["opportunity_status"]
-          title: string
-          updated_at: string
-        }[]
+        Returns: Json
       }
       admin_get_outreach_contacts: {
         Args: {
@@ -3711,6 +3944,18 @@ export type Database = {
       }
       admin_get_outreach_stats: { Args: never; Returns: Json }
       admin_get_player_funnel: { Args: { p_days?: number }; Returns: Json }
+      admin_get_preference_summary: { Args: never; Returns: Json }
+      admin_get_preference_users: {
+        Args: {
+          p_enabled?: boolean
+          p_limit?: number
+          p_offset?: number
+          p_preference: string
+          p_role?: string
+          p_search?: string
+        }
+        Returns: Json
+      }
       admin_get_profile_completeness_distribution: {
         Args: { p_role?: string }
         Returns: {
@@ -3737,6 +3982,38 @@ export type Database = {
         Args: { p_days?: number; p_exclude_test?: boolean; p_role?: string }
         Returns: Json
       }
+      admin_get_reports: {
+        Args: {
+          p_category?: string
+          p_limit?: number
+          p_offset?: number
+          p_status?: string
+        }
+        Returns: {
+          category: string
+          content_id: string
+          content_type: string
+          created_at: string
+          id: string
+          reason: string
+          reporter_avatar: string
+          reporter_id: string
+          reporter_name: string
+          reviewed_at: string
+          reviewed_by: string
+          reviewer_name: string
+          status: string
+          target_avatar: string
+          target_id: string
+          target_name: string
+          target_role: string
+          total_count: number
+        }[]
+      }
+      admin_get_retention_by_role: {
+        Args: { p_cohort_weeks?: number; p_exclude_test?: boolean }
+        Returns: Json
+      }
       admin_get_retention_cohorts: {
         Args: { p_months?: number }
         Returns: {
@@ -3747,6 +4024,10 @@ export type Database = {
           d7_pct: number
           signup_month: string
         }[]
+      }
+      admin_get_search_quality: {
+        Args: { p_days?: number; p_exclude_test?: boolean }
+        Returns: Json
       }
       admin_get_signup_trends: {
         Args: { p_days?: number }
@@ -3841,6 +4122,14 @@ export type Database = {
         Args: { p_country_id: number; p_field: string; p_profile_id: string }
         Returns: undefined
       }
+      admin_resolve_report: {
+        Args: {
+          p_admin_note?: string
+          p_new_status: string
+          p_report_id: string
+        }
+        Returns: undefined
+      }
       admin_revoke_investor_token: {
         Args: { p_token_id: string }
         Returns: boolean
@@ -3920,9 +4209,55 @@ export type Database = {
         Args: { p_is_test: boolean; p_profile_id: string }
         Returns: Json
       }
+      admin_toggle_email_template_active: {
+        Args: { p_is_active: boolean; p_template_id: string }
+        Returns: undefined
+      }
       admin_unblock_user: { Args: { p_profile_id: string }; Returns: Json }
-      admin_update_campaign_status: {
-        Args: { p_campaign_id: string; p_sent_count?: number; p_status: string }
+      admin_update_campaign_status:
+        | {
+            Args: {
+              p_campaign_id: string
+              p_sent_count?: number
+              p_status: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_campaign_id: string
+              p_sent_count?: number
+              p_status: string
+              p_total_recipients?: number
+            }
+            Returns: undefined
+          }
+      admin_update_email_campaign:
+        | {
+            Args: {
+              p_audience_filter?: Json
+              p_audience_source?: string
+              p_campaign_id: string
+              p_category?: string
+              p_name?: string
+              p_template_id?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_ab_variants?: Json
+              p_audience_filter?: Json
+              p_audience_source?: string
+              p_campaign_id: string
+              p_category?: string
+              p_name?: string
+              p_template_id?: string
+            }
+            Returns: Json
+          }
+      admin_update_email_template_name: {
+        Args: { p_name: string; p_template_id: string }
         Returns: undefined
       }
       admin_update_profile: {
@@ -3933,6 +4268,7 @@ export type Database = {
         Args: { p_batch?: number; p_retention_days?: number }
         Returns: number
       }
+      block_user: { Args: { p_blocked_id: string }; Returns: undefined }
       check_application_rate_limit: {
         Args: { p_user_id: string }
         Returns: Json
@@ -4016,9 +4352,9 @@ export type Database = {
           browse_anonymously: boolean
           career_entry_count: number
           club_bio: string | null
+          club_history: string | null
           coach_specialization: string | null
           coach_specialization_custom: string | null
-          club_history: string | null
           contact_email: string | null
           contact_email_public: boolean
           created_at: string
@@ -4035,6 +4371,7 @@ export type Database = {
           is_test_account: boolean
           last_active_at: string | null
           last_message_email_at: string | null
+          last_platform: string | null
           last_profile_view_email_at: string | null
           league_division: string | null
           mens_league_division: string | null
@@ -4077,6 +4414,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      content_check: { Args: { p_text: string }; Returns: string }
       create_and_claim_world_club: {
         Args: {
           p_club_name: string
@@ -4135,9 +4473,9 @@ export type Database = {
           browse_anonymously: boolean
           career_entry_count: number
           club_bio: string | null
+          club_history: string | null
           coach_specialization: string | null
           coach_specialization_custom: string | null
-          club_history: string | null
           contact_email: string | null
           contact_email_public: boolean
           created_at: string
@@ -4154,6 +4492,7 @@ export type Database = {
           is_test_account: boolean
           last_active_at: string | null
           last_message_email_at: string | null
+          last_platform: string | null
           last_profile_view_email_at: string | null
           league_division: string | null
           mens_league_division: string | null
@@ -4241,30 +4580,54 @@ export type Database = {
         Returns: number
       }
       delete_user_post: { Args: { p_post_id: string }; Returns: Json }
-      discover_profiles: {
-        Args: {
-          p_availability?: string
-          p_base_country_ids?: number[]
-          p_base_location?: string
-          p_coach_specializations?: string[]
-          p_country_ids?: number[]
-          p_eu_passport?: boolean
-          p_gender?: string
-          p_league_ids?: number[]
-          p_limit?: number
-          p_max_age?: number
-          p_min_age?: number
-          p_min_career_entries?: number
-          p_min_references?: number
-          p_nationality_country_ids?: number[]
-          p_offset?: number
-          p_positions?: string[]
-          p_roles?: string[]
-          p_search_text?: string
-          p_sort_by?: string
-        }
-        Returns: Json
-      }
+      discover_profiles:
+        | {
+            Args: {
+              p_availability?: string
+              p_base_country_ids?: number[]
+              p_base_location?: string
+              p_country_ids?: number[]
+              p_eu_passport?: boolean
+              p_gender?: string
+              p_league_ids?: number[]
+              p_limit?: number
+              p_max_age?: number
+              p_min_age?: number
+              p_min_career_entries?: number
+              p_min_references?: number
+              p_nationality_country_ids?: number[]
+              p_offset?: number
+              p_positions?: string[]
+              p_roles?: string[]
+              p_search_text?: string
+              p_sort_by?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_availability?: string
+              p_base_country_ids?: number[]
+              p_base_location?: string
+              p_coach_specializations?: string[]
+              p_country_ids?: number[]
+              p_eu_passport?: boolean
+              p_gender?: string
+              p_league_ids?: number[]
+              p_limit?: number
+              p_max_age?: number
+              p_min_age?: number
+              p_min_career_entries?: number
+              p_min_references?: number
+              p_nationality_country_ids?: number[]
+              p_offset?: number
+              p_positions?: string[]
+              p_roles?: string[]
+              p_search_text?: string
+              p_sort_by?: string
+            }
+            Returns: Json
+          }
       edit_endorsement: {
         Args: { p_endorsement: string; p_reference_id: string }
         Returns: {
@@ -4342,6 +4705,40 @@ export type Database = {
           opportunity_type: Database["public"]["Enums"]["opportunity_type"]
           organization_name: string
           pending_count: number
+          position: Database["public"]["Enums"]["opportunity_position"]
+          priority: Database["public"]["Enums"]["opportunity_priority"]
+          published_at: string
+          requirements: string[]
+          start_date: string
+          status: Database["public"]["Enums"]["opportunity_status"]
+          title: string
+          updated_at: string
+          version: number
+        }[]
+      }
+      fetch_club_vacancies_with_counts: {
+        Args: {
+          p_club_id: string
+          p_include_closed?: boolean
+          p_limit?: number
+        }
+        Returns: {
+          applicant_count: number
+          application_deadline: string
+          benefits: string[]
+          closed_at: string
+          club_id: string
+          contact_email: string
+          contact_phone: string
+          created_at: string
+          custom_benefits: string[]
+          description: string
+          duration_text: string
+          gender: Database["public"]["Enums"]["opportunity_gender"]
+          id: string
+          location_city: string
+          location_country: string
+          opportunity_type: Database["public"]["Enums"]["opportunity_type"]
           position: Database["public"]["Enums"]["opportunity_position"]
           priority: Database["public"]["Enums"]["opportunity_priority"]
           published_at: string
@@ -4449,6 +4846,7 @@ export type Database = {
         Returns: {
           avatar_url: string
           base_location: string
+          brand_slug: string
           full_name: string
           role: string
           username: string
@@ -4575,13 +4973,19 @@ export type Database = {
         Args: { p_batch?: number; p_user_id: string }
         Returns: Json
       }
+      has_accepted_terms: { Args: { p_version?: string }; Returns: boolean }
       health_check: { Args: never; Returns: boolean }
+      is_blocked_pair: {
+        Args: { p_user_a: string; p_user_b: string }
+        Returns: boolean
+      }
       is_current_user_test_account: { Args: never; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
       is_test_opportunity: {
         Args: { opportunity_club_id: string }
         Returns: boolean
       }
+      is_user_blocked: { Args: { p_other_id: string }; Returns: boolean }
       leave_brand_ambassadorship: {
         Args: { p_brand_ambassador_id: string }
         Returns: Json
@@ -4635,6 +5039,7 @@ export type Database = {
         Args: { p_days_to_keep?: number }
         Returns: number
       }
+      prune_old_logs: { Args: never; Returns: undefined }
       prune_profile_notifications: {
         Args: {
           p_batch?: number
@@ -4706,6 +5111,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      report_user: {
+        Args: {
+          p_category?: string
+          p_content_id?: string
+          p_content_type?: string
+          p_reason: string
+          p_target_id: string
+        }
+        Returns: string
       }
       request_reference: {
         Args: {
@@ -4855,10 +5270,15 @@ export type Database = {
         }
         Returns: string
       }
+      track_user_device: {
+        Args: { p_is_pwa?: boolean; p_platform: string; p_user_agent?: string }
+        Returns: undefined
+      }
       try_parse_years_component: {
         Args: { component: string; years: string }
         Returns: string
       }
+      unblock_user: { Args: { p_blocked_id: string }; Returns: undefined }
       unfollow_brand: { Args: { p_brand_id: string }; Returns: Json }
       update_brand: {
         Args: {
@@ -4946,6 +5366,11 @@ export type Database = {
         | "head_coach"
         | "assistant_coach"
         | "youth_coach"
+        | "goalkeeper_coach"
+        | "strength_conditioning"
+        | "performance_analyst"
+        | "sports_scientist"
+        | "other_coach"
       opportunity_priority: "low" | "medium" | "high"
       opportunity_status: "draft" | "open" | "closed"
       opportunity_type: "player" | "coach"
@@ -5105,9 +5530,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       application_status: ["pending", "shortlisted", "maybe", "rejected"],
@@ -5138,6 +5560,11 @@ export const Constants = {
         "head_coach",
         "assistant_coach",
         "youth_coach",
+        "goalkeeper_coach",
+        "strength_conditioning",
+        "performance_analyst",
+        "sports_scientist",
+        "other_coach",
       ],
       opportunity_priority: ["low", "medium", "high"],
       opportunity_status: ["draft", "open", "closed"],
