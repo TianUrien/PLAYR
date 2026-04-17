@@ -7,10 +7,10 @@
 --   2. The RPC never returned brand_slug, so the frontend had no way to link
 --      a brand viewer to its profile (brand pages are /brands/:slug).
 --
--- Fix: filter on profiles.onboarding_completed (reliable proxy for "has a
--- brands row" — BrandOnboardingPage sets onboarding_completed = true only
--- after create_brand succeeds), LEFT JOIN brands to return brand_slug, and
--- preserve the bidirectional block filter added in 202603250500.
+-- Fix: LEFT JOIN brands so we can (a) return brand_slug and (b) require a
+-- brands row for brand-role viewers — a narrow filter that only affects
+-- brands, leaving player/coach/club behavior unchanged. Preserve the
+-- bidirectional block filter added in 202603250500.
 
 SET search_path = public;
 
@@ -78,7 +78,7 @@ BEGIN
   LEFT JOIN brands b ON b.profile_id = ve.vid AND b.deleted_at IS NULL
   WHERE p.browse_anonymously = false
     AND COALESCE(p.is_test_account, false) = false
-    AND p.onboarding_completed = true
+    AND (p.role <> 'brand' OR b.id IS NOT NULL)
     AND NOT EXISTS (
       SELECT 1 FROM user_blocks ub
       WHERE (ub.blocker_id = v_user_id AND ub.blocked_id = ve.vid)
