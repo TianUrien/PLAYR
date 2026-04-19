@@ -23,7 +23,7 @@ import { logger } from '@/lib/logger'
 // Configuration
 const HEARTBEAT_INTERVAL_MS = 30_000 // 30 seconds - must match server
 const IDLE_TIMEOUT_MS = 120_000 // 2 minutes of inactivity = idle
-const SESSION_STORAGE_KEY = 'playr_engagement_session_id'
+const SESSION_STORAGE_KEY = 'hockia_engagement_session_id'
 
 // Helper to call RPC functions that aren't in generated types yet
 const engagementRpc = supabase.rpc.bind(supabase) as unknown as (

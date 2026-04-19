@@ -246,7 +246,7 @@ export default function NotificationsDrawer() {
     const config = getNotificationConfig(notification)
     const Icon = config.icon
     const actor = notification.actor
-    const fullName = actor.fullName || actor.username || 'Miembro de HOCKIA'
+    const fullName = actor.fullName || actor.username || 'HOCKIA member'
     const initials = fullName.slice(0, 2).toUpperCase()
     const displayTime = formatRelativeTime(notification.createdAt)
     const description = config.getDescription?.(notification)
@@ -296,7 +296,7 @@ export default function NotificationsDrawer() {
           onClick={profileRoute ? onAvatarClick : undefined}
           disabled={!profileRoute}
           className="relative h-fit focus-visible:outline-none"
-          aria-label={profileRoute ? `Ver perfil de ${fullName}` : undefined}
+          aria-label={profileRoute ? `View ${fullName}'s profile` : undefined}
         >
           <Avatar src={actor.avatarUrl ?? undefined} initials={initials} size="lg" className="shadow-sm" />
           <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-white text-[#0866FF] shadow-md">

@@ -28,7 +28,22 @@ interface FormData {
   images: ProductImage[]
 }
 
-const DRAFT_PREFIX = 'playr_brand_product_draft_'
+const DRAFT_PREFIX = 'hockia_brand_product_draft_'
+const LEGACY_DRAFT_PREFIX = 'playr_brand_product_draft_'
+
+function migrateLegacyDraft(draftKey: string, legacyKey: string): void {
+  try {
+    const legacy = localStorage.getItem(legacyKey)
+    if (legacy && !localStorage.getItem(draftKey)) {
+      localStorage.setItem(draftKey, legacy)
+    }
+    if (legacy) {
+      localStorage.removeItem(legacyKey)
+    }
+  } catch {
+    // Ignore
+  }
+}
 
 function getEmptyForm(): FormData {
   return { name: '', description: '', external_url: '', images: [] }
@@ -44,6 +59,7 @@ export function AddProductModal({
   const { user } = useAuthStore()
   const isEdit = Boolean(editingProduct)
   const draftKey = `${DRAFT_PREFIX}${brandId}`
+  const legacyDraftKey = `${LEGACY_DRAFT_PREFIX}${brandId}`
   const dialogRef = useRef<HTMLDivElement>(null)
 
   useFocusTrap({ containerRef: dialogRef, isActive: isOpen })
@@ -59,6 +75,7 @@ export function AddProductModal({
     }
 
     // Try to load draft for new products
+    migrateLegacyDraft(draftKey, legacyDraftKey)
     try {
       const saved = localStorage.getItem(draftKey)
       if (saved) return JSON.parse(saved) as FormData
@@ -83,6 +100,7 @@ export function AddProductModal({
       })
     } else {
       // Try load draft
+      migrateLegacyDraft(draftKey, legacyDraftKey)
       try {
         const saved = localStorage.getItem(draftKey)
         if (saved) {
@@ -96,7 +114,7 @@ export function AddProductModal({
     }
 
     setErrors({})
-  }, [isOpen, editingProduct, draftKey])
+  }, [isOpen, editingProduct, draftKey, legacyDraftKey])
 
   // Save draft for new products
   useEffect(() => {
