@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { Flag, MessageSquare, MessageSquarePlus, ShieldAlert, UserCheck } from 'lucide-react'
+import { Flag, MessageSquare, MessageSquarePlus, ShieldAlert, UserCheck, Share2 } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
@@ -16,6 +16,7 @@ import { reportSupabaseError } from '@/lib/sentryHelpers'
 import { checkContent } from '@/lib/contentFilter'
 import InfoTooltip from './InfoTooltip'
 import ReportUserModal from './ReportUserModal'
+import RequestFeedbackModal from './RequestFeedbackModal'
 
 interface CommentsTabProps {
   profileId: string
@@ -77,6 +78,18 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
   const [reportingComment, setReportingComment] = useState<{ id: string; authorId: string; authorName: string } | null>(null)
+  const [showRequestFeedback, setShowRequestFeedback] = useState(false)
+
+  const isOwner = authProfile?.id === profileId
+
+  // Compute the owner's public profile URL for the "Ask for feedback" share link.
+  const ownerProfileUrl = useMemo(() => {
+    if (!isOwner || !authProfile) return ''
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    const slug = authProfile.username || `id/${authProfile.id}`
+    const basePath = authProfile.role === 'club' ? '/clubs' : '/players'
+    return `${origin}${basePath}/${slug}`
+  }, [isOwner, authProfile])
 
   const canComment = Boolean(user && authProfile && authProfile.id !== profileId)
 
@@ -474,17 +487,41 @@ export default function CommentsTab({ profileId, highlightedCommentIds }: Commen
         )
       ) : (
         <section className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-5 text-sm text-gray-600">
-          <div className="flex items-center gap-3">
-            <ShieldAlert className="h-5 w-5 text-gray-400" />
-            {authProfile?.id === profileId ? (
-              <p>You can&apos;t leave a comment on your own profile, but other members can.</p>
-            ) : (
+          {isOwner ? (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <ShieldAlert className="h-5 w-5 text-gray-400 flex-shrink-0 mt-0.5" />
+                <p>
+                  You can&apos;t leave a comment on your own profile, but other members can — ask a teammate or coach to share one.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRequestFeedback(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white px-4 py-2 text-sm font-semibold shadow-sm hover:opacity-90 transition-opacity whitespace-nowrap flex-shrink-0"
+              >
+                <Share2 className="h-4 w-4" />
+                Ask for feedback
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <ShieldAlert className="h-5 w-5 text-gray-400" />
               <p>
                 Sign in with a HOCKIA profile to leave a public, attributed comment.
               </p>
-            )}
-          </div>
+            </div>
+          )}
         </section>
+      )}
+
+      {isOwner && (
+        <RequestFeedbackModal
+          isOpen={showRequestFeedback}
+          onClose={() => setShowRequestFeedback(false)}
+          profileUrl={ownerProfileUrl}
+          ownerName={authProfile?.full_name}
+        />
       )}
 
       <section className="space-y-4">
