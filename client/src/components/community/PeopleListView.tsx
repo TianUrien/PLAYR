@@ -20,6 +20,7 @@ import { usePageState } from '@/hooks/usePageState'
 import { useScrollRestore } from '@/hooks/useScrollRestore'
 import { prefetchWorldClubLogos } from '@/hooks/useWorldClubLogo'
 import { getMemberTier } from '@/lib/profileTier'
+import { logSearchAppearances } from '@/lib/searchAppearances'
 
 interface Profile {
   id: string
@@ -369,6 +370,44 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
       setHasMore(filteredMembers.length > pageSize)
     }
   }, [filteredMembers, pageSize]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Log search appearances when the displayed set is the result of an active
+  // search or non-default filter. Debounced and throttled server-side via a
+  // unique (viewer, profile, hour) index — cheap to fire often.
+  useEffect(() => {
+    const viewerId = currentUserProfile?.id
+    if (!viewerId) return
+    if (isLoading || isSearching) return
+    if (displayedMembers.length === 0) return
+
+    const searchActive = searchQuery.trim().length > 0
+    const filtersNarrowed =
+      (filters.role !== (roleFilter || 'all')) ||
+      filters.position.length > 0 ||
+      filters.gender !== 'all' ||
+      filters.location.trim() !== '' ||
+      filters.nationality.trim() !== '' ||
+      filters.availability !== 'all'
+
+    if (!searchActive && !filtersNarrowed) return
+
+    const handle = setTimeout(() => {
+      void logSearchAppearances({
+        viewerId,
+        profileIds: displayedMembers.map((m) => m.id),
+        filters: {
+          search_query_present: searchActive,
+          role: filters.role !== 'all' ? filters.role : null,
+          position: filters.position.length > 0 ? filters.position : null,
+          gender: filters.gender !== 'all' ? filters.gender : null,
+          location: filters.location.trim() || null,
+          nationality: filters.nationality.trim() || null,
+          availability: filters.availability !== 'all' ? filters.availability : null,
+        },
+      })
+    }, 800)
+    return () => clearTimeout(handle)
+  }, [displayedMembers, filters, searchQuery, isLoading, isSearching, currentUserProfile?.id, roleFilter])
 
   // Load more handler
   const handleLoadMore = useCallback(() => {

@@ -2,10 +2,11 @@ import { useEffect, useState, useRef } from 'react'
 import { ArrowLeft, MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail, Plus } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
-import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, NextStepCard, FreshnessCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, DualNationalityDisplay, AvailabilityPill, TierBadge } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, NextStepCard, FreshnessCard, SearchAppearancesCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, DualNationalityDisplay, AvailabilityPill, TierBadge } from '@/components'
 import { calculateTier } from '@/lib/profileTier'
 import { useProfileFreshness } from '@/hooks/useProfileFreshness'
 import type { FreshnessNudge } from '@/lib/profileFreshness'
+import { useSearchAppearances } from '@/hooks/useSearchAppearances'
 import ProfileActionMenu from '@/components/ProfileActionMenu'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
@@ -94,6 +95,10 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
     role: 'coach',
     profileId: readOnly ? null : (profileData?.id ?? authProfile?.id ?? null),
     profileUpdatedAt: readOnly ? null : (profile as Partial<Profile> | null)?.updated_at ?? null,
+  })
+  // Search appearances (owner only) — last 7 days aggregate.
+  const { summary: searchAppearances } = useSearchAppearances({
+    profileId: readOnly ? null : (profileData?.id ?? authProfile?.id ?? null),
   })
 
   // Shared handler for NextStepCard — routes a bucket to the right deep-link.
@@ -447,6 +452,15 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
             <div className="mt-3">
               <FreshnessCard nudge={freshnessNudge} onAction={handleFreshnessAction} />
             </div>
+            {searchAppearances && searchAppearances.total > 0 && (
+              <div className="mt-3">
+                <SearchAppearancesCard
+                  days={searchAppearances.days}
+                  total={searchAppearances.total}
+                  windowDays={7}
+                />
+              </div>
+            )}
           </>
         )}
 
