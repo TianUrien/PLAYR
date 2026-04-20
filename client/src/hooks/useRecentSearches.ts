@@ -1,9 +1,25 @@
 import { useState, useCallback } from 'react'
 
-const STORAGE_KEY = 'playr_recent_searches'
+const STORAGE_KEY = 'hockia_recent_searches'
+const LEGACY_STORAGE_KEY = 'playr_recent_searches'
 const MAX_RECENT = 5
 
+function migrateLegacyKey(): void {
+  try {
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY)
+    if (legacy && !localStorage.getItem(STORAGE_KEY)) {
+      localStorage.setItem(STORAGE_KEY, legacy)
+    }
+    if (legacy) {
+      localStorage.removeItem(LEGACY_STORAGE_KEY)
+    }
+  } catch {
+    // Ignore
+  }
+}
+
 function readFromStorage(): string[] {
+  migrateLegacyKey()
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []

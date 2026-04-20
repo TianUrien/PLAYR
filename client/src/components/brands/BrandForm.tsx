@@ -51,7 +51,24 @@ function generateSlug(name: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
-const STORAGE_PREFIX = 'playr_brand_draft_'
+const STORAGE_PREFIX = 'hockia_brand_draft_'
+const LEGACY_STORAGE_PREFIX = 'playr_brand_draft_'
+
+function migrateLegacyBrandDraft(persistKey: string): void {
+  try {
+    const newKey = STORAGE_PREFIX + persistKey
+    const legacyKey = LEGACY_STORAGE_PREFIX + persistKey
+    const legacy = localStorage.getItem(legacyKey)
+    if (legacy && !localStorage.getItem(newKey)) {
+      localStorage.setItem(newKey, legacy)
+    }
+    if (legacy) {
+      localStorage.removeItem(legacyKey)
+    }
+  } catch {
+    // Ignore
+  }
+}
 
 export function BrandForm({
   brand,
@@ -68,6 +85,7 @@ export function BrandForm({
   // Load initial data from localStorage draft or brand prop
   const getInitialFormData = (): BrandFormData => {
     if (persistKey) {
+      migrateLegacyBrandDraft(persistKey)
       try {
         const saved = localStorage.getItem(STORAGE_PREFIX + persistKey)
         if (saved) {

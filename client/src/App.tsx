@@ -225,7 +225,7 @@ function SessionTracker() {
   const lastActiveRef = useRef<number>(Date.now())
 
   useEffect(() => {
-    const sessionId = sessionStorage.getItem('playr_engagement_session_id')
+    const sessionId = sessionStorage.getItem('hockia_engagement_session_id')
     trackDbEvent('session_start', undefined, undefined, { session_id: sessionId })
 
     const handleVisibility = () => {
@@ -233,7 +233,7 @@ function SessionTracker() {
         const elapsed = Date.now() - lastActiveRef.current
         if (elapsed > 30 * 60 * 1000) {
           trackDbEvent('session_start', undefined, undefined, {
-            session_id: sessionStorage.getItem('playr_engagement_session_id'),
+            session_id: sessionStorage.getItem('hockia_engagement_session_id'),
             resumption: true,
           })
         }
