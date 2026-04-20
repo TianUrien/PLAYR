@@ -525,8 +525,20 @@ export default function CompleteProfile() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Defensive: in the staged wizard, only the final step's "Complete Profile"
+    // button should trigger a real submit. If the form receives onSubmit on an
+    // earlier step — e.g. via implicit submission (Enter key in a text input
+    // on some WebView / mobile browsers) — forward it to the Next flow instead
+    // so per-step validation runs and the user doesn't see a whole-form error
+    // before they've reached later steps.
+    if (isWizardFlow && currentStep < 3) {
+      handleNext()
+      return
+    }
+
     setError('')
-    
+
     // Run client-side validation first
     const validationError = validateForm()
     if (validationError) {
