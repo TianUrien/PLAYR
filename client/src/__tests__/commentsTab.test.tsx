@@ -220,7 +220,9 @@ describe('CommentsTab', () => {
 
     renderCommentsTab()
 
-    expect(await screen.findByText("You can't leave a comment on your own profile, but other members can.")).toBeInTheDocument()
+    expect(
+      await screen.findByText(/You can't leave a comment on your own profile, but other members can/i)
+    ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /post comment/i })).not.toBeInTheDocument()
   })
 
