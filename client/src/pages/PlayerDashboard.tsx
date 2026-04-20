@@ -2,10 +2,11 @@ import { useEffect, useState, useRef } from 'react'
 import { ArrowLeft, MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail, Award } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
-import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, NextStepCard, FreshnessCard, DualNationalityDisplay, AvailabilityPill, TierBadge } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, NextStepCard, FreshnessCard, SearchAppearancesCard, DualNationalityDisplay, AvailabilityPill, TierBadge } from '@/components'
 import { calculateTier } from '@/lib/profileTier'
 import { useProfileFreshness } from '@/hooks/useProfileFreshness'
 import type { FreshnessNudge } from '@/lib/profileFreshness'
+import { useSearchAppearances } from '@/hooks/useSearchAppearances'
 import ProfileActionMenu from '@/components/ProfileActionMenu'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
@@ -85,6 +86,10 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
   // Freshness nudges (owner only — no value in showing "your Journey is stale" to visitors)
   const { nudge: freshnessNudge } = useProfileFreshness({
     role: 'player',
+    profileId: readOnly ? null : profile?.id ?? null,
+  })
+  // Search appearances (owner only) — last 7 days aggregate.
+  const { summary: searchAppearances } = useSearchAppearances({
     profileId: readOnly ? null : profile?.id ?? null,
   })
   const prevPercentageRef = useRef<number | null>(null)
@@ -475,6 +480,15 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
             <div className="mt-3">
               <FreshnessCard nudge={freshnessNudge} onAction={handleFreshnessAction} />
             </div>
+            {searchAppearances && searchAppearances.total > 0 && (
+              <div className="mt-3">
+                <SearchAppearancesCard
+                  days={searchAppearances.days}
+                  total={searchAppearances.total}
+                  windowDays={7}
+                />
+              </div>
+            )}
           </>
         )}
 
