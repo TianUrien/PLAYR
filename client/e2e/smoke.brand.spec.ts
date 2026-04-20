@@ -68,10 +68,14 @@ test.describe('@smoke brand', () => {
   // Regression guard for the category taxonomy expansion
   // (202604210100_expand_brand_categories). If any of the 10 categories goes
   // missing from the filter pill row, one of the label maps / enums is out of
-  // sync with the DB constraint.
+  // sync with the DB constraint. Scoped to the filter container because the
+  // header can render conflicting generic buttons (e.g. "All").
   test('brand directory filter shows all 10 expanded categories', async ({ page }) => {
     await page.goto('/community/brands')
     await waitForAppReady(page)
+
+    const filter = page.getByTestId('brand-category-filter')
+    await expect(filter).toBeVisible({ timeout: BRAND_DASH_TIMEOUT_MS })
 
     const expected = [
       'All',
@@ -89,7 +93,7 @@ test.describe('@smoke brand', () => {
 
     for (const label of expected) {
       await expect(
-        page.getByRole('button', { name: label, exact: true })
+        filter.getByRole('button', { name: label, exact: true })
       ).toBeVisible({ timeout: BRAND_DASH_TIMEOUT_MS })
     }
   })
