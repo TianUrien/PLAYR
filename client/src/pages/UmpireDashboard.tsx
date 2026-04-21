@@ -19,11 +19,11 @@
  * an admin toggles between views.
  */
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, MapPin, Calendar, Shield, Flag, Languages as LanguagesIcon } from 'lucide-react'
+import { ArrowLeft, MapPin, Calendar, Shield, Flag, Edit2, Languages as LanguagesIcon } from 'lucide-react'
 import Header from '@/components/Header'
-import { Avatar, RoleBadge, VerifiedBadge, DualNationalityDisplay } from '@/components'
+import { Avatar, EditProfileModal, RoleBadge, VerifiedBadge, DualNationalityDisplay } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
 import { calculateAge, formatDateOfBirth } from '@/lib/utils'
@@ -72,6 +72,7 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
   const { profile: authProfile } = useAuthStore()
   const profile = (profileData ?? authProfile) as UmpireProfileShape | null
   const navigate = useNavigate()
+  const [showEditModal, setShowEditModal] = useState(false)
 
   const umpireFields = useMemo<UmpireFields>(
     () => (profile ? (profile as unknown as UmpireFields) : {}),
@@ -125,13 +126,25 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
               previewTitle={profile.full_name ?? undefined}
             />
             <div className="flex-1 min-w-0">
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 flex items-center gap-2">
-                <span>{profile.full_name}</span>
-                <VerifiedBadge
-                  verified={umpireFields.is_verified}
-                  verifiedAt={umpireFields.verified_at ?? null}
-                />
-              </h1>
+              <div className="flex items-start justify-between gap-3">
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 flex items-center gap-2 flex-wrap">
+                  <span>{profile.full_name}</span>
+                  <VerifiedBadge
+                    verified={umpireFields.is_verified}
+                    verifiedAt={umpireFields.verified_at ?? null}
+                  />
+                </h1>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(true)}
+                    className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    Edit
+                  </button>
+                )}
+              </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <RoleBadge role="umpire" />
@@ -242,9 +255,17 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
           </section>
         )}
 
-        {/* Phase A placeholder: no Posts / Friends / Comments / Journey tabs yet.
-            Phase B adds the tabs + onboarding + edit surface. */}
+        {/* Phase B adds the edit surface via EditProfileModal (above).
+            Posts / Friends / Comments tabs + Journey remain deferred to Phase C. */}
       </div>
+
+      {!readOnly && (
+        <EditProfileModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          role="umpire"
+        />
+      )}
     </div>
   )
 }
