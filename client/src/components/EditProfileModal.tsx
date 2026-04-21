@@ -21,11 +21,17 @@ import SocialLinksInput from './SocialLinksInput'
 import WorldClubSearch from './WorldClubSearch'
 import { type SocialLinks, cleanSocialLinks, validateSocialLinks } from '@/lib/socialLinks'
 import { COACH_SPECIALIZATIONS, type CoachSpecialization } from '@/lib/coachSpecializations'
+import { UMPIRE_LEVEL_SUGGESTIONS } from '@/lib/umpireLevels'
+import { FEDERATION_SUGGESTIONS } from '@/lib/umpireFederations'
+import { LANGUAGE_SUGGESTIONS } from '@/lib/languages'
+import { X as XIcon } from 'lucide-react'
+
+type UmpireSpec = 'outdoor' | 'indoor' | 'both' | ''
 
 interface EditProfileModalProps {
   isOpen: boolean
   onClose: () => void
-  role: 'player' | 'coach' | 'club'
+  role: 'player' | 'coach' | 'club' | 'umpire'
 }
 
 type ProfileFormData = {
@@ -63,6 +69,12 @@ type ProfileFormData = {
   brand_representation: string
   coach_specialization: CoachSpecialization | ''
   coach_specialization_custom: string
+  // Umpire-specific (only surfaced when role='umpire')
+  umpire_level: string
+  federation: string
+  umpire_since: string
+  officiating_specialization: UmpireSpec
+  languages: string[]
 }
 
 interface WorldRegion {
@@ -101,12 +113,21 @@ function validateFormData(formData: ProfileFormData, role: string): string | nul
     return 'Primary and secondary positions must be different.'
   }
 
-  if ((role === 'player' || role === 'coach') && !formData.base_location.trim()) {
+  if ((role === 'player' || role === 'coach' || role === 'umpire') && !formData.base_location.trim()) {
     return 'Location is required.'
   }
 
   if (role === 'club' && !formData.base_location.trim()) {
     return 'Club location is required.'
+  }
+
+  if (role === 'umpire') {
+    if (!formData.umpire_level.trim()) return 'Umpire level is required.'
+    if (!formData.federation.trim()) return 'Federation is required.'
+    if (!formData.officiating_specialization) return 'Please choose outdoor, indoor, or both.'
+    if (!formData.languages || formData.languages.length === 0) {
+      return 'Please add at least one language.'
+    }
   }
 
   const cleanedSocialLinks = cleanSocialLinks(formData.social_links)
@@ -153,6 +174,14 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   brand_representation: profile?.brand_representation || '',
   coach_specialization: (profile?.coach_specialization as CoachSpecialization) || '',
   coach_specialization_custom: profile?.coach_specialization_custom || '',
+  // Umpire — columns aren't on the generated Profile type yet; narrow cast.
+  umpire_level: ((profile as unknown as { umpire_level?: string | null })?.umpire_level) ?? '',
+  federation: ((profile as unknown as { federation?: string | null })?.federation) ?? '',
+  umpire_since:
+    ((profile as unknown as { umpire_since?: number | null })?.umpire_since)?.toString() ?? '',
+  officiating_specialization:
+    (((profile as unknown as { officiating_specialization?: string | null })?.officiating_specialization) as UmpireSpec) ?? '',
+  languages: (((profile as unknown as { languages?: string[] | null })?.languages) ?? []) as string[],
 })
 
 export default function EditProfileModal({ isOpen, onClose, role }: EditProfileModalProps) {
@@ -508,6 +537,20 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.coach_specialization_custom = formData.coach_specialization === 'other'
         ? formData.coach_specialization_custom.trim() || null
         : null
+    } else if (role === 'umpire') {
+      const umpireSinceYear = formData.umpire_since ? parseInt(formData.umpire_since, 10) : null
+      optimisticUpdate.nationality = formData.nationality
+      optimisticUpdate.nationality_country_id = formData.nationality_country_id
+      optimisticUpdate.nationality2_country_id = formData.nationality2_country_id
+      optimisticUpdate.gender = formData.gender || null
+      optimisticUpdate.date_of_birth = formData.date_of_birth || null
+      optimisticUpdate.bio = formData.bio || null
+      optimisticUpdate.umpire_level = formData.umpire_level.trim() || null
+      optimisticUpdate.federation = formData.federation.trim() || null
+      optimisticUpdate.umpire_since =
+        umpireSinceYear && !Number.isNaN(umpireSinceYear) ? umpireSinceYear : null
+      optimisticUpdate.officiating_specialization = formData.officiating_specialization || null
+      optimisticUpdate.languages = formData.languages.length > 0 ? formData.languages : null
     } else if (role === 'club') {
       optimisticUpdate.nationality = formData.nationality
       optimisticUpdate.nationality_country_id = formData.nationality_country_id
@@ -626,7 +669,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 id={titleId} className="text-2xl font-bold text-gray-900">
-            Edit {role === 'club' ? 'Club' : role === 'coach' ? 'Coach' : 'Player'} Profile
+            Edit {role === 'club' ? 'Club' : role === 'coach' ? 'Coach' : role === 'umpire' ? 'Umpire' : 'Player'} Profile
           </h2>
           <button
             ref={closeButtonRef}
@@ -1035,6 +1078,197 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                       </span>
                     </span>
                   </label>
+                </div>
+              </>
+            )}
+
+            {/* Umpire-specific fields — credentials-first layout matches the
+                dashboard's hierarchy (Certification & Level is the hero). */}
+            {role === 'umpire' && (
+              <>
+                <div className="pt-3 mt-1 border-t border-gray-100">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Officiating credentials</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="edit-umpire-level">
+                    Umpire level <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="edit-umpire-level"
+                    type="text"
+                    list="edit-umpire-level-suggestions"
+                    value={formData.umpire_level}
+                    onChange={(e) => setFormData({ ...formData, umpire_level: e.target.value })}
+                    placeholder="e.g., FIH International, National Panel"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
+                    required
+                    autoComplete="off"
+                  />
+                  <datalist id="edit-umpire-level-suggestions">
+                    {UMPIRE_LEVEL_SUGGESTIONS.map((level) => (
+                      <option key={level} value={level} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="edit-federation">
+                    Federation <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="edit-federation"
+                    type="text"
+                    list="edit-federation-suggestions"
+                    value={formData.federation}
+                    onChange={(e) => setFormData({ ...formData, federation: e.target.value })}
+                    placeholder="e.g., FIH, England Hockey, CAH"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
+                    required
+                    autoComplete="off"
+                  />
+                  <datalist id="edit-federation-suggestions">
+                    {FEDERATION_SUGGESTIONS.map((fed) => (
+                      <option key={fed} value={fed} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="edit-umpire-since">
+                    Umpiring since (year)
+                  </label>
+                  <input
+                    id="edit-umpire-since"
+                    type="number"
+                    inputMode="numeric"
+                    min={1950}
+                    max={new Date().getFullYear()}
+                    value={formData.umpire_since}
+                    onChange={(e) => setFormData({ ...formData, umpire_since: e.target.value })}
+                    placeholder="e.g., 2018"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
+                    autoComplete="off"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Specialization <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {(['outdoor', 'indoor', 'both'] as const).map((value) => {
+                      const labels: Record<typeof value, string> = {
+                        outdoor: 'Outdoor',
+                        indoor: 'Indoor',
+                        both: 'Outdoor & Indoor',
+                      }
+                      const active = formData.officiating_specialization === value
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          onClick={() =>
+                            setFormData({ ...formData, officiating_specialization: value })
+                          }
+                          className={`p-3 rounded-lg border-2 text-center transition-all ${
+                            active
+                              ? 'border-[#8026FA] bg-purple-50 text-[#8026FA]'
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700'
+                          }`}
+                        >
+                          <span className="text-sm font-medium">{labels[value]}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="edit-umpire-languages">
+                    Languages you can officiate in <span className="text-red-500">*</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    At least one. Add more anytime.
+                  </p>
+                  {formData.languages.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {formData.languages.map((lang) => (
+                        <span
+                          key={lang}
+                          className="inline-flex items-center gap-1.5 rounded-full bg-purple-100 text-[#8026FA] px-3 py-1 text-sm font-medium"
+                        >
+                          {lang}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData({
+                                ...formData,
+                                languages: formData.languages.filter((l) => l !== lang),
+                              })
+                            }
+                            aria-label={`Remove ${lang}`}
+                            className="text-[#8026FA] hover:text-[#6B20D4]"
+                          >
+                            <XIcon className="w-3.5 h-3.5" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <input
+                    id="edit-umpire-languages"
+                    type="text"
+                    list="edit-language-suggestions"
+                    placeholder="e.g., English, Spanish, Dutch"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
+                    autoComplete="off"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        const value = (e.currentTarget.value ?? '').trim()
+                        if (!value) return
+                        if (!formData.languages.includes(value)) {
+                          setFormData({
+                            ...formData,
+                            languages: [...formData.languages, value],
+                          })
+                        }
+                        e.currentTarget.value = ''
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const value = (e.currentTarget.value ?? '').trim()
+                      if (!value) return
+                      if (!formData.languages.includes(value)) {
+                        setFormData({
+                          ...formData,
+                          languages: [...formData.languages, value],
+                        })
+                      }
+                      e.currentTarget.value = ''
+                    }}
+                  />
+                  <datalist id="edit-language-suggestions">
+                    {LANGUAGE_SUGGESTIONS.map((lang) => (
+                      <option key={lang} value={lang} />
+                    ))}
+                  </datalist>
+                  <p className="text-xs text-gray-400 mt-2">Press Enter to add.</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="edit-umpire-bio">
+                    About you
+                  </label>
+                  <textarea
+                    id="edit-umpire-bio"
+                    value={formData.bio || ''}
+                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                    rows={4}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent resize-none"
+                    placeholder="Share a short professional summary — career highlights, officiating philosophy, tournaments you've worked."
+                  />
                 </div>
               </>
             )}

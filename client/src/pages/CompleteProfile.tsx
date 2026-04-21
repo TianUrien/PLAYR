@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, MapPin, Calendar, Building2, Camera, UserRound, Briefcase, Users, Store, ChevronRight, Check } from 'lucide-react'
+import { User, MapPin, Calendar, Building2, Camera, UserRound, Briefcase, Users, Store, Flag, X, ChevronRight, Check } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { Input, Button, CountrySelect, LocationAutocomplete } from '@/components'
 import type { LocationSelection } from '@/components/LocationAutocomplete'
@@ -19,8 +19,13 @@ import { trackOnboardingComplete } from '@/lib/analytics'
 import { trackDbEvent } from '@/lib/trackDbEvent'
 import { COACH_SPECIALIZATIONS, type CoachSpecialization } from '@/lib/coachSpecializations'
 import { validateOnboardingStep, type WizardStep } from '@/lib/onboardingValidation'
+import { UMPIRE_LEVEL_SUGGESTIONS } from '@/lib/umpireLevels'
+import { FEDERATION_SUGGESTIONS } from '@/lib/umpireFederations'
+import { LANGUAGE_SUGGESTIONS } from '@/lib/languages'
 
-type UserRole = 'player' | 'coach' | 'club' | 'brand'
+type UserRole = 'player' | 'coach' | 'club' | 'brand' | 'umpire'
+
+type OfficiatingSpecialization = 'outdoor' | 'indoor' | 'both' | ''
 
 /**
  * CompleteProfile - Step 2 of signup (POST email verification)
@@ -93,6 +98,13 @@ export default function CompleteProfile() {
     currentWorldClubId: null as string | null,
     coachSpecialization: '' as CoachSpecialization | '',
     coachSpecializationCustom: '',
+    // Umpire-specific fields (free text for level + federation in v1; see
+    // umpireLevels.ts / umpireFederations.ts for the datalist suggestions).
+    umpireLevel: '',
+    federation: '',
+    umpireSince: '',
+    officiatingSpecialization: '' as OfficiatingSpecialization,
+    languages: [] as string[],
   })
 
   const normalizeGender = (value: string) => {
@@ -108,9 +120,9 @@ export default function CompleteProfile() {
   const userRole = (profile?.role as UserRole | null) ?? fallbackRole ?? (user?.user_metadata?.role as UserRole | undefined) ?? null
   const contactEmailFallback = profile?.contact_email ?? profile?.email ?? user?.email ?? fallbackEmail ?? ''
 
-  // Player and coach get a 3-step wizard. Club keeps its existing claim→form
-  // two-step flow; brand is handled on a separate onboarding page entirely.
-  const isWizardFlow = userRole === 'player' || userRole === 'coach'
+  // Player, coach, and umpire get a 3-step wizard. Club keeps its existing
+  // claim→form two-step flow; brand is handled on a separate onboarding page.
+  const isWizardFlow = userRole === 'player' || userRole === 'coach' || userRole === 'umpire'
 
   const stepLabels: Record<UserRole, Record<WizardStep, string>> = {
     player: {
@@ -122,6 +134,11 @@ export default function CompleteProfile() {
       1: 'About you',
       2: 'Where you are based',
       3: 'Your coaching',
+    },
+    umpire: {
+      1: 'About you',
+      2: 'Where you are based',
+      3: 'Your officiating credentials',
     },
     club: { 1: '', 2: '', 3: '' },
     brand: { 1: '', 2: '', 3: '' },
@@ -493,7 +510,7 @@ export default function CompleteProfile() {
   }, [currentStep, userRole, isWizardFlow, user?.id])
 
   const handleNext = () => {
-    if (userRole !== 'player' && userRole !== 'coach') return
+    if (userRole !== 'player' && userRole !== 'coach' && userRole !== 'umpire') return
     const stepError = validateOnboardingStep(currentStep, userRole, formData)
     if (stepError) {
       setError(stepError)
@@ -539,6 +556,17 @@ export default function CompleteProfile() {
       if (!formData.coachSpecialization) return 'Please select your coaching specialization.'
       if (formData.coachSpecialization === 'other' && !formData.coachSpecializationCustom.trim()) {
         return 'Please enter your role title.'
+      }
+    } else if (userRole === 'umpire') {
+      if (!formData.fullName.trim()) return 'Full name is required.'
+      if (!formData.city.trim()) return 'Base location is required.'
+      if (!formData.nationalityCountryId) return 'Nationality is required.'
+      if (!formData.gender) return 'Gender is required.'
+      if (!formData.umpireLevel.trim()) return 'Please add your umpire level.'
+      if (!formData.federation.trim()) return 'Please add the federation you officiate with.'
+      if (!formData.officiatingSpecialization) return 'Please choose outdoor, indoor, or both.'
+      if (formData.languages.length === 0) {
+        return 'Please add at least one language you can officiate in.'
       }
     } else if (userRole === 'club') {
       if (!formData.clubName.trim()) return 'Club name is required.'
@@ -644,6 +672,22 @@ export default function CompleteProfile() {
           coach_specialization_custom: formData.coachSpecialization === 'other'
             ? formData.coachSpecializationCustom.trim()
             : null,
+        }
+      } else if (userRole === 'umpire') {
+        const umpireSinceYear = formData.umpireSince ? parseInt(formData.umpireSince, 10) : null
+        updateData = {
+          ...updateData,
+          nationality2_country_id: formData.nationality2CountryId,
+          gender: normalizeGender(formData.gender),
+          date_of_birth: formData.dateOfBirth || null,
+          umpire_level: formData.umpireLevel.trim() || null,
+          federation: formData.federation.trim() || null,
+          umpire_since:
+            umpireSinceYear && !Number.isNaN(umpireSinceYear) ? umpireSinceYear : null,
+          officiating_specialization: formData.officiatingSpecialization || null,
+          // languages is a TEXT[] column; empty array would be valid but we
+          // require ≥ 1 at validation time so this path always has entries.
+          languages: formData.languages.length > 0 ? formData.languages : null,
         }
       } else if (userRole === 'club') {
         updateData = {
@@ -903,6 +947,24 @@ export default function CompleteProfile() {
                     </div>
                   </div>
                 </button>
+
+                {/* Umpire Option */}
+                <button
+                  type="button"
+                  onClick={() => handleRoleSelection('umpire')}
+                  disabled={creatingProfile}
+                  className="w-full p-4 border-2 border-gray-200 rounded-xl hover:border-[#8026FA] hover:bg-purple-50 transition-all text-left group disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center group-hover:from-amber-200 group-hover:to-orange-200 transition-colors">
+                      <Flag className="w-6 h-6 text-amber-700" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-gray-900">I'm an Umpire</h4>
+                      <p className="text-sm text-gray-500">Be recognized as an officiating professional in the hockey community</p>
+                    </div>
+                  </div>
+                </button>
               </div>
 
               {creatingProfile && (
@@ -975,6 +1037,7 @@ export default function CompleteProfile() {
             <h3 className="text-2xl font-bold text-gray-900 mb-2">
               {userRole === 'player' && 'Complete Player Profile'}
               {userRole === 'coach' && 'Complete Coach Profile'}
+              {userRole === 'umpire' && 'Complete Umpire Profile'}
               {userRole === 'club' && 'Complete Club Profile'}
             </h3>
             <p className="text-gray-600 mb-6">
@@ -1361,6 +1424,280 @@ export default function CompleteProfile() {
                         label="Current Club (Optional)"
                         placeholder="e.g., Holcombe Hockey Club"
                       />
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* Umpire Form — 3-step wizard. Steps 1–2 share the player/coach
+                  identity + location inputs; Step 3 pivots to the credentials
+                  that actually matter to umpires: level, federation,
+                  specialization, languages. No highlight video / position /
+                  current-club fields — those don't map to the umpire world. */}
+              {userRole === 'umpire' && (
+                <>
+                  {currentStep === 1 && (
+                    <>
+                      <Input
+                        label="Full Name"
+                        icon={<User className="w-5 h-5" />}
+                        placeholder="Enter your full name"
+                        value={formData.fullName}
+                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                        required
+                      />
+
+                      <CountrySelect
+                        label="Nationality"
+                        value={formData.nationalityCountryId}
+                        onChange={(id) => setFormData({ ...formData, nationalityCountryId: id })}
+                        placeholder="Select your nationality"
+                        showNationality
+                        required
+                      />
+
+                      <CountrySelect
+                        label="Secondary Nationality (Optional)"
+                        value={formData.nationality2CountryId}
+                        onChange={(id) => setFormData({ ...formData, nationality2CountryId: id })}
+                        placeholder="Select secondary nationality"
+                        showNationality
+                      />
+                    </>
+                  )}
+
+                  {currentStep === 2 && (
+                    <>
+                      <LocationAutocomplete
+                        label="Base Location (City)"
+                        icon={<MapPin className="w-5 h-5" />}
+                        placeholder="Where are you currently based?"
+                        value={formData.city}
+                        onChange={handleLocationChange}
+                        onLocationSelect={handleLocationSelect}
+                        onLocationClear={handleLocationClear}
+                        isSelected={formData.locationSelected}
+                        required
+                      />
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="umpire-gender">
+                          Gender <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                          id="umpire-gender"
+                          value={formData.gender}
+                          onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
+                          required
+                        >
+                          <option value="">Select gender</option>
+                          <option value="Men">Men</option>
+                          <option value="Women">Women</option>
+                        </select>
+                      </div>
+
+                      <Input
+                        label="Date of Birth"
+                        type="date"
+                        icon={<Calendar className="w-5 h-5" />}
+                        value={formData.dateOfBirth}
+                        onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                      />
+                    </>
+                  )}
+
+                  {currentStep === 3 && (
+                    <>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">
+                        Officiating credentials
+                      </p>
+
+                      {/* Level + Federation datalists — free text with suggestions */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="umpire-level">
+                          Umpire level <span className="text-red-500">*</span>
+                        </label>
+                        <p className="text-xs text-gray-500 mb-2">
+                          e.g., FIH International, National Panel, Regional. Pick a suggestion or type your own.
+                        </p>
+                        <input
+                          id="umpire-level"
+                          type="text"
+                          list="umpire-level-suggestions"
+                          value={formData.umpireLevel}
+                          onChange={(e) => setFormData({ ...formData, umpireLevel: e.target.value })}
+                          placeholder="Start typing…"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
+                          required
+                          autoComplete="off"
+                        />
+                        <datalist id="umpire-level-suggestions">
+                          {UMPIRE_LEVEL_SUGGESTIONS.map((level) => (
+                            <option key={level} value={level} />
+                          ))}
+                        </datalist>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="umpire-federation">
+                          Federation <span className="text-red-500">*</span>
+                        </label>
+                        <p className="text-xs text-gray-500 mb-2">
+                          The body you are registered or active with.
+                        </p>
+                        <input
+                          id="umpire-federation"
+                          type="text"
+                          list="federation-suggestions"
+                          value={formData.federation}
+                          onChange={(e) => setFormData({ ...formData, federation: e.target.value })}
+                          placeholder="e.g., FIH, England Hockey, CAH"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
+                          required
+                          autoComplete="off"
+                        />
+                        <datalist id="federation-suggestions">
+                          {FEDERATION_SUGGESTIONS.map((fed) => (
+                            <option key={fed} value={fed} />
+                          ))}
+                        </datalist>
+                      </div>
+
+                      {/* Umpiring since (year) */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="umpire-since">
+                          Umpiring since (year)
+                        </label>
+                        <input
+                          id="umpire-since"
+                          type="number"
+                          inputMode="numeric"
+                          min={1950}
+                          max={new Date().getFullYear()}
+                          value={formData.umpireSince}
+                          onChange={(e) => setFormData({ ...formData, umpireSince: e.target.value })}
+                          placeholder="e.g., 2018"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
+                          autoComplete="off"
+                        />
+                      </div>
+
+                      {/* Specialization */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Specialization <span className="text-red-500">*</span>
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          {(['outdoor', 'indoor', 'both'] as const).map((value) => {
+                            const labels: Record<typeof value, string> = {
+                              outdoor: 'Outdoor',
+                              indoor: 'Indoor',
+                              both: 'Outdoor & Indoor',
+                            }
+                            const active = formData.officiatingSpecialization === value
+                            return (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => setFormData({ ...formData, officiatingSpecialization: value })}
+                                className={`p-3 rounded-lg border-2 text-center transition-all ${
+                                  active
+                                    ? 'border-[#8026FA] bg-purple-50 text-[#8026FA]'
+                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700'
+                                }`}
+                              >
+                                <span className="text-sm font-medium">{labels[value]}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Languages — deliberately given its own prominent block.
+                          Umpiring internationally is bilingual by default; leaving
+                          this blank produces a much weaker profile. Keep the bar
+                          low (min 1) but surface the question cleanly. */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="umpire-languages">
+                          Languages you can officiate in <span className="text-red-500">*</span>
+                        </label>
+                        <p className="text-xs text-gray-500 mb-3">
+                          Officials pair and get assigned across languages. Add at least one — more is better.
+                        </p>
+
+                        {/* Selected chips */}
+                        {formData.languages.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {formData.languages.map((lang) => (
+                              <span
+                                key={lang}
+                                className="inline-flex items-center gap-1.5 rounded-full bg-purple-100 text-[#8026FA] px-3 py-1 text-sm font-medium"
+                              >
+                                {lang}
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setFormData({
+                                      ...formData,
+                                      languages: formData.languages.filter((l) => l !== lang),
+                                    })
+                                  }
+                                  aria-label={`Remove ${lang}`}
+                                  className="text-[#8026FA] hover:text-[#6B20D4]"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Add-language input (datalist) */}
+                        <div className="flex gap-2">
+                          <input
+                            id="umpire-languages"
+                            type="text"
+                            list="language-suggestions"
+                            placeholder="e.g., English, Spanish, Dutch"
+                            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
+                            autoComplete="off"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                const value = (e.currentTarget.value ?? '').trim()
+                                if (!value) return
+                                if (!formData.languages.includes(value)) {
+                                  setFormData({
+                                    ...formData,
+                                    languages: [...formData.languages, value],
+                                  })
+                                }
+                                e.currentTarget.value = ''
+                              }
+                            }}
+                            onBlur={(e) => {
+                              // Commit on blur too — catches users who pick a
+                              // datalist suggestion then tab out without pressing Enter.
+                              const value = (e.currentTarget.value ?? '').trim()
+                              if (!value) return
+                              if (!formData.languages.includes(value)) {
+                                setFormData({
+                                  ...formData,
+                                  languages: [...formData.languages, value],
+                                })
+                              }
+                              e.currentTarget.value = ''
+                            }}
+                          />
+                        </div>
+                        <datalist id="language-suggestions">
+                          {LANGUAGE_SUGGESTIONS.map((lang) => (
+                            <option key={lang} value={lang} />
+                          ))}
+                        </datalist>
+                        <p className="text-xs text-gray-400 mt-2">Press Enter to add. You can edit this later.</p>
+                      </div>
                     </>
                   )}
                 </>
