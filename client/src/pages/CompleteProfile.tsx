@@ -62,6 +62,10 @@ export default function CompleteProfile() {
   // 3 progressive steps (identity → background → role details). Club and brand
   // keep their existing flows untouched.
   const [currentStep, setCurrentStep] = useState<WizardStep>(1)
+  // Guards the step-viewed analytics so we emit once per (step, role) entry,
+  // not on every rerender. Drop-off is computed at analysis time from
+  // `wizard_step_viewed` vs. `wizard_step_completed` counts per step.
+  const viewedStepsRef = useRef<Set<string>>(new Set())
 
   // Form data states
   const [formData, setFormData] = useState({
@@ -473,14 +477,41 @@ export default function CompleteProfile() {
   // without mounting this whole page. The whole-form `validateForm`
   // below is still called on submit as a safety net in case the user
   // navigates back and clears a field.
+  // Fire `wizard_step_viewed` once per (step, role) entry. Runs after the
+  // user has picked a role (userRole becomes truthy) and whenever they land
+  // on a step they haven't seen yet — including back-navigation.
+  useEffect(() => {
+    if (!isWizardFlow || !user?.id) return
+    const key = `${userRole}:${currentStep}`
+    if (viewedStepsRef.current.has(key)) return
+    viewedStepsRef.current.add(key)
+    trackDbEvent('onboarding_step', 'profile', user.id, {
+      step: 'wizard_step_viewed',
+      role: userRole,
+      wizard_step: currentStep,
+    })
+  }, [currentStep, userRole, isWizardFlow, user?.id])
+
   const handleNext = () => {
     if (userRole !== 'player' && userRole !== 'coach') return
     const stepError = validateOnboardingStep(currentStep, userRole, formData)
     if (stepError) {
       setError(stepError)
+      // Emit so we can see which step + which validation rule users get stuck on.
+      trackDbEvent('onboarding_step', 'profile', user?.id, {
+        step: 'wizard_step_validation_failed',
+        role: userRole,
+        wizard_step: currentStep,
+        reason: stepError,
+      })
       return
     }
     setError('')
+    trackDbEvent('onboarding_step', 'profile', user?.id, {
+      step: 'wizard_step_completed',
+      role: userRole,
+      wizard_step: currentStep,
+    })
     setCurrentStep((prev) => (prev === 3 ? 3 : ((prev + 1) as WizardStep)))
   }
 
