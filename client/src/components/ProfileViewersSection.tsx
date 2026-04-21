@@ -108,7 +108,7 @@ export function ProfileViewersSection() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-gray-900 text-sm truncate">{displayName}</span>
-                  <RoleBadge role={viewer.role as 'player' | 'coach' | 'club' | 'brand'} />
+                  <RoleBadge role={viewer.role as 'player' | 'coach' | 'club' | 'brand' | 'umpire'} />
                 </div>
                 <p className="text-xs text-gray-500 truncate">
                   {[

@@ -37,7 +37,7 @@ export function SearchPersonResult({ result }: SearchPersonResultProps) {
           <span className="font-semibold text-gray-900 truncate text-sm">
             {result.full_name || 'Unknown'}
           </span>
-          <RoleBadge role={result.role as 'player' | 'coach' | 'club' | 'brand'} />
+          <RoleBadge role={result.role as 'player' | 'coach' | 'club' | 'brand' | 'umpire'} />
         </div>
         {subtitle && (
           <p className="text-xs text-gray-500 truncate mt-0.5">{subtitle}</p>

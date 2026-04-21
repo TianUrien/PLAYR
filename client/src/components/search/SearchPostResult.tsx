@@ -39,7 +39,7 @@ export function SearchPostResult({ result }: SearchPostResultProps) {
             >
               {result.author_name || 'Unknown'}
             </Link>
-            <RoleBadge role={result.author_role as 'player' | 'coach' | 'club' | 'brand'} />
+            <RoleBadge role={result.author_role as 'player' | 'coach' | 'club' | 'brand' | 'umpire'} />
           </div>
           <p className="text-xs text-gray-500">{timeAgo}</p>
         </div>
