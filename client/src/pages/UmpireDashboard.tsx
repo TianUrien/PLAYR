@@ -203,6 +203,34 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
           </div>
         </div>
 
+        {/* ── Empty-state CTA for owners who haven't completed credentials ── */}
+        {!readOnly && !hasCertification && (
+          <section className="mt-6 bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl p-5 md:p-6">
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-amber-700" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-semibold text-gray-900 mb-1">
+                  Add your officiating credentials
+                </h3>
+                <p className="text-sm text-gray-700 mb-3">
+                  Your level and federation are what clubs and fellow umpires look for first.
+                  Take a minute now — you can always refine it later.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  Add credentials
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* ── Certification & Level (hero) ── */}
         {hasCertification && (
           <section className="mt-6 bg-white rounded-2xl shadow-sm p-5 md:p-7 animate-slide-in-up">

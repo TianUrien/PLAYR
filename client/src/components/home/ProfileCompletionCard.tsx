@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Camera, Building2, UserPlus, Shield, X } from 'lucide-react'
+import { Camera, Building2, UserPlus, Shield, X, Award } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { useProfileStrength } from '@/hooks/useProfileStrength'
 import type { Profile } from '@/lib/supabase'
@@ -70,6 +70,29 @@ export default function ProfileCompletionCard() {
         actionLabel: 'Add Photo',
         completed: false,
       })
+    }
+
+    // Umpire credentials — hero field for officiating role. Without these,
+    // the profile says nothing about trust/level to anyone browsing.
+    if (role === 'umpire') {
+      const umpireFields = p as unknown as { umpire_level?: string | null; federation?: string | null }
+      const needsLevel = !umpireFields.umpire_level?.trim()
+      const needsFederation = !umpireFields.federation?.trim()
+      if (needsLevel || needsFederation) {
+        items.push({
+          id: 'umpire-credentials',
+          icon: <Award className="w-5 h-5 text-[#8026FA]" />,
+          title: needsLevel && needsFederation
+            ? 'Add your umpire level and federation'
+            : needsLevel
+              ? 'Add your umpire level'
+              : 'Add the federation you officiate with',
+          description: 'This is what clubs and fellow officials look for first.',
+          action: () => navigate(`/umpires/${(p as Profile).username}?action=edit`),
+          actionLabel: needsLevel ? 'Add Level' : 'Add Federation',
+          completed: false,
+        })
+      }
     }
 
     // Club linking — unlocks league AI filtering (players/coaches only)

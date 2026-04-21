@@ -361,6 +361,20 @@ export function EditUserModal({
                 </>
               )}
 
+              {/* Umpire-specific fields are read-only in this modal until the
+                  admin_update_profile RPC allowlist is extended. Until then,
+                  edit umpire credentials via direct SQL or ask the umpire to
+                  use their own Edit Profile button. Adding the inputs here
+                  without RPC support would surface a misleading "Field not
+                  allowed for admin update" error on save. */}
+              {profile.role === 'umpire' && (
+                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
+                  Admin editing of umpire-specific fields (level, federation,
+                  languages) is coming soon. Ask the umpire to open their own
+                  profile → Edit, or contact engineering to update via SQL.
+                </div>
+              )}
+
               {/* Reason for edit */}
               <div className="pt-4 border-t border-gray-200">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
