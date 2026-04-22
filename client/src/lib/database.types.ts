@@ -2385,6 +2385,7 @@ export type Database = {
           search_vector: unknown
           secondary_position: string | null
           social_links: Json | null
+          umpire_appointment_count: number
           umpire_level: string | null
           umpire_since: number | null
           updated_at: string
@@ -2463,6 +2464,7 @@ export type Database = {
           search_vector?: unknown
           secondary_position?: string | null
           social_links?: Json | null
+          umpire_appointment_count?: number
           umpire_level?: string | null
           umpire_since?: number | null
           updated_at?: string
@@ -2541,6 +2543,7 @@ export type Database = {
           search_vector?: unknown
           secondary_position?: string | null
           social_links?: Json | null
+          umpire_appointment_count?: number
           umpire_level?: string | null
           umpire_since?: number | null
           updated_at?: string
@@ -2818,6 +2821,72 @@ export type Database = {
           version?: string
         }
         Relationships: []
+      }
+      umpire_appointments: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_order: number
+          end_date: string | null
+          event_name: string
+          id: string
+          location_city: string | null
+          location_country: string | null
+          match_format: string | null
+          match_level: string | null
+          organizer: string | null
+          start_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          end_date?: string | null
+          event_name: string
+          id?: string
+          location_city?: string | null
+          location_country?: string | null
+          match_format?: string | null
+          match_level?: string | null
+          organizer?: string | null
+          start_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_order?: number
+          end_date?: string | null
+          event_name?: string
+          id?: string
+          location_city?: string | null
+          location_country?: string | null
+          match_format?: string | null
+          match_level?: string | null
+          organizer?: string | null
+          start_date?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "umpire_appointments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "umpire_appointments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_blocks: {
         Row: {
@@ -4298,7 +4367,12 @@ export type Database = {
             }[]
           }
       admin_set_profile_verified: {
-        Args: { p_profile_id: string; p_value: boolean }
+        Args: {
+          p_notes?: string
+          p_profile_id: string
+          p_source_url?: string
+          p_value: boolean
+        }
         Returns: Json
       }
       admin_set_test_account: {
@@ -4498,6 +4572,7 @@ export type Database = {
           search_vector: unknown
           secondary_position: string | null
           social_links: Json | null
+          umpire_appointment_count: number
           umpire_level: string | null
           umpire_since: number | null
           updated_at: string
@@ -4627,6 +4702,7 @@ export type Database = {
           search_vector: unknown
           secondary_position: string | null
           social_links: Json | null
+          umpire_appointment_count: number
           umpire_level: string | null
           umpire_since: number | null
           updated_at: string

@@ -24,6 +24,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, MapPin, Calendar, Shield, Flag, Edit2, Languages as LanguagesIcon } from 'lucide-react'
 import Header from '@/components/Header'
 import { Avatar, EditProfileModal, RoleBadge, TierBadge, VerifiedBadge, DualNationalityDisplay } from '@/components'
+import UmpireAppointmentsSection from '@/components/UmpireAppointmentsSection'
 import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
 import { calculateAge, formatDateOfBirth } from '@/lib/utils'
@@ -247,6 +248,11 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
           </section>
         )}
 
+        {/* ── Officiating History (Phase C) ── */}
+        {profile.id && (
+          <UmpireAppointmentsSection userId={profile.id} readOnly={readOnly} />
+        )}
+
         {/* ── Bio ── */}
         {hasBio && (
           <section className="mt-6 bg-white rounded-2xl shadow-sm p-5 md:p-7 animate-slide-in-up">
@@ -275,8 +281,8 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
           </section>
         )}
 
-        {/* Phase B adds the edit surface via EditProfileModal (above).
-            Posts / Friends / Comments tabs + Journey remain deferred to Phase C. */}
+        {/* Phase C adds UmpireAppointmentsSection above. Posts / Friends /
+            Comments tabs remain deferred to a later phase. */}
       </div>
 
       {!readOnly && (
