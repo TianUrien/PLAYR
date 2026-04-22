@@ -460,7 +460,7 @@ export default function UmpireDashboard({
                   readOnly={readOnly}
                   showVideo={false}
                   showGallery
-                  isOwnProfile={isOwnerView}
+                  isOwnProfile={isOwnProfile}
                   viewerRole="umpire"
                 />
               </div>
