@@ -31,7 +31,7 @@ import { checkLoginRateLimit, checkSignupRateLimit, formatRateLimitError } from 
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
 import { trackLogin, trackSignUp, trackSignUpStart } from '@/lib/analytics'
-import { captureAuthFlowError } from '@/lib/sentryHelpers'
+import { reportAuthFlowError } from '@/lib/sentryHelpers'
 
 export interface AuthScreenProps {
   mode: 'signin' | 'signup'
@@ -206,12 +206,9 @@ export default function AuthScreen({ mode, role, onBack }: AuthScreenProps) {
       })
 
       if (signInError) {
-        captureAuthFlowError(
-          signInError,
-          { stage: 'signInWithPassword', emailDomain: email.split('@')[1] ?? null },
-          'AuthScreen.handlePasswordSignIn',
-          null
-        )
+        reportAuthFlowError('password_signin', signInError, {
+          emailDomain: email.split('@')[1] ?? null,
+        })
         if (signInError.message.toLowerCase().includes('email not confirmed')) {
           navigate(`/verify-email?email=${encodeURIComponent(email)}&reason=unverified_signin`)
           return
@@ -228,7 +225,9 @@ export default function AuthScreen({ mode, role, onBack }: AuthScreenProps) {
       trackLogin('password')
       // Auth store's onAuthStateChange will redirect via the effect above.
     } catch (err) {
-      captureAuthFlowError(err, { stage: 'AuthScreen.handlePasswordSignIn.catch' }, 'AuthScreen.handlePasswordSignIn', null)
+      reportAuthFlowError('password_signin.catch', err, {
+        emailDomain: email.split('@')[1] ?? null,
+      })
       setError(err instanceof Error ? err.message : 'Sign in failed.')
     } finally {
       setLoading(false)
