@@ -35,6 +35,7 @@ import {
   EditProfileModal,
   FriendsTab,
   FriendshipButton,
+  PublicReferencesSection,
   PublicViewBanner,
   RoleBadge,
   ScrollableTabs,
@@ -222,7 +223,7 @@ export default function UmpireDashboard({
                     </Button>
                     <DashboardMenu />
                   </div>
-                ) : (
+                ) : !isOwnProfile ? (
                   <div className="flex items-center gap-2">
                     <FriendshipButton profileId={profile.id} />
                     <ProfileActionMenu
@@ -230,7 +231,7 @@ export default function UmpireDashboard({
                       targetName={profile.full_name ?? 'this umpire'}
                     />
                   </div>
-                )}
+                ) : null}
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -338,7 +339,7 @@ export default function UmpireDashboard({
 
           <div className="p-5 md:p-7">
             {activeTab === 'profile' && (
-              <div className="space-y-6 animate-fade-in">
+              <div className="space-y-10 animate-fade-in">
                 {hasCertification ? (
                   <section>
                     <h2 className="text-2xl font-bold text-gray-900 mb-5 inline-flex items-center gap-2">
@@ -378,15 +379,25 @@ export default function UmpireDashboard({
                   </section>
                 )}
 
+                {/* Trusted References — visible on public/network view, since
+                    credentials + peer vouching is the umpire's primary trust
+                    spine. Matches Player's PublicReferencesSection placement. */}
+                {readOnly && (
+                  <PublicReferencesSection
+                    profileId={profile.id}
+                    profileName={profile.full_name ?? null}
+                  />
+                )}
+
                 {hasBio && (
-                  <section className="pt-2">
+                  <section>
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">About</h2>
                     <p className="text-gray-700 leading-relaxed whitespace-pre-line">{profile.bio}</p>
                   </section>
                 )}
 
                 {hasLanguages && (
-                  <section className="pt-2">
+                  <section>
                     <h2 className="text-2xl font-bold text-gray-900 mb-4 inline-flex items-center gap-2">
                       <LanguagesIcon className="w-6 h-6 text-gray-500" />
                       Languages
@@ -401,6 +412,28 @@ export default function UmpireDashboard({
                         </span>
                       ))}
                     </div>
+                  </section>
+                )}
+
+                {/* Gallery inline on public view — matches Player readOnly pattern. */}
+                {readOnly && (
+                  <section>
+                    <MediaTab
+                      profileId={profile.id}
+                      readOnly
+                      showVideo={false}
+                      showGallery
+                      isOwnProfile={isOwnProfile}
+                      viewerRole="umpire"
+                    />
+                  </section>
+                )}
+
+                {/* Posts inline on public view — matches Player readOnly pattern. */}
+                {readOnly && (
+                  <section className="pt-6 border-t border-gray-200">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4">Posts</h2>
+                    <ProfilePostsTab profileId={profile.id} readOnly />
                   </section>
                 )}
               </div>
