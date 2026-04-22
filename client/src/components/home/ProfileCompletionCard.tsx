@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Camera, Building2, UserPlus, Shield, X, Award } from 'lucide-react'
+import { Camera, Building2, UserPlus, Shield, X } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { useProfileStrength } from '@/hooks/useProfileStrength'
 import type { Profile } from '@/lib/supabase'
@@ -80,7 +80,7 @@ export default function ProfileCompletionCard() {
       if (needsLevel || needsFederation) {
         items.push({
           id: 'umpire-credentials',
-          icon: <Award className="w-5 h-5 text-[#8026FA]" />,
+          icon: <Shield className="w-5 h-5 text-[#8026FA]" />,
           title: needsLevel && needsFederation
             ? 'Add your umpire level and federation'
             : needsLevel

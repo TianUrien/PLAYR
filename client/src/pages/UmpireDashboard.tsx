@@ -115,7 +115,7 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
         )}
 
         {/* ── Header row ── */}
-        <div className="bg-white rounded-2xl shadow-sm p-5 md:p-8 animate-slide-in-up">
+        <div className="bg-white rounded-2xl shadow-sm p-5 md:p-8 animate-fade-in">
           <div className="flex flex-col md:flex-row md:items-center gap-5 md:gap-6">
             <Avatar
               src={profile.avatar_url}
@@ -184,12 +184,6 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
               </div>
 
               <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-gray-600">
-                {profile.base_location && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4 text-gray-400" />
-                    {profile.base_location}
-                  </span>
-                )}
                 {(profile.nationality_country_id || profile.nationality) && (
                   <span className="inline-flex items-center gap-1.5">
                     <DualNationalityDisplay
@@ -198,6 +192,12 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
                       fallbackText={profile.nationality}
                       className="text-gray-600"
                     />
+                  </span>
+                )}
+                {profile.base_location && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-gray-400" />
+                    {profile.base_location}
                   </span>
                 )}
                 {dobDisplay && (
@@ -230,7 +230,7 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
                 <button
                   type="button"
                   onClick={() => setShowEditModal(true)}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-700 text-white text-sm font-medium hover:bg-amber-800 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                   Add credentials
@@ -243,33 +243,33 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
         {/* ── Certification & Level (hero) ── */}
         {hasCertification && (
           <section className="mt-6 bg-white rounded-2xl shadow-sm p-5 md:p-7 animate-slide-in-up">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-amber-700 mb-4 inline-flex items-center gap-2">
-              <Shield className="w-4 h-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-5 inline-flex items-center gap-2">
+              <Shield className="w-6 h-6 text-amber-700" />
               Certification &amp; Level
             </h2>
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               {profile.umpire_level && (
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-gray-400 mb-1">Level</dt>
-                  <dd className="text-base font-semibold text-gray-900">{profile.umpire_level}</dd>
+                  <dt className="text-sm font-medium text-gray-500 mb-1">Level</dt>
+                  <dd className="text-gray-900 font-medium">{profile.umpire_level}</dd>
                 </div>
               )}
               {profile.federation && (
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-gray-400 mb-1">Federation</dt>
-                  <dd className="text-base font-semibold text-gray-900">{profile.federation}</dd>
+                  <dt className="text-sm font-medium text-gray-500 mb-1">Federation</dt>
+                  <dd className="text-gray-900 font-medium">{profile.federation}</dd>
                 </div>
               )}
               {profile.umpire_since && (
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-gray-400 mb-1">Umpiring since</dt>
-                  <dd className="text-base font-semibold text-gray-900">{profile.umpire_since}</dd>
+                  <dt className="text-sm font-medium text-gray-500 mb-1">Umpiring since</dt>
+                  <dd className="text-gray-900 font-medium">{profile.umpire_since}</dd>
                 </div>
               )}
               {specLabel && (
                 <div>
-                  <dt className="text-xs uppercase tracking-wide text-gray-400 mb-1">Specialization</dt>
-                  <dd className="text-base font-semibold text-gray-900">{specLabel}</dd>
+                  <dt className="text-sm font-medium text-gray-500 mb-1">Specialization</dt>
+                  <dd className="text-gray-900 font-medium">{specLabel}</dd>
                 </div>
               )}
             </dl>
@@ -296,23 +296,23 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
         {/* ── Bio ── */}
         {hasBio && (
           <section className="mt-6 bg-white rounded-2xl shadow-sm p-5 md:p-7 animate-slide-in-up">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">About</h2>
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{profile.bio}</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">About</h2>
+            <p className="text-gray-700 leading-relaxed whitespace-pre-line">{profile.bio}</p>
           </section>
         )}
 
         {/* ── Languages ── */}
         {hasLanguages && (
           <section className="mt-6 bg-white rounded-2xl shadow-sm p-5 md:p-7 animate-slide-in-up">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3 inline-flex items-center gap-2">
-              <LanguagesIcon className="w-4 h-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4 inline-flex items-center gap-2">
+              <LanguagesIcon className="w-6 h-6 text-gray-500" />
               Languages
             </h2>
             <div className="flex flex-wrap gap-2">
               {profile.languages!.map((lang) => (
                 <span
                   key={lang}
-                  className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700"
+                  className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-700"
                 >
                   {lang}
                 </span>

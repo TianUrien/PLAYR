@@ -108,12 +108,12 @@ export default function UmpireAppointmentsSection({
 
   return (
     <section className="mt-6 bg-white rounded-2xl shadow-sm p-5 md:p-7 animate-slide-in-up">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-amber-700 inline-flex items-center gap-2">
-          <Award className="w-4 h-4" />
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <h2 className="text-2xl font-bold text-gray-900 inline-flex items-center gap-2">
+          <Award className="w-6 h-6 text-amber-700" />
           Officiating History
           {appointments.length > 0 && (
-            <span className="text-gray-400 normal-case tracking-normal font-normal">
+            <span className="text-base font-normal text-gray-400">
               · {appointments.length}
             </span>
           )}
