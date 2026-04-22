@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
 import { Eye, EyeOff, ChevronLeft, ChevronRight } from 'lucide-react'
-import { Input, Button, InAppBrowserWarning, PublicNav } from '@/components'
+import { Input, Button, InAppBrowserWarning, MagicLinkForm, PublicNav } from '@/components'
 import { useAuthStore } from '@/lib/auth'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
@@ -354,7 +354,20 @@ export default function Landing() {
             className="rounded-2xl px-5 py-5 bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl"
           >
             <h2 className="text-lg font-bold text-white text-center mb-3">Sign In</h2>
-            
+
+            {/* Passwordless (magic link) — primary path. Works inside every
+                browser, including Meta in-app WebViews where OAuth is blocked. */}
+            <MagicLinkForm variant="dark" compact ctaLabel="Email me a sign-in link" />
+
+            <div className="relative my-3">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-white/15"></div>
+              </div>
+              <div className="relative flex justify-center">
+                <span className="px-3 text-[10px] text-gray-500 bg-black/50 font-semibold">OR USE PASSWORD</span>
+              </div>
+            </div>
+
             <form onSubmit={handleSignIn} noValidate className="space-y-2.5">
               <div>
                 <label className="block text-[11px] font-medium text-gray-400 mb-1">Email</label>
@@ -506,7 +519,20 @@ export default function Landing() {
               className="rounded-2xl p-8 bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl"
             >
               <h2 className="text-2xl font-bold text-white text-center mb-6">Sign In</h2>
-              
+
+              {/* Passwordless (magic link) — primary path. Works inside every
+                  browser, including Meta in-app WebViews where OAuth is blocked. */}
+              <MagicLinkForm variant="dark" ctaLabel="Email me a sign-in link" />
+
+              <div className="relative my-5">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/15"></div>
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="px-3 text-xs text-gray-500 bg-black/60">or sign in with a password</span>
+                </div>
+              </div>
+
               <form onSubmit={handleSignIn} noValidate className="space-y-4">
                 <div>
                   <label className="block text-xs font-medium text-gray-400 mb-1.5">Email</label>

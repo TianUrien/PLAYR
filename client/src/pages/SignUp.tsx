@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Mail, Lock, User, Building2, Briefcase, Store, Flag } from 'lucide-react'
 import * as Sentry from '@sentry/react'
-import { Input, Button, InAppBrowserWarning } from '@/components'
+import { Input, Button, InAppBrowserWarning, MagicLinkForm } from '@/components'
 import { supabase } from '@/lib/supabase'
 import { getAuthRedirectUrl } from '@/lib/siteUrl'
 import { startOAuthSignIn } from '@/lib/oauthSignIn'
@@ -321,10 +321,33 @@ export default function SignUp() {
                 {selectedRole === 'coach' && 'Join as Coach'}
                 {selectedRole === 'club' && 'Join as Club'}
                 {selectedRole === 'brand' && 'Join as Brand'}
+                {selectedRole === 'umpire' && 'Join as Umpire'}
               </h3>
               <p className="text-gray-600 mb-6">
-                Enter your email and password to create your account
+                We'll email you a secure link — no password needed.
               </p>
+
+              {/* Primary path: passwordless magic link. Works in every browser,
+                  including Meta in-app WebViews where Google/Apple OAuth is
+                  blocked by provider policy. */}
+              <MagicLinkForm
+                role={selectedRole}
+                variant="light"
+                onSent={() => trackSignUpStart('magic_link')}
+                ctaLabel="Send me a magic link"
+              />
+
+              {/* Secondary path: email + password. Kept for users who prefer
+                  passwords, and as a safety net if their mail provider filters
+                  out magic-link emails. */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="px-3 bg-white text-gray-500">or use a password</span>
+                </div>
+              </div>
 
               {error && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg" role="alert" aria-live="assertive">
@@ -369,10 +392,11 @@ export default function SignUp() {
 
               <Button
                 type="submit"
+                variant="outline"
                 disabled={loading}
-                className="w-full mt-6 bg-gradient-to-r from-[#8026FA] to-[#924CEC]"
+                className="w-full mt-6"
               >
-                {loading ? 'Creating Account...' : 'Create Account'}
+                {loading ? 'Creating Account...' : 'Create Account with Password'}
               </Button>
 
               <p className="text-xs text-gray-500 mt-4 text-center">
