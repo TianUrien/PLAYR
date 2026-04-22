@@ -417,7 +417,7 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
 
             {activeTab === 'comments' && (
               <div className="animate-fade-in">
-                <CommentsTab profileId={profile.id} />
+                <CommentsTab profileId={profile.id} profileRole="umpire" />
               </div>
             )}
 

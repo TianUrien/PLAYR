@@ -999,7 +999,15 @@ export function PostComposerModal({
                 ref={textareaRef}
                 value={content}
                 onChange={handleContentChange}
-                placeholder={mode === 'transfer' ? (isClubRole ? 'Share something about this signing... (optional)' : 'Share something about your transfer... (optional)') : "What's on your mind?"}
+                placeholder={
+                  mode === 'transfer'
+                    ? (isClubRole
+                        ? 'Share something about this signing... (optional)'
+                        : 'Share something about your transfer... (optional)')
+                    : isUmpireRole
+                      ? 'Share a match recap, a law clarification, or a panel update...'
+                      : "What's on your mind?"
+                }
                 rows={mode === 'transfer' ? 3 : 4}
                 maxLength={MAX_CONTENT_LENGTH}
                 autoCapitalize="sentences"
