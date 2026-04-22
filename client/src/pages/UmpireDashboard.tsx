@@ -25,7 +25,7 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, MapPin, Calendar, Shield, Flag, Edit2, Languages as LanguagesIcon, Activity } from 'lucide-react'
+import { ArrowLeft, MapPin, Calendar, Shield, Flag, Edit2, Eye, Languages as LanguagesIcon, Activity } from 'lucide-react'
 import Header from '@/components/Header'
 import {
   Avatar,
@@ -34,6 +34,7 @@ import {
   EditProfileModal,
   FriendsTab,
   FriendshipButton,
+  PublicViewBanner,
   RoleBadge,
   ScrollableTabs,
   TierBadge,
@@ -71,6 +72,10 @@ export type UmpireProfileShape =
 interface UmpireDashboardProps {
   profileData?: UmpireProfileShape
   readOnly?: boolean
+  /** True when an owner is viewing their own profile in readOnly "network
+   * view" mode — renders the PublicViewBanner with a "Back to dashboard"
+   * shortcut. Matches PlayerDashboard / CoachDashboard / ClubDashboard. */
+  isOwnProfile?: boolean
 }
 
 type TabType = 'profile' | 'officiating' | 'gallery' | 'friends' | 'comments' | 'posts'
@@ -87,7 +92,11 @@ function specializationLabel(value: string | null | undefined): string | null {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
-export default function UmpireDashboard({ profileData, readOnly = false }: UmpireDashboardProps) {
+export default function UmpireDashboard({
+  profileData,
+  readOnly = false,
+  isOwnProfile = false,
+}: UmpireDashboardProps) {
   const { profile: authProfile } = useAuthStore()
   const profile = (profileData ?? authProfile) as UmpireProfileShape | null
   const navigate = useNavigate()
@@ -149,11 +158,12 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
     { id: 'posts', label: 'Posts' },
   ]
 
-  const isOwnProfile = !readOnly
+  const isOwnerView = !readOnly
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+      {readOnly && isOwnProfile && <PublicViewBanner />}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 pt-24 pb-12">
         {readOnly && (
           <button
@@ -188,6 +198,16 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
                 </h1>
                 {!readOnly ? (
                   <div className="flex-shrink-0 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/umpires/id/${profile.id}?view=public`)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                      title="See how your profile looks to other HOCKIA members"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Network View</span>
+                      <span className="sm:hidden">View</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => setShowEditModal(true)}
@@ -399,7 +419,7 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
                   readOnly={readOnly}
                   showVideo={false}
                   showGallery
-                  isOwnProfile={isOwnProfile}
+                  isOwnProfile={isOwnerView}
                   viewerRole="umpire"
                 />
               </div>

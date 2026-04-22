@@ -199,5 +199,11 @@ export default function PublicUmpireProfile() {
   // Pass the umpire-specific columns through via the cast — UmpireDashboard
   // narrow-casts them again internally. Safe: we fetched them above and the
   // dashboard treats missing fields as "not set" rather than crashing.
-  return <UmpireDashboard profileData={profile as UmpireProfileShape} readOnly={true} />
+  return (
+    <UmpireDashboard
+      profileData={profile as UmpireProfileShape}
+      readOnly={true}
+      isOwnProfile={isOwnProfile}
+    />
+  )
 }
