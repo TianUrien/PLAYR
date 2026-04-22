@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Mail, CheckCircle2 } from 'lucide-react'
 import Button from './Button'
 import Input from './Input'
-import { sendMagicLink, type MagicLinkRole } from '@/lib/magicLink'
+import { sendMagicLink, type MagicLinkIntent, type MagicLinkRole } from '@/lib/magicLink'
 
 const RESEND_COOLDOWN_SECONDS = 60
 
 export interface MagicLinkFormProps {
-  /** If set, the link creates a new signup with this role in user_metadata. */
+  /** 'signin' = existing user (Landing), 'signup' = new account (SignUp). */
+  intent: MagicLinkIntent
+  /** Required for intent='signup' so the role is written to user_metadata. */
   role?: MagicLinkRole
   /** Dark theme for Landing sign-in card; light for SignUp panel. */
   variant: 'light' | 'dark'
@@ -27,10 +30,12 @@ export interface MagicLinkFormProps {
  * Use this on any surface where Google/Apple OAuth may be unreliable
  * (e.g. Meta in-app WebViews).
  */
-export default function MagicLinkForm({ role, variant, onSent, compact = false, ctaLabel }: MagicLinkFormProps) {
+export default function MagicLinkForm({ intent, role, variant, onSent, compact = false, ctaLabel }: MagicLinkFormProps) {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [userNotFound, setUserNotFound] = useState(false)
   const [sentTo, setSentTo] = useState<string | null>(null)
   const [cooldown, setCooldown] = useState(0)
 
@@ -45,11 +50,13 @@ export default function MagicLinkForm({ role, variant, onSent, compact = false, 
     e.preventDefault()
     if (loading || cooldown > 0) return
     setError(null)
+    setUserNotFound(false)
     setLoading(true)
     try {
-      const result = await sendMagicLink({ email, role })
+      const result = await sendMagicLink({ email, role, intent })
       if (!result.ok) {
         setError(result.error ?? 'Could not send the link.')
+        if (result.userNotFound) setUserNotFound(true)
         return
       }
       setSentTo(email.trim().toLowerCase())
@@ -65,7 +72,7 @@ export default function MagicLinkForm({ role, variant, onSent, compact = false, 
     setError(null)
     setLoading(true)
     try {
-      const result = await sendMagicLink({ email: sentTo, role })
+      const result = await sendMagicLink({ email: sentTo, role, intent })
       if (!result.ok) {
         setError(result.error ?? 'Could not resend the link.')
         return
@@ -153,8 +160,24 @@ export default function MagicLinkForm({ role, variant, onSent, compact = false, 
         aria-label="Email address for magic-link sign-in"
       />
 
-      {error && (
+      {error && !userNotFound && (
         <p className={`text-xs ${errorColor}`} role="alert">{error}</p>
+      )}
+
+      {userNotFound && (
+        <div
+          className={`text-xs rounded-lg p-2.5 ${variant === 'dark' ? 'bg-white/5 text-gray-200 border border-white/10' : 'bg-amber-50 text-amber-900 border border-amber-200'}`}
+          role="alert"
+        >
+          <p className="font-medium mb-1">No account found for this email.</p>
+          <button
+            type="button"
+            onClick={() => navigate('/signup')}
+            className={`font-semibold underline-offset-2 hover:underline ${variant === 'dark' ? 'text-[#c084fc]' : 'text-[#8026FA]'}`}
+          >
+            Create an account →
+          </button>
+        </div>
       )}
 
       <Button

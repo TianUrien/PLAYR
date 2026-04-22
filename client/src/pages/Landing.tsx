@@ -9,6 +9,7 @@ import { logger } from '@/lib/logger'
 import { startOAuthSignIn } from '@/lib/oauthSignIn'
 import { supportsReliableOAuth } from '@/lib/inAppBrowser'
 import { checkLoginRateLimit, formatRateLimitError } from '@/lib/rateLimit'
+import { trackLogin } from '@/lib/analytics'
 
 const CAROUSEL_SLIDES = [
   {
@@ -356,8 +357,16 @@ export default function Landing() {
             <h2 className="text-lg font-bold text-white text-center mb-3">Sign In</h2>
 
             {/* Passwordless (magic link) — primary path. Works inside every
-                browser, including Meta in-app WebViews where OAuth is blocked. */}
-            <MagicLinkForm variant="dark" compact ctaLabel="Email me a sign-in link" />
+                browser, including Meta in-app WebViews where OAuth is blocked.
+                intent='signin' disables shouldCreateUser so a typo in the email
+                doesn't silently create a new account. */}
+            <MagicLinkForm
+              intent="signin"
+              variant="dark"
+              compact
+              ctaLabel="Email me a sign-in link"
+              onSent={() => trackLogin('magic_link')}
+            />
 
             <div className="relative my-3">
               <div className="absolute inset-0 flex items-center">
@@ -521,8 +530,15 @@ export default function Landing() {
               <h2 className="text-2xl font-bold text-white text-center mb-6">Sign In</h2>
 
               {/* Passwordless (magic link) — primary path. Works inside every
-                  browser, including Meta in-app WebViews where OAuth is blocked. */}
-              <MagicLinkForm variant="dark" ctaLabel="Email me a sign-in link" />
+                  browser, including Meta in-app WebViews where OAuth is blocked.
+                  intent='signin' disables shouldCreateUser so a typo in the email
+                  doesn't silently create a new account. */}
+              <MagicLinkForm
+                intent="signin"
+                variant="dark"
+                ctaLabel="Email me a sign-in link"
+                onSent={() => trackLogin('magic_link')}
+              />
 
               <div className="relative my-5">
                 <div className="absolute inset-0 flex items-center">

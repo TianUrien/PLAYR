@@ -305,9 +305,11 @@ export default function SignUp() {
             </div>
           )}
 
-          {/* Email + Password Form */}
+          {/* Magic link (primary) + email/password (secondary).
+              Two SIBLING forms inside a <div> wrapper — never nest <form>
+              elements (invalid HTML, undefined Enter-key behavior). */}
           {selectedRole && (
-            <form onSubmit={handleSubmit} className="p-8">
+            <div className="p-8">
               <button
                 type="button"
                 onClick={() => setSelectedRole(null)}
@@ -331,6 +333,7 @@ export default function SignUp() {
                   including Meta in-app WebViews where Google/Apple OAuth is
                   blocked by provider policy. */}
               <MagicLinkForm
+                intent="signup"
                 role={selectedRole}
                 variant="light"
                 onSent={() => trackSignUpStart('magic_link')}
@@ -349,60 +352,62 @@ export default function SignUp() {
                 </div>
               </div>
 
-              {error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg" role="alert" aria-live="assertive">
-                  <p className="text-sm text-red-600">{error}</p>
-                </div>
-              )}
-
-              <div className="space-y-4">
-                <Input
-                  label="Email"
-                  type="email"
-                  icon={<Mail className="w-5 h-5" />}
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                />
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Min. 8 chars, uppercase, lowercase & number"
-                      value={formData.password}
-                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
+              <form onSubmit={handleSubmit}>
+                {error && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg" role="alert" aria-live="assertive">
+                    <p className="text-sm text-red-600">{error}</p>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters long</p>
-                </div>
-              </div>
+                )}
 
-              <Button
-                type="submit"
-                variant="outline"
-                disabled={loading}
-                className="w-full mt-6"
-              >
-                {loading ? 'Creating Account...' : 'Create Account with Password'}
-              </Button>
+                <div className="space-y-4">
+                  <Input
+                    label="Email"
+                    type="email"
+                    icon={<Mail className="w-5 h-5" />}
+                    placeholder="Enter your email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    required
+                  />
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Min. 8 chars, uppercase, lowercase & number"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Must be at least 8 characters long</p>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={loading}
+                  className="w-full mt-6"
+                >
+                  {loading ? 'Creating Account...' : 'Create Account with Password'}
+                </Button>
+              </form>
 
               <p className="text-xs text-gray-500 mt-4 text-center">
                 By signing up, you agree to our Terms of Service and Privacy Policy
               </p>
-            </form>
+            </div>
           )}
         </div>
         </div>
