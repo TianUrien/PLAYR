@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import type { Profile } from '@/lib/supabase'
-import { estimateMemberStrength } from '@/lib/profileTier'
-import type { CommunityMemberFields } from '@/lib/profileCompletion'
 
 export type ProfileStrengthBucket = {
   id: string
@@ -87,14 +85,6 @@ export function useProfileStrength(profile: Profile | null): ProfileStrengthResu
       return
     }
 
-    // Umpires don't have a gallery yet (Phase B1) — skip the extra query.
-    // The hook falls back to role-aware percentage via estimateMemberStrength
-    // below, so buckets/galleryCount are unused for this role.
-    if (profile.role === 'umpire') {
-      setLoading(false)
-      return
-    }
-
     setLoading(true)
     try {
       const galleryRes = await supabase
@@ -112,7 +102,7 @@ export function useProfileStrength(profile: Profile | null): ProfileStrengthResu
     } finally {
       setLoading(false)
     }
-  }, [profile?.id, profile?.role])
+  }, [profile?.id])
 
   useEffect(() => {
     void fetchCounts()
@@ -191,16 +181,9 @@ export function useProfileStrength(profile: Profile | null): ProfileStrengthResu
   }, [profile, journeyCount, galleryCount, friendCount, referenceCount])
 
   const percentage = useMemo(() => {
-    // Umpires aren't scored by the player buckets above (position,
-    // highlight_video_url, career_entry_count, references are all irrelevant
-    // for officiating). Delegate to the role-aware estimator so the progress
-    // bar on ProfileCompletionCard reflects credentials completeness.
-    if (profile?.role === 'umpire') {
-      return estimateMemberStrength(profile as unknown as CommunityMemberFields)
-    }
     if (buckets.length === 0) return 0
     return buckets.reduce((acc, bucket) => acc + (bucket.completed ? bucket.weight : 0), 0)
-  }, [buckets, profile])
+  }, [buckets])
 
   return {
     percentage,

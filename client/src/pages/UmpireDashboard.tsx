@@ -19,7 +19,7 @@
  * an admin toggles between views.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, MapPin, Calendar, Shield, Flag, Edit2, Languages as LanguagesIcon } from 'lucide-react'
 import Header from '@/components/Header'
@@ -27,8 +27,8 @@ import { Avatar, EditProfileModal, RoleBadge, TierBadge, VerifiedBadge, DualNati
 import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
 import { calculateAge, formatDateOfBirth } from '@/lib/utils'
-import { calculateTier, estimateMemberStrength } from '@/lib/profileTier'
-import type { CommunityMemberFields } from '@/lib/profileCompletion'
+import { calculateTier } from '@/lib/profileTier'
+import { useUmpireProfileStrength } from '@/hooks/useUmpireProfileStrength'
 
 export type UmpireProfileShape =
   Partial<Profile> &
@@ -64,14 +64,11 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
   const navigate = useNavigate()
   const [showEditModal, setShowEditModal] = useState(false)
 
-  // Tier comes from the shared per-role estimator so the badge here matches
-  // what community-grid cards render. Once `useUmpireProfileStrength` exists
-  // (Phase B2), owner-view can upgrade to the precise percentage.
-  const tier = useMemo(() => {
-    if (!profile) return null
-    const asMember = profile as unknown as CommunityMemberFields
-    return calculateTier(estimateMemberStrength(asMember))
-  }, [profile])
+  // Owner-view tier uses the precise credentials-weighted strength hook so the
+  // badge is exact (not estimated from community-grid fallbacks). Weights match
+  // `estimateMemberStrength(umpire)`, so community cards and dashboard agree.
+  const { percentage } = useUmpireProfileStrength({ profile })
+  const tier = profile ? calculateTier(percentage) : null
 
   useEffect(() => {
     document.title = profile?.full_name
