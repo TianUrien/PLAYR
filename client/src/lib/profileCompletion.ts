@@ -46,6 +46,7 @@ export interface CommunityMemberFields {
   umpire_since?: number | null
   officiating_specialization?: string | null
   languages?: string[] | null
+  umpire_appointment_count?: number | null
 }
 
 const hasNationality = (m: CommunityMemberFields): boolean =>

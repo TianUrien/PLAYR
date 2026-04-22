@@ -25,21 +25,21 @@ interface UseUmpireProfileStrengthOptions {
 /**
  * Umpire-specific profile strength calculation.
  *
- * Credentials-weighted — matches the umpire branch of
+ * Credentials still lead (50 pts) but Phase C (officiating history) and
+ * Phase E (peer references) now contribute — matches the umpire branch of
  * `estimateMemberStrength` in lib/profileTier.ts so the percentage here
  * (owner view) agrees with the tier badge shown on community cards.
  *
  * Buckets (total 100):
- * - Umpire Level (25%): umpire_level
- * - Federation (20%): federation
- * - Specialization (10%): officiating_specialization
- * - Profile Photo (15%): avatar_url
- * - Bio (10%): bio
- * - Languages (10%): >=1 language
- * - Years Officiating (10%): umpire_since
- *
- * Every bucket maps to the EditProfileModal — umpire Phase B1 has no
- * journey / gallery / friends / references surfaces.
+ * - Umpire Level (20): umpire_level
+ * - Federation (15): federation
+ * - Specialization (10): officiating_specialization
+ * - Profile Photo (10): avatar_url
+ * - Bio (10): bio
+ * - Languages (10): >=1 language
+ * - Years Officiating (5): umpire_since
+ * - Appointments (10): >=1 umpire_appointments row
+ * - References (10): >=1 accepted profile_references row
  */
 export function useUmpireProfileStrength({ profile }: UseUmpireProfileStrengthOptions) {
   const buckets: ProfileBucket[] = useMemo(() => {
@@ -50,6 +50,8 @@ export function useUmpireProfileStrength({ profile }: UseUmpireProfileStrengthOp
     const bio = Boolean(profile?.bio?.trim())
     const languages = (profile?.languages?.length ?? 0) >= 1
     const years = (profile?.umpire_since ?? 0) > 0
+    const appointments = (profile?.umpire_appointment_count ?? 0) >= 1
+    const references = (profile?.accepted_reference_count ?? 0) >= 1
 
     return [
       {
@@ -57,7 +59,7 @@ export function useUmpireProfileStrength({ profile }: UseUmpireProfileStrengthOp
         label: 'Umpire Level',
         hint: 'Add your certification level (e.g. FIH International, National).',
         unlockCopy: 'Level is the first thing clubs and fellow umpires look for.',
-        weight: 25,
+        weight: 20,
         completed: level,
         actionId: 'edit-profile',
         actionLabel: 'Add Level',
@@ -67,7 +69,7 @@ export function useUmpireProfileStrength({ profile }: UseUmpireProfileStrengthOp
         label: 'Federation',
         hint: 'Add the governing body you officiate under.',
         unlockCopy: 'Shows which national or international body certified you.',
-        weight: 20,
+        weight: 15,
         completed: federation,
         actionId: 'edit-profile',
         actionLabel: 'Add Federation',
@@ -87,7 +89,7 @@ export function useUmpireProfileStrength({ profile }: UseUmpireProfileStrengthOp
         label: 'Profile Photo',
         hint: 'Upload a profile photo.',
         unlockCopy: 'Helps put a face to your name.',
-        weight: 15,
+        weight: 10,
         completed: photo,
         actionId: 'edit-profile',
         actionLabel: 'Add Photo',
@@ -117,10 +119,30 @@ export function useUmpireProfileStrength({ profile }: UseUmpireProfileStrengthOp
         label: 'Years Officiating',
         hint: 'Add the year you first became certified.',
         unlockCopy: 'Experience is a fast trust signal for assigners.',
-        weight: 10,
+        weight: 5,
         completed: years,
         actionId: 'edit-profile',
         actionLabel: 'Add Start Year',
+      },
+      {
+        id: 'appointments',
+        label: 'Officiating History',
+        hint: 'Log at least one tournament, league, or match you\u2019ve officiated.',
+        unlockCopy: 'Concrete history is the strongest credibility signal beyond the badge.',
+        weight: 10,
+        completed: appointments,
+        actionId: 'appointments',
+        actionLabel: 'Add Appointment',
+      },
+      {
+        id: 'references',
+        label: 'Peer References',
+        hint: 'Get at least one trusted reference from a coach, fellow umpire, or club.',
+        unlockCopy: 'A peer vouching for you builds trust faster than any credential alone.',
+        weight: 10,
+        completed: references,
+        actionId: 'references',
+        actionLabel: 'Get Reference',
       },
     ]
   }, [profile])

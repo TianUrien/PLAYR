@@ -17,7 +17,10 @@ import {
   type UmpireAppointment,
   type UmpireAppointmentInput,
 } from '@/hooks/useUmpireAppointments'
+import { deleteStorageObject } from '@/lib/storage'
 import UmpireAppointmentEditor from './UmpireAppointmentEditor'
+
+const JOURNEY_BUCKET = 'journey'
 
 interface UmpireAppointmentsSectionProps {
   userId: string
@@ -89,8 +92,18 @@ export default function UmpireAppointmentsSection({
   }
 
   const handleDeleteConfirm = async (id: string) => {
+    // Grab the image URL before the row is gone so we can clean up storage.
+    const target = appointments.find((a) => a.id === id)
     const ok = await remove(id)
-    if (ok) setPendingDeleteId(null)
+    if (!ok) return
+    setPendingDeleteId(null)
+    if (target?.image_url) {
+      void deleteStorageObject({
+        bucket: JOURNEY_BUCKET,
+        publicUrl: target.image_url,
+        context: 'umpire-appointment-delete',
+      })
+    }
   }
 
   return (
@@ -147,8 +160,17 @@ export default function UmpireAppointmentsSection({
             return (
               <li
                 key={a.id}
-                className="rounded-xl border border-gray-200 p-4 hover:border-gray-300 transition-colors"
+                className="rounded-xl border border-gray-200 overflow-hidden hover:border-gray-300 transition-colors"
               >
+                {a.image_url && (
+                  <img
+                    src={a.image_url}
+                    alt={a.event_name}
+                    loading="lazy"
+                    className="w-full h-40 object-cover"
+                  />
+                )}
+                <div className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <h3 className="text-base font-semibold text-gray-900 break-words">
@@ -247,6 +269,7 @@ export default function UmpireAppointmentsSection({
                     </div>
                   </div>
                 )}
+                </div>
               </li>
             )
           })}

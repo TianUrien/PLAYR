@@ -13,13 +13,20 @@
  * single tournament weekend, not a multi-year club tenure).
  */
 
-import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ImagePlus, Loader2, X } from 'lucide-react'
 import { logger } from '@/lib/logger'
+import { supabase } from '@/lib/supabase'
+import { useAuthStore } from '@/lib/auth'
+import { optimizeImage, validateImage } from '@/lib/imageOptimization'
+import { deleteStorageObject } from '@/lib/storage'
 import type {
   UmpireAppointment,
   UmpireAppointmentInput,
 } from '@/hooks/useUmpireAppointments'
+
+const JOURNEY_BUCKET = 'journey'
+const UMPIRE_PATH_PREFIX = 'umpire'
 
 const MATCH_FORMATS: Array<{ value: '' | 'outdoor_11v11' | 'indoor_5v5' | 'other'; label: string }> = [
   { value: '', label: 'Not specified' },
@@ -80,19 +87,72 @@ export default function UmpireAppointmentEditor({
   onClose,
   onSave,
 }: UmpireAppointmentEditorProps) {
+  const userId = useAuthStore((state) => state.user?.id ?? null)
   const [form, setForm] = useState<FormState>(emptyForm)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [imageUrl, setImageUrl] = useState<string | null>(appointment?.image_url ?? null)
+  const [uploading, setUploading] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (isOpen) {
       setForm(seedForm(appointment))
+      setImageUrl(appointment?.image_url ?? null)
       setError(null)
+      setImageError(null)
       setSubmitting(false)
+      setUploading(false)
     }
   }, [isOpen, appointment])
 
   if (!isOpen) return null
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    // Reset the input so the same file re-picked fires onChange again.
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (!file || !userId) return
+
+    setImageError(null)
+    const validation = validateImage(file, { maxSizeMB: 5 })
+    if (!validation.valid) {
+      setImageError(validation.error ?? 'Invalid image')
+      return
+    }
+
+    setUploading(true)
+    try {
+      const optimized = await optimizeImage(file, {
+        maxWidth: 1600,
+        maxHeight: 1200,
+        maxSizeMB: 1,
+      })
+      const ts = Date.now()
+      const rand = Math.random().toString(36).slice(2, 10)
+      const ext = (optimized.name.split('.').pop() || 'jpg').toLowerCase()
+      const path = `${userId}/${UMPIRE_PATH_PREFIX}/${ts}_${rand}.${ext}`
+
+      const { error: uploadError } = await supabase.storage
+        .from(JOURNEY_BUCKET)
+        .upload(path, optimized, { cacheControl: '31536000', upsert: false })
+
+      if (uploadError) throw uploadError
+
+      const { data } = supabase.storage.from(JOURNEY_BUCKET).getPublicUrl(path)
+      setImageUrl(data.publicUrl)
+    } catch (err) {
+      logger.error('[UmpireAppointmentEditor] image upload failed:', err)
+      setImageError('Upload failed. Please try another image.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleRemoveImage = () => {
+    setImageUrl(null)
+  }
 
   const trimmed = {
     ...form,
@@ -107,7 +167,7 @@ export default function UmpireAppointmentEditor({
   const dateOrderOk =
     !trimmed.start_date || !trimmed.end_date || trimmed.end_date >= trimmed.start_date
 
-  const canSubmit = !submitting && trimmed.event_name.length > 0 && dateOrderOk
+  const canSubmit = !submitting && !uploading && trimmed.event_name.length > 0 && dateOrderOk
 
   const handleSubmit = async () => {
     if (!canSubmit) return
@@ -124,6 +184,7 @@ export default function UmpireAppointmentEditor({
         start_date: trimmed.start_date || null,
         end_date: trimmed.end_date || null,
         description: trimmed.description || null,
+        image_url: imageUrl,
       }
       const result = await onSave(input, appointment?.id)
       if (result === null) {
@@ -133,6 +194,19 @@ export default function UmpireAppointmentEditor({
         setSubmitting(false)
         return
       }
+
+      // Best-effort cleanup: if the saved image replaced (or cleared) an
+      // older one, delete the orphan from storage. Failure is logged, not
+      // surfaced — the save already succeeded.
+      const originalUrl = appointment?.image_url ?? null
+      if (originalUrl && originalUrl !== imageUrl) {
+        void deleteStorageObject({
+          bucket: JOURNEY_BUCKET,
+          publicUrl: originalUrl,
+          context: 'umpire-appointment-replace',
+        })
+      }
+
       onClose()
     } catch (err) {
       logger.error('[UmpireAppointmentEditor] save failed:', err)
@@ -142,7 +216,20 @@ export default function UmpireAppointmentEditor({
   }
 
   const handleClose = () => {
-    if (!submitting) onClose()
+    if (submitting || uploading) return
+
+    // If the user uploaded a new image but is cancelling without saving,
+    // clean up the orphan. The original image (if any) stays put.
+    const originalUrl = appointment?.image_url ?? null
+    if (imageUrl && imageUrl !== originalUrl) {
+      void deleteStorageObject({
+        bucket: JOURNEY_BUCKET,
+        publicUrl: imageUrl,
+        context: 'umpire-appointment-cancel',
+      })
+    }
+
+    onClose()
   }
 
   return (
@@ -171,6 +258,69 @@ export default function UmpireAppointmentEditor({
           </p>
 
           <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Photo <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+                disabled={uploading || submitting}
+                aria-label="Upload appointment photo"
+              />
+              {imageUrl ? (
+                <div className="relative group">
+                  <img
+                    src={imageUrl}
+                    alt="Appointment"
+                    className="w-full h-40 object-cover rounded-lg border border-gray-200"
+                  />
+                  <div className="mt-2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-xs font-medium text-gray-600 hover:text-gray-900 underline"
+                      disabled={uploading || submitting}
+                    >
+                      Replace
+                    </button>
+                    <span className="text-gray-300">·</span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="text-xs font-medium text-red-600 hover:text-red-700 underline"
+                      disabled={uploading || submitting}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading || submitting || !userId}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-6 text-sm font-medium text-gray-600 border-2 border-dashed border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Uploading…
+                    </>
+                  ) : (
+                    <>
+                      <ImagePlus className="w-4 h-4" />
+                      Add a photo
+                    </>
+                  )}
+                </button>
+              )}
+              {imageError && <p className="text-xs text-red-600 mt-2">{imageError}</p>}
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Event name <span className="text-red-500">*</span>

@@ -2833,6 +2833,7 @@ export type Database = {
           end_date: string | null
           event_name: string
           id: string
+          image_url: string | null
           location_city: string | null
           location_country: string | null
           match_format: string | null
@@ -2849,6 +2850,7 @@ export type Database = {
           end_date?: string | null
           event_name: string
           id?: string
+          image_url?: string | null
           location_city?: string | null
           location_country?: string | null
           match_format?: string | null
@@ -2865,6 +2867,7 @@ export type Database = {
           end_date?: string | null
           event_name?: string
           id?: string
+          image_url?: string | null
           location_city?: string | null
           location_country?: string | null
           match_format?: string | null

@@ -68,6 +68,8 @@ const completeUmpire: CommunityMemberFields = {
   umpire_since: 2015,
   officiating_specialization: 'outdoor',
   languages: ['English', 'Spanish'],
+  umpire_appointment_count: 3,
+  accepted_reference_count: 2,
 }
 
 const emptyPlayer: CommunityMemberFields = { role: 'player' }
@@ -227,7 +229,7 @@ describe('estimateMemberStrength', () => {
   })
 
   describe('umpire', () => {
-    it('returns 100 when all credentials + bio + languages + photo are set', () => {
+    it('returns 100 when all credentials + presentation + evidence buckets are set', () => {
       expect(estimateMemberStrength(completeUmpire)).toBe(100)
     })
 
@@ -235,22 +237,40 @@ describe('estimateMemberStrength', () => {
       expect(estimateMemberStrength(emptyUmpire)).toBe(0)
     })
 
-    it('drops only the federation bucket (20/100) when federation is missing', () => {
+    it('drops the federation bucket (15/100) when federation is missing', () => {
       expect(
         estimateMemberStrength({ ...completeUmpire, federation: null })
+      ).toBe(85)
+    })
+
+    it('drops the level bucket (20/100) when level is missing', () => {
+      expect(
+        estimateMemberStrength({ ...completeUmpire, umpire_level: null })
       ).toBe(80)
     })
 
-    it('drops only the level bucket (25/100) when level is missing', () => {
-      expect(
-        estimateMemberStrength({ ...completeUmpire, umpire_level: null })
-      ).toBe(75)
-    })
-
-    it('drops only the languages bucket (10/100) when languages is empty', () => {
+    it('drops the languages bucket (10/100) when languages is empty', () => {
       expect(
         estimateMemberStrength({ ...completeUmpire, languages: [] })
       ).toBe(90)
+    })
+
+    it('drops the appointments bucket (10/100) when umpire_appointment_count is 0', () => {
+      expect(
+        estimateMemberStrength({ ...completeUmpire, umpire_appointment_count: 0 })
+      ).toBe(90)
+    })
+
+    it('drops the references bucket (10/100) when accepted_reference_count is 0', () => {
+      expect(
+        estimateMemberStrength({ ...completeUmpire, accepted_reference_count: 0 })
+      ).toBe(90)
+    })
+
+    it('drops the years-officiating bucket (5/100) when umpire_since is unset', () => {
+      expect(
+        estimateMemberStrength({ ...completeUmpire, umpire_since: null })
+      ).toBe(95)
     })
   })
 

@@ -111,20 +111,23 @@ export function estimateMemberStrength(m: CommunityMemberFields): number {
       return Math.round((score / total) * 100)
     }
     case 'umpire': {
-      // Credentials-weighted — matches the Phase B framing in
-      // memory/project_hockia_umpire_research.md: certification + federation
-      // are the top signals, content/gallery is deferred.
-      // Weights: level 25 · federation 20 · specialization 10 · photo 15 ·
-      //   bio 10 · languages 10 · years officiating 10 → total 100
-      const total = 25 + 20 + 10 + 15 + 10 + 10 + 10
+      // Credentials still lead but Phase C (appointments) + Phase E
+      // (references) now contribute — matches the new useUmpireProfileStrength
+      // hook weights so dashboard and community card agree.
+      // Weights: level 20 · federation 15 · specialization 10 · photo 10 ·
+      //   bio 10 · languages 10 · years 5 · appointments 10 · references 10
+      //   → total 100.
+      const total = 20 + 15 + 10 + 10 + 10 + 10 + 5 + 10 + 10
       let score = 0
-      if (hasText(m.umpire_level)) score += 25
-      if (hasText(m.federation)) score += 20
+      if (hasText(m.umpire_level)) score += 20
+      if (hasText(m.federation)) score += 15
       if (hasText(m.officiating_specialization)) score += 10
-      if (hasText(m.avatar_url)) score += 15
+      if (hasText(m.avatar_url)) score += 10
       if (hasText(m.bio)) score += 10
       if ((m.languages?.length ?? 0) >= 1) score += 10
-      if ((m.umpire_since ?? 0) > 0) score += 10
+      if ((m.umpire_since ?? 0) > 0) score += 5
+      if ((m.umpire_appointment_count ?? 0) >= 1) score += 10
+      if ((m.accepted_reference_count ?? 0) >= 1) score += 10
       return Math.round((score / total) * 100)
     }
     default:
