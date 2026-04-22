@@ -177,14 +177,11 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   brand_representation: profile?.brand_representation || '',
   coach_specialization: (profile?.coach_specialization as CoachSpecialization) || '',
   coach_specialization_custom: profile?.coach_specialization_custom || '',
-  // Umpire — columns aren't on the generated Profile type yet; narrow cast.
-  umpire_level: ((profile as unknown as { umpire_level?: string | null })?.umpire_level) ?? '',
-  federation: ((profile as unknown as { federation?: string | null })?.federation) ?? '',
-  umpire_since:
-    ((profile as unknown as { umpire_since?: number | null })?.umpire_since)?.toString() ?? '',
-  officiating_specialization:
-    (((profile as unknown as { officiating_specialization?: string | null })?.officiating_specialization) as UmpireSpec) ?? '',
-  languages: (((profile as unknown as { languages?: string[] | null })?.languages) ?? []) as string[],
+  umpire_level: profile?.umpire_level ?? '',
+  federation: profile?.federation ?? '',
+  umpire_since: profile?.umpire_since?.toString() ?? '',
+  officiating_specialization: (profile?.officiating_specialization as UmpireSpec) ?? '',
+  languages: profile?.languages ?? [],
   pending_language: '',
 })
 

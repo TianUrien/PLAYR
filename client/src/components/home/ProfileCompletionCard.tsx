@@ -75,9 +75,8 @@ export default function ProfileCompletionCard() {
     // Umpire credentials — hero field for officiating role. Without these,
     // the profile says nothing about trust/level to anyone browsing.
     if (role === 'umpire') {
-      const umpireFields = p as unknown as { umpire_level?: string | null; federation?: string | null }
-      const needsLevel = !umpireFields.umpire_level?.trim()
-      const needsFederation = !umpireFields.federation?.trim()
+      const needsLevel = !p.umpire_level?.trim()
+      const needsFederation = !p.federation?.trim()
       if (needsLevel || needsFederation) {
         items.push({
           id: 'umpire-credentials',

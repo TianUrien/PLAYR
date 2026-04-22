@@ -276,7 +276,6 @@ export type Database = {
           follower_count: number
           id: string
           instagram_url: string | null
-          is_verified: boolean | null
           logo_url: string | null
           name: string
           profile_id: string
@@ -294,7 +293,6 @@ export type Database = {
           follower_count?: number
           id?: string
           instagram_url?: string | null
-          is_verified?: boolean | null
           logo_url?: string | null
           name: string
           profile_id: string
@@ -312,7 +310,6 @@ export type Database = {
           follower_count?: number
           id?: string
           instagram_url?: string | null
-          is_verified?: boolean | null
           logo_url?: string | null
           name?: string
           profile_id?: string
@@ -2218,6 +2215,62 @@ export type Database = {
           },
         ]
       }
+      profile_search_appearances: {
+        Row: {
+          created_at: string
+          filters: Json
+          hour_bucket: string | null
+          id: string
+          profile_id: string
+          viewer_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json
+          hour_bucket?: string | null
+          id?: string
+          profile_id: string
+          viewer_id: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json
+          hour_bucket?: string | null
+          id?: string
+          profile_id?: string
+          viewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profile_search_appearances_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_search_appearances_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_search_appearances_viewer_id_fkey"
+            columns: ["viewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_search_appearances_viewer_id_fkey"
+            columns: ["viewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profile_view_email_queue: {
         Row: {
           anonymous_viewers: number
@@ -2292,6 +2345,7 @@ export type Database = {
           current_world_club_id: string | null
           date_of_birth: string | null
           email: string
+          federation: string | null
           full_name: string | null
           gender: string | null
           highlight_video_url: string | null
@@ -2299,6 +2353,8 @@ export type Database = {
           id: string
           is_blocked: boolean
           is_test_account: boolean
+          is_verified: boolean
+          languages: string[] | null
           last_active_at: string | null
           last_message_email_at: string | null
           last_platform: string | null
@@ -2316,6 +2372,7 @@ export type Database = {
           notify_profile_views: boolean
           notify_push: boolean
           notify_references: boolean
+          officiating_specialization: string | null
           onboarding_completed: boolean
           onboarding_completed_at: string | null
           onboarding_started_at: string | null
@@ -2328,8 +2385,12 @@ export type Database = {
           search_vector: unknown
           secondary_position: string | null
           social_links: Json | null
+          umpire_level: string | null
+          umpire_since: number | null
           updated_at: string
           username: string | null
+          verified_at: string | null
+          verified_by: string | null
           version: number
           website: string | null
           womens_league_division: string | null
@@ -2362,6 +2423,7 @@ export type Database = {
           current_world_club_id?: string | null
           date_of_birth?: string | null
           email: string
+          federation?: string | null
           full_name?: string | null
           gender?: string | null
           highlight_video_url?: string | null
@@ -2369,6 +2431,8 @@ export type Database = {
           id: string
           is_blocked?: boolean
           is_test_account?: boolean
+          is_verified?: boolean
+          languages?: string[] | null
           last_active_at?: string | null
           last_message_email_at?: string | null
           last_platform?: string | null
@@ -2386,6 +2450,7 @@ export type Database = {
           notify_profile_views?: boolean
           notify_push?: boolean
           notify_references?: boolean
+          officiating_specialization?: string | null
           onboarding_completed?: boolean
           onboarding_completed_at?: string | null
           onboarding_started_at?: string | null
@@ -2398,8 +2463,12 @@ export type Database = {
           search_vector?: unknown
           secondary_position?: string | null
           social_links?: Json | null
+          umpire_level?: string | null
+          umpire_since?: number | null
           updated_at?: string
           username?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
           version?: number
           website?: string | null
           womens_league_division?: string | null
@@ -2432,6 +2501,7 @@ export type Database = {
           current_world_club_id?: string | null
           date_of_birth?: string | null
           email?: string
+          federation?: string | null
           full_name?: string | null
           gender?: string | null
           highlight_video_url?: string | null
@@ -2439,6 +2509,8 @@ export type Database = {
           id?: string
           is_blocked?: boolean
           is_test_account?: boolean
+          is_verified?: boolean
+          languages?: string[] | null
           last_active_at?: string | null
           last_message_email_at?: string | null
           last_platform?: string | null
@@ -2456,6 +2528,7 @@ export type Database = {
           notify_profile_views?: boolean
           notify_push?: boolean
           notify_references?: boolean
+          officiating_specialization?: string | null
           onboarding_completed?: boolean
           onboarding_completed_at?: string | null
           onboarding_started_at?: string | null
@@ -2468,8 +2541,12 @@ export type Database = {
           search_vector?: unknown
           secondary_position?: string | null
           social_links?: Json | null
+          umpire_level?: string | null
+          umpire_since?: number | null
           updated_at?: string
           username?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
           version?: number
           website?: string | null
           womens_league_division?: string | null
@@ -2533,6 +2610,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "world_countries_with_directory"
             referencedColumns: ["country_id"]
+          },
+          {
+            foreignKeyName: "profiles_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_pending_country_review"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "profiles_womens_league_id_fkey"
@@ -4196,6 +4287,7 @@ export type Database = {
               id: string
               is_blocked: boolean
               is_test_account: boolean
+              is_verified: boolean
               nationality: string
               nationality2: string
               onboarding_completed: boolean
@@ -4205,6 +4297,10 @@ export type Database = {
               username: string
             }[]
           }
+      admin_set_profile_verified: {
+        Args: { p_profile_id: string; p_value: boolean }
+        Returns: Json
+      }
       admin_set_test_account: {
         Args: { p_is_test: boolean; p_profile_id: string }
         Returns: Json
@@ -4362,6 +4458,7 @@ export type Database = {
           current_world_club_id: string | null
           date_of_birth: string | null
           email: string
+          federation: string | null
           full_name: string | null
           gender: string | null
           highlight_video_url: string | null
@@ -4369,6 +4466,8 @@ export type Database = {
           id: string
           is_blocked: boolean
           is_test_account: boolean
+          is_verified: boolean
+          languages: string[] | null
           last_active_at: string | null
           last_message_email_at: string | null
           last_platform: string | null
@@ -4386,6 +4485,7 @@ export type Database = {
           notify_profile_views: boolean
           notify_push: boolean
           notify_references: boolean
+          officiating_specialization: string | null
           onboarding_completed: boolean
           onboarding_completed_at: string | null
           onboarding_started_at: string | null
@@ -4398,8 +4498,12 @@ export type Database = {
           search_vector: unknown
           secondary_position: string | null
           social_links: Json | null
+          umpire_level: string | null
+          umpire_since: number | null
           updated_at: string
           username: string | null
+          verified_at: string | null
+          verified_by: string | null
           version: number
           website: string | null
           womens_league_division: string | null
@@ -4483,6 +4587,7 @@ export type Database = {
           current_world_club_id: string | null
           date_of_birth: string | null
           email: string
+          federation: string | null
           full_name: string | null
           gender: string | null
           highlight_video_url: string | null
@@ -4490,6 +4595,8 @@ export type Database = {
           id: string
           is_blocked: boolean
           is_test_account: boolean
+          is_verified: boolean
+          languages: string[] | null
           last_active_at: string | null
           last_message_email_at: string | null
           last_platform: string | null
@@ -4507,6 +4614,7 @@ export type Database = {
           notify_profile_views: boolean
           notify_push: boolean
           notify_references: boolean
+          officiating_specialization: string | null
           onboarding_completed: boolean
           onboarding_completed_at: string | null
           onboarding_started_at: string | null
@@ -4519,8 +4627,12 @@ export type Database = {
           search_vector: unknown
           secondary_position: string | null
           social_links: Json | null
+          umpire_level: string | null
+          umpire_since: number | null
           updated_at: string
           username: string | null
+          verified_at: string | null
+          verified_by: string | null
           version: number
           website: string | null
           womens_league_division: string | null
@@ -4930,6 +5042,13 @@ export type Database = {
           reference_profile: Json
           relationship_type: string
           requester_id: string
+        }[]
+      }
+      get_profile_search_appearances: {
+        Args: { p_days?: number; p_profile_id: string }
+        Returns: {
+          appearances: number
+          day: string
         }[]
       }
       get_references_i_gave: {

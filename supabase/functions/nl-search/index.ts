@@ -295,8 +295,16 @@ Deno.serve(async (req) => {
     }
 
     // ── Call discover_profiles RPC ──────────────────────────────────────
+    // Umpires are a credential-only role and should not surface in default
+    // player/coach/club/brand searches. When the LLM doesn't specify roles,
+    // default to the four discoverable roles rather than NULL (which the RPC
+    // treats as "all roles" and would include umpires).
+    const discoverableRoles = ['player', 'coach', 'club', 'brand']
+    const effectiveRoles = parsed.roles && parsed.roles.length > 0
+      ? parsed.roles
+      : discoverableRoles
     const { data: rpcResult, error: rpcError } = await adminClient.rpc('discover_profiles', {
-      p_roles: parsed.roles || null,
+      p_roles: effectiveRoles,
       p_positions: parsed.positions || null,
       p_gender: parsed.gender || null,
       p_min_age: parsed.min_age || null,

@@ -128,6 +128,11 @@ export default function OpportunitiesPage() {
   const isStaging = import.meta.env.VITE_SUPABASE_URL?.includes('ivjkdaylalhsteyyclvl')
   const { countries } = useCountries()
 
+  // Vacancies today are player/coach only (RLS enforces role + opportunity_type
+  // match). Umpires get a tailored empty-state — no point loading a list they
+  // can't act on. Revisit when Phase E/F adds umpire appointments.
+  const isUmpire = profile?.role === 'umpire'
+
   const [vacancies, setVacancies] = useState<Vacancy[]>([])
   const [clubs, setClubs] = useState<Record<string, { id: string; full_name: string; avatar_url: string | null; role: string | null; current_club: string | null; womens_league_division: string | null; mens_league_division: string | null }>>({})
   const [worldClubsMap, setWorldClubsMap] = useState<Record<string, { id: string; clubName: string; avatarUrl: string | null; countryName: string | null; flagEmoji: string | null; leagueName: string | null }>>({})
@@ -333,10 +338,11 @@ export default function OpportunitiesPage() {
   }, [user, profile])
 
   useEffect(() => {
+    if (isUmpire) return
     fetchVacancies()
     fetchUserApplications()
     void markSeen()
-  }, [fetchVacancies, fetchUserApplications, markSeen])
+  }, [fetchVacancies, fetchUserApplications, markSeen, isUmpire])
 
   // SEO meta tags
   useEffect(() => {
@@ -450,6 +456,36 @@ export default function OpportunitiesPage() {
   }
 
   // ─── Render ────────────────────────────────────────────────────────────────
+
+  if (isUmpire) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main className="max-w-[600px] mx-auto px-4 pt-24 pb-12">
+          <div className="mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-1">
+              Opportunities
+            </h1>
+            <p className="text-sm text-gray-500">
+              Find your next career move in field hockey
+            </p>
+          </div>
+          <div className="bg-white rounded-xl p-10 text-center">
+            <div className="w-16 h-16 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">🏑</span>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Umpire opportunities are coming soon
+            </h3>
+            <p className="text-sm text-gray-600 max-w-md mx-auto">
+              HOCKIA opportunities today are for players and coaches. When we open
+              umpire appointments and assessments, you'll see them here.
+            </p>
+          </div>
+        </main>
+      </div>
+    )
+  }
 
   return (
     <>

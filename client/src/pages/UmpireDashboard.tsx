@@ -52,19 +52,7 @@ interface UmpireDashboardProps {
   readOnly?: boolean
 }
 
-// The five umpire-specific columns don't live on the generated Profile
-// type yet (types regen is a separate chore). Narrow cast at one spot.
-type UmpireFields = {
-  umpire_level?: string | null
-  federation?: string | null
-  umpire_since?: number | null
-  officiating_specialization?: 'outdoor' | 'indoor' | 'both' | null
-  languages?: string[] | null
-  is_verified?: boolean | null
-  verified_at?: string | null
-}
-
-function specializationLabel(value: UmpireFields['officiating_specialization']): string | null {
+function specializationLabel(value: string | null | undefined): string | null {
   if (!value) return null
   if (value === 'both') return 'Outdoor & Indoor'
   return value.charAt(0).toUpperCase() + value.slice(1)
@@ -75,11 +63,6 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
   const profile = (profileData ?? authProfile) as UmpireProfileShape | null
   const navigate = useNavigate()
   const [showEditModal, setShowEditModal] = useState(false)
-
-  const umpireFields = useMemo<UmpireFields>(
-    () => (profile ? (profile as unknown as UmpireFields) : {}),
-    [profile]
-  )
 
   // Tier comes from the shared per-role estimator so the badge here matches
   // what community-grid cards render. Once `useUmpireProfileStrength` exists
@@ -104,10 +87,10 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
 
   const age = profile.date_of_birth ? calculateAge(profile.date_of_birth) : null
   const dobDisplay = profile.date_of_birth ? formatDateOfBirth(profile.date_of_birth) : null
-  const specLabel = specializationLabel(umpireFields.officiating_specialization)
+  const specLabel = specializationLabel(profile.officiating_specialization)
   const hasCertification =
-    umpireFields.umpire_level || umpireFields.federation || umpireFields.umpire_since || specLabel
-  const hasLanguages = umpireFields.languages && umpireFields.languages.length > 0
+    profile.umpire_level || profile.federation || profile.umpire_since || specLabel
+  const hasLanguages = profile.languages && profile.languages.length > 0
   const hasBio = Boolean(profile.bio?.trim())
 
   return (
@@ -141,8 +124,8 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
                 <h1 className="text-3xl md:text-4xl font-bold text-gray-900 flex items-center gap-2 flex-wrap">
                   <span>{profile.full_name}</span>
                   <VerifiedBadge
-                    verified={umpireFields.is_verified}
-                    verifiedAt={umpireFields.verified_at ?? null}
+                    verified={profile.is_verified}
+                    verifiedAt={profile.verified_at ?? null}
                   />
                 </h1>
                 {!readOnly && (
@@ -160,16 +143,16 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <RoleBadge role="umpire" />
                 {!readOnly && tier && <TierBadge tier={tier} />}
-                {umpireFields.umpire_level && (
+                {profile.umpire_level && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
                     <Shield className="w-3 h-3" />
-                    {umpireFields.umpire_level}
+                    {profile.umpire_level}
                   </span>
                 )}
-                {umpireFields.federation && (
+                {profile.federation && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
                     <Flag className="w-3 h-3" />
-                    {umpireFields.federation}
+                    {profile.federation}
                   </span>
                 )}
               </div>
@@ -239,22 +222,22 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
               Certification &amp; Level
             </h2>
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {umpireFields.umpire_level && (
+              {profile.umpire_level && (
                 <div>
                   <dt className="text-xs uppercase tracking-wide text-gray-400 mb-1">Level</dt>
-                  <dd className="text-base font-semibold text-gray-900">{umpireFields.umpire_level}</dd>
+                  <dd className="text-base font-semibold text-gray-900">{profile.umpire_level}</dd>
                 </div>
               )}
-              {umpireFields.federation && (
+              {profile.federation && (
                 <div>
                   <dt className="text-xs uppercase tracking-wide text-gray-400 mb-1">Federation</dt>
-                  <dd className="text-base font-semibold text-gray-900">{umpireFields.federation}</dd>
+                  <dd className="text-base font-semibold text-gray-900">{profile.federation}</dd>
                 </div>
               )}
-              {umpireFields.umpire_since && (
+              {profile.umpire_since && (
                 <div>
                   <dt className="text-xs uppercase tracking-wide text-gray-400 mb-1">Umpiring since</dt>
-                  <dd className="text-base font-semibold text-gray-900">{umpireFields.umpire_since}</dd>
+                  <dd className="text-base font-semibold text-gray-900">{profile.umpire_since}</dd>
                 </div>
               )}
               {specLabel && (
@@ -283,7 +266,7 @@ export default function UmpireDashboard({ profileData, readOnly = false }: Umpir
               Languages
             </h2>
             <div className="flex flex-wrap gap-2">
-              {umpireFields.languages!.map((lang) => (
+              {profile.languages!.map((lang) => (
                 <span
                   key={lang}
                   className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700"
