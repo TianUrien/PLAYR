@@ -21,24 +21,24 @@ export default function PublicViewBanner() {
     <>
       {/* Fixed banner below the navbar */}
       <div className="fixed top-[64px] left-0 right-0 z-40 bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-3">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/20 rounded-lg">
+              <div className="p-2 bg-white/20 rounded-lg shrink-0">
                 <Eye className="w-5 h-5" />
               </div>
-              <div className="text-center sm:text-left">
-                <p className="font-semibold text-sm md:text-base">
+              <div className="text-left">
+                <p className="font-semibold text-sm md:text-base leading-tight">
                   You are viewing your network profile.
                 </p>
-                <p className="text-white/80 text-xs md:text-sm">
+                <p className="text-white/80 text-xs md:text-sm leading-tight mt-0.5">
                   This is how other HOCKIA members see you.
                 </p>
               </div>
             </div>
             <button
               onClick={handleReturnToDashboard}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#8026FA] rounded-lg hover:bg-white/90 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-[#8026FA] rounded-lg hover:bg-white/90 transition-colors text-sm font-medium shadow-sm whitespace-nowrap w-full sm:w-auto"
             >
               <ArrowLeft className="w-4 h-4" />
               Back to My Profile
@@ -47,7 +47,7 @@ export default function PublicViewBanner() {
         </div>
       </div>
       {/* Spacer to push content below the fixed banner */}
-      <div className="h-[72px] sm:h-[56px]" aria-hidden="true" />
+      <div className="h-[128px] sm:h-[64px]" aria-hidden="true" />
     </>
   )
 }

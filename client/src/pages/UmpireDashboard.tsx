@@ -153,7 +153,7 @@ export default function UmpireDashboard({
 
   const tabs: { id: TabType; label: string }[] = [
     { id: 'profile', label: 'Profile' },
-    { id: 'officiating', label: 'Officiating' },
+    { id: 'officiating', label: 'Journey' },
     { id: 'gallery', label: 'Gallery' },
     { id: 'friends', label: 'Friends' },
     { id: 'comments', label: 'Comments' },
