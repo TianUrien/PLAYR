@@ -72,8 +72,20 @@ export default function AuthScreen({ mode, role, onBack }: AuthScreenProps) {
 
   // `?next=` preservation — passed through OAuth + magic link so users
   // who clicked "Apply to Opportunity X" return where they started.
+  // Stashed into sessionStorage before any redirect away from this page
+  // (OAuth or magic-link email) because the redirect round-trip loses
+  // the URL query param. AuthCallback reads the stash back on return.
   const searchParams = new URLSearchParams(location.search)
   const nextParam = searchParams.get('next')
+
+  const stashRedirectIntent = () => {
+    if (!nextParam) return
+    try {
+      sessionStorage.setItem('hockia-redirect-after-login', nextParam)
+    } catch {
+      /* noop — incognito / storage-disabled browsers just lose the next param */
+    }
+  }
 
   // Single source of truth for the email field — shared by magic link
   // and password paths (the whole point of the redesign).
@@ -127,6 +139,7 @@ export default function AuthScreen({ mode, role, onBack }: AuthScreenProps) {
       return
     }
     setOauthWarning(null)
+    stashRedirectIntent()
     if (mode === 'signin') {
       trackLogin(provider)
     } else {
@@ -157,6 +170,9 @@ export default function AuthScreen({ mode, role, onBack }: AuthScreenProps) {
         if (result.userNotFound) setUserNotFound(true)
         return
       }
+      // Stash AFTER send succeeds (not before): if the send fails we don't
+      // want a stale redirect intent polluting a later unrelated login.
+      stashRedirectIntent()
       setSentTo(email.trim().toLowerCase())
       setCooldown(RESEND_COOLDOWN_SECONDS)
       if (mode === 'signup') trackSignUpStart('magic_link')
@@ -307,10 +323,16 @@ export default function AuthScreen({ mode, role, onBack }: AuthScreenProps) {
   const footerLinkLabel = isSignup ? 'Sign in' : 'Create an account'
   const footerLinkTo = isSignup ? '/signin' : '/signup'
 
-  // Handlers on back arrow — either parent-provided (SignUp role reset) or route history.
+  // Handlers on back arrow — either parent-provided (SignUp role reset) or
+  // route history. If the user landed here directly (no history, e.g. from an
+  // email link), fall back to '/' instead of no-op.
   const handleBack = () => {
-    if (onBack) onBack()
-    else navigate(-1)
+    if (onBack) {
+      onBack()
+      return
+    }
+    const canGoBack = typeof window !== 'undefined' && window.history.length > 1
+    navigate(canGoBack ? -1 : '/')
   }
 
   // ── Sent state: "Check your inbox" ──
@@ -356,6 +378,7 @@ export default function AuthScreen({ mode, role, onBack }: AuthScreenProps) {
                       setSentTo(null)
                       setCooldown(0)
                       setError(null)
+                      setOauthWarning(null)
                     }}
                     className="font-medium text-gray-600 hover:text-gray-900 transition-colors"
                   >
