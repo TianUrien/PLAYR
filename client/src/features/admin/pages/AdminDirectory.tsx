@@ -25,7 +25,7 @@ import {
   AlertTriangle,
   Pencil,
 } from 'lucide-react'
-import { DataTable, ConfirmDialog, EditUserModal } from '../components'
+import { DataTable, ConfirmDialog, EditUserModal, VerifyProfileDialog, type VerifyMetadata } from '../components'
 import { logger } from '@/lib/logger'
 import type { Column, Action } from '../components'
 import type { AdminProfileListItem, AdminProfileDetails, ProfileSearchParams } from '../types'
@@ -169,11 +169,14 @@ export function AdminDirectory() {
     await fetchProfiles()
   }
 
-  const handleToggleVerified = async () => {
+  const handleToggleVerified = async (meta: VerifyMetadata) => {
     if (!confirmDialog.profile) return
     const isVerifying = confirmDialog.type === 'verify'
     try {
-      await setProfileVerified(confirmDialog.profile.id, isVerifying)
+      await setProfileVerified(confirmDialog.profile.id, isVerifying, {
+        sourceUrl: meta.sourceUrl,
+        notes: meta.notes,
+      })
       await fetchProfiles()
     } catch (err) {
       logger.error('[AdminDirectory] toggle verified failed', err)
@@ -726,18 +729,12 @@ export function AdminDirectory() {
         variant="warning"
       />
 
-      <ConfirmDialog
+      <VerifyProfileDialog
         isOpen={confirmDialog.isOpen && (confirmDialog.type === 'verify' || confirmDialog.type === 'unverify')}
+        mode={confirmDialog.type === 'verify' ? 'verify' : 'unverify'}
+        profileName={confirmDialog.profile?.full_name || confirmDialog.profile?.email || ''}
         onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
         onConfirm={handleToggleVerified}
-        title={confirmDialog.type === 'verify' ? 'Verify Profile' : 'Remove Verification'}
-        message={
-          confirmDialog.type === 'verify'
-            ? `Grant the Verified badge to "${confirmDialog.profile?.full_name || confirmDialog.profile?.email}". Visible across the app; action is written to admin_audit_logs.`
-            : `Remove the Verified badge from "${confirmDialog.profile?.full_name || confirmDialog.profile?.email}". Action is written to admin_audit_logs.`
-        }
-        confirmLabel={confirmDialog.type === 'verify' ? 'Verify Profile' : 'Remove Verification'}
-        variant="warning"
       />
 
       {/* Edit User Modal */}
