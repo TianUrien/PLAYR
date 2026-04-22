@@ -7,12 +7,14 @@
  * timeline reads as "what this umpire has done and where they stand".
  *
  * Owner sees an "Add" button (opens the type-aware editor) plus edit /
- * delete controls per card. Public viewers see read-only list; when the
- * list is empty we hide the card entirely on public profiles so we
- * don't leave a hollow "Officiating Journey" shell on strangers' screens.
+ * delete controls per card. Public viewers see a read-only list; when
+ * the list is empty we render a tab-appropriate empty state (this lives
+ * inside a tab panel — returning null would leave a blank white card
+ * and make the whole tab look broken).
  */
 
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
   Award,
@@ -39,6 +41,10 @@ const JOURNEY_BUCKET = 'journey'
 interface UmpireAppointmentsSectionProps {
   userId: string
   readOnly?: boolean
+  /** True when the viewer is the profile owner seeing their own public/network
+   * view in readOnly mode. Swaps the empty-state copy from a neutral
+   * "this umpire hasn't logged anything" to a self-directed nudge. */
+  isOwnProfile?: boolean
 }
 
 const MATCH_FORMAT_LABELS: Record<string, string> = {
@@ -114,20 +120,15 @@ function formatLocation(city: string | null, country: string | null): string | n
 export default function UmpireAppointmentsSection({
   userId,
   readOnly = false,
+  isOwnProfile = false,
 }: UmpireAppointmentsSectionProps) {
+  const navigate = useNavigate()
   const { appointments, loading, error, create, update, remove } = useUmpireAppointments({
     userId,
   })
   const [editorOpen, setEditorOpen] = useState(false)
   const [editingAppointment, setEditingAppointment] = useState<UmpireAppointment | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
-
-  // Hide the section entirely for public viewers when there are no entries —
-  // empty officiating journey shouldn't leave a hollow card on a viewer's
-  // screen. Owners still see their empty-state CTA.
-  if (readOnly && !loading && appointments.length === 0) {
-    return null
-  }
 
   const openCreate = () => {
     setEditingAppointment(null)
@@ -191,21 +192,45 @@ export default function UmpireAppointmentsSection({
       ) : error ? (
         <div className="text-sm text-red-600">{error}</div>
       ) : appointments.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-200 p-5 text-center">
-          <p className="text-sm font-medium text-gray-900 mb-1">Start your journey</p>
-          <p className="text-sm text-gray-500 mb-3">
-            Log appointments, milestones, certifications, and panel inductions
-            to tell the story of your officiating career.
-          </p>
-          <button
-            type="button"
-            onClick={openCreate}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] px-3.5 py-1.5 text-sm font-medium text-white hover:opacity-90 transition-opacity"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add your first entry
-          </button>
-        </div>
+        readOnly ? (
+          <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center">
+            <Award className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+            <p className="text-base font-semibold text-gray-900 mb-1">
+              {isOwnProfile ? 'No journey entries yet' : 'No journey entries shared yet'}
+            </p>
+            <p className="text-sm text-gray-500 mb-4 max-w-md mx-auto">
+              {isOwnProfile
+                ? 'Appointments, milestones, certifications, and panel inductions live here. Add your first one from your dashboard.'
+                : 'When this umpire logs appointments, milestones, certifications, or panel inductions, they will appear here.'}
+            </p>
+            {isOwnProfile && (
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard/profile?tab=officiating')}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] px-3.5 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add your first entry
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-gray-200 p-5 text-center">
+            <p className="text-sm font-medium text-gray-900 mb-1">Start your journey</p>
+            <p className="text-sm text-gray-500 mb-3">
+              Log appointments, milestones, certifications, and panel inductions
+              to tell the story of your officiating career.
+            </p>
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] px-3.5 py-1.5 text-sm font-medium text-white hover:opacity-90 transition-opacity"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add your first entry
+            </button>
+          </div>
+        )
       ) : (
         <ul className="space-y-3">
           {appointments.map((a) => {

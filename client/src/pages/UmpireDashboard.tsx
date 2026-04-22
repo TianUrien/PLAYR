@@ -445,7 +445,11 @@ export default function UmpireDashboard({
                     (mt-6 bg-white rounded-2xl shadow-sm). Wrapping here would
                     double the chrome, so we let it stand on its own. The
                     outer tab panel already provides the container. */}
-                <UmpireAppointmentsSection userId={profile.id} readOnly={readOnly} />
+                <UmpireAppointmentsSection
+                  userId={profile.id}
+                  readOnly={readOnly}
+                  isOwnProfile={isOwnProfile}
+                />
               </div>
             )}
 
