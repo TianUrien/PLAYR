@@ -25,7 +25,7 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, MapPin, Calendar, Shield, Flag, Edit2, Eye, Languages as LanguagesIcon, Activity } from 'lucide-react'
+import { ArrowLeft, MapPin, Calendar, Shield, Flag, Edit2, Eye, Languages as LanguagesIcon, Activity, MessageCircle } from 'lucide-react'
 import Header from '@/components/Header'
 import {
   Avatar,
@@ -47,8 +47,12 @@ import UmpireAppointmentsSection from '@/components/UmpireAppointmentsSection'
 import ProfileActionMenu from '@/components/ProfileActionMenu'
 import ProfilePostsTab from '@/components/ProfilePostsTab'
 import MediaTab from '@/components/MediaTab'
+import SignInPromptModal from '@/components/SignInPromptModal'
 import { useAuthStore } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
 import type { Profile } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
+import { useToastStore } from '@/lib/toast'
 import { calculateAge, formatDateOfBirth } from '@/lib/utils'
 import { calculateTier } from '@/lib/profileTier'
 import { useUmpireProfileStrength } from '@/hooks/useUmpireProfileStrength'
@@ -99,11 +103,14 @@ export default function UmpireDashboard({
   readOnly = false,
   isOwnProfile = false,
 }: UmpireDashboardProps) {
-  const { profile: authProfile } = useAuthStore()
+  const { user, profile: authProfile } = useAuthStore()
   const profile = (profileData ?? authProfile) as UmpireProfileShape | null
   const navigate = useNavigate()
+  const { addToast } = useToastStore()
   const [searchParams, setSearchParams] = useSearchParams()
   const [showEditModal, setShowEditModal] = useState(false)
+  const [sendingMessage, setSendingMessage] = useState(false)
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false)
 
   // Tab state, synced with ?tab= query param so notification deep-links
   // (e.g., .../dashboard/profile?tab=friends) land on the right tab.
@@ -123,6 +130,42 @@ export default function UmpireDashboard({
     const next = new URLSearchParams(searchParams)
     next.set('tab', tab)
     setSearchParams(next, { replace: true })
+  }
+
+  const handleSendMessage = async () => {
+    if (!user) {
+      setShowSignInPrompt(true)
+      return
+    }
+    if (!profile) return
+    if (user.id === profile.id) {
+      addToast('You cannot message yourself.', 'error')
+      return
+    }
+
+    setSendingMessage(true)
+    try {
+      const { data: existingConv, error: fetchError } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(
+          `and(participant_one_id.eq.${user.id},participant_two_id.eq.${profile.id}),and(participant_one_id.eq.${profile.id},participant_two_id.eq.${user.id})`
+        )
+        .maybeSingle()
+
+      if (fetchError) throw fetchError
+
+      if (existingConv?.id) {
+        navigate(`/messages?conversation=${existingConv.id}`)
+      } else {
+        navigate(`/messages?new=${profile.id}`)
+      }
+    } catch (error) {
+      logger.error('Error starting conversation:', error)
+      addToast('Failed to start conversation. Please try again.', 'error')
+    } finally {
+      setSendingMessage(false)
+    }
   }
 
   // Owner-view tier uses the precise credentials-weighted strength hook so the
@@ -159,8 +202,6 @@ export default function UmpireDashboard({
     { id: 'comments', label: 'Comments' },
     { id: 'posts', label: 'Posts' },
   ]
-
-  const isOwnerView = !readOnly
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -224,8 +265,28 @@ export default function UmpireDashboard({
                     <DashboardMenu />
                   </div>
                 ) : !isOwnProfile ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <FriendshipButton profileId={profile.id} />
+                    {authProfile?.role !== 'brand' && (
+                      <button
+                        type="button"
+                        onClick={handleSendMessage}
+                        disabled={sendingMessage}
+                        className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#8026FA] to-[#924CEC] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:opacity-90 disabled:opacity-60"
+                      >
+                        {sendingMessage ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Sending...
+                          </>
+                        ) : (
+                          <>
+                            <MessageCircle className="w-4 h-4" />
+                            Message
+                          </>
+                        )}
+                      </button>
+                    )}
                     <ProfileActionMenu
                       targetId={profile.id}
                       targetName={profile.full_name ?? 'this umpire'}
@@ -498,6 +559,13 @@ export default function UmpireDashboard({
           role="umpire"
         />
       )}
+
+      <SignInPromptModal
+        isOpen={showSignInPrompt}
+        onClose={() => setShowSignInPrompt(false)}
+        title="Sign in to message"
+        message="Sign in or create a free HOCKIA account to connect with this umpire."
+      />
     </div>
   )
 }
