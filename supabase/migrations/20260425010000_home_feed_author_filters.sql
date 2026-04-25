@@ -282,9 +282,12 @@ AS $$
 DECLARE
   v_brand RECORD;
 BEGIN
+  -- is_verified was unified onto profiles in 20260420235035 — read from p,
+  -- not b (the column was dropped from brands).
   SELECT
-    b.id, b.name, b.slug, b.logo_url, b.category, b.is_verified, b.deleted_at,
-    p.id AS profile_id, p.role, p.nationality_country_id, p.is_test_account
+    b.id, b.name, b.slug, b.logo_url, b.category, b.deleted_at,
+    p.id AS profile_id, p.role, p.nationality_country_id, p.is_test_account,
+    COALESCE(p.is_verified, false) AS is_verified
   INTO v_brand
   FROM brands b
   JOIN profiles p ON p.id = b.profile_id
@@ -335,9 +338,12 @@ AS $$
 DECLARE
   v_brand RECORD;
 BEGIN
+  -- is_verified was unified onto profiles in 20260420235035 — read from p,
+  -- not b (the column was dropped from brands).
   SELECT
-    b.id, b.name, b.slug, b.logo_url, b.category, b.is_verified, b.deleted_at,
-    p.id AS profile_id, p.role, p.nationality_country_id, p.is_test_account
+    b.id, b.name, b.slug, b.logo_url, b.category, b.deleted_at,
+    p.id AS profile_id, p.role, p.nationality_country_id, p.is_test_account,
+    COALESCE(p.is_verified, false) AS is_verified
   INTO v_brand
   FROM brands b
   JOIN profiles p ON p.id = b.profile_id
