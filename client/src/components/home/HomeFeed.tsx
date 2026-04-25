@@ -68,6 +68,13 @@ export function HomeFeed({ prependItemRef }: HomeFeedProps) {
   const hasActiveFilters = filters.countryIds.length > 0 || filters.roles.length > 0
   const handleClearFilters = useCallback(() => setFilters(EMPTY_FILTERS), [setFilters])
 
+  // Stable string keys for the breadcrumb effect deps. filters.roles is a
+  // fresh array reference on each toggle (HomeFilterChips builds a new
+  // array via Array.from(set)), so depending on the array directly would
+  // be brittle if the same content ever produced a different reference.
+  // Joining gives a content-equality dep.
+  const rolesKey = filters.roles.slice().sort().join(',')
+
   // Breadcrumb filter changes so Sentry traces preceding any subsequent
   // feed error include the filter selection that led to it.
   useEffect(() => {
@@ -81,7 +88,8 @@ export function HomeFeed({ prependItemRef }: HomeFeedProps) {
         roles: filters.roles,
       },
     })
-  }, [filters.countryIds.length, filters.roles, hasActiveFilters])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rolesKey is the stable form of filters.roles
+  }, [filters.countryIds.length, rolesKey, hasActiveFilters])
 
   // Expose prependItem to parent so PostComposer can live in the sticky header
   useEffect(() => {
@@ -132,9 +140,14 @@ export function HomeFeed({ prependItemRef }: HomeFeedProps) {
       {/* Active-filter banner — shown whenever filters are applied so a
           returning user (whose selection persisted from yesterday) has an
           obvious one-tap path back to the global feed without scrolling
-          to the empty state. */}
+          to the empty state. role="status" + aria-live="polite" so
+          screen-reader users hear the change when they toggle a chip. */}
       {hasActiveFilters && (
-        <div className="flex items-center justify-between gap-3 mb-4 px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-sm">
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center justify-between gap-3 mb-4 px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-sm"
+        >
           <span className="text-gray-700 truncate">
             <span className="font-medium text-[#8026FA]">Filters applied</span>
             {activeFilterSummary && <span className="text-gray-500"> · {activeFilterSummary}</span>}

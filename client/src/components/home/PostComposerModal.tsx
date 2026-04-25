@@ -108,6 +108,14 @@ export function PostComposerModal({
     }
   }, [])
 
+  // Tracks which mode was last loaded — referenced by the open-effect (to
+  // sync to 'post' on each open) AND the mode-change effect (to know when
+  // to flush + reload). Declared up here so both effects can see it.
+  const lastModeRef = useRef<'post' | 'transfer'>('post')
+  // Mirror of `content` for synchronous reads (close flush, mode-switch
+  // flush) without making `content` a dependency of those effects/callbacks.
+  const contentRef = useRef('')
+
   // Reset form when modal opens
   useEffect(() => {
     if (!isOpen) return
@@ -133,16 +141,22 @@ export function PostComposerModal({
           : []
       )
     } else {
-      // Restore in-progress draft text (per user + mode). Media is not
-      // persisted; uploaded files are tracked separately by the global
-      // upload manager.
-      const restored = getDraft(user?.id, mode)
+      // Restore the 'post'-mode draft (the open-effect resets to 'post'
+      // mode below). Reading from the live `mode` state here would pick
+      // up whatever the user left the modal in last session — e.g.
+      // 'transfer' — and load the wrong slot for a flash before the
+      // mode-change effect corrects it.
+      const restored = getDraft(user?.id, 'post')
       setContent(restored)
       setDraftRestored(restored.length > 0)
       setMedia([])
     }
     setError(null)
     setMode('post')
+    // Keep lastModeRef in sync so the mode-change effect below doesn't
+    // immediately re-fire (with stale mode === 'transfer' from prior
+    // session) and clobber the post-mode draft we just loaded.
+    lastModeRef.current = 'post'
     setClubSearch('')
     setClubResults([])
     setSelectedClub(null)
@@ -188,12 +202,9 @@ export function PostComposerModal({
   // truth there) and on initial open (the open-effect above already
   // populated the draft for the default mode).
   //
-  // We also need to refer to the live `content` from inside the effect
-  // without making it a dep (otherwise the effect would re-fire on every
-  // keystroke and clobber typing). Use a ref so the synchronous flush of
-  // the OLD mode's draft sees the latest content even at rapid mode taps.
-  const lastModeRef = useRef(mode)
-  const contentRef = useRef(content)
+  // contentRef mirrors `content` so the mode-change effect (and handleClose)
+  // can read the latest typed text without depending on it (which would
+  // make those effects/callbacks re-fire on every keystroke).
   useEffect(() => { contentRef.current = content }, [content])
   useEffect(() => {
     if (!isOpen || editingPost) return
@@ -203,9 +214,13 @@ export function PostComposerModal({
     // tap on Transfer would lose any keystrokes typed in the last <500ms.
     saveDraft(user?.id, lastModeRef.current, contentRef.current)
     lastModeRef.current = mode
-    const restored = getDraft(user?.id, mode)
-    setContent(restored)
-    setDraftRestored(restored.length > 0)
+    setContent(getDraft(user?.id, mode))
+    // Note: deliberately NOT touching draftRestored here. The chip's
+    // purpose is "alert the user that pre-existing content was loaded
+    // when they opened the modal" — once they've started mode-switching
+    // they're already aware of the modal's contents, and resurfacing the
+    // chip on toggle-back-to-post would falsely claim that content they
+    // typed in this session was "restored from your last session."
   }, [mode, isOpen, editingPost, user?.id])
 
   // Auto-save the textarea content as a draft (debounced). Skipped when
@@ -221,14 +236,18 @@ export function PostComposerModal({
   // Synchronously flush the draft before closing — covers the X button and
   // backdrop tap. Without this, the 500ms debounce above can swallow the
   // user's last few keystrokes when they close immediately after typing.
-  // Editing an existing post skips draft flush (the stored post is the
-  // source of truth; we don't want to write its content into a draft slot).
+  //
+  // Skip the flush when:
+  //   - editing an existing post (the stored post is the source of truth)
+  //   - a submit is in flight (the success path already cleared the draft;
+  //     re-saving here would resurrect the just-cleared content)
+  //   - content is empty (nothing useful to save; avoids one extra write)
   const handleClose = useCallback(() => {
-    if (!editingPost && user?.id) {
+    if (!editingPost && user?.id && !isSubmitting && contentRef.current.length > 0) {
       saveDraft(user.id, mode, contentRef.current)
     }
     onClose()
-  }, [editingPost, user?.id, mode, onClose])
+  }, [editingPost, user?.id, mode, onClose, isSubmitting])
 
   // User-initiated draft discard. Clears the slot and the textarea; closes
   // the "Draft restored" chip.

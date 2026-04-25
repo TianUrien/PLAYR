@@ -60,12 +60,20 @@ export function useHomeFeed(filters?: UseHomeFeedFilters): UseHomeFeedResult {
   // backward-compatible with versions of get_home_feed that don't yet have
   // the country/role parameters (i.e. environments where the
   // 20260425010000_home_feed_author_filters migration hasn't been applied).
-  const rpcCountryIds = filters?.countryIds && filters.countryIds.length > 0
-    ? filters.countryIds
-    : null
-  const rpcRoles = filters?.roles && filters.roles.length > 0
-    ? filters.roles
-    : null
+  //
+  // Memoize on the stable filterKey so subsequent renders of useHomeFeed
+  // (e.g. via parent re-renders unrelated to filters) don't allocate fresh
+  // array refs that would re-fire the Sentry error effect downstream.
+  const rpcCountryIds = useMemo(
+    () => (filters?.countryIds && filters.countryIds.length > 0 ? filters.countryIds : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- filterKey is the canonical dep
+    [filterKey]
+  )
+  const rpcRoles = useMemo(
+    () => (filters?.roles && filters.roles.length > 0 ? filters.roles : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- filterKey is the canonical dep
+    [filterKey]
+  )
   const hasFilters = rpcCountryIds !== null || rpcRoles !== null
 
   const query = useInfiniteQuery<FeedPage>({
@@ -122,6 +130,12 @@ export function useHomeFeed(filters?: UseHomeFeedFilters): UseHomeFeedResult {
 
   const checkForNewItems = useCallback(async () => {
     if (!latestTimestamp) return
+    // get_home_feed_new_count doesn't take filter args — under an active
+    // filter, it would surface counts for items the filtered feed will then
+    // drop, leading to "1 new post" → tap → 0 visible items. Suppress the
+    // check entirely while filters are active. Returning to the global
+    // feed will resume normal behavior.
+    if (hasFilters) return
     const now = Date.now()
     if (now - lastCheckRef.current < NEW_ITEMS_CHECK_COOLDOWN) return
     lastCheckRef.current = now
@@ -144,7 +158,7 @@ export function useHomeFeed(filters?: UseHomeFeedFilters): UseHomeFeedResult {
         data: { error: String(err) },
       })
     }
-  }, [latestTimestamp])
+  }, [latestTimestamp, hasFilters])
 
   useEffect(() => {
     const handleVisibility = () => {
