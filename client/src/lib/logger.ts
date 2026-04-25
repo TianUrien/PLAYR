@@ -4,7 +4,29 @@
  * Prevents sensitive data leakage in production
  */
 
+import * as Sentry from '@sentry/react';
+
 const isDev = import.meta.env.DEV;
+
+// Truncate breadcrumb messages so we never blow past Sentry's 8KB limit on
+// a single oversized object dump.
+const MAX_BREADCRUMB_MESSAGE_LENGTH = 500;
+
+function summarizeArgs(args: unknown[]): string {
+  return args
+    .map((arg) => {
+      if (typeof arg === 'string') return arg;
+      if (arg instanceof Error) return arg.message;
+      if (arg && typeof arg === 'object') {
+        const maybeMessage = (arg as { message?: unknown }).message;
+        if (typeof maybeMessage === 'string') return maybeMessage;
+        return '[object]';
+      }
+      return String(arg);
+    })
+    .join(' ')
+    .slice(0, MAX_BREADCRUMB_MESSAGE_LENGTH);
+}
 
 export const logger = {
   /**
@@ -33,6 +55,11 @@ export const logger = {
    */
   warn: (...args: unknown[]) => {
     console.warn('[WARN]', ...args);
+    Sentry.addBreadcrumb({
+      category: 'logger.warn',
+      level: 'warning',
+      message: summarizeArgs(args),
+    });
   },
 
   /**
@@ -41,6 +68,11 @@ export const logger = {
    */
   error: (...args: unknown[]) => {
     console.error('[ERROR]', ...args);
+    Sentry.addBreadcrumb({
+      category: 'logger.error',
+      level: 'error',
+      message: summarizeArgs(args),
+    });
   },
 
   /**

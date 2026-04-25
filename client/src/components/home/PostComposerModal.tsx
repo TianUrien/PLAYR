@@ -7,6 +7,7 @@ import { useUserPosts, type PostImage } from '@/hooks/useUserPosts'
 import { validateImage, optimizeImage } from '@/lib/imageOptimization'
 import { useUploadManager } from '@/lib/uploadManager'
 import { logger } from '@/lib/logger'
+import { reportSupabaseError } from '@/lib/sentryHelpers'
 import { checkContent } from '@/lib/contentFilter'
 import { getDraft, saveDraft, clearDraft } from '@/lib/composerDraft'
 import { pickPlaceholder, type ComposerRole } from '@/lib/composerPlaceholders'
@@ -77,6 +78,9 @@ export function PostComposerModal({
   const [postPlaceholder, setPostPlaceholder] = useState<string>(() =>
     pickPlaceholder((profile?.role ?? null) as ComposerRole | null)
   )
+  // True when the open-effect populated `content` from a saved draft (vs.
+  // an empty start). Drives the "Draft restored — Discard" affordance.
+  const [draftRestored, setDraftRestored] = useState(false)
 
   // Transfer mode state
   const [mode, setMode] = useState<'post' | 'transfer'>('post')
@@ -114,6 +118,7 @@ export function PostComposerModal({
 
     if (editingPost) {
       setContent(editingPost.content)
+      setDraftRestored(false)
       setMedia(
         editingPost.images
           ? editingPost.images.map((img, i) => ({
@@ -131,7 +136,9 @@ export function PostComposerModal({
       // Restore in-progress draft text (per user + mode). Media is not
       // persisted; uploaded files are tracked separately by the global
       // upload manager.
-      setContent(getDraft(user?.id, mode))
+      const restored = getDraft(user?.id, mode)
+      setContent(restored)
+      setDraftRestored(restored.length > 0)
       setMedia([])
     }
     setError(null)
@@ -180,12 +187,25 @@ export function PostComposerModal({
   // editing an existing post (the post's stored content is the source of
   // truth there) and on initial open (the open-effect above already
   // populated the draft for the default mode).
+  //
+  // We also need to refer to the live `content` from inside the effect
+  // without making it a dep (otherwise the effect would re-fire on every
+  // keystroke and clobber typing). Use a ref so the synchronous flush of
+  // the OLD mode's draft sees the latest content even at rapid mode taps.
   const lastModeRef = useRef(mode)
+  const contentRef = useRef(content)
+  useEffect(() => { contentRef.current = content }, [content])
   useEffect(() => {
     if (!isOpen || editingPost) return
     if (lastModeRef.current === mode) return
+    // Flush whatever's currently typed to the OLD mode's slot before we
+    // swap. The auto-save effect is debounced 500ms; without this, a rapid
+    // tap on Transfer would lose any keystrokes typed in the last <500ms.
+    saveDraft(user?.id, lastModeRef.current, contentRef.current)
     lastModeRef.current = mode
-    setContent(getDraft(user?.id, mode))
+    const restored = getDraft(user?.id, mode)
+    setContent(restored)
+    setDraftRestored(restored.length > 0)
   }, [mode, isOpen, editingPost, user?.id])
 
   // Auto-save the textarea content as a draft (debounced). Skipped when
@@ -197,6 +217,26 @@ export function PostComposerModal({
     }, 500)
     return () => clearTimeout(handle)
   }, [content, isOpen, editingPost, user?.id, mode])
+
+  // Synchronously flush the draft before closing — covers the X button and
+  // backdrop tap. Without this, the 500ms debounce above can swallow the
+  // user's last few keystrokes when they close immediately after typing.
+  // Editing an existing post skips draft flush (the stored post is the
+  // source of truth; we don't want to write its content into a draft slot).
+  const handleClose = useCallback(() => {
+    if (!editingPost && user?.id) {
+      saveDraft(user.id, mode, contentRef.current)
+    }
+    onClose()
+  }, [editingPost, user?.id, mode, onClose])
+
+  // User-initiated draft discard. Clears the slot and the textarea; closes
+  // the "Draft restored" chip.
+  const handleDiscardDraft = useCallback(() => {
+    clearDraft(user?.id, mode)
+    setContent('')
+    setDraftRestored(false)
+  }, [user?.id, mode])
 
   // Debounced club search
   const handleClubSearch = useCallback((query: string) => {
@@ -320,6 +360,9 @@ export function PostComposerModal({
       }])
     } catch (err) {
       logger.error('[PostComposerModal] Image upload error:', err)
+      reportSupabaseError('composer.image_upload', err, {
+        userId: user?.id,
+      }, { feature: 'post_composer', upload_kind: 'post_image' })
       setError(err instanceof Error ? err.message : 'Failed to upload image')
     } finally {
       setIsUploading(false)
@@ -427,6 +470,9 @@ export function PostComposerModal({
       setClubLogoUrl(urlData.publicUrl)
     } catch (err) {
       logger.error('[PostComposerModal] Logo upload error:', err)
+      reportSupabaseError('composer.logo_upload', err, {
+        userId: user?.id,
+      }, { feature: 'post_composer', upload_kind: 'club_logo' })
       setError(err instanceof Error ? err.message : 'Failed to upload club logo')
     } finally {
       setIsUploadingLogo(false)
@@ -504,6 +550,13 @@ export function PostComposerModal({
           onClose()
         } catch (err) {
           logger.error('[PostComposerModal] Signing submit error:', err)
+          reportSupabaseError('composer.submit', err, {
+            mode: 'transfer',
+            isClubRole: true,
+            authorRole: profile?.role,
+            hasSelectedPerson: Boolean(selectedPerson),
+            hasMedia: media.length > 0,
+          }, { feature: 'post_composer', submit_mode: 'signing' })
           setError(err instanceof Error ? err.message : 'Failed to create signing post')
         } finally {
           setIsSubmitting(false)
@@ -581,6 +634,14 @@ export function PostComposerModal({
         onClose()
       } catch (err) {
         logger.error('[PostComposerModal] Transfer submit error:', err)
+        reportSupabaseError('composer.submit', err, {
+          mode: 'transfer',
+          isClubRole: false,
+          authorRole: profile?.role,
+          hasSelectedClub: Boolean(selectedClub),
+          hasCustomClub: Boolean(customClubName),
+          hasMedia: media.length > 0,
+        }, { feature: 'post_composer', submit_mode: 'transfer' })
         setError(err instanceof Error ? err.message : 'Failed to create transfer post')
       } finally {
         setIsSubmitting(false)
@@ -645,12 +706,22 @@ export function PostComposerModal({
         }
       }
 
-      clearDraft(user?.id, mode)
+      // Only wipe the draft slot for the active mode on a successful CREATE.
+      // For an edit, the user's separate post-mode draft is unrelated and
+      // shouldn't be clobbered.
+      if (!isEdit) clearDraft(user?.id, mode)
       setContent('')
       setMedia([])
+      setDraftRestored(false)
       onClose()
     } catch (err) {
       logger.error('[PostComposerModal] Submit error:', err)
+      reportSupabaseError('composer.submit', err, {
+        mode: 'post',
+        isEdit,
+        authorRole: profile?.role,
+        hasMedia: media.length > 0,
+      }, { feature: 'post_composer', submit_mode: isEdit ? 'edit' : 'post' })
       setError(err instanceof Error ? err.message : 'Failed to save post')
     } finally {
       setIsSubmitting(false)
@@ -672,14 +743,14 @@ export function PostComposerModal({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/50" onClick={handleClose} />
         <div
           ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="post-composer-title"
           tabIndex={-1}
-          className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto focus:outline-none"
+          className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[100dvh] overflow-y-auto focus:outline-none"
         >
           {/* Header */}
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
@@ -688,7 +759,7 @@ export function PostComposerModal({
             </h2>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="text-gray-400 hover:text-gray-600"
               aria-label="Close"
             >
@@ -1035,6 +1106,21 @@ export function PostComposerModal({
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Draft-restored chip — only when content was loaded from a
+                saved draft, not for fresh-open or edit-existing-post. */}
+            {draftRestored && !editingPost && mode === 'post' && content.length > 0 && (
+              <div className="flex items-center justify-between gap-2 px-3 py-2 mb-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                <span>Draft restored from your last session.</span>
+                <button
+                  type="button"
+                  onClick={handleDiscardDraft}
+                  className="font-medium underline hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded"
+                >
+                  Discard
+                </button>
               </div>
             )}
 

@@ -10,10 +10,17 @@ import { useState, useEffect, useCallback } from 'react'
  * Per-device only. For cross-device persistence we'd need a server-side
  * user_preferences row; not worth the surface area at HOCKIA's current
  * scale.
+ *
+ * Optional `validate` predicate guards against shape drift across deploys:
+ * if a user has stale localStorage from a prior schema, JSON.parse may
+ * succeed but the parsed value's shape can be wrong, and downstream code
+ * (e.g. `state.someArray.length`) would crash. When validate returns
+ * false, the saved value is discarded and `initialState` is used instead.
  */
 export function usePersistedState<T>(
   key: string,
-  initialState: T
+  initialState: T,
+  validate?: (parsed: unknown) => parsed is T
 ): [T, (value: T | ((prev: T) => T)) => void] {
   const storageKey = `hockia:persisted:${key}`
 
@@ -21,11 +28,14 @@ export function usePersistedState<T>(
     if (typeof window === 'undefined') return initialState
     try {
       const saved = window.localStorage.getItem(storageKey)
-      if (saved !== null) return JSON.parse(saved) as T
+      if (saved === null) return initialState
+      const parsed = JSON.parse(saved) as unknown
+      if (validate && !validate(parsed)) return initialState
+      return parsed as T
     } catch {
       /* corrupted JSON or localStorage disabled — fall through */
+      return initialState
     }
-    return initialState
   })
 
   useEffect(() => {

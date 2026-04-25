@@ -9,7 +9,7 @@ import { HomeFeedItemCard } from './HomeFeedItemCard'
 import { FeedSkeleton } from './FeedSkeleton'
 import ProfileCompletionCard from './ProfileCompletionCard'
 import { HomeFilterChips } from './HomeFilterChips'
-import { EMPTY_FILTERS } from './homeFilters'
+import { EMPTY_FILTERS, isHomeFilters } from './homeFilters'
 import type { HomeFilters } from './homeFilters'
 import type { HomeFeedItem } from '@/types/homeFeed'
 
@@ -52,7 +52,7 @@ export function HomeFeed({ prependItemRef }: HomeFeedProps) {
   // (not sessionStorage) so filters survive close/reopen, fresh nav, and
   // bottom-nav re-entry — not just back/forward. Per-device only; cross-device
   // persistence would need a server-side user_preferences row.
-  const [filters, setFilters] = usePersistedState<HomeFilters>('home-filters', EMPTY_FILTERS)
+  const [filters, setFilters] = usePersistedState<HomeFilters>('home-filters', EMPTY_FILTERS, isHomeFilters)
 
   // useHomeFeed expects undefined for "no filter" so it falls through to the
   // unfiltered RPC path; only pass arrays when there's an actual selection.
@@ -67,6 +67,21 @@ export function HomeFeed({ prependItemRef }: HomeFeedProps) {
 
   const hasActiveFilters = filters.countryIds.length > 0 || filters.roles.length > 0
   const handleClearFilters = useCallback(() => setFilters(EMPTY_FILTERS), [setFilters])
+
+  // Breadcrumb filter changes so Sentry traces preceding any subsequent
+  // feed error include the filter selection that led to it.
+  useEffect(() => {
+    Sentry.addBreadcrumb({
+      category: 'home_feed.filter',
+      level: 'info',
+      message: hasActiveFilters ? 'filters_applied' : 'filters_cleared',
+      data: {
+        countryCount: filters.countryIds.length,
+        roleCount: filters.roles.length,
+        roles: filters.roles,
+      },
+    })
+  }, [filters.countryIds.length, filters.roles, hasActiveFilters])
 
   // Expose prependItem to parent so PostComposer can live in the sticky header
   useEffect(() => {
@@ -95,10 +110,44 @@ export function HomeFeed({ prependItemRef }: HomeFeedProps) {
     return () => observer.disconnect()
   }, [hasMore, isFetchingNextPage, loadMore])
 
+  // Summary count for the active-filter banner. We persist filters in
+  // localStorage now, so a user opening the app tomorrow may not remember
+  // they had filters set — the banner gives them a one-tap escape hatch.
+  const activeFilterSummary = useMemo(() => {
+    const parts: string[] = []
+    if (filters.countryIds.length > 0) {
+      parts.push(`${filters.countryIds.length} ${filters.countryIds.length === 1 ? 'country' : 'countries'}`)
+    }
+    if (filters.roles.length > 0) {
+      parts.push(`${filters.roles.length} ${filters.roles.length === 1 ? 'role' : 'roles'}`)
+    }
+    return parts.join(' · ')
+  }, [filters])
+
   return (
     <div>
       {/* Filter chips — persistent country + role filters above the feed */}
       <HomeFilterChips filters={filters} onChange={setFilters} />
+
+      {/* Active-filter banner — shown whenever filters are applied so a
+          returning user (whose selection persisted from yesterday) has an
+          obvious one-tap path back to the global feed without scrolling
+          to the empty state. */}
+      {hasActiveFilters && (
+        <div className="flex items-center justify-between gap-3 mb-4 px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-sm">
+          <span className="text-gray-700 truncate">
+            <span className="font-medium text-[#8026FA]">Filters applied</span>
+            {activeFilterSummary && <span className="text-gray-500"> · {activeFilterSummary}</span>}
+          </span>
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="flex-shrink-0 text-sm font-medium text-[#8026FA] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8026FA] rounded"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
 
       {/* Profile completion nudge */}
       <ProfileCompletionCard />

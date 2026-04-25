@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import type { InfiniteData } from '@tanstack/react-query'
+import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { withTimeout } from '@/lib/retry'
+import { reportSupabaseError } from '@/lib/sentryHelpers'
 import { useBlockedUsers } from '@/hooks/useBlockedUsers'
 import type { HomeFeedItem } from '@/types/homeFeed'
 
@@ -125,15 +127,22 @@ export function useHomeFeed(filters?: UseHomeFeedFilters): UseHomeFeedResult {
     lastCheckRef.current = now
 
     try {
-       
+
       const { data, error } = await supabase.rpc('get_home_feed_new_count', {
         p_since: latestTimestamp,
       })
       if (!error && typeof data === 'number' && data > 0) {
         setNewCount(data)
       }
-    } catch {
-      // Silent fail — best-effort enhancement
+    } catch (err) {
+      // Best-effort: don't surface to user, but breadcrumb so persistent
+      // failures show up in Sentry trails preceding any other error.
+      Sentry.addBreadcrumb({
+        category: 'home_feed',
+        level: 'warning',
+        message: 'new_count_check_failed',
+        data: { error: String(err) },
+      })
     }
   }, [latestTimestamp])
 
@@ -219,6 +228,27 @@ export function useHomeFeed(filters?: UseHomeFeedFilters): UseHomeFeedResult {
     logger.error('[useHomeFeed] Error fetching feed:', query.error)
     errorStr = query.error instanceof Error ? query.error.message : 'Failed to load feed'
   }
+
+  // Report RPC failures to Sentry once per error (deduped via the query
+  // object identity). This is what would have caught the PGRST203 overload
+  // mismatch we hit during the migration push — those today only surface
+  // in the user's console.
+  const reportedErrorRef = useRef<unknown>(null)
+  useEffect(() => {
+    if (!query.error || reportedErrorRef.current === query.error) return
+    reportedErrorRef.current = query.error
+    reportSupabaseError(
+      'home_feed.rpc',
+      query.error,
+      {
+        countryIds: rpcCountryIds,
+        roles: rpcRoles,
+        hasFilters,
+        pagesLoaded: pages.length,
+      },
+      { feature: 'home_feed', rpc: 'get_home_feed' }
+    )
+  }, [query.error, rpcCountryIds, rpcRoles, hasFilters, pages.length])
 
   return {
     items,

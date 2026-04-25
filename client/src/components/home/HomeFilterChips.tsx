@@ -143,7 +143,9 @@ function FilterChip({ label, isActive, onClick }: FilterChipProps) {
       type="button"
       onClick={onClick}
       aria-pressed={isActive ? 'true' : 'false'}
-      className={`flex-shrink-0 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+      // min-h-[40px] + py-2 hits the WCAG 2.5.5 / Apple HIG ≥40-44px target
+      // size on mobile. Previous py-1 + text-xs was ~26px, well under.
+      className={`flex-shrink-0 inline-flex items-center min-h-[40px] px-3.5 py-2 rounded-full text-sm font-medium transition-colors border ${
         isActive
           ? 'bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white border-transparent shadow-sm'
           : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:text-gray-900'
