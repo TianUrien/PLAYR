@@ -67,18 +67,26 @@ test.describe('@smoke brand', () => {
 
   // Regression guard for the category taxonomy expansion
   // (202604210100_expand_brand_categories). If any of the 10 categories goes
-  // missing from the filter pill row, one of the label maps / enums is out of
-  // sync with the DB constraint. Scoped to the filter container because the
-  // header can render conflicting generic buttons (e.g. "All").
+  // missing from the filter, one of the label maps / enums is out of sync
+  // with the DB constraint.
+  //
+  // After the community redesign (commit fe07fb2), /community/brands is
+  // served by PeopleListView (not the old BrandListView), and the filter
+  // moved from a pill row to a <select> inside the Filters panel. The
+  // panel is `md:block` so it's open by default on the desktop chromium-
+  // brand viewport — no need to click a "Filters" toggle.
   test('brand directory filter shows all 10 expanded categories', async ({ page }) => {
     await page.goto('/community/brands')
     await waitForAppReady(page)
 
-    const filter = page.getByTestId('brand-category-filter')
-    await expect(filter).toBeVisible({ timeout: BRAND_DASH_TIMEOUT_MS })
+    const select = page.locator('select#brand-category-filter')
+    await expect(select).toBeVisible({ timeout: BRAND_DASH_TIMEOUT_MS })
 
-    const expected = [
-      'All',
+    // The first option is "All categories" (placeholder); the remaining 10
+    // come from BRAND_CATEGORIES. We verify by label text since label maps
+    // are what the constraint regression would surface.
+    const expectedLabels = [
+      'All categories',
       'Equipment',
       'Apparel',
       'Accessories',
@@ -91,10 +99,10 @@ test.describe('@smoke brand', () => {
       'Other',
     ]
 
-    for (const label of expected) {
+    for (const label of expectedLabels) {
       await expect(
-        filter.getByRole('button', { name: label, exact: true })
-      ).toBeVisible({ timeout: BRAND_DASH_TIMEOUT_MS })
+        select.locator(`option:has-text("${label}")`)
+      ).toHaveCount(1)
     }
   })
 

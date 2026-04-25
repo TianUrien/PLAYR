@@ -1,15 +1,14 @@
 import { test, expect } from './fixtures'
 
 test.describe('@smoke public', () => {
-  test('landing loads and shows Join CTA', async ({ page }) => {
+  test('landing loads and shows primary CTA', async ({ page }) => {
     await page.goto('/')
 
-    // Landing CTA is implemented as a button (not a link) and varies by breakpoint.
-    const joinCta = page
-      .getByRole('button', { name: /join hockia/i })
-      .or(page.getByRole('button', { name: /join now/i }))
-      .first()
-    await expect(joinCta).toBeVisible({ timeout: 20000 })
+    // Post-2026 auth redesign: Landing's primary CTA is "Get Started" (which
+    // routes to /signup). The old "Join HOCKIA" / "Join Now" wording is gone.
+    // Both mobile and desktop layouts render the same button text.
+    const primaryCta = page.getByRole('button', { name: /get started/i }).first()
+    await expect(primaryCta).toBeVisible({ timeout: 20000 })
   })
 
   test('signup page loads and shows role selection', async ({ page }) => {
