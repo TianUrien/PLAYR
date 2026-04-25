@@ -15,9 +15,26 @@ vi.mock('@/lib/supabase', () => ({
 const navigateMock = vi.fn()
 vi.mock('react-router-dom', () => ({
   useNavigate: () => navigateMock,
+  // usePageState (for filter persistence) reads location.key + navigationType.
+  useLocation: () => ({ key: 'test', pathname: '/home', search: '', hash: '', state: null }),
+  useNavigationType: () => 'PUSH',
   Link: ({ children, to, ...props }: { children: React.ReactNode; to: string; className?: string }) => (
     <a href={to} {...props}>{children}</a>
   ),
+}))
+
+// HomeFilterChips reads the countries list. Stub with an empty list so the
+// chips render the "All countries / All roles" baseline (sufficient for the
+// empty-state test).
+vi.mock('@/hooks/useCountries', () => ({
+  useCountries: () => ({
+    countries: [],
+    loading: false,
+    error: null,
+    getCountryById: () => undefined,
+    getCountryByCode: () => undefined,
+    isEuCountry: () => false,
+  }),
 }))
 
 vi.mock('@/lib/auth', () => ({

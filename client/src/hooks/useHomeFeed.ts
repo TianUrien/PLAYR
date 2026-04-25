@@ -12,6 +12,11 @@ interface FeedPage {
   total: number
 }
 
+export interface UseHomeFeedFilters {
+  countryIds?: number[]
+  roles?: string[]
+}
+
 interface UseHomeFeedResult {
   items: HomeFeedItem[]
   isLoading: boolean
@@ -30,25 +35,55 @@ interface UseHomeFeedResult {
 }
 
 const DEFAULT_LIMIT = 20
-const QUERY_KEY = ['home-feed'] as const
 const NEW_ITEMS_CHECK_COOLDOWN = 5_000 // minimum 5s between checks
 
-export function useHomeFeed(): UseHomeFeedResult {
+// Stable serialization of filter selections for react-query keys. Sorting
+// avoids cache misses when callers pass the same selection in different orders.
+function stableFilterKey(filters: UseHomeFeedFilters | undefined): string {
+  if (!filters) return ''
+  const countryIds = (filters.countryIds ?? []).slice().sort((a, b) => a - b).join(',')
+  const roles = (filters.roles ?? []).slice().sort().join(',')
+  return `c:${countryIds}|r:${roles}`
+}
+
+export function useHomeFeed(filters?: UseHomeFeedFilters): UseHomeFeedResult {
   const queryClient = useQueryClient()
   const { blockedIds } = useBlockedUsers()
 
+  const filterKey = stableFilterKey(filters)
+  const queryKey = useMemo(() => ['home-feed', filterKey] as const, [filterKey])
+
+  // Empty arrays are equivalent to "no filter" — pass through only when an
+  // actual selection exists. Omitting the new params entirely keeps callers
+  // backward-compatible with versions of get_home_feed that don't yet have
+  // the country/role parameters (i.e. environments where the
+  // 20260425010000_home_feed_author_filters migration hasn't been applied).
+  const rpcCountryIds = filters?.countryIds && filters.countryIds.length > 0
+    ? filters.countryIds
+    : null
+  const rpcRoles = filters?.roles && filters.roles.length > 0
+    ? filters.roles
+    : null
+  const hasFilters = rpcCountryIds !== null || rpcRoles !== null
+
   const query = useInfiniteQuery<FeedPage>({
-    queryKey: QUERY_KEY,
+    queryKey,
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
       const offset = typeof pageParam === 'number' ? pageParam : 0
 
+      const rpcParams: Record<string, unknown> = {
+        p_limit: DEFAULT_LIMIT,
+        p_offset: offset,
+      }
+      if (hasFilters) {
+        rpcParams.p_country_ids = rpcCountryIds
+        rpcParams.p_roles = rpcRoles
+      }
+
       const { data, error } = await withTimeout(
-         
-        async () => await supabase.rpc('get_home_feed', {
-          p_limit: DEFAULT_LIMIT,
-          p_offset: offset,
-        }),
+
+        async () => await supabase.rpc('get_home_feed', rpcParams),
         10_000
       )
 
@@ -133,7 +168,7 @@ export function useHomeFeed(): UseHomeFeedResult {
   }, [query])
 
   const updateItemLike = useCallback((postId: string, liked: boolean, likeCount: number) => {
-    queryClient.setQueryData<InfiniteData<FeedPage>>(QUERY_KEY, (old) => {
+    queryClient.setQueryData<InfiniteData<FeedPage>>(queryKey, (old) => {
       if (!old) return old
       return {
         ...old,
@@ -147,10 +182,10 @@ export function useHomeFeed(): UseHomeFeedResult {
         })),
       }
     })
-  }, [queryClient])
+  }, [queryClient, queryKey])
 
   const removeItem = useCallback((feedItemId: string) => {
-    queryClient.setQueryData<InfiniteData<FeedPage>>(QUERY_KEY, (old) => {
+    queryClient.setQueryData<InfiniteData<FeedPage>>(queryKey, (old) => {
       if (!old) return old
       return {
         ...old,
@@ -161,11 +196,11 @@ export function useHomeFeed(): UseHomeFeedResult {
         })),
       }
     })
-  }, [queryClient])
+  }, [queryClient, queryKey])
 
   const prependItem = useCallback((item: HomeFeedItem) => {
     setNewCount(0)
-    queryClient.setQueryData<InfiniteData<FeedPage>>(QUERY_KEY, (old) => {
+    queryClient.setQueryData<InfiniteData<FeedPage>>(queryKey, (old) => {
       if (!old || old.pages.length === 0) return old
       const [firstPage, ...rest] = old.pages
       return {
@@ -176,7 +211,7 @@ export function useHomeFeed(): UseHomeFeedResult {
         ],
       }
     })
-  }, [queryClient])
+  }, [queryClient, queryKey])
 
   // Map query error to string for backward compatibility
   let errorStr: string | null = null
