@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import * as Sentry from '@sentry/react'
 import type { HomeFeedItem } from '@/types/homeFeed'
 import {
   MemberJoinedCard,
@@ -17,6 +18,11 @@ interface HomeFeedItemCardProps {
   onLikeUpdate?: (postId: string, liked: boolean, likeCount: number) => void
   onDelete?: (feedItemId: string) => void
 }
+
+// Module-level set so we only report each unknown item_type once per session
+// (Sentry rate-limits + we don't want hundreds of duplicates if a feed page
+// returns 20 unknown items).
+const reportedUnknownTypes = new Set<string>()
 
 export const HomeFeedItemCard = memo(function HomeFeedItemCard({ item, onLikeUpdate, onDelete }: HomeFeedItemCardProps) {
   switch (item.item_type) {
@@ -40,7 +46,22 @@ export const HomeFeedItemCard = memo(function HomeFeedItemCard({ item, onLikeUpd
         return <SigningAnnouncementCard item={item} onLikeUpdate={onLikeUpdate} onDelete={onDelete} />
       }
       return <UserPostCard item={item} onLikeUpdate={onLikeUpdate} onDelete={onDelete} />
-    default:
+    default: {
+      // Surface unknown item types to Sentry — otherwise a backend-led
+      // schema additions (e.g. a new event type shipped before the
+      // client) would silently drop items with no visible signal.
+      const unknownType = (item as { item_type?: string }).item_type ?? '<missing>'
+      if (!reportedUnknownTypes.has(unknownType)) {
+        reportedUnknownTypes.add(unknownType)
+        Sentry.captureMessage('home_feed.unknown_item_type', {
+          level: 'warning',
+          tags: { feature: 'home_feed', item_type: unknownType },
+          extra: {
+            feed_item_id: (item as { feed_item_id?: string }).feed_item_id,
+          },
+        })
+      }
       return null
+    }
   }
 })

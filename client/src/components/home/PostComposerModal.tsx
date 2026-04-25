@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Loader2, Search, Shield, X, ImagePlus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
@@ -7,7 +8,10 @@ import { useUserPosts, type PostImage } from '@/hooks/useUserPosts'
 import { validateImage, optimizeImage } from '@/lib/imageOptimization'
 import { useUploadManager } from '@/lib/uploadManager'
 import { logger } from '@/lib/logger'
+import { reportSupabaseError } from '@/lib/sentryHelpers'
 import { checkContent } from '@/lib/contentFilter'
+import { getDraft, saveDraft, clearDraft } from '@/lib/composerDraft'
+import { pickPlaceholder, type ComposerRole } from '@/lib/composerPlaceholders'
 import { Avatar, RoleBadge } from '@/components'
 import { PostMediaUploader, type UploadedMedia } from './PostMediaUploader'
 import type { HomeFeedItem, UserPostFeedItem, TransferMetadata, SigningMetadata } from '@/types/homeFeed'
@@ -70,6 +74,14 @@ export function PostComposerModal({
   const [uploadProgress, setUploadProgress] = useState<number | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Rotating per-role placeholder picked once on modal open. Static within a
+  // session so it doesn't shift while the user is typing.
+  const [postPlaceholder, setPostPlaceholder] = useState<string>(() =>
+    pickPlaceholder((profile?.role ?? null) as ComposerRole | null)
+  )
+  // True when the open-effect populated `content` from a saved draft (vs.
+  // an empty start). Drives the "Draft restored — Discard" affordance.
+  const [draftRestored, setDraftRestored] = useState(false)
 
   // Transfer mode state
   const [mode, setMode] = useState<'post' | 'transfer'>('post')
@@ -97,12 +109,58 @@ export function PostComposerModal({
     }
   }, [])
 
+  // Lock body scroll while the modal is open. Without this:
+  //   - PullToRefresh listens at document level and fires refresh when
+  //     the user drags down inside the modal (e.g. pulling the textarea
+  //     out of view at scrollY 0)
+  //   - On iOS Safari rubber-band overscroll bleeds through the backdrop
+  // Save the previous overflow value so unmount restores rather than
+  // overwriting state owned by a wrapping modal (mirrors Modal.tsx).
+  useEffect(() => {
+    if (!isOpen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isOpen])
+
+  // Add Escape-to-close so keyboard users / iPad with hardware keyboard
+  // can dismiss without reaching the X button.
+  useEffect(() => {
+    if (!isOpen) return
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmitting) handleCloseRef.current?.()
+    }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isOpen, isSubmitting])
+
+  // handleClose is defined later (uses contentRef + isSubmitting). Hold a
+  // forward ref so the Escape effect above can call the latest version
+  // without depending on it (which would force re-binding the listener
+  // every keystroke via the auto-save effect chain).
+  const handleCloseRef = useRef<(() => void) | null>(null)
+
+  // Tracks which mode was last loaded — referenced by the open-effect (to
+  // sync to 'post' on each open) AND the mode-change effect (to know when
+  // to flush + reload). Declared up here so both effects can see it.
+  const lastModeRef = useRef<'post' | 'transfer'>('post')
+  // Mirror of `content` for synchronous reads (close flush, mode-switch
+  // flush) without making `content` a dependency of those effects/callbacks.
+  const contentRef = useRef('')
+
   // Reset form when modal opens
   useEffect(() => {
     if (!isOpen) return
 
+    // Reroll the placeholder on each open so users see variety. Stays
+    // stable within a single session of the modal.
+    setPostPlaceholder(pickPlaceholder((profile?.role ?? null) as ComposerRole | null))
+
     if (editingPost) {
       setContent(editingPost.content)
+      setDraftRestored(false)
       setMedia(
         editingPost.images
           ? editingPost.images.map((img, i) => ({
@@ -117,11 +175,22 @@ export function PostComposerModal({
           : []
       )
     } else {
-      setContent('')
+      // Restore the 'post'-mode draft (the open-effect resets to 'post'
+      // mode below). Reading from the live `mode` state here would pick
+      // up whatever the user left the modal in last session — e.g.
+      // 'transfer' — and load the wrong slot for a flash before the
+      // mode-change effect corrects it.
+      const restored = getDraft(user?.id, 'post')
+      setContent(restored)
+      setDraftRestored(restored.length > 0)
       setMedia([])
     }
     setError(null)
     setMode('post')
+    // Keep lastModeRef in sync so the mode-change effect below doesn't
+    // immediately re-fire (with stale mode === 'transfer' from prior
+    // session) and clobber the post-mode draft we just loaded.
+    lastModeRef.current = 'post'
     setClubSearch('')
     setClubResults([])
     setSelectedClub(null)
@@ -154,7 +223,79 @@ export function PostComposerModal({
 
     // Auto-focus textarea
     setTimeout(() => textareaRef.current?.focus(), 100)
+    // Intentionally NOT depending on mode/profile/user — this is the
+    // open-once reset. Subsequent mode changes are handled by the
+    // mode-change effect below; profile.role and user.id are stable for
+    // the modal's lifetime so reading them inline is safe.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, editingPost])
+
+  // Reload draft when mode changes (Post ↔ Transfer). Each mode has its own
+  // draft slot — switching tabs swaps in the right one. Skipped when
+  // editing an existing post (the post's stored content is the source of
+  // truth there) and on initial open (the open-effect above already
+  // populated the draft for the default mode).
+  //
+  // contentRef mirrors `content` so the mode-change effect (and handleClose)
+  // can read the latest typed text without depending on it (which would
+  // make those effects/callbacks re-fire on every keystroke).
+  useEffect(() => { contentRef.current = content }, [content])
+  useEffect(() => {
+    if (!isOpen || editingPost) return
+    if (lastModeRef.current === mode) return
+    // Flush whatever's currently typed to the OLD mode's slot before we
+    // swap. The auto-save effect is debounced 500ms; without this, a rapid
+    // tap on Transfer would lose any keystrokes typed in the last <500ms.
+    saveDraft(user?.id, lastModeRef.current, contentRef.current)
+    lastModeRef.current = mode
+    setContent(getDraft(user?.id, mode))
+    // Note: deliberately NOT touching draftRestored here. The chip's
+    // purpose is "alert the user that pre-existing content was loaded
+    // when they opened the modal" — once they've started mode-switching
+    // they're already aware of the modal's contents, and resurfacing the
+    // chip on toggle-back-to-post would falsely claim that content they
+    // typed in this session was "restored from your last session."
+  }, [mode, isOpen, editingPost, user?.id])
+
+  // Auto-save the textarea content as a draft (debounced). Skipped when
+  // editing an existing post.
+  useEffect(() => {
+    if (!isOpen || editingPost || !user?.id) return
+    const handle = setTimeout(() => {
+      saveDraft(user.id, mode, content)
+    }, 500)
+    return () => clearTimeout(handle)
+  }, [content, isOpen, editingPost, user?.id, mode])
+
+  // Synchronously flush the draft before closing — covers the X button and
+  // backdrop tap. Without this, the 500ms debounce above can swallow the
+  // user's last few keystrokes when they close immediately after typing.
+  //
+  // Skip the flush when:
+  //   - editing an existing post (the stored post is the source of truth)
+  //   - a submit is in flight (the success path already cleared the draft;
+  //     re-saving here would resurrect the just-cleared content)
+  //   - content is empty (nothing useful to save; avoids one extra write)
+  const handleClose = useCallback(() => {
+    if (!editingPost && user?.id && !isSubmitting && contentRef.current.length > 0) {
+      saveDraft(user.id, mode, contentRef.current)
+    }
+    onClose()
+  }, [editingPost, user?.id, mode, onClose, isSubmitting])
+
+  // Keep handleCloseRef pointed at the latest handleClose so the Escape
+  // effect above can call it without re-binding every render.
+  useEffect(() => {
+    handleCloseRef.current = handleClose
+  }, [handleClose])
+
+  // User-initiated draft discard. Clears the slot and the textarea; closes
+  // the "Draft restored" chip.
+  const handleDiscardDraft = useCallback(() => {
+    clearDraft(user?.id, mode)
+    setContent('')
+    setDraftRestored(false)
+  }, [user?.id, mode])
 
   // Debounced club search
   const handleClubSearch = useCallback((query: string) => {
@@ -278,6 +419,9 @@ export function PostComposerModal({
       }])
     } catch (err) {
       logger.error('[PostComposerModal] Image upload error:', err)
+      reportSupabaseError('composer.image_upload', err, {
+        userId: user?.id,
+      }, { feature: 'post_composer', upload_kind: 'post_image' })
       setError(err instanceof Error ? err.message : 'Failed to upload image')
     } finally {
       setIsUploading(false)
@@ -385,6 +529,9 @@ export function PostComposerModal({
       setClubLogoUrl(urlData.publicUrl)
     } catch (err) {
       logger.error('[PostComposerModal] Logo upload error:', err)
+      reportSupabaseError('composer.logo_upload', err, {
+        userId: user?.id,
+      }, { feature: 'post_composer', upload_kind: 'club_logo' })
       setError(err instanceof Error ? err.message : 'Failed to upload club logo')
     } finally {
       setIsUploadingLogo(false)
@@ -456,11 +603,19 @@ export function PostComposerModal({
             onPostCreated(newItem)
           }
 
+          clearDraft(user?.id, mode)
           setContent('')
           setMedia([])
           onClose()
         } catch (err) {
           logger.error('[PostComposerModal] Signing submit error:', err)
+          reportSupabaseError('composer.submit', err, {
+            mode: 'transfer',
+            isClubRole: true,
+            authorRole: profile?.role,
+            hasSelectedPerson: Boolean(selectedPerson),
+            hasMedia: media.length > 0,
+          }, { feature: 'post_composer', submit_mode: 'signing' })
           setError(err instanceof Error ? err.message : 'Failed to create signing post')
         } finally {
           setIsSubmitting(false)
@@ -532,11 +687,20 @@ export function PostComposerModal({
           onPostCreated(newItem)
         }
 
+        clearDraft(user?.id, mode)
         setContent('')
         setMedia([])
         onClose()
       } catch (err) {
         logger.error('[PostComposerModal] Transfer submit error:', err)
+        reportSupabaseError('composer.submit', err, {
+          mode: 'transfer',
+          isClubRole: false,
+          authorRole: profile?.role,
+          hasSelectedClub: Boolean(selectedClub),
+          hasCustomClub: Boolean(customClubName),
+          hasMedia: media.length > 0,
+        }, { feature: 'post_composer', submit_mode: 'transfer' })
         setError(err instanceof Error ? err.message : 'Failed to create transfer post')
       } finally {
         setIsSubmitting(false)
@@ -601,16 +765,27 @@ export function PostComposerModal({
         }
       }
 
+      // Only wipe the draft slot for the active mode on a successful CREATE.
+      // For an edit, the user's separate post-mode draft is unrelated and
+      // shouldn't be clobbered.
+      if (!isEdit) clearDraft(user?.id, mode)
       setContent('')
       setMedia([])
+      setDraftRestored(false)
       onClose()
     } catch (err) {
       logger.error('[PostComposerModal] Submit error:', err)
+      reportSupabaseError('composer.submit', err, {
+        mode: 'post',
+        isEdit,
+        authorRole: profile?.role,
+        hasMedia: media.length > 0,
+      }, { feature: 'post_composer', submit_mode: isEdit ? 'edit' : 'post' })
       setError(err instanceof Error ? err.message : 'Failed to save post')
     } finally {
       setIsSubmitting(false)
     }
-  }, [content, media, mode, selectedClub, selectedPerson, customClubName, clubLogoUrl, isEdit, editingPost, createPost, createTransferPost, createSigningPost, updatePost, profile, onPostCreated, onClose, isSubmitting])
+  }, [content, media, mode, selectedClub, selectedPerson, customClubName, clubLogoUrl, isEdit, editingPost, createPost, createTransferPost, createSigningPost, updatePost, profile, onPostCreated, onClose, isSubmitting, user?.id])
 
   if (!isOpen) return null
 
@@ -624,17 +799,30 @@ export function PostComposerModal({
   const canSubmitPost = content.trim().length > 0
   const canSubmit = mode === 'transfer' ? canSubmitTransfer : canSubmitPost
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  // Render through a portal so the modal's `position: fixed` is anchored to
+  // the viewport, not to the nearest transformed ancestor. The PostComposer
+  // collapsed bar that triggers this modal lives inside HomePage's sticky
+  // header, which uses `translate-y-0` for its slide-up animation. Per CSS
+  // spec, any non-`none` transform creates a containing block for fixed
+  // descendants — without the portal, the modal (and its backdrop) only
+  // covered the sticky header's bounds, leaving the rest of the page
+  // visible underneath.
+  if (typeof document === 'undefined') return null
+  return createPortal(
+    // z-[10000] lets the composer beat the cookie consent banner (z-[9999])
+    // and other always-on-top UI. Before the portal, the modal was trapped
+    // in the sticky parent's stacking context (z-40) and z-50 was relative
+    // to that — irrelevant once we render at the root.
+    <div className="fixed inset-0 z-[10000] overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/50" onClick={handleClose} />
         <div
           ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="post-composer-title"
           tabIndex={-1}
-          className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto focus:outline-none"
+          className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[100dvh] overflow-y-auto focus:outline-none"
         >
           {/* Header */}
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
@@ -643,7 +831,7 @@ export function PostComposerModal({
             </h2>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="text-gray-400 hover:text-gray-600"
               aria-label="Close"
             >
@@ -653,8 +841,10 @@ export function PostComposerModal({
             </button>
           </div>
 
-          {/* Content */}
-          <div className="p-6 space-y-4">
+          {/* Content. Bottom padding uses max(env(safe-area-inset-bottom),
+              1.5rem) so the Submit button never sits beneath the iPhone
+              home indicator on a full-height modal. */}
+          <div className="p-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] space-y-4">
             {/* Author info */}
             {profile && (
               <div className="flex items-center gap-3">
@@ -993,6 +1183,21 @@ export function PostComposerModal({
               </div>
             )}
 
+            {/* Draft-restored chip — only when content was loaded from a
+                saved draft, not for fresh-open or edit-existing-post. */}
+            {draftRestored && !editingPost && mode === 'post' && content.length > 0 && (
+              <div className="flex items-center justify-between gap-2 px-3 py-2 mb-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                <span>Draft restored from your last session.</span>
+                <button
+                  type="button"
+                  onClick={handleDiscardDraft}
+                  className="font-medium underline hover:no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 rounded"
+                >
+                  Discard
+                </button>
+              </div>
+            )}
+
             {/* Textarea */}
             <div>
               <textarea
@@ -1004,9 +1209,11 @@ export function PostComposerModal({
                     ? (isClubRole
                         ? 'Share something about this signing... (optional)'
                         : 'Share something about your transfer... (optional)')
-                    : isUmpireRole
-                      ? 'Share a match recap, a law clarification, or a panel update...'
-                      : "What's on your mind?"
+                    // Default ('post') mode uses the per-role rotating
+                    // placeholder. Umpire prompts in that pool already
+                    // stick to credentials / federation / aggregates, per
+                    // officials' professional norms (NASO, TASO).
+                    : postPlaceholder
                 }
                 rows={mode === 'transfer' ? 3 : 4}
                 maxLength={MAX_CONTENT_LENGTH}
@@ -1054,6 +1261,7 @@ export function PostComposerModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

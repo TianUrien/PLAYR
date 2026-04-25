@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
+import { reportSupabaseError } from '@/lib/sentryHelpers'
 import { withTimeout } from '@/lib/retry'
 import { trackDbEvent } from '@/lib/trackDbEvent'
 
@@ -49,6 +50,10 @@ export function useUserPosts() {
       return result
     } catch (err) {
       logger.error('[useUserPosts] createPost error:', err)
+      reportSupabaseError('useUserPosts.createPost', err, {
+        hasContent: content.length > 0,
+        mediaCount: images?.length ?? 0,
+      }, { feature: 'user_posts', op: 'create' })
       return {
         success: false,
         error: err instanceof Error ? err.message : 'Failed to create post',
@@ -78,6 +83,10 @@ export function useUserPosts() {
       return result
     } catch (err) {
       logger.error('[useUserPosts] updatePost error:', err)
+      reportSupabaseError('useUserPosts.updatePost', err, {
+        hasContent: content.length > 0,
+        mediaCount: images?.length ?? 0,
+      }, { feature: 'user_posts', op: 'update' })
       return {
         success: false,
         error: err instanceof Error ? err.message : 'Failed to update post',
@@ -104,6 +113,9 @@ export function useUserPosts() {
       return result
     } catch (err) {
       logger.error('[useUserPosts] deletePost error:', err)
+      reportSupabaseError('useUserPosts.deletePost', err, {}, {
+        feature: 'user_posts', op: 'delete',
+      })
       return {
         success: false,
         error: err instanceof Error ? err.message : 'Failed to delete post',
@@ -142,6 +154,11 @@ export function useUserPosts() {
       return result
     } catch (err) {
       logger.error('[useUserPosts] createTransferPost error:', err)
+      reportSupabaseError('useUserPosts.createTransferPost', err, {
+        hasWorldClubId: Boolean(worldClubId),
+        hasContent: Boolean(content),
+        mediaCount: images?.length ?? 0,
+      }, { feature: 'user_posts', op: 'create_transfer' })
       return {
         success: false,
         error: err instanceof Error ? err.message : 'Failed to create transfer post',
@@ -174,6 +191,10 @@ export function useUserPosts() {
       return result
     } catch (err) {
       logger.error('[useUserPosts] createSigningPost error:', err)
+      reportSupabaseError('useUserPosts.createSigningPost', err, {
+        hasContent: Boolean(content),
+        mediaCount: images?.length ?? 0,
+      }, { feature: 'user_posts', op: 'create_signing' })
       return {
         success: false,
         error: err instanceof Error ? err.message : 'Failed to create signing post',

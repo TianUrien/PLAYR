@@ -1,12 +1,16 @@
-import { Component, useCallback, useEffect, useRef } from 'react'
+import { Component, useCallback, useEffect, useMemo, useRef } from 'react'
 import type { ReactNode, ErrorInfo } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowUp, Loader2, Rss, Search, Globe, Briefcase, MessageSquare } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { useHomeFeed } from '@/hooks/useHomeFeed'
+import { usePersistedState } from '@/hooks/usePersistedState'
 import { HomeFeedItemCard } from './HomeFeedItemCard'
 import { FeedSkeleton } from './FeedSkeleton'
 import ProfileCompletionCard from './ProfileCompletionCard'
+import { HomeFilterChips } from './HomeFilterChips'
+import { EMPTY_FILTERS, isHomeFilters } from './homeFilters'
+import type { HomeFilters } from './homeFilters'
 import type { HomeFeedItem } from '@/types/homeFeed'
 
 /**
@@ -44,9 +48,48 @@ interface HomeFeedProps {
 }
 
 export function HomeFeed({ prependItemRef }: HomeFeedProps) {
-  const { items, isLoading, isFetchingNextPage, error, refetch, hasMore, loadMore, updateItemLike, removeItem, prependItem, newCount, showNewItems } = useHomeFeed()
+  // Persist filter selection across sessions on the same device. localStorage
+  // (not sessionStorage) so filters survive close/reopen, fresh nav, and
+  // bottom-nav re-entry — not just back/forward. Per-device only; cross-device
+  // persistence would need a server-side user_preferences row.
+  const [filters, setFilters] = usePersistedState<HomeFilters>('home-filters', EMPTY_FILTERS, isHomeFilters)
+
+  // useHomeFeed expects undefined for "no filter" so it falls through to the
+  // unfiltered RPC path; only pass arrays when there's an actual selection.
+  const feedFilters = useMemo(() => ({
+    countryIds: filters.countryIds.length > 0 ? filters.countryIds : undefined,
+    roles: filters.roles.length > 0 ? filters.roles : undefined,
+  }), [filters])
+
+  const { items, isLoading, isFetchingNextPage, error, refetch, hasMore, loadMore, updateItemLike, removeItem, prependItem, newCount, showNewItems } = useHomeFeed(feedFilters)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const feedTopRef = useRef<HTMLDivElement>(null)
+
+  const hasActiveFilters = filters.countryIds.length > 0 || filters.roles.length > 0
+  const handleClearFilters = useCallback(() => setFilters(EMPTY_FILTERS), [setFilters])
+
+  // Stable string keys for the breadcrumb effect deps. filters.roles is a
+  // fresh array reference on each toggle (HomeFilterChips builds a new
+  // array via Array.from(set)), so depending on the array directly would
+  // be brittle if the same content ever produced a different reference.
+  // Joining gives a content-equality dep.
+  const rolesKey = filters.roles.slice().sort().join(',')
+
+  // Breadcrumb filter changes so Sentry traces preceding any subsequent
+  // feed error include the filter selection that led to it.
+  useEffect(() => {
+    Sentry.addBreadcrumb({
+      category: 'home_feed.filter',
+      level: 'info',
+      message: hasActiveFilters ? 'filters_applied' : 'filters_cleared',
+      data: {
+        countryCount: filters.countryIds.length,
+        roleCount: filters.roles.length,
+        roles: filters.roles,
+      },
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rolesKey is the stable form of filters.roles
+  }, [filters.countryIds.length, rolesKey, hasActiveFilters])
 
   // Expose prependItem to parent so PostComposer can live in the sticky header
   useEffect(() => {
@@ -75,8 +118,50 @@ export function HomeFeed({ prependItemRef }: HomeFeedProps) {
     return () => observer.disconnect()
   }, [hasMore, isFetchingNextPage, loadMore])
 
+  // Summary count for the active-filter banner. We persist filters in
+  // localStorage now, so a user opening the app tomorrow may not remember
+  // they had filters set — the banner gives them a one-tap escape hatch.
+  const activeFilterSummary = useMemo(() => {
+    const parts: string[] = []
+    if (filters.countryIds.length > 0) {
+      parts.push(`${filters.countryIds.length} ${filters.countryIds.length === 1 ? 'country' : 'countries'}`)
+    }
+    if (filters.roles.length > 0) {
+      parts.push(`${filters.roles.length} ${filters.roles.length === 1 ? 'role' : 'roles'}`)
+    }
+    return parts.join(' · ')
+  }, [filters])
+
   return (
     <div>
+      {/* Filter chips — persistent country + role filters above the feed */}
+      <HomeFilterChips filters={filters} onChange={setFilters} />
+
+      {/* Active-filter banner — shown whenever filters are applied so a
+          returning user (whose selection persisted from yesterday) has an
+          obvious one-tap path back to the global feed without scrolling
+          to the empty state. role="status" + aria-live="polite" so
+          screen-reader users hear the change when they toggle a chip. */}
+      {hasActiveFilters && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center justify-between gap-3 mb-4 px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-sm"
+        >
+          <span className="text-gray-700 truncate">
+            <span className="font-medium text-[#8026FA]">Filters applied</span>
+            {activeFilterSummary && <span className="text-gray-500"> · {activeFilterSummary}</span>}
+          </span>
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="flex-shrink-0 text-sm font-medium text-[#8026FA] hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8026FA] rounded"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
+
       {/* Profile completion nudge */}
       <ProfileCompletionCard />
 
@@ -122,8 +207,28 @@ export function HomeFeed({ prependItemRef }: HomeFeedProps) {
         </div>
       )}
 
-      {/* Empty state — cold start guidance */}
-      {!isLoading && !error && items.length === 0 && (
+      {/* Filtered empty state — quiet-filter UX */}
+      {!isLoading && !error && items.length === 0 && hasActiveFilters && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 text-center">
+          <Rss className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+          <h3 className="text-base font-semibold text-gray-900 mb-1">
+            Nothing here yet for this filter
+          </h3>
+          <p className="text-sm text-gray-500 mb-4">
+            Try a wider selection — or clear filters to see the whole community.
+          </p>
+          <button
+            type="button"
+            onClick={handleClearFilters}
+            className="inline-flex items-center px-4 py-2 rounded-full text-sm font-medium bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white shadow-sm hover:opacity-90 transition-opacity"
+          >
+            Clear filters
+          </button>
+        </div>
+      )}
+
+      {/* Empty state — cold start guidance (only when no filters active) */}
+      {!isLoading && !error && items.length === 0 && !hasActiveFilters && (
         <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8">
           <div className="text-center mb-6">
             <Rss className="w-12 h-12 text-gray-300 mx-auto mb-3" />

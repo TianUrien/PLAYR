@@ -12,7 +12,7 @@ export function BrandPostCard({ item }: BrandPostCardProps) {
   const timeAgo = getTimeAgo(item.created_at, true)
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+    <div className="bg-white rounded-xl border border-gray-200 border-t-4 border-t-rose-500 overflow-hidden shadow-sm">
       <div className="p-5">
         {/* Brand Header */}
         <Link
