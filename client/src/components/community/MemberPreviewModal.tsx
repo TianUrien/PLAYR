@@ -91,6 +91,44 @@ export function MemberPreviewModal({ member, onClose }: MemberPreviewModalProps)
     setSendingMessage(false)
   }, [member?.id])
 
+  // Drag-to-dismiss for the mobile bottom-sheet layout. Touch events don't
+  // fire from a desktop mouse, so this is naturally mobile-only — and the
+  // window-width gate in handleDragStart guards the edge case of touch-input
+  // tablets in landscape (where the modal is centered, not anchored).
+  const [translateY, setTranslateY] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStartYRef = useRef(0)
+
+  // Reset drag state whenever the modal opens for a new member or closes.
+  // Resetting on close is a no-op (component returns null) but keeps the
+  // effect simple and lint-clean.
+  useEffect(() => {
+    setTranslateY(0)
+    setIsDragging(false)
+  }, [member?.id])
+
+  const handleDragStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) return
+    dragStartYRef.current = e.touches[0].clientY
+    setIsDragging(true)
+  }
+
+  const handleDragMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!isDragging) return
+    const delta = e.touches[0].clientY - dragStartYRef.current
+    setTranslateY(Math.max(0, delta))
+  }
+
+  const handleDragEnd = () => {
+    if (!isDragging) return
+    setIsDragging(false)
+    if (translateY > 100) {
+      onClose()
+    } else {
+      setTranslateY(0)
+    }
+  }
+
   // Trap focus inside the dialog when open. Matches Modal.tsx convention.
   // Deactivate while SignInPromptModal is showing so its own trap can own
   // keyboard focus — otherwise two active traps fight for focus and the
@@ -246,17 +284,37 @@ export function MemberPreviewModal({ member, onClose }: MemberPreviewModalProps)
           tabIndex={-1}
           className="pointer-events-auto relative w-full md:max-w-md bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto animate-slide-in-up"
           onClick={e => e.stopPropagation()}
+          style={{
+            transform: translateY > 0 ? `translateY(${translateY}px)` : undefined,
+            transition: isDragging ? 'none' : 'transform 0.2s ease-out',
+            // Hint to the browser that touch on the top region is a vertical
+            // gesture we'll handle ourselves — improves drag responsiveness on
+            // iOS Safari without breaking native scroll on the body content.
+            touchAction: isDragging ? 'none' : undefined,
+          }}
         >
-          {/* Mobile handle + close */}
-          <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-2 bg-white/80 backdrop-blur-sm">
-            <span className="md:hidden inline-block w-10 h-1 rounded-full bg-gray-300 mx-auto" aria-hidden="true" />
+          {/* Sticky top: drag handle (mobile) + always-visible close pill.
+              The strip is transparent so the hero shows through; the close
+              button gets its own opaque white pill for prominence over any
+              hero color. Drag handlers only initiate from this region so
+              native scroll inside the modal body keeps working. */}
+          <div
+            className="sticky top-0 z-10 px-4 pt-3 pb-2"
+            onTouchStart={handleDragStart}
+            onTouchMove={handleDragMove}
+            onTouchEnd={handleDragEnd}
+            onTouchCancel={handleDragEnd}
+          >
+            <div className="md:hidden flex justify-center">
+              <span className="inline-block w-12 h-1.5 rounded-full bg-gray-400/80" aria-hidden="true" />
+            </div>
             <button
               type="button"
               onClick={onClose}
-              className="absolute top-2 right-2 p-2 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              className="absolute top-2.5 right-3 w-9 h-9 rounded-full bg-white shadow-md ring-1 ring-gray-200 flex items-center justify-center text-gray-900 hover:bg-gray-50 active:bg-gray-100 transition-colors"
               aria-label="Close preview"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" strokeWidth={2.5} />
             </button>
           </div>
 
