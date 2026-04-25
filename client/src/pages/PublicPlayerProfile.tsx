@@ -219,14 +219,34 @@ export default function PublicPlayerProfile() {
     )
   }
 
+  // Coerce nullable verification fields to the stricter shape the dashboard
+  // components expect (boolean | undefined, not boolean | null). Same trick
+  // for both player and coach paths below.
+  const verifiedBoolean = profile.is_verified ?? undefined
+  const verifiedAtString = profile.verified_at ?? undefined
+
   if (profile.role === 'coach') {
-    return <CoachDashboard profileData={{ ...profile, email: '', contact_email_public: profile.contact_email_public ?? false }} readOnly={true} isOwnProfile={isOwnProfile} />
+    return (
+      <CoachDashboard
+        profileData={{
+          ...profile,
+          email: '',
+          contact_email_public: profile.contact_email_public ?? false,
+          is_verified: verifiedBoolean,
+          verified_at: verifiedAtString,
+        }}
+        readOnly={true}
+        isOwnProfile={isOwnProfile}
+      />
+    )
   }
 
   const playerProfileData: PlayerProfileShape = {
     ...profile,
     email: '',
     contact_email_public: profile.contact_email_public ?? false,
+    is_verified: verifiedBoolean,
+    verified_at: verifiedAtString,
   }
 
   return <PlayerDashboard profileData={playerProfileData} readOnly={true} isOwnProfile={isOwnProfile} viewerRole={currentUserProfile?.role ?? null} />

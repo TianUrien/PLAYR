@@ -209,7 +209,7 @@ export default function UmpireAppointmentEditor({
     if (!file || !userId) return
 
     setImageError(null)
-    const validation = validateImage(file, { maxSizeMB: 5 })
+    const validation = validateImage(file, { maxFileSizeMB: 5 })
     if (!validation.valid) {
       setImageError(validation.error ?? 'Invalid image')
       return

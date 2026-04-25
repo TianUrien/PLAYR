@@ -331,8 +331,15 @@ export default function AuthScreen({ mode, role, onBack }: AuthScreenProps) {
       onBack()
       return
     }
+    // Split the call: navigate has two overloads (delta: number) and
+    // (to: To). A union arg confuses overload resolution — pick the
+    // overload up front based on whether we have history to go back to.
     const canGoBack = typeof window !== 'undefined' && window.history.length > 1
-    navigate(canGoBack ? -1 : '/')
+    if (canGoBack) {
+      navigate(-1)
+    } else {
+      navigate('/')
+    }
   }
 
   // ── Sent state: "Check your inbox" ──
