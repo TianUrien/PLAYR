@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Loader2, Search, Shield, X, ImagePlus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
@@ -759,8 +760,21 @@ export function PostComposerModal({
   const canSubmitPost = content.trim().length > 0
   const canSubmit = mode === 'transfer' ? canSubmitTransfer : canSubmitPost
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  // Render through a portal so the modal's `position: fixed` is anchored to
+  // the viewport, not to the nearest transformed ancestor. The PostComposer
+  // collapsed bar that triggers this modal lives inside HomePage's sticky
+  // header, which uses `translate-y-0` for its slide-up animation. Per CSS
+  // spec, any non-`none` transform creates a containing block for fixed
+  // descendants — without the portal, the modal (and its backdrop) only
+  // covered the sticky header's bounds, leaving the rest of the page
+  // visible underneath.
+  if (typeof document === 'undefined') return null
+  return createPortal(
+    // z-[10000] lets the composer beat the cookie consent banner (z-[9999])
+    // and other always-on-top UI. Before the portal, the modal was trapped
+    // in the sticky parent's stacking context (z-40) and z-50 was relative
+    // to that — irrelevant once we render at the root.
+    <div className="fixed inset-0 z-[10000] overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/50" onClick={handleClose} />
         <div
@@ -1206,6 +1220,7 @@ export function PostComposerModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
