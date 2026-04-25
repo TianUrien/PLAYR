@@ -15,7 +15,10 @@ vi.mock('@/lib/supabase', () => ({
 const navigateMock = vi.fn()
 vi.mock('react-router-dom', () => ({
   useNavigate: () => navigateMock,
-  // usePageState (for filter persistence) reads location.key + navigationType.
+  // Stubbed to satisfy react-router internals used by Link / nested components.
+  // Filter persistence itself moved off usePageState (which reads these) onto
+  // usePersistedState (localStorage), so these stubs are no longer load-bearing
+  // for the filter behavior — kept just to avoid undefined-method errors.
   useLocation: () => ({ key: 'test', pathname: '/home', search: '', hash: '', state: null }),
   useNavigationType: () => 'PUSH',
   Link: ({ children, to, ...props }: { children: React.ReactNode; to: string; className?: string }) => (

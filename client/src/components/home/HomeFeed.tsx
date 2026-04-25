@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { ArrowUp, Loader2, Rss, Search, Globe, Briefcase, MessageSquare } from 'lucide-react'
 import * as Sentry from '@sentry/react'
 import { useHomeFeed } from '@/hooks/useHomeFeed'
-import { usePageState } from '@/hooks/usePageState'
+import { usePersistedState } from '@/hooks/usePersistedState'
 import { HomeFeedItemCard } from './HomeFeedItemCard'
 import { FeedSkeleton } from './FeedSkeleton'
 import ProfileCompletionCard from './ProfileCompletionCard'
@@ -48,8 +48,11 @@ interface HomeFeedProps {
 }
 
 export function HomeFeed({ prependItemRef }: HomeFeedProps) {
-  // Persist filter selection across navigation (per-route via usePageState).
-  const [filters, setFilters] = usePageState<HomeFilters>('home-filters', EMPTY_FILTERS)
+  // Persist filter selection across sessions on the same device. localStorage
+  // (not sessionStorage) so filters survive close/reopen, fresh nav, and
+  // bottom-nav re-entry — not just back/forward. Per-device only; cross-device
+  // persistence would need a server-side user_preferences row.
+  const [filters, setFilters] = usePersistedState<HomeFilters>('home-filters', EMPTY_FILTERS)
 
   // useHomeFeed expects undefined for "no filter" so it falls through to the
   // unfiltered RPC path; only pass arrays when there's an actual selection.
