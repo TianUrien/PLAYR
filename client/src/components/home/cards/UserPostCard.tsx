@@ -37,12 +37,19 @@ export function UserPostCard({ item, onLikeUpdate, onDelete }: UserPostCardProps
   const timeAgo = getTimeAgo(item.created_at, true)
   const isOwner = user?.id === item.author_id
 
+  // Resolve the public profile path for this post's author. Note: brand
+  // profile routes are slug-based (`/brands/:slug` -> `get_brand_by_slug`),
+  // and the user_post payload does not carry a brand_slug — the post was
+  // authored via the regular post composer, not via the brand_post flow
+  // that returns brand_slug in metadata. Until the RPC adds the slug, we
+  // skip the link for brand authors (brand-authored user_posts are rare;
+  // their dedicated content path is BrandPostCard).
   const profilePath = item.author_role === 'club'
     ? `/clubs/id/${item.author_id}?ref=feed`
-    : item.author_role === 'brand'
-      ? `/brands/${item.author_id}?ref=feed`
-      : item.author_role === 'umpire'
-        ? `/umpires/id/${item.author_id}?ref=feed`
+    : item.author_role === 'umpire'
+      ? `/umpires/id/${item.author_id}?ref=feed`
+      : item.author_role === 'brand'
+        ? null
         : `/players/id/${item.author_id}?ref=feed`
 
   const sortedImages = useMemo(
@@ -99,21 +106,37 @@ export function UserPostCard({ item, onLikeUpdate, onDelete }: UserPostCardProps
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
         {/* Header */}
         <div className="flex items-center gap-3 p-4 pb-2">
-          <Link to={profilePath} className="flex-shrink-0">
-            <Avatar
-              src={item.author_avatar}
-              initials={item.author_name?.slice(0, 2) || '?'}
-              size="md"
-            />
-          </Link>
+          {profilePath ? (
+            <Link to={profilePath} className="flex-shrink-0">
+              <Avatar
+                src={item.author_avatar}
+                initials={item.author_name?.slice(0, 2) || '?'}
+                size="md"
+              />
+            </Link>
+          ) : (
+            <div className="flex-shrink-0">
+              <Avatar
+                src={item.author_avatar}
+                initials={item.author_name?.slice(0, 2) || '?'}
+                size="md"
+              />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <Link
-                to={profilePath}
-                className="font-semibold text-gray-900 truncate hover:text-indigo-600 transition-colors text-sm"
-              >
-                {item.author_name || 'Unknown'}
-              </Link>
+              {profilePath ? (
+                <Link
+                  to={profilePath}
+                  className="font-semibold text-gray-900 truncate hover:text-indigo-600 transition-colors text-sm"
+                >
+                  {item.author_name || 'Unknown'}
+                </Link>
+              ) : (
+                <span className="font-semibold text-gray-900 truncate text-sm">
+                  {item.author_name || 'Unknown'}
+                </span>
+              )}
               <RoleBadge role={item.author_role} />
             </div>
             <p className="text-xs text-gray-500">{timeAgo}</p>

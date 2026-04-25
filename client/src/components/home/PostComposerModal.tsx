@@ -109,6 +109,39 @@ export function PostComposerModal({
     }
   }, [])
 
+  // Lock body scroll while the modal is open. Without this:
+  //   - PullToRefresh listens at document level and fires refresh when
+  //     the user drags down inside the modal (e.g. pulling the textarea
+  //     out of view at scrollY 0)
+  //   - On iOS Safari rubber-band overscroll bleeds through the backdrop
+  // Save the previous overflow value so unmount restores rather than
+  // overwriting state owned by a wrapping modal (mirrors Modal.tsx).
+  useEffect(() => {
+    if (!isOpen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isOpen])
+
+  // Add Escape-to-close so keyboard users / iPad with hardware keyboard
+  // can dismiss without reaching the X button.
+  useEffect(() => {
+    if (!isOpen) return
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isSubmitting) handleCloseRef.current?.()
+    }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isOpen, isSubmitting])
+
+  // handleClose is defined later (uses contentRef + isSubmitting). Hold a
+  // forward ref so the Escape effect above can call the latest version
+  // without depending on it (which would force re-binding the listener
+  // every keystroke via the auto-save effect chain).
+  const handleCloseRef = useRef<(() => void) | null>(null)
+
   // Tracks which mode was last loaded — referenced by the open-effect (to
   // sync to 'post' on each open) AND the mode-change effect (to know when
   // to flush + reload). Declared up here so both effects can see it.
@@ -249,6 +282,12 @@ export function PostComposerModal({
     }
     onClose()
   }, [editingPost, user?.id, mode, onClose, isSubmitting])
+
+  // Keep handleCloseRef pointed at the latest handleClose so the Escape
+  // effect above can call it without re-binding every render.
+  useEffect(() => {
+    handleCloseRef.current = handleClose
+  }, [handleClose])
 
   // User-initiated draft discard. Clears the slot and the textarea; closes
   // the "Draft restored" chip.
@@ -802,8 +841,10 @@ export function PostComposerModal({
             </button>
           </div>
 
-          {/* Content */}
-          <div className="p-6 space-y-4">
+          {/* Content. Bottom padding uses max(env(safe-area-inset-bottom),
+              1.5rem) so the Submit button never sits beneath the iPhone
+              home indicator on a full-height modal. */}
+          <div className="p-6 pb-[max(env(safe-area-inset-bottom),1.5rem)] space-y-4">
             {/* Author info */}
             {profile && (
               <div className="flex items-center gap-3">

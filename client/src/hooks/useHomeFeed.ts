@@ -113,10 +113,24 @@ export function useHomeFeed(filters?: UseHomeFeedFilters): UseHomeFeedResult {
   })
 
   const pages = query.data?.pages ?? []
-  // Filter out blocked users' content instantly (Apple Guideline 1.2)
-  const items = pages.flatMap(p => p.items).filter(
-    item => !('author_id' in item && blockedIds.has(item.author_id as string))
-  )
+  // Filter out blocked users' content instantly (Apple Guideline 1.2).
+  // Different item types carry the author identity in different fields:
+  //   user_post / transfer / signing → author_id
+  //   member_joined / milestone / reference_received → profile_id
+  //   opportunity_posted → club_id (the club is the publisher)
+  //   reference_received also has referee_id (we hide if EITHER party is blocked)
+  // Brand posts / products carry brand_id (a brand UUID, not the owning
+  // user's profile id), so we can't filter them client-side without an
+  // RPC change to expose the brand's owning profile_id. Server-side
+  // filtering via the new author_profile_id column is the longer-term fix.
+  const items = pages.flatMap(p => p.items).filter(item => {
+    const candidateIds: string[] = []
+    if ('author_id' in item && typeof item.author_id === 'string') candidateIds.push(item.author_id)
+    if ('profile_id' in item && typeof item.profile_id === 'string') candidateIds.push(item.profile_id)
+    if ('club_id' in item && typeof item.club_id === 'string') candidateIds.push(item.club_id)
+    if ('referee_id' in item && typeof item.referee_id === 'string') candidateIds.push(item.referee_id)
+    return !candidateIds.some(id => blockedIds.has(id))
+  })
   const total = pages[pages.length - 1]?.total ?? 0
 
   // --- New items detection ---

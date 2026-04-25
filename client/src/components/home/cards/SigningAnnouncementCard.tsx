@@ -35,10 +35,10 @@ export function SigningAnnouncementCard({ item, onLikeUpdate, onDelete }: Signin
 
   // Club (author) path
   const clubPath = `/clubs/id/${item.author_id}`
-  // Signed person path
-  const personPath = meta.person_role === 'coach'
-    ? `/coaches/id/${meta.person_profile_id}`
-    : `/players/id/${meta.person_profile_id}`
+  // Signed person path. Coaches share the player public-profile route in
+  // this codebase (no `/coaches/:id` route exists) — see App.tsx and the
+  // pattern used in MemberJoinedCard, MilestoneCard, OpportunityPostedCard.
+  const personPath = `/players/id/${meta.person_profile_id}`
 
   const sortedImages = useMemo(
     () => item.images ? [...item.images].sort((a, b) => a.order - b.order) : [],

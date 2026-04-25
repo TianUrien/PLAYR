@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
+import { reportSupabaseError } from '@/lib/sentryHelpers'
 import { withTimeout } from '@/lib/retry'
 import { trackDbEvent } from '@/lib/trackDbEvent'
 import type { PostComment } from '@/types/homeFeed'
@@ -48,6 +49,9 @@ export function usePostInteractions() {
       return result
     } catch (err) {
       logger.error('[usePostInteractions] toggleLike error:', err)
+      reportSupabaseError('usePostInteractions.toggleLike', err, {}, {
+        feature: 'post_interactions', op: 'toggle_like',
+      })
       return {
         success: false,
         error: err instanceof Error ? err.message : 'Failed to toggle like',
@@ -107,6 +111,9 @@ export function usePostInteractions() {
       return result
     } catch (err) {
       logger.error('[usePostInteractions] createComment error:', err)
+      reportSupabaseError('usePostInteractions.createComment', err, {
+        contentLength: content.length,
+      }, { feature: 'post_interactions', op: 'create_comment' })
       return {
         success: false,
         error: err instanceof Error ? err.message : 'Failed to create comment',
@@ -133,6 +140,9 @@ export function usePostInteractions() {
       return result
     } catch (err) {
       logger.error('[usePostInteractions] deleteComment error:', err)
+      reportSupabaseError('usePostInteractions.deleteComment', err, {}, {
+        feature: 'post_interactions', op: 'delete_comment',
+      })
       return {
         success: false,
         error: err instanceof Error ? err.message : 'Failed to delete comment',
