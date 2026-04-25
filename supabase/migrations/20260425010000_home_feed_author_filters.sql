@@ -77,24 +77,30 @@ CREATE INDEX IF NOT EXISTS idx_home_feed_items_author_country
 -- role + country by joining to profiles.
 
 -- 3a. Backfill author_profile_id
+-- Wrapped in a `SELECT p.id FROM profiles WHERE p.id = (...)` subquery so
+-- orphaned rows (events whose author profile was hard-deleted before the
+-- FK existed) backfill to NULL instead of failing the FK. This matches
+-- the column's `ON DELETE SET NULL` behavior for future deletes.
 UPDATE public.home_feed_items hfi
-SET author_profile_id = CASE
-    -- Direct profile reference (member_joined, milestone_achieved with profile source)
-    WHEN hfi.source_type = 'profile' THEN hfi.source_id
-    -- Reference received: requester is the "author" (the one being endorsed)
-    WHEN hfi.source_type = 'profile_reference' THEN
-      NULLIF(hfi.metadata->>'profile_id', '')::UUID
-    -- Vacancy / opportunity: the club is the author
-    WHEN hfi.source_type = 'vacancy' THEN
-      NULLIF(hfi.metadata->>'club_id', '')::UUID
-    -- Milestones: profile_id is in metadata (source_id is a synthetic UUID)
-    WHEN hfi.source_type = 'milestone' THEN
-      NULLIF(hfi.metadata->>'profile_id', '')::UUID
-    -- Brand posts / products: derive profile_id from brands table via brand_id
-    WHEN hfi.source_type IN ('brand_post', 'brand_product') THEN
-      (SELECT b.profile_id FROM public.brands b WHERE b.id = NULLIF(hfi.metadata->>'brand_id', '')::UUID)
-    ELSE NULL
-  END
+SET author_profile_id = (
+  SELECT p.id FROM public.profiles p WHERE p.id = (CASE
+      -- Direct profile reference (member_joined, milestone_achieved with profile source)
+      WHEN hfi.source_type = 'profile' THEN hfi.source_id
+      -- Reference received: requester is the "author" (the one being endorsed)
+      WHEN hfi.source_type = 'profile_reference' THEN
+        NULLIF(hfi.metadata->>'profile_id', '')::UUID
+      -- Vacancy / opportunity: the club is the author
+      WHEN hfi.source_type = 'vacancy' THEN
+        NULLIF(hfi.metadata->>'club_id', '')::UUID
+      -- Milestones: profile_id is in metadata (source_id is a synthetic UUID)
+      WHEN hfi.source_type = 'milestone' THEN
+        NULLIF(hfi.metadata->>'profile_id', '')::UUID
+      -- Brand posts / products: derive profile_id from brands table via brand_id
+      WHEN hfi.source_type IN ('brand_post', 'brand_product') THEN
+        (SELECT b.profile_id FROM public.brands b WHERE b.id = NULLIF(hfi.metadata->>'brand_id', '')::UUID)
+      ELSE NULL
+    END)
+)
 WHERE hfi.author_profile_id IS NULL;
 
 -- 3b. Backfill author_role + author_country_id from the resolved profile
