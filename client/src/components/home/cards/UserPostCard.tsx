@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { MoreHorizontal, Pencil, Trash2, Flag } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
@@ -33,6 +33,15 @@ export function UserPostCard({ item, onLikeUpdate, onDelete }: UserPostCardProps
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(0)
   const [showReport, setShowReport] = useState(false)
+
+  // Sync local state to prop when the parent refetches and `item.comment_count`
+  // updates (e.g. after cross-cache invalidation triggers a feed refetch that
+  // picks up another user's comment). Without this, localCommentCount stays
+  // stuck at the mount-time value while the server count drifts up — the
+  // displayed count would diverge from reality until next remount.
+  useEffect(() => {
+    setLocalCommentCount(item.comment_count)
+  }, [item.comment_count])
 
   const timeAgo = getTimeAgo(item.created_at, true)
   const isOwner = user?.id === item.author_id

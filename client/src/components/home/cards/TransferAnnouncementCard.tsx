@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, MoreHorizontal, Trash2, Shield } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
@@ -30,6 +30,12 @@ export function TransferAnnouncementCard({ item, onLikeUpdate, onDelete }: Trans
   const [localCommentCount, setLocalCommentCount] = useState(item.comment_count)
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(0)
+
+  // Sync local state to prop on parent refetch (cross-cache invalidation).
+  // See UserPostCard for the full rationale.
+  useEffect(() => {
+    setLocalCommentCount(item.comment_count)
+  }, [item.comment_count])
 
   const timeAgo = getTimeAgo(item.created_at, true)
   const isOwner = user?.id === item.author_id
