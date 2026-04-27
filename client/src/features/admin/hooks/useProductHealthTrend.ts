@@ -12,10 +12,11 @@ interface UseProductHealthTrendResult {
   trend: ProductHealthTrendPoint[]
   isLoading: boolean
   error: string | null
+  refetch: () => unknown
 }
 
 export function useProductHealthTrend(days = 30): UseProductHealthTrendResult {
-  const { data, isLoading, isFetching, error } = useQuery<ProductHealthTrendPoint[]>({
+  const { data, isLoading, isFetching, error, refetch } = useQuery<ProductHealthTrendPoint[]>({
     queryKey: ['admin', 'productHealthTrend', days],
     queryFn: () => getProductHealthTrend(days),
     staleTime: 10 * 60 * 1000,
@@ -25,5 +26,6 @@ export function useProductHealthTrend(days = 30): UseProductHealthTrendResult {
     trend: data ?? [],
     isLoading: isLoading || isFetching,
     error: error instanceof Error ? error.message : error ? String(error) : null,
+    refetch,
   }
 }

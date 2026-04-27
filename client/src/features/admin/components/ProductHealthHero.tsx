@@ -138,23 +138,42 @@ function buildNextActionSuggestion(score: ProductHealthScore): string {
 }
 
 /**
- * Compact 7d trend delta. Returns the difference between today and 7
- * days ago, or null if not enough data.
+ * Compact 7-day trend delta. Returns the difference between today and the
+ * snapshot closest to 7 days ago, or null when we don't have enough
+ * history to make that comparison honest.
+ *
+ * Previous version had a real bug: with <8 snapshots it returned
+ * "delta vs whatever-the-oldest-snapshot-is" while still labeling it
+ * "vs 7d ago". With 2 snapshots that meant "delta vs yesterday" labeled
+ * as "vs 7d ago" — actively misleading.
+ *
+ * Fixed semantics: pick the snapshot whose date is closest to today − 7
+ * days, with a ±2-day tolerance. If no snapshot lands in that window,
+ * return null and the UI shows "Building 30-day history..." instead of
+ * a wrong delta.
  */
 function computeWeekDelta(trend: ProductHealthTrendPoint[], todayScore: number): number | null {
   if (trend.length < 2) return null
-  // The trend RPC returns oldest → newest; pick the one closest to 7 days back
-  const sevenDayPoint = trend.find((p, i) => {
-    const today = trend[trend.length - 1]?.snapshot_date
-    if (!today) return false
-    const diffDays = Math.round(
-      (new Date(today).getTime() - new Date(p.snapshot_date).getTime()) / (1000 * 60 * 60 * 24)
-    )
-    // Pick the snapshot 7d back (or first available if trend shorter)
-    return diffDays >= 7 || i === 0
-  })
-  if (!sevenDayPoint) return null
-  return Math.round((todayScore - sevenDayPoint.overall_score) * 10) / 10
+  const today = trend[trend.length - 1]
+  const todayMs = new Date(today.snapshot_date).getTime()
+  const targetOffsetDays = 7
+  const toleranceDays = 2
+
+  let best: ProductHealthTrendPoint | null = null
+  let bestOffsetGap = Infinity
+
+  for (const p of trend) {
+    if (p === today) continue
+    const offsetDays = (todayMs - new Date(p.snapshot_date).getTime()) / 86_400_000
+    const gap = Math.abs(offsetDays - targetOffsetDays)
+    if (gap < bestOffsetGap) {
+      bestOffsetGap = gap
+      best = p
+    }
+  }
+
+  if (!best || bestOffsetGap > toleranceDays) return null
+  return Math.round((todayScore - best.overall_score) * 10) / 10
 }
 
 /**
@@ -217,8 +236,16 @@ function Sparkline({
 }
 
 export function ProductHealthHero() {
-  const { score, isLoading, error, refetch } = useProductHealthScore()
-  const { trend } = useProductHealthTrend(30)
+  const { score, isLoading, error, refetch: refetchScore } = useProductHealthScore()
+  const { trend, refetch: refetchTrend } = useProductHealthTrend(30)
+
+  // Single handler so the refresh button reloads BOTH the live score
+  // and the trend data. Previously the button only refreshed the score
+  // — clicking refresh left the sparkline stale until staleTime expired.
+  const handleRefresh = () => {
+    void refetchScore()
+    void refetchTrend()
+  }
 
   if (isLoading && !score) {
     return (
@@ -244,7 +271,7 @@ export function ProductHealthHero() {
         <p className="text-sm text-red-600 mb-3">{error ?? 'Unknown error'}</p>
         <button
           type="button"
-          onClick={() => void refetch()}
+          onClick={handleRefresh}
           className="text-sm font-medium text-red-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-red-300 rounded"
         >
           Try again
@@ -274,7 +301,7 @@ export function ProductHealthHero() {
         </div>
         <button
           type="button"
-          onClick={() => void refetch()}
+          onClick={handleRefresh}
           className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-white/60 transition-colors"
           aria-label="Refresh score"
         >
