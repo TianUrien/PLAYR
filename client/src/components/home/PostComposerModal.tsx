@@ -543,7 +543,15 @@ export function PostComposerModal({
 
     // Transfer / Signing mode submit
     if (mode === 'transfer') {
-      const isClubRole = profile?.role === 'club'
+      const role = profile?.role
+      // Defense in depth: even if the toggle was bypassed (e.g. stale state
+      // from a prior modal session, or a manual setMode call), block roles
+      // that have no coherent transfer/signing semantics.
+      if (role !== 'player' && role !== 'coach' && role !== 'club') {
+        setError('Transfer mode is only available to players, coaches, and clubs.')
+        return
+      }
+      const isClubRole = role === 'club'
 
       // Club signing flow
       if (isClubRole) {
@@ -791,11 +799,21 @@ export function PostComposerModal({
 
   // Determine submit eligibility
   const isClubRole = profile?.role === 'club'
-  const isUmpireRole = profile?.role === 'umpire'
+  // Transfer / signing only makes domain sense for player, coach, club:
+  //   - player / coach: announce their own transfer to a new club
+  //   - club: announce a signing
+  // Brands and umpires don't have a coherent transfer narrative — gating
+  // here hides the toggle for them. Submit-side check below enforces it
+  // even if the UI is bypassed.
+  const canUseTransferMode = profile?.role === 'player'
+    || profile?.role === 'coach'
+    || profile?.role === 'club'
   const hasClub = selectedClub || customClubName.trim()
-  const canSubmitTransfer = isClubRole
-    ? Boolean(selectedPerson)
-    : Boolean(hasClub) && !isUploadingLogo
+  const canSubmitTransfer = canUseTransferMode && (
+    isClubRole
+      ? Boolean(selectedPerson)
+      : Boolean(hasClub) && !isUploadingLogo
+  )
   const canSubmitPost = content.trim().length > 0
   const canSubmit = mode === 'transfer' ? canSubmitTransfer : canSubmitPost
 
@@ -860,8 +878,10 @@ export function PostComposerModal({
               </div>
             )}
 
-            {/* Mode toggle — hidden when editing, and hidden for umpires (no transfer/signing semantics) */}
-            {!isEdit && !isUmpireRole && (
+            {/* Mode toggle — hidden when editing and for roles that don't
+                have transfer/signing semantics (umpires + brands). See
+                canUseTransferMode for the role allowlist. */}
+            {!isEdit && canUseTransferMode && (
               <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
                   type="button"
