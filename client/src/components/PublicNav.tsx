@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Menu, X, Globe, Users, Briefcase, LogIn, UserPlus } from 'lucide-react'
 
 interface PublicNavProps {
@@ -18,7 +18,6 @@ interface PublicNavProps {
  * - Join Now
  */
 export default function PublicNav({ transparent = true }: PublicNavProps) {
-  const navigate = useNavigate()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const navLinks = [
@@ -69,16 +68,8 @@ export default function PublicNav({ transparent = true }: PublicNavProps) {
 
           {/* Desktop Auth Buttons - positioned right */}
           <div className="hidden lg:flex lg:absolute lg:right-0 items-center gap-3">
-            <button
-              onClick={() => {
-                // Scroll to sign-in form on landing page
-                const signInCard = document.querySelector('[data-signin-card]')
-                if (signInCard) {
-                  signInCard.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                } else {
-                  navigate('/')
-                }
-              }}
+            <Link
+              to="/signin"
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 transparent
                   ? 'text-white/90 hover:text-white hover:bg-white/10'
@@ -87,7 +78,7 @@ export default function PublicNav({ transparent = true }: PublicNavProps) {
             >
               <LogIn className="w-4 h-4" />
               Sign In
-            </button>
+            </Link>
             <Link
               to="/signup"
               className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#8026FA] to-[#924CEC] text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-opacity shadow-lg"
@@ -142,14 +133,9 @@ export default function PublicNav({ transparent = true }: PublicNavProps) {
               
               <div className={`my-2 border-t ${transparent ? 'border-white/20' : 'border-gray-200'}`} />
               
-              <button
-                onClick={() => {
-                  setIsMobileMenuOpen(false)
-                  const signInCard = document.querySelector('[data-signin-card]')
-                  if (signInCard) {
-                    signInCard.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                  }
-                }}
+              <Link
+                to="/signin"
+                onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg text-base font-medium transition-colors ${
                   transparent
                     ? 'text-white/90 hover:text-white hover:bg-white/10'
@@ -158,7 +144,7 @@ export default function PublicNav({ transparent = true }: PublicNavProps) {
               >
                 <LogIn className="w-5 h-5" />
                 Sign In
-              </button>
+              </Link>
               
               <Link
                 to="/signup"
