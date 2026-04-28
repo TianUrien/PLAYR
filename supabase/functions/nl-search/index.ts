@@ -17,6 +17,21 @@ import { getCorsHeaders } from '../_shared/cors.ts'
 import { captureException } from '../_shared/sentry.ts'
 import { parseSearchQuery, synthesizeQualitativeInsights, PROMPT_VERSION, type LLMCallMeta, type ParsedFilters, type HistoryTurn, type ProfileQualitativeData, type UserContext } from '../_shared/llm-client.ts'
 import { classifyEntityType, entityTypeToRole, type RoutedIntent } from '../_shared/intent-router.ts'
+import {
+  type AppliedSearch,
+  buildRoleSummary,
+  type ClarifyingOption,
+  getGreetingActions,
+  getNoResultsActions,
+  getRecoveryActions,
+  getRepeatedSoftErrorActions,
+  getSelfAdviceActions,
+  getSoftErrorActions,
+  type ResponseKind,
+  type SuggestedAction,
+} from '../_shared/suggested-actions.ts'
+import { detectRecoveryQuery } from '../_shared/recovery.ts'
+import { detectClarifyingNeed } from '../_shared/clarifying.ts'
 
 interface DiscoveryEventParams {
   user_id: string
@@ -100,17 +115,27 @@ async function runKeywordFallback(params: {
   parseRetryCount: number
   headers: Record<string, string>
   correlationId: string
+  /** PR-4 — when the previous turn was already soft_error, the terminal
+   *  soft-error path uses alternate copy + chip set to avoid showing the
+   *  same "I had trouble" message twice. */
+  isRepeatSoftError: boolean
 }): Promise<Response> {
-  const { adminClient, rawQuery, userId, userRole, startTime, llmProvider, originalError, parseRetryCount, headers, correlationId } = params
+  const { adminClient, rawQuery, userId, userRole, startTime, llmProvider, originalError, parseRetryCount, headers, correlationId, isRepeatSoftError } = params
 
   try {
     const discoverableRoles = ['player', 'coach', 'club', 'brand']
+    // Pass p_coach_specializations explicitly (even as null) so PostgREST can
+    // disambiguate against the older overload of discover_profiles. Without
+    // this the staging DB returns PGRST203 ("Could not choose the best
+    // candidate function") because two overloaded signatures exist. Pre-
+    // existing bug surfaced by Phase 1A testing.
     const { data: rpcResult, error: rpcError } = await adminClient.rpc('discover_profiles', {
       p_roles: discoverableRoles,
       p_search_text: rawQuery,
       p_sort_by: 'relevance',
       p_limit: 20,
       p_offset: 0,
+      p_coach_specializations: null,
     })
 
     if (rpcError) throw rpcError
@@ -145,7 +170,16 @@ async function runKeywordFallback(params: {
         has_more: result.has_more,
         parsed_filters: null,
         summary: `Showing ${result.total} keyword match${result.total === 1 ? '' : 'es'}.`,
-        ai_message: 'AI assistant is temporarily unavailable. Showing keyword matches instead.',
+        // PR-4 — softer fallback copy. The previous "AI assistant is
+        // temporarily unavailable. Showing keyword matches instead." felt
+        // technical. New copy frames the partial answer as useful, not a
+        // degraded apology.
+        ai_message: result.total === 0
+          ? "I couldn't complete the full AI response and didn't find a quick match either."
+          : "I couldn't complete the full AI response, but here are some relevant matches.",
+        kind: (result.total === 0 ? 'no_results' : 'results') as ResponseKind,
+        applied: null,
+        suggested_actions: [] as SuggestedAction[],
       }),
       { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
     )
@@ -190,12 +224,28 @@ async function runKeywordFallback(params: {
       fallback_used: true,
       retry_count: parseRetryCount,
     }))
+    // PR-3/PR-4: doubly-degraded fallback — both the LLM and the keyword
+    // RPC failed. Return 200 + kind=soft_error with alternate copy when
+    // the previous turn was also a soft_error so the user doesn't see the
+    // same "I had trouble" message twice.
+    const softErrorActions = isRepeatSoftError ? getRepeatedSoftErrorActions() : getSoftErrorActions()
+    const softErrorMessage = isRepeatSoftError
+      ? "That still didn't go through. Let's try a simpler path."
+      : "I had trouble completing that search. Want to try again or broaden it?"
     return new Response(
       JSON.stringify({
-        success: false,
-        error: 'Search is temporarily unavailable. Please try again in a moment.',
+        success: true,
+        data: [],
+        total: 0,
+        has_more: false,
+        parsed_filters: null,
+        summary: null,
+        ai_message: softErrorMessage,
+        kind: 'soft_error' as ResponseKind,
+        applied: null,
+        suggested_actions: softErrorActions,
       }),
-      { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
     )
   }
 }
@@ -215,6 +265,15 @@ Deno.serve(async (req) => {
   let pendingUserId: string | null = null
   let pendingUserRole: string | null = null
   let pendingQuery: string | null = null
+  // PR-4: track whether the previous turn was already soft_error so the
+  // catch-block fallback can emit alternate copy on a repeated failure.
+  let pendingIsRepeatSoftError = false
+  // PR-4 QA fix: keyword fallback only makes sense for search-shaped intents.
+  // For knowledge / self_advice / greeting queries, the keyword RPC returns
+  // 0 matches and the user sees a no_results card with totally unrelated
+  // chips. Track the routed intent so the catch block can emit a clean
+  // soft_error instead of running the wrong fallback.
+  let pendingIntentEntityType: string | null = null
 
   // CORS preflight
   if (req.method === 'OPTIONS') {
@@ -282,6 +341,48 @@ Deno.serve(async (req) => {
     const history: HistoryTurn[] = rawHistory
       .slice(-10)
       .filter((t: any) => (t?.role === 'user' || t?.role === 'assistant') && typeof t?.content === 'string')
+    // PR-3 — recovery_context lets the backend detect "the last turn failed,
+    // this is a recovery follow-up" without re-running the LLM. The frontend
+    // populates it from the most recent assistant message's kind / applied
+    // when that kind was no_results or soft_error.
+    const rawRecoveryContext: {
+      last_kind?: ResponseKind
+      last_applied?: AppliedSearch | null
+      user_role?: string | null
+    } | undefined = body?.recovery_context
+
+    // Adversarial-review fix: client-supplied recovery_context fields are NOT
+    // trusted verbatim. We:
+    //   1. Whitelist user_role against the known role set (else null).
+    //   2. Sanitize role_summary by stripping HTML tags and capping length
+    //      (defense-in-depth; today React escapes text, but a future
+    //      markdown renderer would not).
+    // This prevents telemetry pollution from spoofed roles and prevents raw
+    // markup from showing up in user-visible copy.
+    const ALLOWED_ROLES = new Set(['player', 'coach', 'club', 'brand', 'umpire'])
+    const safeUserRole: string | null =
+      rawRecoveryContext?.user_role && ALLOWED_ROLES.has(rawRecoveryContext.user_role)
+        ? rawRecoveryContext.user_role
+        : null
+    function sanitizeRoleSummary(s: string | undefined | null): string | null {
+      if (!s || typeof s !== 'string') return null
+      const cleaned = s.replace(/<[^>]*>/g, '').replace(/[\r\n]/g, ' ').trim()
+      if (cleaned.length === 0 || cleaned.length > 80) return null
+      return cleaned
+    }
+    const safeLastApplied: AppliedSearch | null = rawRecoveryContext?.last_applied
+      ? {
+          ...rawRecoveryContext.last_applied,
+          role_summary: sanitizeRoleSummary(rawRecoveryContext.last_applied.role_summary) ?? '',
+        }
+      : null
+    const recoveryContext = rawRecoveryContext
+      ? {
+          last_kind: rawRecoveryContext.last_kind,
+          last_applied: safeLastApplied,
+          user_role: safeUserRole,
+        }
+      : undefined
 
     if (!query || typeof query !== 'string') {
       return new Response(
@@ -302,6 +403,201 @@ Deno.serve(async (req) => {
     pendingAdminClient = adminClient
     pendingUserId = user.id
     pendingQuery = query
+    pendingIsRepeatSoftError = recoveryContext?.last_kind === 'soft_error'
+
+    // ── Phase 1A force-soft-error debug (PR-4, staging-only) ───────────
+    // Lets the QA spec render <SoftErrorCard /> on the live UI without
+    // having to actually break the LLM. Default-deny: debug is allowed
+    // ONLY when an explicit staging signal is present.
+    //
+    //   1. SUPABASE_URL contains the staging project ref, OR
+    //   2. SENTRY_ENVIRONMENT is explicitly "staging" or "development"
+    //
+    // If neither signal is present (env misconfigured, fresh prod project,
+    // anything ambiguous), debug is OFF. PUBLIC_SITE_URL is checked only as
+    // a hard *production* gate — if it ever matches inhockia.com, debug is
+    // forced off regardless of the other signals.
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const sentryEnv = (Deno.env.get('SENTRY_ENVIRONMENT') ?? '').toLowerCase()
+    const publicSiteUrl = Deno.env.get('PUBLIC_SITE_URL') ?? ''
+    const isProductionSignal =
+      publicSiteUrl.includes('inhockia.com') ||
+      sentryEnv === 'production' ||
+      supabaseUrl.includes('xtertgftujnebubxgqit') // hard-coded prod ref
+    const isStagingSignal =
+      supabaseUrl.includes('ivjkdaylalhsteyyclvl') || // hard-coded staging ref
+      sentryEnv === 'staging' ||
+      sentryEnv === 'development'
+    const debugAllowed = isStagingSignal && !isProductionSignal
+    if (debugAllowed && query === '__force_soft_error') {
+      const isRepeat = recoveryContext?.last_kind === 'soft_error'
+      const softErrorActions = isRepeat ? getRepeatedSoftErrorActions() : getSoftErrorActions()
+      const softErrorMessage = isRepeat
+        ? "That still didn't go through. Let's try a simpler path."
+        : "I had trouble completing that search. Want to try again or broaden it?"
+      fireAndForget(logDiscoveryEvent(adminClient, {
+        user_id: user.id,
+        role: recoveryContext?.user_role ?? null,
+        query_text: query,
+        intent: 'error',
+        parsed_filters: { _meta: { kind: 'soft_error', error_phase: 'force_debug', repeated: isRepeat, suggested_actions_count: softErrorActions.length } } as any,
+        result_count: 0,
+        has_qualitative: false,
+        llm_provider: llmProvider,
+        response_time_ms: Date.now() - startTime,
+        error_message: 'force_soft_error debug query',
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        cached_tokens: 0,
+        prompt_version: PROMPT_VERSION,
+        fallback_used: false,
+        retry_count: 0,
+      }))
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: [],
+          total: 0,
+          has_more: false,
+          parsed_filters: null,
+          summary: null,
+          ai_message: softErrorMessage,
+          kind: 'soft_error' as ResponseKind,
+          applied: null,
+          suggested_actions: softErrorActions,
+        }),
+        { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── Phase 1A recovery short-circuit (PR-3) ─────────────────────────
+    // When the previous turn was no_results or soft_error AND the new query
+    // is a recovery-shaped follow-up ("what should I do?", "so what now?",
+    // "ok"), bypass the LLM entirely and return a deterministic recovery
+    // response with chips tailored to the failed search context. Cost ~0
+    // tokens, ~50ms response.
+    //
+    // Both conditions required: just having recovery_context isn't enough
+    // (the user might be asking a substantive new question), and the query
+    // shape alone isn't enough either (without a prior failure we don't
+    // know what to recover from).
+    const RECOVERY_KINDS: ResponseKind[] = ['no_results', 'soft_error']
+    if (
+      recoveryContext?.last_kind &&
+      RECOVERY_KINDS.includes(recoveryContext.last_kind) &&
+      detectRecoveryQuery(query)
+    ) {
+      const lastApplied = recoveryContext.last_applied ?? null
+      const recoveryRole = recoveryContext.user_role ?? null
+      const recoveryActions = getRecoveryActions(lastApplied, recoveryRole)
+      const recoveryMessage = lastApplied?.role_summary
+        ? `Since the ${lastApplied.role_summary} search didn't find anything, here are the next angles to try:`
+        : "Let's try a different angle — pick one of these to keep going:"
+
+      const recoveryMeta = {
+        _meta: {
+          kind: 'no_results' as ResponseKind,
+          recovery_short_circuit: true,
+          recovery_from_kind: recoveryContext.last_kind,
+          applied_role_summary: lastApplied?.role_summary ?? null,
+          suggested_actions_count: recoveryActions.length,
+        },
+      }
+      fireAndForget(logDiscoveryEvent(adminClient, {
+        user_id: user.id,
+        role: recoveryRole,
+        query_text: query,
+        intent: 'recovery_redirect',
+        parsed_filters: recoveryMeta as any,
+        result_count: 0,
+        has_qualitative: false,
+        llm_provider: llmProvider,
+        response_time_ms: Date.now() - startTime,
+        error_message: null,
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        cached_tokens: 0,
+        prompt_version: PROMPT_VERSION,
+        fallback_used: false,
+        retry_count: 0,
+      }))
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: [],
+          total: 0,
+          has_more: false,
+          parsed_filters: null,
+          summary: null,
+          ai_message: recoveryMessage,
+          // Render as a no_results card on the frontend — same component,
+          // chips drawn from getRecoveryActions (rotated lead vs the
+          // original no_results so the user sees a fresh first option).
+          kind: 'no_results' as ResponseKind,
+          applied: lastApplied,
+          suggested_actions: recoveryActions,
+        }),
+        { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── Phase 1A clarifying-question short-circuit (PR-4) ──────────────
+    // Vague queries like "Find people" / "Show me options" / "Any
+    // recommendations?" need a focused 4-option pill row, not a generic
+    // LLM paragraph or a fallthrough that searches all 4 roles. Detector
+    // is tight (long-form queries belong to the LLM); when it fires we
+    // bypass the LLM entirely and ship clarifying_options directly.
+    //
+    // Note: detector requires a recoveryContext.user_role for role-aware
+    // options. If user_role is missing we fall back to generic option set.
+    const clarifyingNeed = detectClarifyingNeed(query, recoveryContext?.user_role ?? null)
+    if (clarifyingNeed) {
+      const clarifyingMeta = {
+        _meta: {
+          kind: 'clarifying_question' as ResponseKind,
+          clarifying_short_circuit: true,
+          options_count: clarifyingNeed.options.length,
+        },
+      }
+      fireAndForget(logDiscoveryEvent(adminClient, {
+        user_id: user.id,
+        role: recoveryContext?.user_role ?? null,
+        query_text: query,
+        intent: 'clarifying_redirect',
+        parsed_filters: clarifyingMeta as any,
+        result_count: 0,
+        has_qualitative: false,
+        llm_provider: llmProvider,
+        response_time_ms: Date.now() - startTime,
+        error_message: null,
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        cached_tokens: 0,
+        prompt_version: PROMPT_VERSION,
+        fallback_used: false,
+        retry_count: 0,
+      }))
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: [],
+          total: 0,
+          has_more: false,
+          parsed_filters: null,
+          summary: null,
+          ai_message: clarifyingNeed.message,
+          kind: 'clarifying_question' as ResponseKind,
+          applied: null,
+          // Frontend's <ClarifyingQuestionCard /> reads clarifying_options.
+          // suggested_actions is empty — the question's options are the chips.
+          suggested_actions: [] as SuggestedAction[],
+          clarifying_options: clarifyingNeed.options as ClarifyingOption[],
+        }),
+        { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // ── Phase 0 intent routing ─────────────────────────────────────────
     // Deterministic keyword router runs BEFORE the LLM. For HIGH-confidence
@@ -311,6 +607,7 @@ Deno.serve(async (req) => {
     // bug. The hint is also passed to the LLM as a system-prompt nudge so
     // it filters and writes its message accordingly.
     const intent: RoutedIntent = classifyEntityType(query)
+    pendingIntentEntityType = intent.entity_type
 
     // ── Fetch user context for LLM ─────────────────────────────────────
     // Phase 1 personalization: pull a richer slice of the user's own profile
@@ -690,6 +987,10 @@ Deno.serve(async (req) => {
           parsed_filters: null,
           summary: null,
           ai_message: cannedMessage,
+          // Phase 1A envelope additions (PR-1, additive only).
+          kind: 'canned_redirect' as ResponseKind,
+          applied: null,
+          suggested_actions: [] as SuggestedAction[],
         }),
         { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
       )
@@ -742,6 +1043,16 @@ Deno.serve(async (req) => {
 
     // ── Conversation or knowledge response (no search needed) ────────
     if (llmResult.type === 'conversation' || llmResult.type === 'knowledge') {
+      // Phase 1A: emit role-aware action chips for self-advice and greetings.
+      // Knowledge answers and other generic responses ship with no chips
+      // (no clear next-action). Adding chips later is an opt-in change.
+      let convoActions: SuggestedAction[] = []
+      if (intent.entity_type === 'self_advice') {
+        convoActions = getSelfAdviceActions(userContext?.role ?? null)
+      } else if (intent.entity_type === 'greeting') {
+        convoActions = getGreetingActions()
+      }
+
       const convoMeta = {
         _meta: {
           router_entity_type: intent.entity_type,
@@ -749,6 +1060,9 @@ Deno.serve(async (req) => {
           router_signals: intent.matched_signals,
           llm_selected_tool: llmSelectedTool,
           backend_forced_search: false,
+          // Phase 1A telemetry additions
+          kind: 'text' as ResponseKind,
+          suggested_actions_count: convoActions.length,
         },
       }
       fireAndForget(logDiscoveryEvent(adminClient, {
@@ -778,6 +1092,10 @@ Deno.serve(async (req) => {
           parsed_filters: null,
           summary: null,
           ai_message: llmResult.message,
+          // Phase 1A envelope additions (PR-1, additive only).
+          kind: 'text' as ResponseKind,
+          applied: null,
+          suggested_actions: convoActions,
         }),
         { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
       )
@@ -864,8 +1182,19 @@ Deno.serve(async (req) => {
     // for player/coach/brand searches the gender filter would over-restrict.
     let effectiveGender = parsed.gender || null
     let genderSource: 'llm' | 'context' | 'none' = parsed.gender ? 'llm' : 'none'
+
+    // Phase 1A — when the query is a "broaden" follow-up (e.g. coming from a
+    // no-results action chip), skip the UserContext gender seeding entirely.
+    // Without this the chip "Show all clubs" silently re-applies the user's
+    // gender and the broaden never broadens. The phrases below are the exact
+    // forms the suggested-actions catalog ships, plus a few user-typed
+    // equivalents.
+    const QUERY_FORBIDS_GENDER_SEED =
+      /\b(any gender|all genders?|without (a |any )?gender( filter)?|regardless of gender|gender[- ]neutral|both genders|men[''']?s and women[''']?s|men and women)\b/i.test(query)
+
     if (
       !effectiveGender &&
+      !QUERY_FORBIDS_GENDER_SEED &&
       enforcedRole === 'club' &&
       userContext?.gender &&
       (userContext.role === 'player' || userContext.role === 'coach')
@@ -898,9 +1227,47 @@ Deno.serve(async (req) => {
 
     if (rpcError) {
       captureException(rpcError, { functionName: 'nl-search', correlationId })
+      // PR-3/PR-4: return 200 with kind=soft_error so the frontend renders
+      // a calm <SoftErrorCard />. PR-4 adds variation: if the previous turn
+      // was already a soft_error, the user gets a different message + chip
+      // set so we don't show the same "I had trouble" copy twice.
+      const isRepeatSoftError = recoveryContext?.last_kind === 'soft_error'
+      const softErrorActions = isRepeatSoftError ? getRepeatedSoftErrorActions() : getSoftErrorActions()
+      const softErrorMessage = isRepeatSoftError
+        ? "That still didn't go through. Let's try a simpler path."
+        : "I had trouble completing that search. Want to try again or broaden it?"
+      fireAndForget(logDiscoveryEvent(adminClient, {
+        user_id: user.id,
+        role: userContext?.role ?? null,
+        query_text: query,
+        intent: 'error',
+        parsed_filters: { _meta: { kind: 'soft_error', error_phase: 'rpc', repeated: isRepeatSoftError, suggested_actions_count: softErrorActions.length } } as any,
+        result_count: 0,
+        has_qualitative: false,
+        llm_provider: llmProvider,
+        response_time_ms: Date.now() - startTime,
+        error_message: (rpcError as { message?: string })?.message ?? 'discover_profiles RPC failed',
+        prompt_tokens: parseMeta.usage?.prompt_tokens ?? null,
+        completion_tokens: parseMeta.usage?.completion_tokens ?? null,
+        cached_tokens: parseMeta.usage?.cached_tokens ?? null,
+        prompt_version: PROMPT_VERSION,
+        fallback_used: false,
+        retry_count: parseMeta.retry_count,
+      }))
       return new Response(
-        JSON.stringify({ success: false, error: 'Search query failed' }),
-        { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          success: true,
+          data: [],
+          total: 0,
+          has_more: false,
+          parsed_filters: null,
+          summary: null,
+          ai_message: softErrorMessage,
+          kind: 'soft_error' as ResponseKind,
+          applied: null,
+          suggested_actions: softErrorActions,
+        }),
+        { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -1001,6 +1368,37 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Phase 1A envelope: build applied + kind + suggested_actions ──────
+    // The applied block summarizes what was actually searched in human-readable
+    // form. The new frontend uses this for the no-results card; old frontend
+    // ignores it. role_summary is the single field most likely to be embedded
+    // verbatim into UI copy ("I searched for {role_summary} based on your
+    // profile...").
+    const ENTITY_PLURAL: Record<string, AppliedSearch['entity']> = {
+      player: 'players',
+      coach: 'coaches',
+      club: 'clubs',
+      brand: 'brands',
+      umpire: 'umpires',
+    }
+    const appliedEntity = enforcedRole ? ENTITY_PLURAL[enforcedRole] ?? null : null
+    const applied: AppliedSearch = {
+      entity: appliedEntity,
+      gender_label: effectiveGender,
+      location_label: baseLocationText,
+      age: (parsed.min_age != null || parsed.max_age != null)
+        ? { min: parsed.min_age, max: parsed.max_age }
+        : undefined,
+      role_summary: '',
+    }
+    applied.role_summary = buildRoleSummary(applied)
+
+    const responseKind: ResponseKind = result.total === 0 ? 'no_results' : 'results'
+    // Chips only on no_results in PR-1 (refine chips for results land in Package B).
+    const suggestedActions: SuggestedAction[] = responseKind === 'no_results'
+      ? getNoResultsActions(applied, userContext?.role ?? null)
+      : []
+
     // ── Analytics logging ────────────────────────────────────────────────
     // Phase 0 enrichment: stash the routing decision into parsed_filters._meta
     // so we can prove (or disprove) that the keyword router is actually
@@ -1020,6 +1418,10 @@ Deno.serve(async (req) => {
         gender_source: genderSource,
         effective_roles: effectiveRoles,
         effective_gender: effectiveGender,
+        // Phase 1A telemetry additions
+        kind: responseKind,
+        applied_role_summary: applied.role_summary,
+        suggested_actions_count: suggestedActions.length,
       },
     }
     fireAndForget(logDiscoveryEvent(adminClient, {
@@ -1051,6 +1453,10 @@ Deno.serve(async (req) => {
         parsed_filters: parsed,
         summary: parsed.summary || `Found ${result.total} result${result.total === 1 ? '' : 's'}.`,
         ai_message: aiMessage,
+        // Phase 1A envelope additions (PR-1, additive only).
+        kind: responseKind,
+        applied,
+        suggested_actions: suggestedActions,
       }),
       { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
     )
@@ -1063,6 +1469,53 @@ Deno.serve(async (req) => {
     // graceful keyword-search fallback. Covers LLM timeouts, provider
     // rate-limits, transient 5xx, and unexpected LLM errors alike.
     if (pendingQuery && pendingUserId && pendingAdminClient) {
+      // PR-4 QA fix: keyword fallback only applies to search-shaped intents.
+      // Knowledge / self_advice / self_profile / greeting / unknown intents
+      // would land on a no_results card with unrelated chips ("Show all clubs"
+      // for a "what is a penalty corner?" query). For those, return
+      // soft_error directly so the user gets calm copy + retry chips.
+      const NON_SEARCH_INTENTS = new Set(['knowledge', 'self_advice', 'self_profile', 'greeting'])
+      if (pendingIntentEntityType && NON_SEARCH_INTENTS.has(pendingIntentEntityType)) {
+        const softErrorActions = pendingIsRepeatSoftError
+          ? getRepeatedSoftErrorActions()
+          : getSoftErrorActions()
+        const softErrorMessage = pendingIsRepeatSoftError
+          ? "That still didn't go through. Let's try a simpler path."
+          : "I had trouble generating that answer. Want to try again, or ask something else?"
+        fireAndForget(logDiscoveryEvent(pendingAdminClient, {
+          user_id: pendingUserId,
+          role: pendingUserRole,
+          query_text: pendingQuery,
+          intent: 'error',
+          parsed_filters: { _meta: { kind: 'soft_error', error_phase: 'llm_non_search', repeated: pendingIsRepeatSoftError, suggested_actions_count: softErrorActions.length, intent_entity_type: pendingIntentEntityType } } as any,
+          result_count: 0,
+          has_qualitative: false,
+          llm_provider: llmProvider,
+          response_time_ms: Date.now() - startTime,
+          error_message: err.message,
+          prompt_tokens: null,
+          completion_tokens: null,
+          cached_tokens: null,
+          prompt_version: PROMPT_VERSION,
+          fallback_used: false,
+          retry_count: 0,
+        }))
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: [],
+            total: 0,
+            has_more: false,
+            parsed_filters: null,
+            summary: null,
+            ai_message: softErrorMessage,
+            kind: 'soft_error' as ResponseKind,
+            applied: null,
+            suggested_actions: softErrorActions,
+          }),
+          { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
+        )
+      }
       return runKeywordFallback({
         adminClient: pendingAdminClient,
         rawQuery: pendingQuery,
@@ -1074,6 +1527,7 @@ Deno.serve(async (req) => {
         parseRetryCount: 0,
         headers,
         correlationId,
+        isRepeatSoftError: pendingIsRepeatSoftError,
       })
     }
 
