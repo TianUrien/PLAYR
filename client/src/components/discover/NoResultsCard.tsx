@@ -6,7 +6,13 @@ interface NoResultsCardProps {
   applied: AppliedSearch | null
   suggestedActions: SuggestedAction[]
   onAction: (action: SuggestedAction) => void
-  /** Backend-provided fallback message — used only when applied is missing. */
+  /**
+   * Backend-provided message. The card prefers this verbatim when present
+   * (recovery short-circuit ships specific copy like "Since the women's
+   * clubs search didn't find anything…"). When absent or the legacy generic
+   * "I couldn't find any X matching that.", the card constructs cleaner
+   * copy from applied.role_summary.
+   */
   fallbackMessage?: string
 }
 
@@ -31,16 +37,29 @@ export default function NoResultsCard({
   onAction,
   fallbackMessage,
 }: NoResultsCardProps) {
-  // Build the body copy from `applied`. When applied is missing (older row,
-  // or fallback path), use the backend message verbatim.
+  // The legacy backend message — emitted by the original Phase 0 RPC path —
+  // is too curt for the calm card UI. When the backend sends ANY other
+  // string (recovery short-circuit, future updates) we prefer it verbatim.
   const summary = applied?.role_summary
-  const headline = summary
-    ? `I searched for ${summary} based on your profile, but I didn't find a strong match yet.`
-    : (fallbackMessage || "I didn't find a match yet.")
+  const isLegacyTerseMessage =
+    !!fallbackMessage && /^I couldn't find any .+ matching that\.?$/i.test(fallbackMessage.trim())
+  const useBackendMessage = !!fallbackMessage && !isLegacyTerseMessage
 
-  const subline = summary
-    ? "Let's try a different angle — pick one below."
-    : 'Pick one of these to keep going:'
+  const headline = useBackendMessage
+    ? fallbackMessage!
+    : summary
+      ? `I searched for ${summary} based on your profile, but I didn't find a strong match yet.`
+      : "I didn't find a match yet."
+
+  // Subline is only shown when we constructed the headline ourselves; if
+  // the backend wrote bespoke copy (e.g. "Since the … search didn't find
+  // anything, here are the next angles to try:"), it already provides the
+  // call-to-action and a subline would feel redundant.
+  const subline = useBackendMessage
+    ? null
+    : summary
+      ? "Let's try a different angle — pick one below."
+      : 'Pick one of these to keep going:'
 
   // Safety net: if backend didn't ship chips, give the user something useful.
   const actions: SuggestedAction[] = suggestedActions.length > 0
@@ -54,7 +73,7 @@ export default function NoResultsCard({
     <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
       {applied && <AppliedSearchStrip applied={applied} />}
       <p className="text-sm text-gray-800 leading-relaxed">{headline}</p>
-      <p className="mt-1 text-xs text-gray-500 leading-relaxed">{subline}</p>
+      {subline && <p className="mt-1 text-xs text-gray-500 leading-relaxed">{subline}</p>}
       <ActionChipRow actions={actions} onAction={onAction} />
     </div>
   )

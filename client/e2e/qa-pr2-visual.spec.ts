@@ -126,4 +126,33 @@ test.describe('@qa PR-2 visual states', () => {
     await page.waitForTimeout(500)
     await snapAssistantCard(page, 'chip_after_tap')
   })
+
+  // ── PR-3 scenarios ──────────────────────────────────────────────────────
+
+  test('player: PR-3 recovery short-circuit', async ({ page }) => {
+    await signIn(page, PLAYER)
+    await page.goto('/discover')
+    await page.waitForLoadState('domcontentloaded')
+    await dismissCookieConsent(page)
+    // Step 1 — fail to find clubs.
+    await ask(page, 'Find clubs for me')
+    // Step 2 — recovery follow-up. Should bypass the LLM (~750ms vs ~5s)
+    // and render a NoResultsCard with the prior search context referenced.
+    const t0 = Date.now()
+    await ask(page, 'So what should I do?')
+    const elapsed = Date.now() - t0
+    await snapAssistantCard(page, 'recovery_short_circuit')
+    // The recovery copy must reference the previous search context — verify
+    // the assistant message contains "didn't find anything" or similar.
+    const text = await page.locator('p.whitespace-pre-line').last().textContent().catch(() => '')
+    if (!text || !/didn't find/i.test(text)) {
+      throw new Error(`Recovery copy missing context reference. Got: ${text}`)
+    }
+    // Latency check is informational; staging Auth+rate-limit dominates the
+    // total but the recovery LLM-bypass should keep it well under the 5s
+    // typical full-LLM round-trip.
+    if (elapsed > 5000) {
+      console.warn(`[recovery] step took ${elapsed}ms — expected <2.5s`)
+    }
+  })
 })
