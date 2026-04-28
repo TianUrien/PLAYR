@@ -374,12 +374,29 @@ Deno.serve(async (req) => {
 
     // ── Phase 1A force-soft-error debug (PR-4, staging-only) ───────────
     // Lets the QA spec render <SoftErrorCard /> on the live UI without
-    // having to actually break the LLM. Active only when the request
-    // hits a non-production deployment (PUBLIC_SITE_URL doesn't include
-    // inhockia.com). On prod it's a silent no-op even if the magic query
-    // is sent — defense-in-depth against accidental leakage.
-    const isProductionEnv = (Deno.env.get('PUBLIC_SITE_URL') ?? '').includes('inhockia.com')
-    if (!isProductionEnv && query === '__force_soft_error') {
+    // having to actually break the LLM. Default-deny: debug is allowed
+    // ONLY when an explicit staging signal is present.
+    //
+    //   1. SUPABASE_URL contains the staging project ref, OR
+    //   2. SENTRY_ENVIRONMENT is explicitly "staging" or "development"
+    //
+    // If neither signal is present (env misconfigured, fresh prod project,
+    // anything ambiguous), debug is OFF. PUBLIC_SITE_URL is checked only as
+    // a hard *production* gate — if it ever matches inhockia.com, debug is
+    // forced off regardless of the other signals.
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const sentryEnv = (Deno.env.get('SENTRY_ENVIRONMENT') ?? '').toLowerCase()
+    const publicSiteUrl = Deno.env.get('PUBLIC_SITE_URL') ?? ''
+    const isProductionSignal =
+      publicSiteUrl.includes('inhockia.com') ||
+      sentryEnv === 'production' ||
+      supabaseUrl.includes('xtertgftujnebubxgqit') // hard-coded prod ref
+    const isStagingSignal =
+      supabaseUrl.includes('ivjkdaylalhsteyyclvl') || // hard-coded staging ref
+      sentryEnv === 'staging' ||
+      sentryEnv === 'development'
+    const debugAllowed = isStagingSignal && !isProductionSignal
+    if (debugAllowed && query === '__force_soft_error') {
       const isRepeat = recoveryContext?.last_kind === 'soft_error'
       const softErrorActions = isRepeat ? getRepeatedSoftErrorActions() : getSoftErrorActions()
       const softErrorMessage = isRepeat
