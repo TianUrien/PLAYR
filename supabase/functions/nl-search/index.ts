@@ -22,10 +22,13 @@ import {
   buildRoleSummary,
   getGreetingActions,
   getNoResultsActions,
+  getRecoveryActions,
   getSelfAdviceActions,
+  getSoftErrorActions,
   type ResponseKind,
   type SuggestedAction,
 } from '../_shared/suggested-actions.ts'
+import { detectRecoveryQuery } from '../_shared/recovery.ts'
 
 interface DiscoveryEventParams {
   user_id: string
@@ -211,16 +214,25 @@ async function runKeywordFallback(params: {
       fallback_used: true,
       retry_count: parseRetryCount,
     }))
-    // PR-1: tag the doubly-degraded fallback as soft_error in the body. Status
-    // stays 500 here; PR-3 changes both the status and the message wording so
-    // the frontend can render a calm card.
+    // PR-3: doubly-degraded fallback — both the LLM and the keyword RPC
+    // failed. Return 200 + kind=soft_error so the user gets the calm card
+    // with recovery chips. Telemetry above (in this catch block) already
+    // logged intent='error' with the diagnostic details, so we don't lose
+    // the failure signal.
     return new Response(
       JSON.stringify({
-        success: false,
-        error: 'Search is temporarily unavailable. Please try again in a moment.',
+        success: true,
+        data: [],
+        total: 0,
+        has_more: false,
+        parsed_filters: null,
+        summary: null,
+        ai_message: "I had trouble completing that search. Want to try again or broaden it?",
         kind: 'soft_error' as ResponseKind,
+        applied: null,
+        suggested_actions: getSoftErrorActions(),
       }),
-      { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
     )
   }
 }
@@ -307,11 +319,15 @@ Deno.serve(async (req) => {
     const history: HistoryTurn[] = rawHistory
       .slice(-10)
       .filter((t: any) => (t?.role === 'user' || t?.role === 'assistant') && typeof t?.content === 'string')
-    // PR-1 accepts but ignores recovery_context. PR-3 wires it into the
-    // recovery short-circuit path. Accepting it now keeps the frontend's
-    // request shape stable across PR boundaries.
-    // deno-lint-ignore no-unused-vars
-    const _recoveryContext: { last_kind?: ResponseKind; last_applied?: AppliedSearch } | undefined = body?.recovery_context
+    // PR-3 — recovery_context lets the backend detect "the last turn failed,
+    // this is a recovery follow-up" without re-running the LLM. The frontend
+    // populates it from the most recent assistant message's kind / applied
+    // when that kind was no_results or soft_error.
+    const recoveryContext: {
+      last_kind?: ResponseKind
+      last_applied?: AppliedSearch | null
+      user_role?: string | null
+    } | undefined = body?.recovery_context
 
     if (!query || typeof query !== 'string') {
       return new Response(
@@ -332,6 +348,78 @@ Deno.serve(async (req) => {
     pendingAdminClient = adminClient
     pendingUserId = user.id
     pendingQuery = query
+
+    // ── Phase 1A recovery short-circuit (PR-3) ─────────────────────────
+    // When the previous turn was no_results or soft_error AND the new query
+    // is a recovery-shaped follow-up ("what should I do?", "so what now?",
+    // "ok"), bypass the LLM entirely and return a deterministic recovery
+    // response with chips tailored to the failed search context. Cost ~0
+    // tokens, ~50ms response.
+    //
+    // Both conditions required: just having recovery_context isn't enough
+    // (the user might be asking a substantive new question), and the query
+    // shape alone isn't enough either (without a prior failure we don't
+    // know what to recover from).
+    const RECOVERY_KINDS: ResponseKind[] = ['no_results', 'soft_error']
+    if (
+      recoveryContext?.last_kind &&
+      RECOVERY_KINDS.includes(recoveryContext.last_kind) &&
+      detectRecoveryQuery(query)
+    ) {
+      const lastApplied = recoveryContext.last_applied ?? null
+      const recoveryRole = recoveryContext.user_role ?? null
+      const recoveryActions = getRecoveryActions(lastApplied, recoveryRole)
+      const recoveryMessage = lastApplied?.role_summary
+        ? `Since the ${lastApplied.role_summary} search didn't find anything, here are the next angles to try:`
+        : "Let's try a different angle — pick one of these to keep going:"
+
+      const recoveryMeta = {
+        _meta: {
+          kind: 'no_results' as ResponseKind,
+          recovery_short_circuit: true,
+          recovery_from_kind: recoveryContext.last_kind,
+          applied_role_summary: lastApplied?.role_summary ?? null,
+          suggested_actions_count: recoveryActions.length,
+        },
+      }
+      fireAndForget(logDiscoveryEvent(adminClient, {
+        user_id: user.id,
+        role: recoveryRole,
+        query_text: query,
+        intent: 'recovery_redirect',
+        parsed_filters: recoveryMeta as any,
+        result_count: 0,
+        has_qualitative: false,
+        llm_provider: llmProvider,
+        response_time_ms: Date.now() - startTime,
+        error_message: null,
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        cached_tokens: 0,
+        prompt_version: PROMPT_VERSION,
+        fallback_used: false,
+        retry_count: 0,
+      }))
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: [],
+          total: 0,
+          has_more: false,
+          parsed_filters: null,
+          summary: null,
+          ai_message: recoveryMessage,
+          // Render as a no_results card on the frontend — same component,
+          // chips drawn from getRecoveryActions (rotated lead vs the
+          // original no_results so the user sees a fresh first option).
+          kind: 'no_results' as ResponseKind,
+          applied: lastApplied,
+          suggested_actions: recoveryActions,
+        }),
+        { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // ── Phase 0 intent routing ─────────────────────────────────────────
     // Deterministic keyword router runs BEFORE the LLM. For HIGH-confidence
@@ -960,17 +1048,43 @@ Deno.serve(async (req) => {
 
     if (rpcError) {
       captureException(rpcError, { functionName: 'nl-search', correlationId })
-      // PR-1: tag the error envelope with kind=soft_error so the new frontend
-      // can render a calm card. Status stays 500 in PR-1 (changed to 200 in
-      // PR-3 alongside the recovery short-circuit). Old client ignores the
-      // new field; new client falls back when status is non-2xx.
+      // PR-3: return 200 with kind=soft_error so the frontend renders a
+      // calm <SoftErrorCard /> with recovery chips instead of the harsh
+      // red block. Telemetry below still logs intent='error' so dashboards
+      // and Sentry continue to surface the failure.
+      const softErrorActions = getSoftErrorActions()
+      fireAndForget(logDiscoveryEvent(adminClient, {
+        user_id: user.id,
+        role: userContext?.role ?? null,
+        query_text: query,
+        intent: 'error',
+        parsed_filters: { _meta: { kind: 'soft_error', error_phase: 'rpc', suggested_actions_count: softErrorActions.length } } as any,
+        result_count: 0,
+        has_qualitative: false,
+        llm_provider: llmProvider,
+        response_time_ms: Date.now() - startTime,
+        error_message: (rpcError as { message?: string })?.message ?? 'discover_profiles RPC failed',
+        prompt_tokens: parseMeta.usage?.prompt_tokens ?? null,
+        completion_tokens: parseMeta.usage?.completion_tokens ?? null,
+        cached_tokens: parseMeta.usage?.cached_tokens ?? null,
+        prompt_version: PROMPT_VERSION,
+        fallback_used: false,
+        retry_count: parseMeta.retry_count,
+      }))
       return new Response(
         JSON.stringify({
-          success: false,
-          error: 'Search query failed',
+          success: true,
+          data: [],
+          total: 0,
+          has_more: false,
+          parsed_filters: null,
+          summary: null,
+          ai_message: "I had trouble completing that search. Want to try again or broaden it?",
           kind: 'soft_error' as ResponseKind,
+          applied: null,
+          suggested_actions: softErrorActions,
         }),
-        { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
       )
     }
 

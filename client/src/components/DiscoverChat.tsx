@@ -3,15 +3,9 @@ import type { DiscoverChatMessage } from '@/hooks/useDiscover'
 
 interface DiscoverChatProps {
   messages: DiscoverChatMessage[]
-  /**
-   * Legacy retry handler for hard 5xx errors. Removed in PR-3 once the
-   * soft-error path returns 200 + kind: 'soft_error' (recovery chips replace
-   * the inline retry button entirely).
-   */
-  onRetry?: (query: string) => void
 }
 
-export default function DiscoverChat({ messages, onRetry }: DiscoverChatProps) {
+export default function DiscoverChat({ messages }: DiscoverChatProps) {
   return (
     <div className="space-y-4">
       {messages.map(msg => {
@@ -24,14 +18,7 @@ export default function DiscoverChat({ messages, onRetry }: DiscoverChatProps) {
             </div>
           )
         }
-        return (
-          <AssistantMessage
-            key={msg.id}
-            msg={msg}
-            allMessages={messages}
-            onLegacyRetry={onRetry}
-          />
-        )
+        return <AssistantMessage key={msg.id} msg={msg} />
       })}
     </div>
   )

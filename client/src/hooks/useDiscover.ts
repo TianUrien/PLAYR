@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '@/lib/supabase'
 import { logger } from '@/lib/logger'
 import { reportSupabaseError } from '@/lib/sentryHelpers'
+import { useAuthStore } from '@/lib/auth'
 
 export interface DiscoverResult {
   id: string
@@ -181,9 +182,23 @@ export const useDiscoverChat = create<DiscoverChatStore>((set, get) => ({
       .map(m => ({ role: m.role, content: m.content }))
       .slice(-10)
 
+    // PR-3 — recovery_context. When the most recent assistant turn was a
+    // no_results or soft_error, send the kind + applied so the backend's
+    // recovery short-circuit can fire (no LLM call, ~50ms targeted recovery
+    // response). user_role lets the recovery chip generator pick a cross-
+    // entity suggestion ("Find opportunities" only for player/coach).
+    const lastAssistant = [...get().messages].reverse().find(m => m.role === 'assistant' && m.status === 'complete')
+    const recoveryContext = (lastAssistant?.kind === 'no_results' || lastAssistant?.kind === 'soft_error')
+      ? {
+          last_kind: lastAssistant.kind,
+          last_applied: lastAssistant.applied ?? null,
+          user_role: useAuthStore.getState().profile?.role ?? null,
+        }
+      : undefined
+
     try {
       const { data, error } = await supabase.functions.invoke('nl-search', {
-        body: { query: trimmed, history },
+        body: { query: trimmed, history, recovery_context: recoveryContext },
       })
 
       if (error) {

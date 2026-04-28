@@ -144,10 +144,6 @@ export default function DiscoverPage() {
     sendMessage(example)
   }
 
-  const handleRetry = useCallback((query: string) => {
-    sendMessage(query)
-  }, [sendMessage])
-
   const handleFocus = useCallback(() => {
     setTimeout(() => {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -224,7 +220,7 @@ export default function DiscoverPage() {
               </div>
             </div>
           ) : (
-            <DiscoverChat messages={messages} onRetry={handleRetry} />
+            <DiscoverChat messages={messages} />
           )}
           <div ref={bottomRef} />
         </div>

@@ -1,4 +1,4 @@
-import { Bot, AlertCircle, RotateCcw } from 'lucide-react'
+import { Bot } from 'lucide-react'
 import type { DiscoverChatMessage, SuggestedAction } from '@/hooks/useDiscover'
 import { useDiscoverChat } from '@/hooks/useDiscover'
 import CannedRedirectCard from './CannedRedirectCard'
@@ -8,16 +8,22 @@ import SearchResultsResponse from './SearchResultsResponse'
 import SoftErrorCard from './SoftErrorCard'
 import TextResponse from './TextResponse'
 
+/**
+ * Hardcoded soft-error chips for the legacy hard-failure path. Mirrors
+ * `getSoftErrorActions()` in supabase/functions/_shared/suggested-actions.ts.
+ * Used when the network/backend fails so badly that no body parses (and
+ * therefore no chips arrive). A genuine offline state still gets the calm
+ * recovery treatment.
+ */
+const FALLBACK_HARD_ERROR_CHIPS: SuggestedAction[] = [
+  { label: 'Retry', intent: { type: 'retry' } },
+  { label: 'Broaden search', intent: { type: 'free_text', query: 'Find clubs near me' } },
+  { label: 'Browse opportunities', intent: { type: 'free_text', query: 'Find opportunities for my position' } },
+  { label: 'Start over', intent: { type: 'clear' } },
+]
+
 interface AssistantMessageProps {
   msg: DiscoverChatMessage
-  /**
-   * Legacy retry handler used while PR-3 still ships 5xx for transient
-   * failures. Once PR-3 swaps the soft-error path to 200, this can be
-   * removed and SoftErrorCard handles retry internally via the chip set.
-   */
-  onLegacyRetry?: (query: string) => void
-  /** All messages in the chat — used by the legacy retry handler. */
-  allMessages: DiscoverChatMessage[]
 }
 
 /** 3-dot typing indicator while the LLM call is in flight. */
@@ -36,58 +42,12 @@ function TypingIndicator() {
 }
 
 /**
- * Legacy hard-error inline rendering. Stays in PR-2 for the 5xx path
- * (where the frontend still throws before parsing the body and so never
- * reads `kind: 'soft_error'`). PR-3 swaps the backend to 200 and the
- * dispatcher routes those through `<SoftErrorCard />` instead.
- */
-function LegacyErrorBlock({
-  msg,
-  allMessages,
-  onLegacyRetry,
-}: {
-  msg: DiscoverChatMessage
-  allMessages: DiscoverChatMessage[]
-  onLegacyRetry?: (query: string) => void
-}) {
-  return (
-    <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
-      <div className="flex items-center gap-2">
-        <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-        <p className="text-sm text-red-600 flex-1">{msg.content}</p>
-        {onLegacyRetry && (
-          <button
-            type="button"
-            onClick={() => {
-              const idx = allMessages.findIndex(m => m.id === msg.id)
-              const prevUser = allMessages
-                .slice(0, idx)
-                .reverse()
-                .find(m => m.role === 'user')
-              if (prevUser) onLegacyRetry(prevUser.content)
-            }}
-            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-[#8026FA] hover:bg-[#8026FA]/5 rounded-lg transition-colors"
-          >
-            <RotateCcw className="w-3 h-3" />
-            Retry
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-/**
  * Assistant-side message dispatcher. Reads `msg.kind` (set by the backend
  * envelope shipped in PR-1) and picks the right leaf component. Falls back
  * to plain text for messages without a kind (back-compat with cached chat
  * state from before Phase 1A).
  */
-export default function AssistantMessage({
-  msg,
-  onLegacyRetry,
-  allMessages,
-}: AssistantMessageProps) {
+export default function AssistantMessage({ msg }: AssistantMessageProps) {
   const submitAction = useDiscoverChat(s => s.submitAction)
 
   const handleAction = (action: SuggestedAction) => submitAction(action.intent)
@@ -102,14 +62,15 @@ export default function AssistantMessage({
     }
 
     if (msg.status === 'error') {
-      // Backend may return `kind: 'soft_error'` in the body of a 5xx response,
-      // but supabase-js currently throws before parsing the body — so the
-      // legacy block stays the visible fallback until PR-3.
+      // PR-3: hard failures (network down, malformed response, anything
+      // supabase-js throws on before the body is parsed) render the same
+      // calm SoftErrorCard as backend-emitted soft_errors. We never show
+      // the harsh red block. Chips are hardcoded since no body parsed.
       return (
-        <LegacyErrorBlock
-          msg={msg}
-          allMessages={allMessages}
-          onLegacyRetry={onLegacyRetry}
+        <SoftErrorCard
+          message="I had trouble connecting just now — let's try a different angle."
+          suggestedActions={FALLBACK_HARD_ERROR_CHIPS}
+          onAction={handleAction}
         />
       )
     }
