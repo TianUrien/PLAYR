@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { derivePublicContactEmail, getFirstName } from '@/lib/profile'
+import { derivePublicContactEmail, getFirstName } from '@/lib/profileHelpers'
 
 describe('getFirstName', () => {
   it('returns the first whitespace-delimited token of a normal name', () => {
