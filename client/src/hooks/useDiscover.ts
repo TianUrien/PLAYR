@@ -54,6 +54,40 @@ export interface ParsedFilters {
   summary?: string
 }
 
+// ── Phase 1A response envelope (shipped with PR-1 backend) ──────────────
+
+export type ResponseKind =
+  | 'text'                  // generic chat reply — knowledge / greeting / self-advice
+  | 'results'               // search returned matches
+  | 'no_results'            // search ran, returned zero
+  | 'soft_error'            // transient failure — calm UI (wired in PR-3)
+  | 'clarifying_question'   // medium-confidence intent (wired in PR-4)
+  | 'canned_redirect'       // opportunity / product redirects
+
+export interface AppliedSearch {
+  entity: 'clubs' | 'players' | 'coaches' | 'brands' | 'umpires' | null
+  gender_label: string | null
+  location_label: string | null
+  age?: { min?: number; max?: number }
+  /** Human-readable summary the UI drops verbatim into copy. */
+  role_summary: string
+}
+
+export type SuggestedActionIntent =
+  | { type: 'free_text'; query: string }
+  | { type: 'retry' }
+  | { type: 'clear' }
+
+export interface SuggestedAction {
+  label: string
+  intent: SuggestedActionIntent
+}
+
+export interface ClarifyingOption {
+  label: string
+  routed_query: string
+}
+
 export interface DiscoverResponse {
   success: boolean
   data: DiscoverResult[]
@@ -63,6 +97,12 @@ export interface DiscoverResponse {
   summary: string | null
   ai_message: string
   error?: string
+
+  // Phase 1A (PR-1 backend / PR-2 frontend) — all optional, additive.
+  kind?: ResponseKind
+  applied?: AppliedSearch | null
+  suggested_actions?: SuggestedAction[]
+  clarifying_options?: ClarifyingOption[]
 }
 
 // ── Chat message types ──────────────────────────────────────────────────
@@ -77,6 +117,12 @@ export interface DiscoverChatMessage {
   timestamp: number
   status: 'sending' | 'complete' | 'error'
   error?: string
+
+  // Phase 1A — set on assistant messages when the backend supplied them.
+  kind?: ResponseKind
+  applied?: AppliedSearch | null
+  suggested_actions?: SuggestedAction[]
+  clarifying_options?: ClarifyingOption[]
 }
 
 interface HistoryTurn {
@@ -90,6 +136,12 @@ interface DiscoverChatStore {
   messages: DiscoverChatMessage[]
   isPending: boolean
   sendMessage: (query: string) => Promise<void>
+  /**
+   * Phase 1A — submit a structured action (chip tap). Free-text intents
+   * become a new user message + LLM round-trip. `retry` resubmits the most
+   * recent user query. `clear` empties the chat.
+   */
+  submitAction: (intent: SuggestedActionIntent) => void
   clearChat: () => void
 }
 
@@ -160,6 +212,13 @@ export const useDiscoverChat = create<DiscoverChatStore>((set, get) => ({
                 parsed_filters: result.parsed_filters,
                 total: result.total,
                 status: 'complete' as const,
+                // Phase 1A — persist the structured envelope so the dispatcher
+                // can render the right component. All optional; old rows
+                // (no kind on response) fall through to text rendering.
+                kind: result.kind,
+                applied: result.applied,
+                suggested_actions: result.suggested_actions,
+                clarifying_options: result.clarifying_options,
               }
             : m
         ),
@@ -182,6 +241,23 @@ export const useDiscoverChat = create<DiscoverChatStore>((set, get) => ({
       }))
     } finally {
       set({ isPending: false })
+    }
+  },
+
+  submitAction: (intent: SuggestedActionIntent) => {
+    if (intent.type === 'free_text') {
+      get().sendMessage(intent.query)
+      return
+    }
+    if (intent.type === 'retry') {
+      // Find the most recent user message and resubmit it.
+      const lastUserMsg = [...get().messages].reverse().find(m => m.role === 'user')
+      if (lastUserMsg) get().sendMessage(lastUserMsg.content)
+      return
+    }
+    if (intent.type === 'clear') {
+      get().clearChat()
+      return
     }
   },
 
