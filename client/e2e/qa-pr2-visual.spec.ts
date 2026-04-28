@@ -127,6 +127,49 @@ test.describe('@qa PR-2 visual states', () => {
     await snapAssistantCard(page, 'chip_after_tap')
   })
 
+  // ── PR-4 scenarios ──────────────────────────────────────────────────────
+
+  test('player: PR-4 clarifying-question card (vague query)', async ({ page }) => {
+    await signIn(page, PLAYER)
+    await page.goto('/discover')
+    await page.waitForLoadState('domcontentloaded')
+    await dismissCookieConsent(page)
+    await ask(page, 'Find people')
+    await snapAssistantCard(page, 'clarifying_question')
+    // Verify the question + 4 options rendered.
+    const body = await page.evaluate(() => document.body.textContent ?? '')
+    if (!/who would you like to look for/i.test(body)) {
+      throw new Error(`Clarifying question text missing. Got: ${body.slice(0, 200)}`)
+    }
+  })
+
+  test('player: PR-4 force soft-error renders SoftErrorCard', async ({ page }) => {
+    await signIn(page, PLAYER)
+    await page.goto('/discover')
+    await page.waitForLoadState('domcontentloaded')
+    await dismissCookieConsent(page)
+    await ask(page, '__force_soft_error')
+    await snapAssistantCard(page, 'soft_error_forced')
+    const body = await page.evaluate(() => document.body.textContent ?? '')
+    if (!/had trouble completing that search/i.test(body)) {
+      throw new Error(`Soft-error message missing. Got: ${body.slice(0, 200)}`)
+    }
+  })
+
+  test('player: PR-4 repeated soft-error uses alternate copy', async ({ page }) => {
+    await signIn(page, PLAYER)
+    await page.goto('/discover')
+    await page.waitForLoadState('domcontentloaded')
+    await dismissCookieConsent(page)
+    await ask(page, '__force_soft_error')
+    await ask(page, '__force_soft_error')
+    await snapAssistantCard(page, 'soft_error_repeated')
+    const body = await page.evaluate(() => document.body.textContent ?? '')
+    if (!/that still didn't go through/i.test(body)) {
+      throw new Error(`Repeated soft-error alternate copy missing. Got: ${body.slice(0, 300)}`)
+    }
+  })
+
   // ── PR-3 scenarios ──────────────────────────────────────────────────────
 
   test('player: PR-3 recovery short-circuit', async ({ page }) => {

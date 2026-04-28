@@ -182,19 +182,28 @@ export const useDiscoverChat = create<DiscoverChatStore>((set, get) => ({
       .map(m => ({ role: m.role, content: m.content }))
       .slice(-10)
 
-    // PR-3 — recovery_context. When the most recent assistant turn was a
-    // no_results or soft_error, send the kind + applied so the backend's
-    // recovery short-circuit can fire (no LLM call, ~50ms targeted recovery
-    // response). user_role lets the recovery chip generator pick a cross-
-    // entity suggestion ("Find opportunities" only for player/coach).
+    // PR-3/PR-4 — recovery_context.
+    //
+    // user_role is ALWAYS included so the backend's clarifying-question
+    // detector (PR-4) can pick a role-aware option set on the very first
+    // turn (no prior failure required). Without this, vague queries from
+    // a logged-in player get the generic "Clubs/Players/Coaches/Opportunities"
+    // option set instead of the player-tailored one.
+    //
+    // last_kind / last_applied are only populated when the previous
+    // assistant turn was a no_results or soft_error — that's what gates
+    // the recovery short-circuit (LLM bypass).
+    const userRole = useAuthStore.getState().profile?.role ?? null
     const lastAssistant = [...get().messages].reverse().find(m => m.role === 'assistant' && m.status === 'complete')
-    const recoveryContext = (lastAssistant?.kind === 'no_results' || lastAssistant?.kind === 'soft_error')
-      ? {
-          last_kind: lastAssistant.kind,
-          last_applied: lastAssistant.applied ?? null,
-          user_role: useAuthStore.getState().profile?.role ?? null,
-        }
-      : undefined
+    const recoveryContext: {
+      user_role: string | null
+      last_kind?: ResponseKind
+      last_applied?: AppliedSearch | null
+    } = { user_role: userRole }
+    if (lastAssistant?.kind === 'no_results' || lastAssistant?.kind === 'soft_error') {
+      recoveryContext.last_kind = lastAssistant.kind
+      recoveryContext.last_applied = lastAssistant.applied ?? null
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke('nl-search', {
