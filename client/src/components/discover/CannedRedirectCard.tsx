@@ -25,28 +25,28 @@ export default function CannedRedirectCard({ message }: CannedRedirectCardProps)
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
-      <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">{message}</p>
+    <div className="bg-white border border-gray-200/80 rounded-2xl rounded-tl-md px-4 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <p className="text-[14px] text-gray-800 leading-[1.55] whitespace-pre-line">{message}</p>
       {cta && (
         <button
           type="button"
           onClick={() => navigate(cta.path)}
           className="
-            mt-3 inline-flex items-center gap-2
-            px-4 py-2
+            mt-3.5 inline-flex items-center gap-2
+            min-h-[40px] px-4 py-2
             rounded-full
             bg-gradient-to-br from-[#8026FA] to-[#924CEC]
-            text-white text-xs font-semibold
+            text-white text-[12px] font-semibold tracking-[0.01em]
             shadow-sm shadow-[#8026FA]/20
             hover:shadow-md hover:shadow-[#8026FA]/30
-            active:translate-y-px
-            transition-all
-            focus:outline-none focus:ring-2 focus:ring-[#8026FA]/40
+            active:scale-[0.98] active:translate-y-px
+            transition-all duration-150
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8026FA]/40
           "
         >
-          <cta.icon className="w-3.5 h-3.5" />
+          <cta.icon className="w-3.5 h-3.5" aria-hidden="true" />
           {cta.label}
-          <ArrowRight className="w-3.5 h-3.5" />
+          <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
         </button>
       )}
     </div>

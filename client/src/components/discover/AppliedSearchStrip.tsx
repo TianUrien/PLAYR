@@ -41,25 +41,21 @@ export default function AppliedSearchStrip({ applied }: AppliedSearchStripProps)
   const EntityIcon = applied.entity ? ENTITY_ICON[applied.entity] ?? Users : Users
 
   return (
-    <div className="mb-2 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
-      <span className="inline-flex items-center gap-1">
-        <EntityIcon className="w-3.5 h-3.5" />
-        Searched:
+    <div className="mb-2.5 flex flex-wrap items-center gap-1.5 text-[11px] text-gray-500">
+      <span className="inline-flex items-center gap-1 font-medium uppercase tracking-[0.04em]">
+        <EntityIcon className="w-3 h-3" aria-hidden="true" />
+        Searched
       </span>
       {chips.map(c => (
         <span
           key={c.key}
-          className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-medium"
+          className="inline-flex items-center px-2 py-[3px] rounded-full bg-gray-100 text-gray-700 font-medium text-[11px]"
         >
-          {c.label === 'Spain' || c.label.length > 2 ? (
-            c.key === 'location' ? (
-              <span className="inline-flex items-center gap-1">
-                <MapPin className="w-3 h-3" />
-                {c.label}
-              </span>
-            ) : (
-              c.label
-            )
+          {c.key === 'location' ? (
+            <span className="inline-flex items-center gap-1">
+              <MapPin className="w-3 h-3" aria-hidden="true" />
+              {c.label}
+            </span>
           ) : (
             c.label
           )}

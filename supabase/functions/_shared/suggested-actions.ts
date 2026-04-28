@@ -154,6 +154,22 @@ export function getSoftErrorActions(): SuggestedAction[] {
 }
 
 /**
+ * Alternate chip set for *repeated* soft errors — when the previous turn was
+ * also a soft_error and a plain "retry" feels insufficient. Shifts the
+ * leading chip from Retry → Start over (recommend starting fresh) and
+ * trades "Broaden search" for a more concrete "Search clubs" so the user
+ * always has at least one query that's known to land in a real path.
+ */
+export function getRepeatedSoftErrorActions(): SuggestedAction[] {
+  return [
+    { label: 'Start over', intent: { type: 'clear' } },
+    { label: 'Browse opportunities', intent: { type: 'free_text', query: 'Find opportunities for my position' } },
+    { label: 'Search clubs', intent: { type: 'free_text', query: 'Find clubs' } },
+    { label: 'Try again', intent: { type: 'retry' } },
+  ]
+}
+
+/**
  * 3 role-aware chips for "who should I connect with?" / "what should I do
  * next?" / "what should I improve?" — the self-advice intent class. Each
  * chip is a concrete next-step a user with that role can take today.

@@ -30,10 +30,10 @@ export default function SearchResultsResponse({
 
   return (
     <>
-      <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
-        <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">{message}</p>
+      <div className="bg-white border border-gray-200/80 rounded-2xl rounded-tl-md px-4 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+        <p className="text-[14px] text-gray-800 leading-[1.55] whitespace-pre-line">{message}</p>
         {results.length > 0 && (
-          <div className="mt-2 space-y-1.5">
+          <div className="mt-2.5 space-y-1.5">
             {visible.map(r => (
               <DiscoverResultCard key={r.id} result={r} />
             ))}
@@ -41,9 +41,9 @@ export default function SearchResultsResponse({
               <button
                 type="button"
                 onClick={() => setExpanded(true)}
-                className="flex items-center gap-1 w-full justify-center py-2 text-xs font-medium text-[#8026FA] hover:text-[#924CEC] transition-colors"
+                className="flex items-center gap-1 w-full justify-center min-h-[36px] py-2 text-xs font-medium text-[#8026FA] hover:text-[#924CEC] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8026FA]/40 rounded-lg"
               >
-                <ChevronDown className="w-3.5 h-3.5" />
+                <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
                 Show all {results.length} results
               </button>
             )}

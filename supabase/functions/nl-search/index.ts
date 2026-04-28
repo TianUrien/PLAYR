@@ -20,15 +20,18 @@ import { classifyEntityType, entityTypeToRole, type RoutedIntent } from '../_sha
 import {
   type AppliedSearch,
   buildRoleSummary,
+  type ClarifyingOption,
   getGreetingActions,
   getNoResultsActions,
   getRecoveryActions,
+  getRepeatedSoftErrorActions,
   getSelfAdviceActions,
   getSoftErrorActions,
   type ResponseKind,
   type SuggestedAction,
 } from '../_shared/suggested-actions.ts'
 import { detectRecoveryQuery } from '../_shared/recovery.ts'
+import { detectClarifyingNeed } from '../_shared/clarifying.ts'
 
 interface DiscoveryEventParams {
   user_id: string
@@ -112,8 +115,12 @@ async function runKeywordFallback(params: {
   parseRetryCount: number
   headers: Record<string, string>
   correlationId: string
+  /** PR-4 — when the previous turn was already soft_error, the terminal
+   *  soft-error path uses alternate copy + chip set to avoid showing the
+   *  same "I had trouble" message twice. */
+  isRepeatSoftError: boolean
 }): Promise<Response> {
-  const { adminClient, rawQuery, userId, userRole, startTime, llmProvider, originalError, parseRetryCount, headers, correlationId } = params
+  const { adminClient, rawQuery, userId, userRole, startTime, llmProvider, originalError, parseRetryCount, headers, correlationId, isRepeatSoftError } = params
 
   try {
     const discoverableRoles = ['player', 'coach', 'club', 'brand']
@@ -163,10 +170,13 @@ async function runKeywordFallback(params: {
         has_more: result.has_more,
         parsed_filters: null,
         summary: `Showing ${result.total} keyword match${result.total === 1 ? '' : 'es'}.`,
-        ai_message: 'AI assistant is temporarily unavailable. Showing keyword matches instead.',
-        // Phase 1A: tag the fallback so the new frontend can render it as
-        // results (or no_results when total=0). No chips on the fallback path
-        // in PR-1 — degraded mode keeps the surface minimal.
+        // PR-4 — softer fallback copy. The previous "AI assistant is
+        // temporarily unavailable. Showing keyword matches instead." felt
+        // technical. New copy frames the partial answer as useful, not a
+        // degraded apology.
+        ai_message: result.total === 0
+          ? "I couldn't complete the full AI response and didn't find a quick match either."
+          : "I couldn't complete the full AI response, but here are some relevant matches.",
         kind: (result.total === 0 ? 'no_results' : 'results') as ResponseKind,
         applied: null,
         suggested_actions: [] as SuggestedAction[],
@@ -214,11 +224,14 @@ async function runKeywordFallback(params: {
       fallback_used: true,
       retry_count: parseRetryCount,
     }))
-    // PR-3: doubly-degraded fallback — both the LLM and the keyword RPC
-    // failed. Return 200 + kind=soft_error so the user gets the calm card
-    // with recovery chips. Telemetry above (in this catch block) already
-    // logged intent='error' with the diagnostic details, so we don't lose
-    // the failure signal.
+    // PR-3/PR-4: doubly-degraded fallback — both the LLM and the keyword
+    // RPC failed. Return 200 + kind=soft_error with alternate copy when
+    // the previous turn was also a soft_error so the user doesn't see the
+    // same "I had trouble" message twice.
+    const softErrorActions = isRepeatSoftError ? getRepeatedSoftErrorActions() : getSoftErrorActions()
+    const softErrorMessage = isRepeatSoftError
+      ? "That still didn't go through. Let's try a simpler path."
+      : "I had trouble completing that search. Want to try again or broaden it?"
     return new Response(
       JSON.stringify({
         success: true,
@@ -227,10 +240,10 @@ async function runKeywordFallback(params: {
         has_more: false,
         parsed_filters: null,
         summary: null,
-        ai_message: "I had trouble completing that search. Want to try again or broaden it?",
+        ai_message: softErrorMessage,
         kind: 'soft_error' as ResponseKind,
         applied: null,
-        suggested_actions: getSoftErrorActions(),
+        suggested_actions: softErrorActions,
       }),
       { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
     )
@@ -252,6 +265,9 @@ Deno.serve(async (req) => {
   let pendingUserId: string | null = null
   let pendingUserRole: string | null = null
   let pendingQuery: string | null = null
+  // PR-4: track whether the previous turn was already soft_error so the
+  // catch-block fallback can emit alternate copy on a repeated failure.
+  let pendingIsRepeatSoftError = false
 
   // CORS preflight
   if (req.method === 'OPTIONS') {
@@ -348,6 +364,55 @@ Deno.serve(async (req) => {
     pendingAdminClient = adminClient
     pendingUserId = user.id
     pendingQuery = query
+    pendingIsRepeatSoftError = recoveryContext?.last_kind === 'soft_error'
+
+    // ── Phase 1A force-soft-error debug (PR-4, staging-only) ───────────
+    // Lets the QA spec render <SoftErrorCard /> on the live UI without
+    // having to actually break the LLM. Active only when the request
+    // hits a non-production deployment (PUBLIC_SITE_URL doesn't include
+    // inhockia.com). On prod it's a silent no-op even if the magic query
+    // is sent — defense-in-depth against accidental leakage.
+    const isProductionEnv = (Deno.env.get('PUBLIC_SITE_URL') ?? '').includes('inhockia.com')
+    if (!isProductionEnv && query === '__force_soft_error') {
+      const isRepeat = recoveryContext?.last_kind === 'soft_error'
+      const softErrorActions = isRepeat ? getRepeatedSoftErrorActions() : getSoftErrorActions()
+      const softErrorMessage = isRepeat
+        ? "That still didn't go through. Let's try a simpler path."
+        : "I had trouble completing that search. Want to try again or broaden it?"
+      fireAndForget(logDiscoveryEvent(adminClient, {
+        user_id: user.id,
+        role: recoveryContext?.user_role ?? null,
+        query_text: query,
+        intent: 'error',
+        parsed_filters: { _meta: { kind: 'soft_error', error_phase: 'force_debug', repeated: isRepeat, suggested_actions_count: softErrorActions.length } } as any,
+        result_count: 0,
+        has_qualitative: false,
+        llm_provider: llmProvider,
+        response_time_ms: Date.now() - startTime,
+        error_message: 'force_soft_error debug query',
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        cached_tokens: 0,
+        prompt_version: PROMPT_VERSION,
+        fallback_used: false,
+        retry_count: 0,
+      }))
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: [],
+          total: 0,
+          has_more: false,
+          parsed_filters: null,
+          summary: null,
+          ai_message: softErrorMessage,
+          kind: 'soft_error' as ResponseKind,
+          applied: null,
+          suggested_actions: softErrorActions,
+        }),
+        { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
+      )
+    }
 
     // ── Phase 1A recovery short-circuit (PR-3) ─────────────────────────
     // When the previous turn was no_results or soft_error AND the new query
@@ -416,6 +481,63 @@ Deno.serve(async (req) => {
           kind: 'no_results' as ResponseKind,
           applied: lastApplied,
           suggested_actions: recoveryActions,
+        }),
+        { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── Phase 1A clarifying-question short-circuit (PR-4) ──────────────
+    // Vague queries like "Find people" / "Show me options" / "Any
+    // recommendations?" need a focused 4-option pill row, not a generic
+    // LLM paragraph or a fallthrough that searches all 4 roles. Detector
+    // is tight (long-form queries belong to the LLM); when it fires we
+    // bypass the LLM entirely and ship clarifying_options directly.
+    //
+    // Note: detector requires a recoveryContext.user_role for role-aware
+    // options. If user_role is missing we fall back to generic option set.
+    const clarifyingNeed = detectClarifyingNeed(query, recoveryContext?.user_role ?? null)
+    if (clarifyingNeed) {
+      const clarifyingMeta = {
+        _meta: {
+          kind: 'clarifying_question' as ResponseKind,
+          clarifying_short_circuit: true,
+          options_count: clarifyingNeed.options.length,
+        },
+      }
+      fireAndForget(logDiscoveryEvent(adminClient, {
+        user_id: user.id,
+        role: recoveryContext?.user_role ?? null,
+        query_text: query,
+        intent: 'clarifying_redirect',
+        parsed_filters: clarifyingMeta as any,
+        result_count: 0,
+        has_qualitative: false,
+        llm_provider: llmProvider,
+        response_time_ms: Date.now() - startTime,
+        error_message: null,
+        prompt_tokens: 0,
+        completion_tokens: 0,
+        cached_tokens: 0,
+        prompt_version: PROMPT_VERSION,
+        fallback_used: false,
+        retry_count: 0,
+      }))
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: [],
+          total: 0,
+          has_more: false,
+          parsed_filters: null,
+          summary: null,
+          ai_message: clarifyingNeed.message,
+          kind: 'clarifying_question' as ResponseKind,
+          applied: null,
+          // Frontend's <ClarifyingQuestionCard /> reads clarifying_options.
+          // suggested_actions is empty — the question's options are the chips.
+          suggested_actions: [] as SuggestedAction[],
+          clarifying_options: clarifyingNeed.options as ClarifyingOption[],
         }),
         { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
       )
@@ -1048,17 +1170,21 @@ Deno.serve(async (req) => {
 
     if (rpcError) {
       captureException(rpcError, { functionName: 'nl-search', correlationId })
-      // PR-3: return 200 with kind=soft_error so the frontend renders a
-      // calm <SoftErrorCard /> with recovery chips instead of the harsh
-      // red block. Telemetry below still logs intent='error' so dashboards
-      // and Sentry continue to surface the failure.
-      const softErrorActions = getSoftErrorActions()
+      // PR-3/PR-4: return 200 with kind=soft_error so the frontend renders
+      // a calm <SoftErrorCard />. PR-4 adds variation: if the previous turn
+      // was already a soft_error, the user gets a different message + chip
+      // set so we don't show the same "I had trouble" copy twice.
+      const isRepeatSoftError = recoveryContext?.last_kind === 'soft_error'
+      const softErrorActions = isRepeatSoftError ? getRepeatedSoftErrorActions() : getSoftErrorActions()
+      const softErrorMessage = isRepeatSoftError
+        ? "That still didn't go through. Let's try a simpler path."
+        : "I had trouble completing that search. Want to try again or broaden it?"
       fireAndForget(logDiscoveryEvent(adminClient, {
         user_id: user.id,
         role: userContext?.role ?? null,
         query_text: query,
         intent: 'error',
-        parsed_filters: { _meta: { kind: 'soft_error', error_phase: 'rpc', suggested_actions_count: softErrorActions.length } } as any,
+        parsed_filters: { _meta: { kind: 'soft_error', error_phase: 'rpc', repeated: isRepeatSoftError, suggested_actions_count: softErrorActions.length } } as any,
         result_count: 0,
         has_qualitative: false,
         llm_provider: llmProvider,
@@ -1079,7 +1205,7 @@ Deno.serve(async (req) => {
           has_more: false,
           parsed_filters: null,
           summary: null,
-          ai_message: "I had trouble completing that search. Want to try again or broaden it?",
+          ai_message: softErrorMessage,
           kind: 'soft_error' as ResponseKind,
           applied: null,
           suggested_actions: softErrorActions,
@@ -1297,6 +1423,7 @@ Deno.serve(async (req) => {
         parseRetryCount: 0,
         headers,
         correlationId,
+        isRepeatSoftError: pendingIsRepeatSoftError,
       })
     }
 

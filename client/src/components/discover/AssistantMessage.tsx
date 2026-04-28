@@ -133,8 +133,16 @@ export default function AssistantMessage({ msg }: AssistantMessageProps) {
   })()
 
   return (
-    <div className="flex items-start gap-2.5">
-      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[#8026FA] to-[#924CEC] flex items-center justify-center mt-0.5">
+    <div className="flex items-start gap-2.5 animate-fadeSlideIn">
+      <div
+        className="
+          flex-shrink-0 w-8 h-8 rounded-full
+          bg-gradient-to-br from-[#8026FA] to-[#924CEC]
+          flex items-center justify-center mt-0.5
+          shadow-sm shadow-[#8026FA]/15
+        "
+        aria-hidden="true"
+      >
         <Bot className="w-4 h-4 text-white" />
       </div>
       <div className="flex-1 min-w-0 max-w-[85%] sm:max-w-[75%]">

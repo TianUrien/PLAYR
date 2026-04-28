@@ -19,8 +19,8 @@ interface TextResponseProps {
  */
 export default function TextResponse({ message, suggestedActions, onAction }: TextResponseProps) {
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
-      <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">{message}</p>
+    <div className="bg-white border border-gray-200/80 rounded-2xl rounded-tl-md px-4 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <p className="text-[14px] text-gray-800 leading-[1.55] whitespace-pre-line">{message}</p>
       {suggestedActions && suggestedActions.length > 0 && (
         <ActionChipRow actions={suggestedActions} onAction={onAction} />
       )}

@@ -56,7 +56,7 @@ export default function ActionChipRow({ actions, onAction, compact = false }: Ac
       className={
         compact
           ? 'mt-3 flex flex-wrap gap-2'
-          : 'mt-3 flex flex-wrap gap-2'
+          : 'mt-3.5 flex flex-wrap gap-2'
       }
       role="group"
       aria-label="Suggested next actions"
@@ -70,17 +70,17 @@ export default function ActionChipRow({ actions, onAction, compact = false }: Ac
             onClick={() => onAction(action)}
             className="
               inline-flex items-center gap-1.5
-              px-3 py-1.5
+              min-h-[36px] px-3.5 py-2
               rounded-full
               border border-gray-200 bg-white
               text-xs font-medium text-gray-700
-              hover:border-[#8026FA]/30 hover:bg-[#8026FA]/5 hover:text-[#8026FA]
-              active:bg-[#8026FA]/10
-              transition-colors
-              focus:outline-none focus:ring-2 focus:ring-[#8026FA]/30
+              hover:border-[#8026FA]/40 hover:bg-[#8026FA]/[0.06] hover:text-[#8026FA]
+              active:scale-[0.98] active:bg-[#8026FA]/10
+              transition-all duration-150
+              focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8026FA]/40 focus-visible:border-[#8026FA]/40
             "
           >
-            <Icon className="w-3.5 h-3.5 flex-shrink-0" />
+            <Icon className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
             <span className="leading-none">{action.label}</span>
           </button>
         )
