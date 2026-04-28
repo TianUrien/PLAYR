@@ -268,6 +268,12 @@ Deno.serve(async (req) => {
   // PR-4: track whether the previous turn was already soft_error so the
   // catch-block fallback can emit alternate copy on a repeated failure.
   let pendingIsRepeatSoftError = false
+  // PR-4 QA fix: keyword fallback only makes sense for search-shaped intents.
+  // For knowledge / self_advice / greeting queries, the keyword RPC returns
+  // 0 matches and the user sees a no_results card with totally unrelated
+  // chips. Track the routed intent so the catch block can emit a clean
+  // soft_error instead of running the wrong fallback.
+  let pendingIntentEntityType: string | null = null
 
   // CORS preflight
   if (req.method === 'OPTIONS') {
@@ -551,6 +557,7 @@ Deno.serve(async (req) => {
     // bug. The hint is also passed to the LLM as a system-prompt nudge so
     // it filters and writes its message accordingly.
     const intent: RoutedIntent = classifyEntityType(query)
+    pendingIntentEntityType = intent.entity_type
 
     // ── Fetch user context for LLM ─────────────────────────────────────
     // Phase 1 personalization: pull a richer slice of the user's own profile
@@ -1412,6 +1419,53 @@ Deno.serve(async (req) => {
     // graceful keyword-search fallback. Covers LLM timeouts, provider
     // rate-limits, transient 5xx, and unexpected LLM errors alike.
     if (pendingQuery && pendingUserId && pendingAdminClient) {
+      // PR-4 QA fix: keyword fallback only applies to search-shaped intents.
+      // Knowledge / self_advice / self_profile / greeting / unknown intents
+      // would land on a no_results card with unrelated chips ("Show all clubs"
+      // for a "what is a penalty corner?" query). For those, return
+      // soft_error directly so the user gets calm copy + retry chips.
+      const NON_SEARCH_INTENTS = new Set(['knowledge', 'self_advice', 'self_profile', 'greeting'])
+      if (pendingIntentEntityType && NON_SEARCH_INTENTS.has(pendingIntentEntityType)) {
+        const softErrorActions = pendingIsRepeatSoftError
+          ? getRepeatedSoftErrorActions()
+          : getSoftErrorActions()
+        const softErrorMessage = pendingIsRepeatSoftError
+          ? "That still didn't go through. Let's try a simpler path."
+          : "I had trouble generating that answer. Want to try again, or ask something else?"
+        fireAndForget(logDiscoveryEvent(pendingAdminClient, {
+          user_id: pendingUserId,
+          role: pendingUserRole,
+          query_text: pendingQuery,
+          intent: 'error',
+          parsed_filters: { _meta: { kind: 'soft_error', error_phase: 'llm_non_search', repeated: pendingIsRepeatSoftError, suggested_actions_count: softErrorActions.length, intent_entity_type: pendingIntentEntityType } } as any,
+          result_count: 0,
+          has_qualitative: false,
+          llm_provider: llmProvider,
+          response_time_ms: Date.now() - startTime,
+          error_message: err.message,
+          prompt_tokens: null,
+          completion_tokens: null,
+          cached_tokens: null,
+          prompt_version: PROMPT_VERSION,
+          fallback_used: false,
+          retry_count: 0,
+        }))
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: [],
+            total: 0,
+            has_more: false,
+            parsed_filters: null,
+            summary: null,
+            ai_message: softErrorMessage,
+            kind: 'soft_error' as ResponseKind,
+            applied: null,
+            suggested_actions: softErrorActions,
+          }),
+          { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
+        )
+      }
       return runKeywordFallback({
         adminClient: pendingAdminClient,
         rawQuery: pendingQuery,
