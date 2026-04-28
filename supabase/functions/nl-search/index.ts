@@ -17,6 +17,15 @@ import { getCorsHeaders } from '../_shared/cors.ts'
 import { captureException } from '../_shared/sentry.ts'
 import { parseSearchQuery, synthesizeQualitativeInsights, PROMPT_VERSION, type LLMCallMeta, type ParsedFilters, type HistoryTurn, type ProfileQualitativeData, type UserContext } from '../_shared/llm-client.ts'
 import { classifyEntityType, entityTypeToRole, type RoutedIntent } from '../_shared/intent-router.ts'
+import {
+  type AppliedSearch,
+  buildRoleSummary,
+  getGreetingActions,
+  getNoResultsActions,
+  getSelfAdviceActions,
+  type ResponseKind,
+  type SuggestedAction,
+} from '../_shared/suggested-actions.ts'
 
 interface DiscoveryEventParams {
   user_id: string
@@ -105,12 +114,18 @@ async function runKeywordFallback(params: {
 
   try {
     const discoverableRoles = ['player', 'coach', 'club', 'brand']
+    // Pass p_coach_specializations explicitly (even as null) so PostgREST can
+    // disambiguate against the older overload of discover_profiles. Without
+    // this the staging DB returns PGRST203 ("Could not choose the best
+    // candidate function") because two overloaded signatures exist. Pre-
+    // existing bug surfaced by Phase 1A testing.
     const { data: rpcResult, error: rpcError } = await adminClient.rpc('discover_profiles', {
       p_roles: discoverableRoles,
       p_search_text: rawQuery,
       p_sort_by: 'relevance',
       p_limit: 20,
       p_offset: 0,
+      p_coach_specializations: null,
     })
 
     if (rpcError) throw rpcError
@@ -146,6 +161,12 @@ async function runKeywordFallback(params: {
         parsed_filters: null,
         summary: `Showing ${result.total} keyword match${result.total === 1 ? '' : 'es'}.`,
         ai_message: 'AI assistant is temporarily unavailable. Showing keyword matches instead.',
+        // Phase 1A: tag the fallback so the new frontend can render it as
+        // results (or no_results when total=0). No chips on the fallback path
+        // in PR-1 — degraded mode keeps the surface minimal.
+        kind: (result.total === 0 ? 'no_results' : 'results') as ResponseKind,
+        applied: null,
+        suggested_actions: [] as SuggestedAction[],
       }),
       { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
     )
@@ -190,10 +211,14 @@ async function runKeywordFallback(params: {
       fallback_used: true,
       retry_count: parseRetryCount,
     }))
+    // PR-1: tag the doubly-degraded fallback as soft_error in the body. Status
+    // stays 500 here; PR-3 changes both the status and the message wording so
+    // the frontend can render a calm card.
     return new Response(
       JSON.stringify({
         success: false,
         error: 'Search is temporarily unavailable. Please try again in a moment.',
+        kind: 'soft_error' as ResponseKind,
       }),
       { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
     )
@@ -282,6 +307,11 @@ Deno.serve(async (req) => {
     const history: HistoryTurn[] = rawHistory
       .slice(-10)
       .filter((t: any) => (t?.role === 'user' || t?.role === 'assistant') && typeof t?.content === 'string')
+    // PR-1 accepts but ignores recovery_context. PR-3 wires it into the
+    // recovery short-circuit path. Accepting it now keeps the frontend's
+    // request shape stable across PR boundaries.
+    // deno-lint-ignore no-unused-vars
+    const _recoveryContext: { last_kind?: ResponseKind; last_applied?: AppliedSearch } | undefined = body?.recovery_context
 
     if (!query || typeof query !== 'string') {
       return new Response(
@@ -690,6 +720,10 @@ Deno.serve(async (req) => {
           parsed_filters: null,
           summary: null,
           ai_message: cannedMessage,
+          // Phase 1A envelope additions (PR-1, additive only).
+          kind: 'canned_redirect' as ResponseKind,
+          applied: null,
+          suggested_actions: [] as SuggestedAction[],
         }),
         { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
       )
@@ -742,6 +776,16 @@ Deno.serve(async (req) => {
 
     // ── Conversation or knowledge response (no search needed) ────────
     if (llmResult.type === 'conversation' || llmResult.type === 'knowledge') {
+      // Phase 1A: emit role-aware action chips for self-advice and greetings.
+      // Knowledge answers and other generic responses ship with no chips
+      // (no clear next-action). Adding chips later is an opt-in change.
+      let convoActions: SuggestedAction[] = []
+      if (intent.entity_type === 'self_advice') {
+        convoActions = getSelfAdviceActions(userContext?.role ?? null)
+      } else if (intent.entity_type === 'greeting') {
+        convoActions = getGreetingActions()
+      }
+
       const convoMeta = {
         _meta: {
           router_entity_type: intent.entity_type,
@@ -749,6 +793,9 @@ Deno.serve(async (req) => {
           router_signals: intent.matched_signals,
           llm_selected_tool: llmSelectedTool,
           backend_forced_search: false,
+          // Phase 1A telemetry additions
+          kind: 'text' as ResponseKind,
+          suggested_actions_count: convoActions.length,
         },
       }
       fireAndForget(logDiscoveryEvent(adminClient, {
@@ -778,6 +825,10 @@ Deno.serve(async (req) => {
           parsed_filters: null,
           summary: null,
           ai_message: llmResult.message,
+          // Phase 1A envelope additions (PR-1, additive only).
+          kind: 'text' as ResponseKind,
+          applied: null,
+          suggested_actions: convoActions,
         }),
         { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
       )
@@ -898,8 +949,16 @@ Deno.serve(async (req) => {
 
     if (rpcError) {
       captureException(rpcError, { functionName: 'nl-search', correlationId })
+      // PR-1: tag the error envelope with kind=soft_error so the new frontend
+      // can render a calm card. Status stays 500 in PR-1 (changed to 200 in
+      // PR-3 alongside the recovery short-circuit). Old client ignores the
+      // new field; new client falls back when status is non-2xx.
       return new Response(
-        JSON.stringify({ success: false, error: 'Search query failed' }),
+        JSON.stringify({
+          success: false,
+          error: 'Search query failed',
+          kind: 'soft_error' as ResponseKind,
+        }),
         { status: 500, headers: { ...headers, 'Content-Type': 'application/json' } }
       )
     }
@@ -1001,6 +1060,37 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ── Phase 1A envelope: build applied + kind + suggested_actions ──────
+    // The applied block summarizes what was actually searched in human-readable
+    // form. The new frontend uses this for the no-results card; old frontend
+    // ignores it. role_summary is the single field most likely to be embedded
+    // verbatim into UI copy ("I searched for {role_summary} based on your
+    // profile...").
+    const ENTITY_PLURAL: Record<string, AppliedSearch['entity']> = {
+      player: 'players',
+      coach: 'coaches',
+      club: 'clubs',
+      brand: 'brands',
+      umpire: 'umpires',
+    }
+    const appliedEntity = enforcedRole ? ENTITY_PLURAL[enforcedRole] ?? null : null
+    const applied: AppliedSearch = {
+      entity: appliedEntity,
+      gender_label: effectiveGender,
+      location_label: baseLocationText,
+      age: (parsed.min_age != null || parsed.max_age != null)
+        ? { min: parsed.min_age, max: parsed.max_age }
+        : undefined,
+      role_summary: '',
+    }
+    applied.role_summary = buildRoleSummary(applied)
+
+    const responseKind: ResponseKind = result.total === 0 ? 'no_results' : 'results'
+    // Chips only on no_results in PR-1 (refine chips for results land in Package B).
+    const suggestedActions: SuggestedAction[] = responseKind === 'no_results'
+      ? getNoResultsActions(applied, userContext?.role ?? null)
+      : []
+
     // ── Analytics logging ────────────────────────────────────────────────
     // Phase 0 enrichment: stash the routing decision into parsed_filters._meta
     // so we can prove (or disprove) that the keyword router is actually
@@ -1020,6 +1110,10 @@ Deno.serve(async (req) => {
         gender_source: genderSource,
         effective_roles: effectiveRoles,
         effective_gender: effectiveGender,
+        // Phase 1A telemetry additions
+        kind: responseKind,
+        applied_role_summary: applied.role_summary,
+        suggested_actions_count: suggestedActions.length,
       },
     }
     fireAndForget(logDiscoveryEvent(adminClient, {
@@ -1051,6 +1145,10 @@ Deno.serve(async (req) => {
         parsed_filters: parsed,
         summary: parsed.summary || `Found ${result.total} result${result.total === 1 ? '' : 's'}.`,
         ai_message: aiMessage,
+        // Phase 1A envelope additions (PR-1, additive only).
+        kind: responseKind,
+        applied,
+        suggested_actions: suggestedActions,
       }),
       { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
     )

@@ -66,6 +66,14 @@ const SELF_ADVICE = [
   /\b(my |for my )(visibility|profile completion|next steps?)\b/i,
   /\bwhat'?s missing( from)? my (profile|brand|page|club)\b/i,
   /\b(advice|tips?) (for|on) my profile\b/i,
+  // Phase 1A — connection / next-action advice. Treat these as self-advice
+  // so the assistant can append role-aware action chips ("Find clubs for me",
+  // "Improve my profile", etc.) instead of leaving the user with a generic
+  // wall of text and no next step.
+  /\bwho should i (connect|reach\s*out|talk|message|follow)\b/i,
+  /\bwhat should i (search|look) for\b/i,
+  /\bwhere (should|do) i (start|begin)\b/i,
+  /\bwhat can i do( next)?\??\s*$/i,  // bare "what can I do?" / "what can I do next?"
 ]
 
 // ── Hockey knowledge (rules / explanations / how-to) ──
