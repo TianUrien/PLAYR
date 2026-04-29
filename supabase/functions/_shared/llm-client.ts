@@ -4,11 +4,13 @@
  *
  * Supports multiple providers via the LLM_PROVIDER env var:
  *   - 'gemini'  (default) — Google Gemini 2.5 Flash (free tier)
- *   - 'claude'  — Anthropic Claude Haiku (paid)
+ *   - 'claude'  — Anthropic Claude Sonnet 4.6 (paid; Phase 4 eval target)
  *   - 'openai'  — OpenAI GPT-4o-mini (paid)
  *
  * Switching providers requires only changing the env var + API key.
- * Zero code changes needed.
+ * Zero code changes needed. Each provider returns the same {result, meta}
+ * shape: meta carries retry_count + usage (prompt/completion/cached tokens)
+ * so discovery_events comparisons are apples-to-apples.
  */
 
 export interface ParsedFilters {
@@ -647,65 +649,107 @@ async function callGemini(query: string, history: HistoryTurn[] = [], userContex
 
 // ─── Claude (Anthropic — paid) ────────────────────────────────────────
 
-async function callClaude(query: string, history: HistoryTurn[] = [], userContext?: UserContext, intentHint?: IntentHint): Promise<LLMResult> {
+async function callClaude(
+  query: string,
+  history: HistoryTurn[] = [],
+  userContext?: UserContext,
+  intentHint?: IntentHint,
+): Promise<{ result: LLMResult; meta: LLMCallMeta }> {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured')
 
-  const hintBlock = intentHint ? buildIntentHintBlock(intentHint) : ''
-  const systemPrompt = [
-    SYSTEM_PROMPT,
+  // Split system into stable + per-call blocks so Anthropic prompt caching
+  // can hit on SYSTEM_PROMPT (~3K tokens) across calls within a 5-min window.
+  // UserContext + intentHint vary per call and stay outside the cached block.
+  const variableSystem = [
     userContext ? buildUserContextBlock(userContext) : '',
-    hintBlock,
+    intentHint ? buildIntentHintBlock(intentHint) : '',
   ].filter(Boolean).join('\n\n')
+
+  const systemBlocks: Array<Record<string, unknown>> = [
+    { type: 'text', text: SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+  ]
+  if (variableSystem) systemBlocks.push({ type: 'text', text: variableSystem })
 
   const messages = [
     ...history.map(turn => ({ role: turn.role as 'user' | 'assistant', content: turn.content })),
     { role: 'user' as const, content: query },
   ]
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+  const { response, retryCount } = await retryableFetch(
+    'https://api.anthropic.com/v1/messages',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        system: systemBlocks,
+        tools: [
+          { name: SEARCH_TOOL.name, description: SEARCH_TOOL.description, input_schema: SEARCH_TOOL.input_schema },
+          { name: RESPOND_TOOL.name, description: RESPOND_TOOL.description, input_schema: RESPOND_TOOL.input_schema },
+          { name: HOCKEY_KNOWLEDGE_TOOL.name, description: HOCKEY_KNOWLEDGE_TOOL.description, input_schema: HOCKEY_KNOWLEDGE_TOOL.input_schema },
+        ],
+        tool_choice: { type: 'auto' },
+        messages,
+      }),
     },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
-      system: systemPrompt,
-      tools: [
-        { name: SEARCH_TOOL.name, description: SEARCH_TOOL.description, input_schema: SEARCH_TOOL.input_schema },
-        { name: RESPOND_TOOL.name, description: RESPOND_TOOL.description, input_schema: RESPOND_TOOL.input_schema },
-        { name: HOCKEY_KNOWLEDGE_TOOL.name, description: HOCKEY_KNOWLEDGE_TOOL.description, input_schema: HOCKEY_KNOWLEDGE_TOOL.input_schema },
-      ],
-      tool_choice: { type: 'auto' },
-      messages,
-    }),
-  })
+    // Sonnet is slower than Gemini Flash on the same shape; bump per-attempt
+    // timeout from 4s → 15s. The 15s ceiling is sized for the slowest tool
+    // path (multi-paragraph answer_hockey_question responses) which can
+    // legitimately take 10-15s. Search-tool calls typically return in 4-7s.
+    // One retry on transient 5xx/timeout, same as Gemini.
+    { timeoutMs: 15000, maxRetries: 1 }
+  )
 
   if (!response.ok) {
     const errorBody = await response.text()
+    // 429 = rate limit; 529 = Anthropic overloaded. Map both to the
+    // backend's recoverable rate-limit class so the chip-fallback fires.
+    if (response.status === 429 || response.status === 529) {
+      throw new LLMRateLimitError()
+    }
     throw new Error(`Claude API error (${response.status}): ${errorBody}`)
   }
 
   const data = await response.json()
+  // Anthropic usage fields:
+  //   input_tokens                    — uncached input we paid for this call
+  //   cache_creation_input_tokens     — input written to cache (first call)
+  //   cache_read_input_tokens         — input served from cache (savings)
+  //   output_tokens                   — completion tokens
+  // For parity with Gemini's usageMetadata, prompt_tokens = paid-input-tokens
+  // (input + cache_creation), and cached_tokens = the cache-read savings.
+  const usage: LLMUsage = {
+    prompt_tokens: (data.usage?.input_tokens ?? 0) + (data.usage?.cache_creation_input_tokens ?? 0),
+    completion_tokens: data.usage?.output_tokens ?? null,
+    cached_tokens: data.usage?.cache_read_input_tokens ?? null,
+  }
+  const meta: LLMCallMeta = { retry_count: retryCount, usage }
+
   const toolUse = data.content?.find((c: any) => c.type === 'tool_use')
 
   if (!toolUse?.input) {
     const textBlock = data.content?.find((c: any) => c.type === 'text')
-    return { type: 'conversation', message: textBlock?.text || DEFAULT_CONVERSATION_RESPONSE }
+    return { result: { type: 'conversation', message: textBlock?.text || DEFAULT_CONVERSATION_RESPONSE }, meta }
   }
 
   if (toolUse.name === 'respond') {
-    return { type: 'conversation', message: toolUse.input.message || DEFAULT_CONVERSATION_RESPONSE }
+    return { result: { type: 'conversation', message: toolUse.input.message || DEFAULT_CONVERSATION_RESPONSE }, meta }
   }
   if (toolUse.name === 'answer_hockey_question') {
-    return { type: 'knowledge', message: toolUse.input.message || 'I couldn\'t generate an answer. Try rephrasing your question.' }
+    return { result: { type: 'knowledge', message: toolUse.input.message || "I couldn't generate an answer. Try rephrasing your question." }, meta }
   }
 
   const { message, include_qualitative, ...filters } = toolUse.input
-  return { type: 'search', filters: filters as ParsedFilters, message: message || filters.summary || '', include_qualitative: include_qualitative === true }
+  return {
+    result: { type: 'search', filters: filters as ParsedFilters, message: message || filters.summary || '', include_qualitative: include_qualitative === true },
+    meta,
+  }
 }
 
 // ─── OpenAI (paid) ─────────────────────────────────────────────────────
@@ -835,7 +879,7 @@ export async function parseSearchQuery(
 
   switch (provider) {
     case 'gemini':  return callGemini(query, history, userContext, intentHint)
-    case 'claude':  return { result: await callClaude(query, history, userContext, intentHint), meta: EMPTY_META }
+    case 'claude':  return callClaude(query, history, userContext, intentHint)
     case 'openai':  return { result: await callOpenAI(query, history, userContext, intentHint), meta: EMPTY_META }
     default:        return callGemini(query, history, userContext, intentHint)
   }
@@ -940,33 +984,50 @@ async function synthesizeWithGemini(profiles: ProfileQualitativeData[], userQuer
   return { text, meta }
 }
 
-async function synthesizeWithClaude(profiles: ProfileQualitativeData[], userQuery: string): Promise<string> {
+async function synthesizeWithClaude(profiles: ProfileQualitativeData[], userQuery: string): Promise<{ text: string; meta: LLMCallMeta }> {
   const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured')
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+  // SYNTHESIS_SYSTEM_PROMPT is ~200 tokens — below Sonnet's 1024-token cache
+  // minimum, so no cache_control here. The user message changes per call
+  // (top-5 profiles' comments) so caching wouldn't help anyway.
+  const { response, retryCount } = await retryableFetch(
+    'https://api.anthropic.com/v1/messages',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 512,
+        system: SYNTHESIS_SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: buildSynthesisUserMessage(profiles, userQuery) }],
+      }),
     },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 512,
-      system: SYNTHESIS_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: buildSynthesisUserMessage(profiles, userQuery) }],
-    }),
-  })
+    { timeoutMs: 6000, maxRetries: 0 }
+  )
 
   if (!response.ok) {
     const errorBody = await response.text()
+    if (response.status === 429 || response.status === 529) {
+      throw new LLMRateLimitError()
+    }
     throw new Error(`Claude synthesis error (${response.status}): ${errorBody}`)
   }
 
   const data = await response.json()
+  const usage: LLMUsage = {
+    prompt_tokens: (data.usage?.input_tokens ?? 0) + (data.usage?.cache_creation_input_tokens ?? 0),
+    completion_tokens: data.usage?.output_tokens ?? null,
+    cached_tokens: data.usage?.cache_read_input_tokens ?? null,
+  }
+  const meta: LLMCallMeta = { retry_count: retryCount, usage }
+
   const textBlock = data.content?.find((c: any) => c.type === 'text')
-  return textBlock?.text || ''
+  return { text: textBlock?.text || '', meta }
 }
 
 async function synthesizeWithOpenAI(profiles: ProfileQualitativeData[], userQuery: string): Promise<string> {
@@ -1006,7 +1067,7 @@ export async function synthesizeQualitativeInsights(
 
   switch (provider) {
     case 'gemini':  return synthesizeWithGemini(profiles, userQuery)
-    case 'claude':  return { text: await synthesizeWithClaude(profiles, userQuery), meta: EMPTY_META }
+    case 'claude':  return synthesizeWithClaude(profiles, userQuery)
     case 'openai':  return { text: await synthesizeWithOpenAI(profiles, userQuery), meta: EMPTY_META }
     default:        return synthesizeWithGemini(profiles, userQuery)
   }
