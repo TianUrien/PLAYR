@@ -26,6 +26,8 @@ type PublicProfileBase = Pick<
   | 'nationality2_country_id'
   | 'current_club'
   | 'gender'
+  | 'playing_category'
+  | 'coaching_categories'
   | 'date_of_birth'
   | 'position'
   | 'secondary_position'
@@ -60,6 +62,10 @@ const PUBLIC_PROFILE_FIELDS = [
   'current_club',
   'current_world_club_id',
   'gender',
+  // Phase 3: hockey categories. Player has playing_category; coach uses
+  // coaching_categories. PublicPlayerProfile renders both shapes.
+  'playing_category',
+  'coaching_categories',
   'date_of_birth',
   'position',
   'secondary_position',

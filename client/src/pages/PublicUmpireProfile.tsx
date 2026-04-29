@@ -32,6 +32,7 @@ type PublicUmpireShape = Partial<Profile> &
     | 'nationality_country_id'
     | 'nationality2_country_id'
     | 'gender'
+    | 'umpiring_categories'
     | 'date_of_birth'
   > & { is_test_account?: boolean }
 
@@ -47,6 +48,8 @@ const PUBLIC_UMPIRE_FIELDS = [
   'nationality_country_id',
   'nationality2_country_id',
   'gender',
+  // Phase 3: umpiring_categories drives the categories chip in the hero card.
+  'umpiring_categories',
   'date_of_birth',
   'social_links',
   'is_test_account',
