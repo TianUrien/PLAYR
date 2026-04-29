@@ -75,7 +75,7 @@ function isPlayerComplete(m: CommunityMemberFields): boolean {
 /**
  * Coach: basic info + specialization + photo + professional bio + journey + references.
  * Matches useCoachProfileStrength.ts buckets minus media gallery.
- * Note: the full coach hook also requires DOB/gender in the "basic" bucket — we
+ * Note: the full coach hook also requires DOB + coaching_categories in the "basic" bucket — we
  * relax that here because the community query only fetches name/nationality/location.
  */
 function isCoachComplete(m: CommunityMemberFields): boolean {

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { ArrowLeft, MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail, Award } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
-import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, NextStepCard, FreshnessCard, SearchAppearancesCard, DualNationalityDisplay, AvailabilityPill, TierBadge, VerifiedBadge } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, NextStepCard, FreshnessCard, SearchAppearancesCard, DualNationalityDisplay, AvailabilityPill, TierBadge, VerifiedBadge, CategoryConfirmationBanner } from '@/components'
 import { calculateTier } from '@/lib/profileTier'
 import { useProfileFreshness } from '@/hooks/useProfileFreshness'
 import type { FreshnessNudge } from '@/lib/profileFreshness'
@@ -18,7 +18,7 @@ import Button from '@/components/Button'
 import SignInPromptModal from '@/components/SignInPromptModal'
 import SocialLinksDisplay from '@/components/SocialLinksDisplay'
 import type { Profile } from '@/lib/supabase'
-import { genderToDisplay } from '@/lib/genderLabels'
+import { categoryToDisplay } from '@/lib/hockeyCategories'
 import { supabase } from '@/lib/supabase'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useToastStore } from '@/lib/toast'
@@ -282,6 +282,13 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
           </button>
         )}
 
+        {!readOnly && (
+          <CategoryConfirmationBanner
+            needsConfirmation={Boolean(profile.category_confirmation_needed)}
+            onConfirm={() => setShowEditModal(true)}
+          />
+        )}
+
         {/* Profile Header */}
         <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm mb-6 animate-fade-in overflow-visible">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
@@ -386,18 +393,14 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                   </>
                 )}
 
-                {/* Gender (if specified) */}
-                {profile.gender && (
+                {/* Playing category (if specified). Phase 3 — neutral chip,
+                    no per-gender color coding (5 categories make arbitrary
+                    colors noisy). */}
+                {profile.playing_category && (
                   <>
                     <span className="text-gray-400">•</span>
-                    <div className={`flex items-center gap-1.5 ${
-                      profile.gender === 'Women' 
-                        ? 'text-[#9f7aea]' 
-                        : profile.gender === 'Men' 
-                          ? 'text-[#5c6bc0]' 
-                          : 'text-gray-600'
-                    }`}>
-                      <span>{genderToDisplay(profile.gender)}</span>
+                    <div className="flex items-center gap-1.5 text-gray-700">
+                      <span>{categoryToDisplay(profile.playing_category)}</span>
                     </div>
                   </>
                 )}
@@ -609,10 +612,10 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                     {/* Right Column */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Gender
+                        Playing Category
                       </label>
-                      <p className={profile.gender ? "text-gray-900" : "text-gray-500 italic"}>
-                        {genderToDisplay(profile.gender) || 'Not specified'}
+                      <p className={profile.playing_category ? "text-gray-900" : "text-gray-500 italic"}>
+                        {categoryToDisplay(profile.playing_category) || 'Not specified'}
                       </p>
                     </div>
 

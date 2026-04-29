@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { ArrowLeft, MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail, Plus } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
-import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, NextStepCard, FreshnessCard, SearchAppearancesCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, DualNationalityDisplay, AvailabilityPill, TierBadge, VerifiedBadge } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, NextStepCard, FreshnessCard, SearchAppearancesCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, DualNationalityDisplay, AvailabilityPill, TierBadge, VerifiedBadge, CategoryConfirmationBanner } from '@/components'
 import { calculateTier } from '@/lib/profileTier'
 import { useProfileFreshness } from '@/hooks/useProfileFreshness'
 import type { FreshnessNudge } from '@/lib/profileFreshness'
@@ -17,7 +17,7 @@ import { DashboardSkeleton } from '@/components/Skeleton'
 import SignInPromptModal from '@/components/SignInPromptModal'
 import SocialLinksDisplay from '@/components/SocialLinksDisplay'
 import type { Profile } from '@/lib/supabase'
-import { genderToDisplay } from '@/lib/genderLabels'
+import { categoriesToDisplay } from '@/lib/hockeyCategories'
 import { supabase } from '@/lib/supabase'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useToastStore } from '@/lib/toast'
@@ -286,6 +286,13 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
           </button>
         )}
 
+        {!readOnly && (
+          <CategoryConfirmationBanner
+            needsConfirmation={Boolean(profile.category_confirmation_needed)}
+            onConfirm={() => setShowEditModal(true)}
+          />
+        )}
+
         {/* Profile Header */}
         <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm mb-6 animate-fade-in overflow-visible">
           <div className="flex flex-col md:flex-row gap-6">
@@ -403,16 +410,11 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                     <span>{age} years old</span>
                   </div>
                 )}
-                {/* Gender (if specified) */}
-                {profile.gender && (
-                  <div className={`flex items-center gap-2 ${
-                    profile.gender === 'Women' 
-                      ? 'text-[#9f7aea]' 
-                      : profile.gender === 'Men' 
-                        ? 'text-[#5c6bc0]' 
-                        : 'text-gray-600'
-                  }`}>
-                    <span>{genderToDisplay(profile.gender)}</span>
+                {/* Coaching categories (if any). Phase 3 — neutral chip,
+                    no per-gender color coding. */}
+                {profile.coaching_categories && profile.coaching_categories.length > 0 && (
+                  <div className="flex items-center gap-2 text-gray-700">
+                    <span>{categoriesToDisplay(profile.coaching_categories)}</span>
                   </div>
                 )}
                 {/* Current Club (if specified) */}
@@ -539,12 +541,12 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                       <p className="text-gray-900">{profile.base_location}</p>
                     </div>
 
-                    {profile.gender && (
+                    {profile.coaching_categories && profile.coaching_categories.length > 0 && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Gender
+                          Coaching Categories
                         </label>
-                        <p className="text-gray-900">{genderToDisplay(profile.gender)}</p>
+                        <p className="text-gray-900">{categoriesToDisplay(profile.coaching_categories)}</p>
                       </div>
                     )}
 

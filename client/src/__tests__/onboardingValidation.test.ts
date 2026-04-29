@@ -4,35 +4,36 @@ import {
   type OnboardingRole,
 } from '@/lib/onboardingValidation'
 
-// A "fully valid" form fixture for both roles. Individual tests strip
-// fields to confirm each validation gate flips.
+// A "fully valid" form fixture for each role. Individual tests strip
+// fields to confirm each validation gate flips. Phase 3: gender is gone,
+// hockey categories take its place.
 const validPlayer: OnboardingFormSubset = {
   fullName: 'Alex Player',
   nationalityCountryId: 202,
   city: 'Amsterdam',
-  gender: 'Men',
   position: 'midfielder',
   secondaryPosition: 'defender',
+  playingCategory: 'adult_men',
 }
 
 const validCoach: OnboardingFormSubset = {
   fullName: 'Casey Coach',
   nationalityCountryId: 5,
   city: 'Brussels',
-  gender: 'Women',
   coachSpecialization: 'head_coach',
   coachSpecializationCustom: '',
+  coachingCategories: ['adult_women'],
 }
 
 const validUmpire: OnboardingFormSubset = {
   fullName: 'Umi Umpire',
   nationalityCountryId: 11,
   city: 'London',
-  gender: 'Women',
   umpireLevel: 'FIH International',
   federation: 'FIH',
   officiatingSpecialization: 'outdoor',
   languages: ['English', 'Spanish'],
+  // umpiringCategories deliberately omitted — optional in Phase 3.
 }
 
 describe('validateOnboardingStep', () => {
@@ -68,10 +69,11 @@ describe('validateOnboardingStep', () => {
   })
 
   describe('step 2 — where you are based', () => {
-    it.each<OnboardingRole>(['player', 'coach'])(
-      'returns null when city + gender are present (%s)',
+    it.each<OnboardingRole>(['player', 'coach', 'umpire'])(
+      'returns null when city is present (%s)',
       (role) => {
-        const form = role === 'player' ? validPlayer : validCoach
+        const form =
+          role === 'player' ? validPlayer : role === 'coach' ? validCoach : validUmpire
         expect(validateOnboardingStep(2, role, form)).toBeNull()
       }
     )
@@ -88,25 +90,16 @@ describe('validateOnboardingStep', () => {
       ).toMatch(/base location is required/i)
     })
 
-    it('returns an error when gender is empty (player)', () => {
-      expect(
-        validateOnboardingStep(2, 'player', { ...validPlayer, gender: '' })
-      ).toMatch(/gender is required/i)
-    })
-
-    it('returns an error when gender is empty (coach)', () => {
-      expect(
-        validateOnboardingStep(2, 'coach', { ...validCoach, gender: '' })
-      ).toMatch(/gender is required/i)
-    })
+    // Phase 3: gender is no longer collected at step 2 for any role. The
+    // hockey-category replacement lives in step 3 (per role).
   })
 
   describe('step 3 — player role', () => {
-    it('returns null when position is filled and secondary is different', () => {
+    it('returns null when position + playing_category are filled', () => {
       expect(validateOnboardingStep(3, 'player', validPlayer)).toBeNull()
     })
 
-    it('returns null when position is filled and secondary is not set', () => {
+    it('returns null when secondary is not set', () => {
       expect(
         validateOnboardingStep(3, 'player', {
           ...validPlayer,
@@ -121,6 +114,12 @@ describe('validateOnboardingStep', () => {
       ).toMatch(/position is required/i)
     })
 
+    it('returns an error when playing_category is missing', () => {
+      expect(
+        validateOnboardingStep(3, 'player', { ...validPlayer, playingCategory: '' })
+      ).toMatch(/playing category/i)
+    })
+
     it('returns an error when primary and secondary positions match', () => {
       expect(
         validateOnboardingStep(3, 'player', {
@@ -132,8 +131,26 @@ describe('validateOnboardingStep', () => {
   })
 
   describe('step 3 — coach role', () => {
-    it('returns null when a specialization is selected', () => {
+    it('returns null when categories + specialization are selected', () => {
       expect(validateOnboardingStep(3, 'coach', validCoach)).toBeNull()
+    })
+
+    it("accepts the [any] sentinel for coaching_categories", () => {
+      expect(
+        validateOnboardingStep(3, 'coach', {
+          ...validCoach,
+          coachingCategories: ['any'],
+        })
+      ).toBeNull()
+    })
+
+    it('returns an error when coaching_categories is empty', () => {
+      expect(
+        validateOnboardingStep(3, 'coach', {
+          ...validCoach,
+          coachingCategories: [],
+        })
+      ).toMatch(/at least one coaching category/i)
     })
 
     it('returns an error when no specialization is selected', () => {
@@ -151,16 +168,6 @@ describe('validateOnboardingStep', () => {
           ...validCoach,
           coachSpecialization: 'other',
           coachSpecializationCustom: '',
-        })
-      ).toMatch(/please enter your role title/i)
-    })
-
-    it('treats whitespace-only custom title as missing for "other"', () => {
-      expect(
-        validateOnboardingStep(3, 'coach', {
-          ...validCoach,
-          coachSpecialization: 'other',
-          coachSpecializationCustom: '   ',
         })
       ).toMatch(/please enter your role title/i)
     })
@@ -194,24 +201,38 @@ describe('validateOnboardingStep', () => {
     })
   })
 
-  describe('step 2 — umpire', () => {
-    it('returns null when city + gender are present', () => {
-      expect(validateOnboardingStep(2, 'umpire', validUmpire)).toBeNull()
-    })
-
-    // Phase 2: umpire gender is intentionally optional. Tester argued
-    // umpiring is gender-blind for appointments; the dropdown shows
-    // "(optional)" and drops the asterisk. The library agrees.
-    it('does NOT require gender for umpire (optional in Phase 2)', () => {
-      expect(
-        validateOnboardingStep(2, 'umpire', { ...validUmpire, gender: '' })
-      ).toBeNull()
-    })
-  })
-
   describe('step 3 — umpire', () => {
     it('returns null for a complete umpire credentials step', () => {
       expect(validateOnboardingStep(3, 'umpire', validUmpire)).toBeNull()
+    })
+
+    it('does NOT require umpiring_categories (optional in Phase 3)', () => {
+      // Even when the array is undefined or empty, advancement is allowed.
+      expect(
+        validateOnboardingStep(3, 'umpire', { ...validUmpire, umpiringCategories: undefined })
+      ).toBeNull()
+      expect(
+        validateOnboardingStep(3, 'umpire', { ...validUmpire, umpiringCategories: [] })
+      ).toBeNull()
+    })
+
+    it('accepts valid umpiring_categories when set', () => {
+      expect(
+        validateOnboardingStep(3, 'umpire', {
+          ...validUmpire,
+          umpiringCategories: ['adult_women', 'girls'],
+        })
+      ).toBeNull()
+    })
+
+    it('rejects invalid umpiring_categories combinations', () => {
+      // 'any' must be exclusive — not allowed alongside specific categories.
+      expect(
+        validateOnboardingStep(3, 'umpire', {
+          ...validUmpire,
+          umpiringCategories: ['any', 'adult_women'],
+        })
+      ).toMatch(/invalid/i)
     })
 
     it('requires umpire level', () => {

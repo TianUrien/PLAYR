@@ -30,6 +30,7 @@ import Header from '@/components/Header'
 import {
   Avatar,
   Button,
+  CategoryConfirmationBanner,
   CommentsTab,
   DashboardMenu,
   EditProfileModal,
@@ -43,6 +44,7 @@ import {
   VerifiedBadge,
   DualNationalityDisplay,
 } from '@/components'
+import { categoriesToDisplay } from '@/lib/hockeyCategories'
 import UmpireAppointmentsSection from '@/components/UmpireAppointmentsSection'
 import ProfileActionMenu from '@/components/ProfileActionMenu'
 import ProfilePostsTab from '@/components/ProfilePostsTab'
@@ -219,6 +221,13 @@ export default function UmpireDashboard({
           </button>
         )}
 
+        {!readOnly && (
+          <CategoryConfirmationBanner
+            needsConfirmation={Boolean(profile.category_confirmation_needed)}
+            onConfirm={() => setShowEditModal(true)}
+          />
+        )}
+
         {/* ── Hero card ── */}
         <div className="bg-white rounded-2xl shadow-sm p-5 md:p-8 animate-fade-in">
           <div className="flex flex-col md:flex-row md:items-center gap-5 md:gap-6">
@@ -308,6 +317,11 @@ export default function UmpireDashboard({
                   <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
                     <Flag className="w-3 h-3" />
                     {profile.federation}
+                  </span>
+                )}
+                {profile.umpiring_categories && profile.umpiring_categories.length > 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
+                    {categoriesToDisplay(profile.umpiring_categories)}
                   </span>
                 )}
                 {(() => {

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { User, MapPin, Calendar, Building2, Camera, UserRound, Briefcase, Users, Store, Flag, X, ChevronRight, Check } from 'lucide-react'
 import * as Sentry from '@sentry/react'
-import { Input, Button, CountrySelect, LocationAutocomplete } from '@/components'
+import { Input, Button, CountrySelect, LocationAutocomplete, PlayingCategorySelector, MultiCategorySelector } from '@/components'
 import type { LocationSelection } from '@/components/LocationAutocomplete'
 import { useCountries } from '@/hooks/useCountries'
 import ClubClaimStep, { type ClubClaimResult } from '@/components/ClubClaimStep'
@@ -22,7 +22,13 @@ import { validateOnboardingStep, type WizardStep } from '@/lib/onboardingValidat
 import { UMPIRE_LEVEL_SUGGESTIONS } from '@/lib/umpireLevels'
 import { FEDERATION_SUGGESTIONS } from '@/lib/umpireFederations'
 import { LANGUAGE_SUGGESTIONS } from '@/lib/languages'
-import { PREFER_NOT_TO_SAY, normalizeGenderInput } from '@/lib/genderLabels'
+import {
+  type PlayingCategory,
+  type CoachUmpireCategory,
+  playingCategoryToLegacyGender,
+  isValidPlayingCategory,
+  isValidCategoryArray,
+} from '@/lib/hockeyCategories'
 
 type UserRole = 'player' | 'coach' | 'club' | 'brand' | 'umpire'
 
@@ -87,7 +93,11 @@ export default function CompleteProfile() {
     dateOfBirth: '',
     position: '',
     secondaryPosition: '',
-    gender: '',
+    // Phase 3 hockey categories. Player picks one (single-select); coach
+    // and umpire pick many (multi-select with optional [any] sentinel).
+    playingCategory: '' as PlayingCategory | '',
+    coachingCategories: [] as CoachUmpireCategory[],
+    umpiringCategories: [] as CoachUmpireCategory[],
     yearFounded: '',
     womensLeagueDivision: '',
     mensLeagueDivision: '',
@@ -113,8 +123,6 @@ export default function CompleteProfile() {
     // language" error despite the input being populated.
     pendingLanguage: '',
   })
-
-  const normalizeGender = normalizeGenderInput
 
   // Use profile data from auth store - no need to fetch again
   const userRole = (profile?.role as UserRole | null) ?? fallbackRole ?? (user?.user_metadata?.role as UserRole | undefined) ?? null
@@ -331,15 +339,24 @@ export default function CompleteProfile() {
         next.clubHistory = profile.club_history ?? prev.clubHistory
       } else {
         next.fullName = profile.full_name ?? prev.fullName
-        next.gender = profile.gender ?? prev.gender
         next.dateOfBirth = profile.date_of_birth ?? prev.dateOfBirth
 
         if (profile.role === 'player') {
           next.position = profile.position ?? prev.position
           next.secondaryPosition = profile.secondary_position ?? prev.secondaryPosition
+          if (isValidPlayingCategory(profile.playing_category)) {
+            next.playingCategory = profile.playing_category
+          }
         } else if (profile.role === 'coach') {
           next.coachSpecialization = (profile.coach_specialization ?? prev.coachSpecialization) as CoachSpecialization | ''
           next.coachSpecializationCustom = profile.coach_specialization_custom ?? prev.coachSpecializationCustom
+          if (isValidCategoryArray(profile.coaching_categories)) {
+            next.coachingCategories = (profile.coaching_categories ?? []) as CoachUmpireCategory[]
+          }
+        } else if (profile.role === 'umpire') {
+          if (isValidCategoryArray(profile.umpiring_categories)) {
+            next.umpiringCategories = (profile.umpiring_categories ?? []) as CoachUmpireCategory[]
+          }
         }
       }
 
@@ -560,7 +577,7 @@ export default function CompleteProfile() {
       if (!form.city.trim()) return 'Base location is required.'
       if (!form.nationalityCountryId) return 'Nationality is required.'
       if (!form.position) return 'Position is required.'
-      if (!form.gender) return 'Gender is required.'
+      if (!form.playingCategory) return 'Please select your playing category.'
       if (form.secondaryPosition && form.secondaryPosition === form.position) {
         return 'Primary and secondary positions must be different.'
       }
@@ -568,7 +585,7 @@ export default function CompleteProfile() {
       if (!form.fullName.trim()) return 'Full name is required.'
       if (!form.city.trim()) return 'Base location is required.'
       if (!form.nationalityCountryId) return 'Nationality is required.'
-      if (!form.gender) return 'Gender is required.'
+      if (form.coachingCategories.length === 0) return 'Please select at least one coaching category.'
       if (!form.coachSpecialization) return 'Please select your coaching specialization.'
       if (form.coachSpecialization === 'other' && !form.coachSpecializationCustom.trim()) {
         return 'Please enter your role title.'
@@ -577,7 +594,7 @@ export default function CompleteProfile() {
       if (!form.fullName.trim()) return 'Full name is required.'
       if (!form.city.trim()) return 'Base location is required.'
       if (!form.nationalityCountryId) return 'Nationality is required.'
-      if (!form.gender) return 'Gender is required.'
+      // Umpiring categories are optional per Phase 3 product direction.
       if (!form.umpireLevel.trim()) return 'Please add your umpire level.'
       if (!form.federation.trim()) return 'Please add the federation you officiate with.'
       if (!form.officiatingSpecialization) return 'Please choose outdoor, indoor, or both.'
@@ -680,22 +697,37 @@ export default function CompleteProfile() {
       }
 
       if (userRole === 'player') {
+        const playingCategory = formData.playingCategory || null
         updateData = {
           ...updateData,
           nationality2_country_id: formData.nationality2CountryId || null,
           position: formData.position,
           secondary_position: formData.secondaryPosition || null,
-          gender: normalizeGender(formData.gender),
+          // Phase 3 dual-write: legacy gender stays in sync with category for
+          // adult_men/adult_women so AI Discovery (which still reads gender
+          // until Phase 3e) keeps working. Girls/Boys/Mixed → null gender.
+          gender: playingCategoryToLegacyGender(playingCategory),
+          playing_category: playingCategory,
+          // User completed the new category UI explicitly — clear any
+          // best-effort flag the migration set on existing rows.
+          category_confirmation_needed: false,
           date_of_birth: formData.dateOfBirth || null,
           current_club: formData.currentClub || null,
           current_world_club_id: formData.currentWorldClubId,
         }
       } else if (userRole === 'coach') {
+        const coachingCategories = formData.coachingCategories.length > 0 ? formData.coachingCategories : null
         updateData = {
           ...updateData,
           nationality2_country_id: formData.nationality2CountryId,
           position: formData.position || null,
-          gender: normalizeGender(formData.gender),
+          // Phase 3: gender column is no longer authoritative for coaches.
+          // We don't try to derive a single value from a multi-select array.
+          // null gender during the 3a-3e gap means coaches signing up via the
+          // new UI won't auto-seed gender in Discovery — minor degradation.
+          gender: null,
+          coaching_categories: coachingCategories,
+          category_confirmation_needed: false,
           date_of_birth: formData.dateOfBirth || null,
           current_club: formData.currentClub || null,
           current_world_club_id: formData.currentWorldClubId,
@@ -709,10 +741,14 @@ export default function CompleteProfile() {
         // text" block above) so a just-typed language makes it into the
         // payload even though the setFormData re-render hasn't happened yet.
         const umpireSinceYear = formSnapshot.umpireSince ? parseInt(formSnapshot.umpireSince, 10) : null
+        const umpiringCategories = formSnapshot.umpiringCategories.length > 0 ? formSnapshot.umpiringCategories : null
         updateData = {
           ...updateData,
           nationality2_country_id: formSnapshot.nationality2CountryId,
-          gender: normalizeGender(formSnapshot.gender),
+          // Phase 3: gender no longer collected on umpire onboarding.
+          gender: null,
+          umpiring_categories: umpiringCategories,
+          category_confirmation_needed: false,
           date_of_birth: formSnapshot.dateOfBirth || null,
           umpire_level: formSnapshot.umpireLevel.trim() || null,
           federation: formSnapshot.federation.trim() || null,
@@ -1236,24 +1272,6 @@ export default function CompleteProfile() {
                         required
                       />
 
-                      <div>
-                        <label htmlFor="gender-select" className="block text-sm font-medium text-gray-700 mb-2">
-                          Gender <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          id="gender-select"
-                          value={formData.gender}
-                          onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
-                          required
-                        >
-                          <option value="">Select gender</option>
-                          <option value="Men">Male</option>
-                          <option value="Women">Female</option>
-                          <option value={PREFER_NOT_TO_SAY}>Prefer not to say</option>
-                        </select>
-                      </div>
-
                       <Input
                         label="Date of Birth (Optional)"
                         type="date"
@@ -1267,6 +1285,18 @@ export default function CompleteProfile() {
                   {currentStep === 3 && (
                     <>
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">Hockey Details</p>
+
+                      <div>
+                        <label id="playing-category-label" className="block text-sm font-medium text-gray-700 mb-2">
+                          Playing Category <span className="text-red-500">*</span>
+                        </label>
+                        <p className="text-xs text-gray-500 mb-3">Which category do you currently play in?</p>
+                        <PlayingCategorySelector
+                          idPrefix="playing-category"
+                          value={formData.playingCategory || null}
+                          onChange={(next) => setFormData({ ...formData, playingCategory: next })}
+                        />
+                      </div>
 
                       <WorldClubSearch
                         value={formData.currentClub}
@@ -1371,24 +1401,6 @@ export default function CompleteProfile() {
                         required
                       />
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="coach-gender">
-                          Gender <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          id="coach-gender"
-                          value={formData.gender}
-                          onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
-                          required
-                        >
-                          <option value="">Select gender</option>
-                          <option value="Men">Male</option>
-                          <option value="Women">Female</option>
-                          <option value={PREFER_NOT_TO_SAY}>Prefer not to say</option>
-                        </select>
-                      </div>
-
                       <Input
                         label="Date of Birth"
                         type="date"
@@ -1402,6 +1414,18 @@ export default function CompleteProfile() {
                   {currentStep === 3 && (
                     <>
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">Coaching Details</p>
+
+                      <div>
+                        <label id="coaching-categories-label" className="block text-sm font-medium text-gray-700 mb-2">
+                          Coaching Categories <span className="text-red-500">*</span>
+                        </label>
+                        <p className="text-xs text-gray-500 mb-3">Which categories do you coach or want to work with?</p>
+                        <MultiCategorySelector
+                          idPrefix="coaching-categories"
+                          value={formData.coachingCategories.length > 0 ? formData.coachingCategories : null}
+                          onChange={(next) => setFormData({ ...formData, coachingCategories: next })}
+                        />
+                      </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1516,23 +1540,6 @@ export default function CompleteProfile() {
                         required
                       />
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="umpire-gender">
-                          Gender <span className="text-gray-400 font-normal">(optional)</span>
-                        </label>
-                        <select
-                          id="umpire-gender"
-                          value={formData.gender}
-                          onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
-                        >
-                          <option value="">Select gender</option>
-                          <option value="Men">Male</option>
-                          <option value="Women">Female</option>
-                          <option value={PREFER_NOT_TO_SAY}>Prefer not to say</option>
-                        </select>
-                      </div>
-
                       <Input
                         label="Date of Birth"
                         type="date"
@@ -1548,6 +1555,18 @@ export default function CompleteProfile() {
                       <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 pt-2">
                         Officiating credentials
                       </p>
+
+                      <div>
+                        <label id="umpiring-categories-label" className="block text-sm font-medium text-gray-700 mb-2">
+                          Umpiring Categories <span className="text-gray-400 font-normal">(optional)</span>
+                        </label>
+                        <p className="text-xs text-gray-500 mb-3">Which categories do you umpire or want to umpire?</p>
+                        <MultiCategorySelector
+                          idPrefix="umpiring-categories"
+                          value={formData.umpiringCategories.length > 0 ? formData.umpiringCategories : null}
+                          onChange={(next) => setFormData({ ...formData, umpiringCategories: next })}
+                        />
+                      </div>
 
                       {/* Level + Federation datalists — free text with suggestions */}
                       <div>

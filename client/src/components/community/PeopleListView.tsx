@@ -10,7 +10,12 @@ import { Search, Filter, Loader2 } from 'lucide-react'
 import { useNavigate, useNavigationType } from 'react-router-dom'
 import { Avatar, RoleBadge, MemberTile } from '@/components'
 import { logger } from '@/lib/logger'
-import { genderToDisplay } from '@/lib/genderLabels'
+import {
+  CATEGORY_LABELS,
+  PLAYING_CATEGORIES,
+  isOpenToAny,
+  type PlayingCategory,
+} from '@/lib/hockeyCategories'
 import { MemberTileSkeleton } from '@/components/Skeleton'
 import { MemberPreviewModal } from './MemberPreviewModal'
 import { supabase } from '@/lib/supabase'
@@ -38,6 +43,10 @@ export interface Profile {
   current_club: string | null
   current_world_club_id: string | null
   gender: string | null
+  // Phase 3 hockey categories — drives the community category filter.
+  playing_category: string | null
+  coaching_categories: string[] | null
+  umpiring_categories: string[] | null
   created_at: string
   is_test_account?: boolean
   open_to_play?: boolean
@@ -74,12 +83,15 @@ export interface Profile {
 }
 
 const PROFILES_SELECT =
-  'id, avatar_url, full_name, role, nationality, nationality_country_id, nationality2_country_id, base_location, position, secondary_position, current_club, current_world_club_id, gender, created_at, is_test_account, open_to_play, open_to_coach, accepted_reference_count, coach_specialization, coach_specialization_custom, highlight_video_url, bio, club_bio, year_founded, website, contact_email, career_entry_count, accepted_friend_count, is_verified, verified_at, umpire_level, federation, umpire_since, officiating_specialization, languages, last_officiated_at, umpire_appointment_count'
+  'id, avatar_url, full_name, role, nationality, nationality_country_id, nationality2_country_id, base_location, position, secondary_position, current_club, current_world_club_id, gender, playing_category, coaching_categories, umpiring_categories, created_at, is_test_account, open_to_play, open_to_coach, accepted_reference_count, coach_specialization, coach_specialization_custom, highlight_video_url, bio, club_bio, year_founded, website, contact_email, career_entry_count, accepted_friend_count, is_verified, verified_at, umpire_level, federation, umpire_since, officiating_specialization, languages, last_officiated_at, umpire_appointment_count'
 
 interface CommunityFilters {
   role: 'all' | 'player' | 'coach' | 'club' | 'brand' | 'umpire'
   position: string[]
-  gender: 'all' | 'Men' | 'Women'
+  /** Phase 3 hockey category filter. Replaces the old Men/Women gender radio.
+   * Routed to playing_category for player rows, and array-overlap (or 'any'
+   * sentinel) for coach + umpire rows. Skipped entirely for club + brand. */
+  category: 'all' | PlayingCategory
   location: string
   nationality: string
   availability: 'all' | 'open'
@@ -121,7 +133,7 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
     role: roleFilter || 'all',
     brandCategory: null,
     position: [],
-    gender: 'all',
+    category: 'all',
     location: '',
     nationality: '',
     availability: 'all',
@@ -403,8 +415,21 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
         (m.secondary_position && filters.position.includes(m.secondary_position.toLowerCase()))
       )
     }
-    if (filters.gender !== 'all') {
-      result = result.filter(m => m.gender === filters.gender)
+    if (filters.category !== 'all') {
+      const target = filters.category
+      result = result.filter((m) => {
+        if (m.role === 'player') return m.playing_category === target
+        if (m.role === 'coach') {
+          return isOpenToAny(m.coaching_categories) ||
+            (Array.isArray(m.coaching_categories) && m.coaching_categories.includes(target))
+        }
+        if (m.role === 'umpire') {
+          return isOpenToAny(m.umpiring_categories) ||
+            (Array.isArray(m.umpiring_categories) && m.umpiring_categories.includes(target))
+        }
+        // Club + brand have no category — exclude when a category filter is active.
+        return false
+      })
     }
     if (filters.location.trim()) {
       const loc = filters.location.toLowerCase()
@@ -453,7 +478,7 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
       (filters.role !== (roleFilter || 'all')) ||
       filters.brandCategory !== null ||
       filters.position.length > 0 ||
-      filters.gender !== 'all' ||
+      filters.category !== 'all' ||
       filters.location.trim() !== '' ||
       filters.nationality.trim() !== '' ||
       filters.availability !== 'all'
@@ -468,7 +493,10 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
           search_query_present: searchActive,
           role: filters.role !== 'all' ? filters.role : null,
           position: filters.position.length > 0 ? filters.position : null,
-          gender: filters.gender !== 'all' ? filters.gender : null,
+          // Phase 3: gender filter retired in favor of category. Analytics
+          // schema kept the gender column for now; populate it from the
+          // category for backward-readability of historical rows.
+          gender: filters.category !== 'all' ? filters.category : null,
           location: filters.location.trim() || null,
           nationality: filters.nationality.trim() || null,
           availability: filters.availability !== 'all' ? filters.availability : null,
@@ -543,7 +571,7 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
       const next = { ...prev, [key]: value }
       if (key === 'role') {
         next.position = []
-        next.gender = 'all'
+        next.category = 'all'
         if (value !== 'brand') next.brandCategory = null
       }
       return next
@@ -560,7 +588,7 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
   }
 
   const clearFilters = () => {
-    setFilters({ role: roleFilter || 'all', brandCategory: null, position: [], gender: 'all', location: '', nationality: '', availability: 'all' })
+    setFilters({ role: roleFilter || 'all', brandCategory: null, position: [], category: 'all', location: '', nationality: '', availability: 'all' })
   }
 
   const hasActiveFilters = () => {
@@ -570,7 +598,7 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
       filters.role !== expectedRole ||
       filters.brandCategory !== null ||
       filters.position.length > 0 ||
-      filters.gender !== 'all' ||
+      filters.category !== 'all' ||
       filters.location.trim() !== '' ||
       filters.nationality.trim() !== '' ||
       filters.availability !== 'all'
@@ -732,22 +760,29 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
               </div>
             )}
 
-            {/* Gender — hidden when role is club or brand */}
+            {/* Hockey category — hidden for club + brand (no category) */}
             {filters.role !== 'club' && filters.role !== 'brand' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
                 <div className="space-y-2">
-                  {(['all', 'Men', 'Women'] as const).map((gender) => (
-                    <label key={gender} className="flex items-center gap-2 cursor-pointer">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={filters.category === 'all'}
+                      onChange={() => updateFilter('category', 'all')}
+                      className="w-4 h-4 text-purple-600"
+                    />
+                    <span className="text-sm text-gray-700">All</span>
+                  </label>
+                  {PLAYING_CATEGORIES.map((cat) => (
+                    <label key={cat} className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="radio"
-                        checked={filters.gender === gender}
-                        onChange={() => updateFilter('gender', gender)}
+                        checked={filters.category === cat}
+                        onChange={() => updateFilter('category', cat)}
                         className="w-4 h-4 text-purple-600"
                       />
-                      <span className="text-sm text-gray-700">
-                        {gender === 'all' ? 'All' : genderToDisplay(gender)}
-                      </span>
+                      <span className="text-sm text-gray-700">{CATEGORY_LABELS[cat]}</span>
                     </label>
                   ))}
                 </div>

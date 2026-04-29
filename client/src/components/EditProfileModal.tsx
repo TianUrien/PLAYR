@@ -4,7 +4,7 @@ import * as Sentry from '@sentry/react'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import type { Profile } from '@/lib/supabase'
-import { Button, Input, CountrySelect, StorageImage, LocationAutocomplete } from '@/components'
+import { Button, Input, CountrySelect, StorageImage, LocationAutocomplete, PlayingCategorySelector, MultiCategorySelector } from '@/components'
 import type { LocationSelection } from '@/components/LocationAutocomplete'
 import { logger } from '@/lib/logger'
 import { optimizeAvatarImage, validateImage } from '@/lib/imageOptimization'
@@ -22,7 +22,13 @@ import WorldClubSearch from './WorldClubSearch'
 import { type SocialLinks, cleanSocialLinks, validateSocialLinks } from '@/lib/socialLinks'
 import { COACH_SPECIALIZATIONS, type CoachSpecialization } from '@/lib/coachSpecializations'
 import { UMPIRE_LEVEL_SUGGESTIONS } from '@/lib/umpireLevels'
-import { PREFER_NOT_TO_SAY, normalizeGenderInput } from '@/lib/genderLabels'
+import {
+  type PlayingCategory,
+  type CoachUmpireCategory,
+  playingCategoryToLegacyGender,
+  isValidPlayingCategory,
+  isValidCategoryArray,
+} from '@/lib/hockeyCategories'
 import { FEDERATION_SUGGESTIONS } from '@/lib/umpireFederations'
 import { LANGUAGE_SUGGESTIONS } from '@/lib/languages'
 import { X as XIcon } from 'lucide-react'
@@ -47,7 +53,10 @@ type ProfileFormData = {
   date_of_birth: string
   position: string
   secondary_position: string
-  gender: string
+  // Phase 3 hockey categories. Player single-select; coach + umpire multi.
+  playing_category: PlayingCategory | ''
+  coaching_categories: CoachUmpireCategory[]
+  umpiring_categories: CoachUmpireCategory[]
   current_club: string
   current_world_club_id: string | null
   year_founded: string
@@ -155,7 +164,13 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   date_of_birth: profile?.date_of_birth || '',
   position: profile?.position || '',
   secondary_position: profile?.secondary_position || '',
-  gender: profile?.gender || '',
+  playing_category: isValidPlayingCategory(profile?.playing_category) ? profile.playing_category : '',
+  coaching_categories: isValidCategoryArray(profile?.coaching_categories)
+    ? ((profile?.coaching_categories ?? []) as CoachUmpireCategory[])
+    : [],
+  umpiring_categories: isValidCategoryArray(profile?.umpiring_categories)
+    ? ((profile?.umpiring_categories ?? []) as CoachUmpireCategory[])
+    : [],
   current_club: profile?.current_club || '',
   current_world_club_id: profile?.current_world_club_id ?? null,
   year_founded: profile?.year_founded?.toString() || '',
@@ -524,12 +539,16 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
     }
 
     if (role === 'player') {
+      const playingCategory = formData.playing_category || null
       optimisticUpdate.nationality = formData.nationality
       optimisticUpdate.nationality_country_id = formData.nationality_country_id
       optimisticUpdate.nationality2_country_id = formData.nationality2_country_id
       optimisticUpdate.position = formData.position || null
       optimisticUpdate.secondary_position = formData.secondary_position || null
-      optimisticUpdate.gender = normalizeGenderInput(formData.gender)
+      // Phase 3 dual-write: legacy gender follows category for adult_men/women.
+      optimisticUpdate.gender = playingCategoryToLegacyGender(playingCategory)
+      optimisticUpdate.playing_category = playingCategory
+      optimisticUpdate.category_confirmation_needed = false
       optimisticUpdate.date_of_birth = formData.date_of_birth || null
       optimisticUpdate.current_club = formData.current_club || null
       optimisticUpdate.current_world_club_id = formData.current_world_club_id
@@ -541,7 +560,14 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.nationality = formData.nationality
       optimisticUpdate.nationality_country_id = formData.nationality_country_id
       optimisticUpdate.nationality2_country_id = formData.nationality2_country_id
-      optimisticUpdate.gender = normalizeGenderInput(formData.gender)
+      // Phase 3: gender no longer authoritative for coaches; null breaks the
+      // (previously partial) AI Discovery seeding for coach→club searches
+      // until Phase 3e migrates that path to category.
+      optimisticUpdate.gender = null
+      optimisticUpdate.coaching_categories = formData.coaching_categories.length > 0
+        ? formData.coaching_categories
+        : null
+      optimisticUpdate.category_confirmation_needed = false
       optimisticUpdate.date_of_birth = formData.date_of_birth || null
       optimisticUpdate.current_club = formData.current_club || null
       optimisticUpdate.current_world_club_id = formData.current_world_club_id
@@ -557,7 +583,11 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.nationality = formSnapshot.nationality
       optimisticUpdate.nationality_country_id = formSnapshot.nationality_country_id
       optimisticUpdate.nationality2_country_id = formSnapshot.nationality2_country_id
-      optimisticUpdate.gender = normalizeGenderInput(formSnapshot.gender)
+      optimisticUpdate.gender = null
+      optimisticUpdate.umpiring_categories = formSnapshot.umpiring_categories.length > 0
+        ? formSnapshot.umpiring_categories
+        : null
+      optimisticUpdate.category_confirmation_needed = false
       optimisticUpdate.date_of_birth = formSnapshot.date_of_birth || null
       optimisticUpdate.bio = formSnapshot.bio || null
       optimisticUpdate.umpire_level = formSnapshot.umpire_level.trim() || null
@@ -878,22 +908,15 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="player-gender">
-                    Gender
+                  <label id="edit-playing-category-label" className="block text-sm font-medium text-gray-700 mb-2">
+                    Playing Category <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    id="player-gender"
-                    value={formData.gender}
-                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
-                    required
-                    aria-label="Select gender"
-                  >
-                    <option value="">Select gender</option>
-                    <option value="Men">Male</option>
-                    <option value="Women">Female</option>
-                    <option value={PREFER_NOT_TO_SAY}>Prefer not to say</option>
-                  </select>
+                  <p className="text-xs text-gray-500 mb-3">Which category do you currently play in?</p>
+                  <PlayingCategorySelector
+                    idPrefix="edit-playing-category"
+                    value={formData.playing_category || null}
+                    onChange={(next) => setFormData({ ...formData, playing_category: next })}
+                  />
                 </div>
 
                 {/* ── Personal ── */}
@@ -1015,20 +1038,15 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="coach-gender-edit">
-                    Gender
+                  <label id="edit-coaching-categories-label" className="block text-sm font-medium text-gray-700 mb-2">
+                    Coaching Categories <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    id="coach-gender-edit"
-                    value={formData.gender}
-                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent"
-                  >
-                    <option value="">Select gender</option>
-                    <option value="Men">Male</option>
-                    <option value="Women">Female</option>
-                    <option value={PREFER_NOT_TO_SAY}>Prefer not to say</option>
-                  </select>
+                  <p className="text-xs text-gray-500 mb-3">Which categories do you coach or want to work with?</p>
+                  <MultiCategorySelector
+                    idPrefix="edit-coaching-categories"
+                    value={formData.coaching_categories.length > 0 ? formData.coaching_categories : null}
+                    onChange={(next) => setFormData({ ...formData, coaching_categories: next })}
+                  />
                 </div>
 
                 <Input
@@ -1105,6 +1123,18 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
               <>
                 <div className="pt-3 mt-1 border-t border-gray-100">
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Officiating credentials</p>
+                </div>
+
+                <div>
+                  <label id="edit-umpiring-categories-label" className="block text-sm font-medium text-gray-700 mb-2">
+                    Umpiring Categories <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">Which categories do you umpire or want to umpire?</p>
+                  <MultiCategorySelector
+                    idPrefix="edit-umpiring-categories"
+                    value={formData.umpiring_categories.length > 0 ? formData.umpiring_categories : null}
+                    onChange={(next) => setFormData({ ...formData, umpiring_categories: next })}
+                  />
                 </div>
 
                 <div>

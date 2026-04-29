@@ -170,6 +170,11 @@ export interface AdminProfileDetails {
     position: string | null
     secondary_position: string | null
     gender: string | null
+    /** Phase 3 hockey category fields. Player single, coach + umpire multi. */
+    playing_category: string | null
+    coaching_categories: string[] | null
+    umpiring_categories: string[] | null
+    category_confirmation_needed: boolean
     date_of_birth: string | null
     avatar_url: string | null
     highlight_video_url: string | null

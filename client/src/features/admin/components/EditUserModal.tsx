@@ -6,13 +6,19 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { X, Save, Loader2 } from 'lucide-react'
-import { CountrySelect } from '@/components'
+import { CountrySelect, PlayingCategorySelector, MultiCategorySelector } from '@/components'
 import WorldClubSearch from '@/components/WorldClubSearch'
 import type { WorldClubSearchResult } from '@/components/WorldClubSearch'
 import { useCountries } from '@/hooks/useCountries'
 import type { AdminProfileDetails } from '../types'
 import { COACH_SPECIALIZATIONS, type CoachSpecialization } from '@/lib/coachSpecializations'
-import { PREFER_NOT_TO_SAY, normalizeGenderInput } from '@/lib/genderLabels'
+import {
+  type PlayingCategory,
+  type CoachUmpireCategory,
+  playingCategoryToLegacyGender,
+  isValidPlayingCategory,
+  isValidCategoryArray,
+} from '@/lib/hockeyCategories'
 
 interface EditUserModalProps {
   isOpen: boolean
@@ -41,7 +47,10 @@ export function EditUserModal({
     nationality2_country_id: null as number | null,
     position: '',
     secondary_position: '',
-    gender: '',
+    // Phase 3 hockey categories
+    playing_category: '' as PlayingCategory | '',
+    coaching_categories: [] as CoachUmpireCategory[],
+    umpiring_categories: [] as CoachUmpireCategory[],
     current_club: '',
     current_world_club_id: null as string | null,
     coach_specialization: '' as CoachSpecialization | '',
@@ -65,7 +74,13 @@ export function EditUserModal({
         nationality2_country_id: profile.nationality2_country_id ?? null,
         position: profile.position || '',
         secondary_position: profile.secondary_position || '',
-        gender: profile.gender || '',
+        playing_category: isValidPlayingCategory(profile.playing_category) ? profile.playing_category : '',
+        coaching_categories: isValidCategoryArray(profile.coaching_categories)
+          ? ((profile.coaching_categories ?? []) as CoachUmpireCategory[])
+          : [],
+        umpiring_categories: isValidCategoryArray(profile.umpiring_categories)
+          ? ((profile.umpiring_categories ?? []) as CoachUmpireCategory[])
+          : [],
         current_club: profile.current_club || '',
         current_world_club_id: profile.current_world_club_id ?? null,
         coach_specialization: (profile.coach_specialization as CoachSpecialization) || '',
@@ -138,8 +153,32 @@ export function EditUserModal({
       if (formData.secondary_position !== (profile.secondary_position || '')) {
         updates.secondary_position = formData.secondary_position || null
       }
-      if (formData.gender !== (profile.gender || '')) {
-        updates.gender = normalizeGenderInput(formData.gender)
+      // Phase 3 categories — admin edits are role-aware. Player gets a single
+      // playing_category + dual-write gender; coach + umpire get arrays only.
+      if (profile.role === 'player') {
+        const newCategory: PlayingCategory | null = formData.playing_category || null
+        const oldCategory = profile.playing_category ?? null
+        if (newCategory !== oldCategory) {
+          updates.playing_category = newCategory
+          updates.gender = playingCategoryToLegacyGender(newCategory)
+          updates.category_confirmation_needed = false
+        }
+      } else if (profile.role === 'coach') {
+        const newArr = formData.coaching_categories.length > 0 ? formData.coaching_categories : null
+        const oldArr = profile.coaching_categories ?? null
+        if (JSON.stringify(newArr) !== JSON.stringify(oldArr)) {
+          updates.coaching_categories = newArr
+          updates.gender = null
+          updates.category_confirmation_needed = false
+        }
+      } else if (profile.role === 'umpire') {
+        const newArr = formData.umpiring_categories.length > 0 ? formData.umpiring_categories : null
+        const oldArr = profile.umpiring_categories ?? null
+        if (JSON.stringify(newArr) !== JSON.stringify(oldArr)) {
+          updates.umpiring_categories = newArr
+          updates.gender = null
+          updates.category_confirmation_needed = false
+        }
       }
       if (formData.current_club !== (profile.current_club || '')) {
         updates.current_club = formData.current_club || null
@@ -351,24 +390,35 @@ export function EditUserModal({
                   id="admin-edit-current-club"
                 />
 
-              {/* Gender */}
-              {(profile.role === 'player' || profile.role === 'coach') && (
+              {/* Phase 3 Hockey Categories — role-aware */}
+              {profile.role === 'player' && (
                 <div>
-                  <label htmlFor="admin-edit-gender" className="block text-sm font-medium text-gray-700 mb-1">
-                    Gender
-                  </label>
-                  <select
-                    id="admin-edit-gender"
-                    value={formData.gender}
-                    onChange={(e) => setFormData(prev => ({ ...prev, gender: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    aria-label="Gender"
-                  >
-                    <option value="">Select gender</option>
-                    <option value="Men">Male</option>
-                    <option value="Women">Female</option>
-                    <option value={PREFER_NOT_TO_SAY}>Prefer not to say</option>
-                  </select>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Playing Category</label>
+                  <PlayingCategorySelector
+                    idPrefix="admin-edit-playing-category"
+                    value={formData.playing_category || null}
+                    onChange={(next) => setFormData(prev => ({ ...prev, playing_category: next }))}
+                  />
+                </div>
+              )}
+              {profile.role === 'coach' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Coaching Categories</label>
+                  <MultiCategorySelector
+                    idPrefix="admin-edit-coaching-categories"
+                    value={formData.coaching_categories.length > 0 ? formData.coaching_categories : null}
+                    onChange={(next) => setFormData(prev => ({ ...prev, coaching_categories: next }))}
+                  />
+                </div>
+              )}
+              {profile.role === 'umpire' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Umpiring Categories</label>
+                  <MultiCategorySelector
+                    idPrefix="admin-edit-umpiring-categories"
+                    value={formData.umpiring_categories.length > 0 ? formData.umpiring_categories : null}
+                    onChange={(next) => setFormData(prev => ({ ...prev, umpiring_categories: next }))}
+                  />
                 </div>
               )}
 

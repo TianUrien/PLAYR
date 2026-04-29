@@ -8,11 +8,16 @@
  * dependencies.
  *
  * Step 1 (identity):  full name + nationality
- * Step 2 (where):     base location + gender
- * Step 3 (role):      player → position (+ distinct secondary)
- *                     coach  → specialization (+ custom text when "other")
+ * Step 2 (where):     base location
+ * Step 3 (role):      player → position (+ distinct secondary) + playing_category
+ *                     coach  → coaching_categories + specialization
+ *                              (+ custom text when "other")
  *                     umpire → level + federation + specialization + ≥ 1 language
+ *                              (umpiring_categories optional)
  */
+
+import type { PlayingCategory, CoachUmpireCategory } from './hockeyCategories'
+import { isValidCategoryArray, isValidPlayingCategory } from './hockeyCategories'
 
 export type WizardStep = 1 | 2 | 3
 
@@ -22,11 +27,14 @@ export interface OnboardingFormSubset {
   fullName?: string
   nationalityCountryId?: number | null
   city?: string
-  gender?: string
   position?: string
   secondaryPosition?: string
   coachSpecialization?: string
   coachSpecializationCustom?: string
+  /** Phase 3 hockey categories — replaces gender. */
+  playingCategory?: PlayingCategory | ''
+  coachingCategories?: CoachUmpireCategory[]
+  umpiringCategories?: CoachUmpireCategory[]
   // Umpire-specific fields (v1 — free text for level + federation)
   umpireLevel?: string
   federation?: string
@@ -52,16 +60,15 @@ export function validateOnboardingStep(
 
   if (step === 2) {
     if (!formData.city?.trim()) return 'Base location is required.'
-    // Umpire onboarding makes gender optional (Phase 2 — tester noted that
-    // umpiring appointments are gender-blind). Player + coach still require
-    // a value because gender feeds league/team-context matching.
-    if (role !== 'umpire' && !formData.gender) return 'Gender is required.'
     return null
   }
 
   // step === 3: role-specific last-step gates
   if (role === 'player') {
     if (!formData.position) return 'Position is required.'
+    if (!isValidPlayingCategory(formData.playingCategory)) {
+      return 'Please select your playing category.'
+    }
     if (
       formData.secondaryPosition &&
       formData.secondaryPosition === formData.position
@@ -72,6 +79,12 @@ export function validateOnboardingStep(
   }
 
   if (role === 'coach') {
+    if (!formData.coachingCategories || formData.coachingCategories.length === 0) {
+      return 'Please select at least one coaching category.'
+    }
+    if (!isValidCategoryArray(formData.coachingCategories)) {
+      return 'Coaching categories are invalid.'
+    }
     if (!formData.coachSpecialization) {
       return 'Please select your coaching specialization.'
     }
@@ -84,7 +97,14 @@ export function validateOnboardingStep(
     return null
   }
 
-  // role === 'umpire'
+  // role === 'umpire' — categories are optional but if present must be valid
+  if (
+    formData.umpiringCategories &&
+    formData.umpiringCategories.length > 0 &&
+    !isValidCategoryArray(formData.umpiringCategories)
+  ) {
+    return 'Umpiring categories are invalid.'
+  }
   if (!formData.umpireLevel?.trim()) {
     return 'Please add your umpire level.'
   }

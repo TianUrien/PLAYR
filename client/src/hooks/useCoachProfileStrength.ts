@@ -28,7 +28,7 @@ interface UseCoachProfileStrengthOptions {
  * Coach-specific profile strength calculation.
  *
  * Buckets:
- * - Basic Info (15%): full_name, nationality, base_location, date_of_birth, gender
+ * - Basic Info (15%): full_name, nationality, base_location, date_of_birth, coaching_categories
  * - Specialization (10%): coach_specialization selected
  * - Profile Photo (15%): avatar_url present
  * - Professional Bio (15%): bio field filled
@@ -73,15 +73,17 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
   // Check if all basic info fields are filled
   const isBasicInfoComplete = useCallback(() => {
     if (!profile) return false
-    const { full_name, nationality, nationality_country_id, base_location, date_of_birth, gender } = profile
+    const { full_name, nationality, nationality_country_id, base_location, date_of_birth } = profile
+    const coachingCategories = (profile as Partial<Profile>).coaching_categories
     // Accept either new country_id field OR legacy nationality text field
     const hasNationality = Boolean(nationality_country_id || nationality?.trim())
+    const hasCategories = Array.isArray(coachingCategories) && coachingCategories.length > 0
     return Boolean(
       full_name?.trim() &&
         hasNationality &&
         base_location?.trim() &&
         date_of_birth?.trim() &&
-        gender?.trim()
+        hasCategories
     )
   }, [profile])
 
@@ -117,7 +119,7 @@ export function useCoachProfileStrength({ profile }: UseCoachProfileStrengthOpti
       {
         id: 'basic',
         label: 'Basic Info',
-        hint: 'Complete name, nationality, location, DOB, and gender',
+        hint: 'Complete name, nationality, location, DOB, and coaching categories',
         unlockCopy: 'Clubs filter for coaches by nationality, location, and availability.',
         weight: 15,
         completed: basicComplete,
