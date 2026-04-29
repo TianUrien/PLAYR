@@ -10,6 +10,7 @@ import { Search, Filter, Loader2 } from 'lucide-react'
 import { useNavigate, useNavigationType } from 'react-router-dom'
 import { Avatar, RoleBadge, MemberTile } from '@/components'
 import { logger } from '@/lib/logger'
+import { genderToDisplay } from '@/lib/genderLabels'
 import { MemberTileSkeleton } from '@/components/Skeleton'
 import { MemberPreviewModal } from './MemberPreviewModal'
 import { supabase } from '@/lib/supabase'
@@ -744,7 +745,9 @@ export function PeopleListView({ roleFilter }: PeopleListViewProps = {}) {
                         onChange={() => updateFilter('gender', gender)}
                         className="w-4 h-4 text-purple-600"
                       />
-                      <span className="text-sm text-gray-700">{gender === 'all' ? 'All' : gender}</span>
+                      <span className="text-sm text-gray-700">
+                        {gender === 'all' ? 'All' : genderToDisplay(gender)}
+                      </span>
                     </label>
                   ))}
                 </div>
