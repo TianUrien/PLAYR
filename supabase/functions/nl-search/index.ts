@@ -15,7 +15,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { getServiceClient } from '../_shared/supabase-client.ts'
 import { getCorsHeaders } from '../_shared/cors.ts'
 import { captureException } from '../_shared/sentry.ts'
-import { parseSearchQuery, synthesizeQualitativeInsights, composeShortlist, PROMPT_VERSION, type LLMCallMeta, type ParsedFilters, type HistoryTurn, type ProfileQualitativeData, type ShortlistCandidate, type ShortlistRow, type UserContext } from '../_shared/llm-client.ts'
+import { parseSearchQuery, synthesizeQualitativeInsights, composeShortlist, composeNoResults, PROMPT_VERSION, type LLMCallMeta, type ParsedFilters, type HistoryTurn, type ProfileQualitativeData, type ShortlistCandidate, type ShortlistRow, type UserContext } from '../_shared/llm-client.ts'
 import { classifyEntityType, entityTypeToRole, type RoutedIntent } from '../_shared/intent-router.ts'
 import {
   type AppliedSearch,
@@ -1379,6 +1379,8 @@ Deno.serve(async (req) => {
       profiles: 'profile',
     }
     let aiMessage: string
+    let noResultsFollowUpQuery: string | null = null
+    let noResultsMeta: LLMCallMeta | null = null
     if (result.total === 0) {
       // Phase 3e — broaden hint references the auto-seeded category, not gender.
       const broadenHint = categorySource === 'context' && effectiveCategory
@@ -1389,6 +1391,36 @@ Deno.serve(async (req) => {
       const noun = result.total === 1 ? (ENTITY_SINGULAR[entityNoun] ?? entityNoun) : entityNoun
       const countPhrase = `I found ${result.total} ${noun} for you.`
       aiMessage = llmResult.message ? `${countPhrase} ${llmResult.message}` : countPhrase
+    }
+
+    // ── Phase 4 — proactive no-results diagnosis ─────────────────────
+    // When a profile search returns 0 AND we have UserContext, run a
+    // dedicated LLM pass that combines what was searched + why 0 likely
+    // happened + concrete profile-gap diagnosis + acknowledgment of
+    // strengths + one concrete follow-up offer. Replaces the templated
+    // "I couldn't find any clubs matching that" with something
+    // substantive. Failure is non-fatal — we keep the templated message.
+    if (result.total === 0 && userContext) {
+      try {
+        const { result: noResultsResult, meta: nrMeta } = await composeNoResults({
+          userQuery: query,
+          searchCriteria: parsed,
+          effectiveCategory,
+          categorySource,
+          entityNoun,
+          userContext,
+        })
+        noResultsMeta = nrMeta
+        if (noResultsResult.ai_message?.trim()) {
+          aiMessage = noResultsResult.ai_message.trim()
+        }
+        if (noResultsResult.follow_up_query?.trim()) {
+          noResultsFollowUpQuery = noResultsResult.follow_up_query.trim()
+        }
+      } catch (nrError) {
+        // Compose pass is non-fatal — fall back to the templated message.
+        captureException(nrError, { functionName: 'nl-search', correlationId, extra: { phase: 'compose_no_results' } })
+      }
     }
 
     // ── Qualitative enrichment (opt-in, triggered by LLM) ───────────
@@ -1616,9 +1648,26 @@ Deno.serve(async (req) => {
 
     const responseKind: ResponseKind = result.total === 0 ? 'no_results' : 'results'
     // Chips only on no_results in PR-1 (refine chips for results land in Package B).
-    const suggestedActions: SuggestedAction[] = responseKind === 'no_results'
+    let suggestedActions: SuggestedAction[] = responseKind === 'no_results'
       ? getNoResultsActions(applied, userContext?.role ?? null)
       : []
+    // Phase 4 — when the no-results compose pass produced a concrete
+    // follow-up query, prepend it as the lead chip. The deterministic
+    // catalog stays as supporting actions — but the LLM's contextual
+    // suggestion ("Want me to search clubs in Spain anyway?") is the
+    // most actionable and goes first.
+    if (noResultsFollowUpQuery) {
+      // Truncate the chip label to keep the strip tidy. The full query
+      // still goes to the backend on tap.
+      const label = noResultsFollowUpQuery.length > 38
+        ? noResultsFollowUpQuery.slice(0, 35).trim() + '…'
+        : noResultsFollowUpQuery
+      const followUpAction: SuggestedAction = {
+        label,
+        intent: { type: 'free_text', query: noResultsFollowUpQuery },
+      }
+      suggestedActions = [followUpAction, ...suggestedActions].slice(0, 4)
+    }
 
     // ── Analytics logging ────────────────────────────────────────────────
     // Phase 0 enrichment: stash the routing decision into parsed_filters._meta
@@ -1649,6 +1698,9 @@ Deno.serve(async (req) => {
         shortlist_used: shortlistByProfileId.size > 0,
         shortlist_rows_returned: shortlistByProfileId.size,
         shortlist_malformed: shortlistMalformed,
+        // Phase 4 — no-results compose telemetry
+        no_results_composed: result.total === 0 && !!noResultsMeta,
+        no_results_follow_up: noResultsFollowUpQuery !== null,
       },
     }
     fireAndForget(logDiscoveryEvent(adminClient, {
@@ -1662,14 +1714,15 @@ Deno.serve(async (req) => {
       llm_provider: llmProvider,
       response_time_ms: Date.now() - startTime,
       error_message: null,
-      // Phase 4 MVP-A — sum tokens across all 3 LLM passes (parse + synth + shortlist)
-      // so cost-per-query stays comparable across provider switches.
-      prompt_tokens: sumNullable(sumNullable(parseMeta.usage?.prompt_tokens ?? null, synthMeta?.usage?.prompt_tokens ?? null), shortlistMeta?.usage?.prompt_tokens ?? null),
-      completion_tokens: sumNullable(sumNullable(parseMeta.usage?.completion_tokens ?? null, synthMeta?.usage?.completion_tokens ?? null), shortlistMeta?.usage?.completion_tokens ?? null),
-      cached_tokens: sumNullable(sumNullable(parseMeta.usage?.cached_tokens ?? null, synthMeta?.usage?.cached_tokens ?? null), shortlistMeta?.usage?.cached_tokens ?? null),
+      // Phase 4 — sum tokens across all 4 LLM passes (parse + synth +
+      // shortlist + no_results) so cost-per-query stays comparable across
+      // provider switches.
+      prompt_tokens: sumNullable(sumNullable(sumNullable(parseMeta.usage?.prompt_tokens ?? null, synthMeta?.usage?.prompt_tokens ?? null), shortlistMeta?.usage?.prompt_tokens ?? null), noResultsMeta?.usage?.prompt_tokens ?? null),
+      completion_tokens: sumNullable(sumNullable(sumNullable(parseMeta.usage?.completion_tokens ?? null, synthMeta?.usage?.completion_tokens ?? null), shortlistMeta?.usage?.completion_tokens ?? null), noResultsMeta?.usage?.completion_tokens ?? null),
+      cached_tokens: sumNullable(sumNullable(sumNullable(parseMeta.usage?.cached_tokens ?? null, synthMeta?.usage?.cached_tokens ?? null), shortlistMeta?.usage?.cached_tokens ?? null), noResultsMeta?.usage?.cached_tokens ?? null),
       prompt_version: PROMPT_VERSION,
       fallback_used: false,
-      retry_count: parseMeta.retry_count + (synthMeta?.retry_count ?? 0) + (shortlistMeta?.retry_count ?? 0),
+      retry_count: parseMeta.retry_count + (synthMeta?.retry_count ?? 0) + (shortlistMeta?.retry_count ?? 0) + (noResultsMeta?.retry_count ?? 0),
     }))
 
     // ── Response ────────────────────────────────────────────────────────

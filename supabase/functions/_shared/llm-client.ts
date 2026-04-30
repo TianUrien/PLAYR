@@ -1458,3 +1458,270 @@ export async function composeShortlist(
     default:        return composeShortlistWithGemini(candidates, searchCriteria, userQuery)
   }
 }
+
+// ─── Phase 4 — compose helpful no-results response ──────────────────
+// When a profile search returns zero results AND the user is searching for
+// themselves ("I want to play in Spain", "Find clubs for me"), the templated
+// "I couldn't find any clubs matching that" message is a UX failure — the
+// user has to ask "why?" to get the actual help they came for. This pass
+// runs ONLY on no_results AND only when we have UserContext, and composes
+// a richer multi-paragraph response that combines: (1) what was searched,
+// (2) why 0 happened (auto-seeded category? thin platform region?), (3)
+// concrete profile-gap diagnosis if the user's discoverability is the
+// likely bottleneck, (4) honest acknowledgment of strengths, (5) one
+// concrete follow-up offer.
+
+export interface NoResultsContext {
+  userQuery: string
+  searchCriteria: ParsedFilters
+  effectiveCategory: string | null
+  categorySource: 'llm' | 'context' | 'none' | string
+  entityNoun: string  // 'clubs', 'players', 'coaches', etc.
+  userContext: UserContext
+}
+
+export interface NoResultsResponse {
+  ai_message: string
+  follow_up_query?: string
+}
+
+const NO_RESULTS_SYSTEM_PROMPT = `You are HOCKIA's scouting assistant. The user just ran a profile search and zero matches came back. They were not abstractly browsing — they typed a goal-shaped query (often using "I", "me", "my"), so they want a concrete answer, not a one-liner.
+
+Your job: replace the templated "didn't find anything" message with a richer, helpful response that combines:
+
+1. ONE short opening sentence acknowledging what was searched, in plain language. Use the user's own words back when natural.
+
+2. WHY zero likely happened. Be specific. Common causes:
+   - A category was auto-seeded from the user's profile (CATEGORY_SOURCE = 'context' in the input). Tell them this — many users don't realize their profile context gets injected.
+   - The search filters were too narrow (e.g. nationality + position + EU passport + availability all combined).
+   - HOCKIA's profile coverage is thin in that region.
+   Pick the most likely and name it.
+
+3. If the user's profile has gaps that block discovery, list the 3-5 highest-impact missing fields in a NUMBERED list (1. 2. 3.), in priority order. Be concrete and actionable. Use the MISSING PROFILE FIELDS line in the user-context block as ground truth — never invent gaps that aren't listed there.
+
+4. ONE short paragraph acknowledging the user's real strengths. Use only fields that are present in the user-context block (e.g. EU passport, league level, dual nationality, current club, position, age). Make them feel seen — never invent.
+
+5. End with ONE concrete follow-up offer phrased as a question. Examples:
+   - "Want me to broaden the search to all clubs in Spain regardless of category?"
+   - "Should I look at clubs in Italy too — they're a strong field hockey region?"
+   - "Want me to search anyway and show you the closest matches?"
+
+CRITICAL RULES:
+- Plain text only. No markdown — no asterisks for bold, no underscores, no #, no ---, no - bullets. Numbered lists (1. 2. 3.) are fine; the frontend renders them naturally.
+- Do NOT invent profile data. The user-context block is the ONLY source of truth.
+- Do NOT use motivational filler ("you've got this!", "keep going!").
+- Do NOT mention quality, talent, reputation, reliability, "high quality" — only criteria-fit and discoverability.
+- Tone: warm, practical, honest. Like a smart hockey friend who knows the user.
+- Keep it under 300 words total. Concise wins.
+- If the user is the implicit subject (player searching for clubs, coach searching for opportunities), profile gaps are usually the right diagnosis. If the user is searching for OTHER profiles (club searching for players), don't lecture them about their own profile — instead diagnose what's thin in the platform / the search criteria.`
+
+const COMPOSE_NO_RESULTS_TOOL = {
+  name: 'compose_no_results_response',
+  description: 'Compose a helpful multi-paragraph response when a profile search returns zero results.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      ai_message: {
+        type: 'string',
+        description: 'The full response, plain text, 2-4 short paragraphs, under 300 words. No markdown. Numbered lists OK.',
+      },
+      follow_up_query: {
+        type: 'string',
+        description: 'Optional. A concrete user-shaped query the user could send to broaden or pivot the search. Renders as a chip in the UI. Example: "Show me all clubs in Spain regardless of category".',
+      },
+    },
+    required: ['ai_message'],
+  },
+}
+
+function buildNoResultsUserMessage(ctx: NoResultsContext): string {
+  // Stringify search criteria the same way the shortlist builder does.
+  const criteriaLines: string[] = []
+  if (ctx.searchCriteria.roles?.length) criteriaLines.push(`- roles: ${ctx.searchCriteria.roles.join(', ')}`)
+  if (ctx.searchCriteria.positions?.length) criteriaLines.push(`- positions: ${ctx.searchCriteria.positions.join(', ')}`)
+  if (ctx.searchCriteria.target_category) criteriaLines.push(`- target_category: ${ctx.searchCriteria.target_category}`)
+  if (ctx.searchCriteria.gender) criteriaLines.push(`- gender (legacy): ${ctx.searchCriteria.gender}`)
+  if (ctx.searchCriteria.min_age != null) criteriaLines.push(`- min_age: ${ctx.searchCriteria.min_age}`)
+  if (ctx.searchCriteria.max_age != null) criteriaLines.push(`- max_age: ${ctx.searchCriteria.max_age}`)
+  if (ctx.searchCriteria.eu_passport) criteriaLines.push(`- eu_passport: required`)
+  if (ctx.searchCriteria.nationalities?.length) criteriaLines.push(`- nationalities: ${ctx.searchCriteria.nationalities.join(', ')}`)
+  if (ctx.searchCriteria.locations?.length) criteriaLines.push(`- locations: ${ctx.searchCriteria.locations.join(', ')}`)
+  if (ctx.searchCriteria.countries?.length) criteriaLines.push(`- countries: ${ctx.searchCriteria.countries.join(', ')}`)
+  if (ctx.searchCriteria.availability) criteriaLines.push(`- availability: ${ctx.searchCriteria.availability}`)
+  if (ctx.searchCriteria.min_references != null) criteriaLines.push(`- min_references: ${ctx.searchCriteria.min_references}`)
+  if (ctx.searchCriteria.coach_specializations?.length) criteriaLines.push(`- coach_specializations: ${ctx.searchCriteria.coach_specializations.join(', ')}`)
+  const criteriaBlock = criteriaLines.length > 0 ? criteriaLines.join('\n') : '(no explicit constraints — broad search)'
+
+  const seedNote = ctx.categorySource === 'context' && ctx.effectiveCategory
+    ? `\nIMPORTANT — target_category=${ctx.effectiveCategory} was AUTO-SEEDED from the user's profile (their playing/coaching/umpiring category), not from the query text. The user may not realize this filter is on. Mention it explicitly in your response.`
+    : ''
+
+  return `USER QUERY: "${ctx.userQuery.replace(/"/g, "'")}"
+
+WHAT WAS SEARCHED:
+- entity: ${ctx.entityNoun}
+${criteriaBlock}
+- result_count: 0${seedNote}
+
+${buildUserContextBlock(ctx.userContext)}
+
+Compose the helpful no-results response per the rules in the system prompt. Lead with WHY 0 likely happened, then either profile-gap diagnosis (if the user is the implicit subject of the search) or a search-broadening suggestion (if they're scouting other profiles). End with ONE concrete follow-up offer as a question.`
+}
+
+function emptyNoResultsResponse(reason: string): NoResultsResponse {
+  return { ai_message: reason }
+}
+
+async function composeNoResultsWithGemini(ctx: NoResultsContext): Promise<{ result: NoResultsResponse; meta: LLMCallMeta }> {
+  const apiKey = Deno.env.get('GOOGLE_AI_API_KEY')
+  if (!apiKey) throw new Error('GOOGLE_AI_API_KEY not configured')
+
+  const { response, retryCount } = await retryableFetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: NO_RESULTS_SYSTEM_PROMPT }] },
+        contents: [{ role: 'user', parts: [{ text: buildNoResultsUserMessage(ctx) }] }],
+        tools: [{
+          function_declarations: [
+            { name: COMPOSE_NO_RESULTS_TOOL.name, description: COMPOSE_NO_RESULTS_TOOL.description, parameters: COMPOSE_NO_RESULTS_TOOL.input_schema },
+          ],
+        }],
+        tool_config: { function_calling_config: { mode: 'ANY' } },
+      }),
+    },
+    { timeoutMs: 8000, maxRetries: 0 }
+  )
+
+  if (!response.ok) {
+    const errorBody = await response.text()
+    if (response.status === 429 || response.status === 503) throw new LLMRateLimitError()
+    throw new Error(`Gemini no-results error (${response.status}): ${errorBody}`)
+  }
+
+  const data = await response.json()
+  const usage: LLMUsage = {
+    prompt_tokens: data.usageMetadata?.promptTokenCount ?? null,
+    completion_tokens: data.usageMetadata?.candidatesTokenCount ?? null,
+    cached_tokens: data.usageMetadata?.cachedContentTokenCount ?? null,
+  }
+  const meta: LLMCallMeta = { retry_count: retryCount, usage }
+
+  const fnCall = data.candidates?.[0]?.content?.parts?.find((p: any) => p.functionCall)
+  const args = fnCall?.functionCall?.args
+  if (!args?.ai_message) {
+    return { result: emptyNoResultsResponse('I couldn\'t find any matches for that — try broadening the search.'), meta }
+  }
+  return { result: args as NoResultsResponse, meta }
+}
+
+async function composeNoResultsWithClaude(ctx: NoResultsContext): Promise<{ result: NoResultsResponse; meta: LLMCallMeta }> {
+  const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured')
+
+  // NO_RESULTS_SYSTEM_PROMPT is ~1.2K tokens (over Sonnet's 1024 cache
+  // minimum). Cache it so consecutive no-results queries within 5 min
+  // pay a fraction of the input cost. The user-context payload changes
+  // per call so it stays uncached.
+  const { response, retryCount } = await retryableFetch(
+    'https://api.anthropic.com/v1/messages',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        system: [
+          { type: 'text', text: NO_RESULTS_SYSTEM_PROMPT, cache_control: { type: 'ephemeral' } },
+        ],
+        tools: [
+          { name: COMPOSE_NO_RESULTS_TOOL.name, description: COMPOSE_NO_RESULTS_TOOL.description, input_schema: COMPOSE_NO_RESULTS_TOOL.input_schema },
+        ],
+        tool_choice: { type: 'tool', name: COMPOSE_NO_RESULTS_TOOL.name },
+        messages: [{ role: 'user', content: buildNoResultsUserMessage(ctx) }],
+      }),
+    },
+    // 12s upper bound — long enough for a 4-paragraph composition,
+    // short enough that worst-case wall clock stays under 14s on top
+    // of a 2s parse + 0.5s RPC.
+    { timeoutMs: 12000, maxRetries: 0 }
+  )
+
+  if (!response.ok) {
+    const errorBody = await response.text()
+    if (response.status === 429 || response.status === 529) throw new LLMRateLimitError()
+    throw new Error(`Claude no-results error (${response.status}): ${errorBody}`)
+  }
+
+  const data = await response.json()
+  const usage: LLMUsage = {
+    prompt_tokens: (data.usage?.input_tokens ?? 0) + (data.usage?.cache_creation_input_tokens ?? 0),
+    completion_tokens: data.usage?.output_tokens ?? null,
+    cached_tokens: data.usage?.cache_read_input_tokens ?? null,
+  }
+  const meta: LLMCallMeta = { retry_count: retryCount, usage }
+
+  const toolUse = data.content?.find((c: any) => c.type === 'tool_use' && c.name === COMPOSE_NO_RESULTS_TOOL.name)
+  if (!toolUse?.input?.ai_message) {
+    return { result: emptyNoResultsResponse('I couldn\'t find any matches for that — try broadening the search.'), meta }
+  }
+  return { result: toolUse.input as NoResultsResponse, meta }
+}
+
+async function composeNoResultsWithOpenAI(ctx: NoResultsContext): Promise<NoResultsResponse> {
+  const apiKey = Deno.env.get('OPENAI_API_KEY')
+  if (!apiKey) throw new Error('OPENAI_API_KEY not configured')
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      max_tokens: 1024,
+      messages: [
+        { role: 'system', content: NO_RESULTS_SYSTEM_PROMPT },
+        { role: 'user', content: buildNoResultsUserMessage(ctx) },
+      ],
+      tools: [
+        { type: 'function', function: { name: COMPOSE_NO_RESULTS_TOOL.name, description: COMPOSE_NO_RESULTS_TOOL.description, parameters: COMPOSE_NO_RESULTS_TOOL.input_schema } },
+      ],
+      tool_choice: { type: 'function', function: { name: COMPOSE_NO_RESULTS_TOOL.name } },
+    }),
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.text()
+    throw new Error(`OpenAI no-results error (${response.status}): ${errorBody}`)
+  }
+
+  const data = await response.json()
+  const toolCall = data.choices?.[0]?.message?.tool_calls?.[0]
+  if (!toolCall?.function) {
+    return emptyNoResultsResponse('I couldn\'t find any matches for that — try broadening the search.')
+  }
+  const args = JSON.parse(toolCall.function.arguments)
+  if (!args.ai_message) {
+    return emptyNoResultsResponse('I couldn\'t find any matches for that — try broadening the search.')
+  }
+  return args as NoResultsResponse
+}
+
+export async function composeNoResults(ctx: NoResultsContext): Promise<{ result: NoResultsResponse; meta: LLMCallMeta }> {
+  const provider = Deno.env.get('LLM_PROVIDER') || 'gemini'
+
+  switch (provider) {
+    case 'gemini':  return composeNoResultsWithGemini(ctx)
+    case 'claude':  return composeNoResultsWithClaude(ctx)
+    case 'openai':  return { result: await composeNoResultsWithOpenAI(ctx), meta: EMPTY_META }
+    default:        return composeNoResultsWithGemini(ctx)
+  }
+}
