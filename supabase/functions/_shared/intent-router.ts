@@ -87,6 +87,12 @@ const SELF_ADVICE = [
   /\b(improve|complete|fix|update|enhance) my (profile|brand profile|club profile|umpire profile|page|account|visibility)\b/i,
   // Phase 4 — short umpire-specific self-advice prompt from the chip catalog.
   /\badd (an |a |my )?appointment\b/i,
+  // Phase 4 audit P1-4 — "What can you do?" / "What can you help me with?"
+  // are technically platform-help questions, not self-advice — but the
+  // user-facing fix is the same: emit role-aware chips so the conversation
+  // doesn't dead-end after the AI prints its capability list. Routing
+  // through self_advice gives this for free.
+  /\bwhat can you (do|help)/i,
 ]
 
 // ── Hockey knowledge (rules / explanations / how-to) ──

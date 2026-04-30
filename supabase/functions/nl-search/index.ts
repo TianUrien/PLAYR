@@ -1288,9 +1288,12 @@ Deno.serve(async (req) => {
         } else {
           wcAiMessage = `${mapped.length} ${noun}${where} in HOCKIA's directory. None are claimed yet, so you'll need to reach out externally — but they're real clubs to explore.`
         }
-        if (llmResult.message) {
-          wcAiMessage = `${wcAiMessage} ${llmResult.message}`
-        }
+        // Phase 4 audit P1-1 — DO NOT append llmResult.message here. The LLM
+        // generates that field at parse-time before knowing the count, so it
+        // tends to read as future-tense ("Let me find clubs in Spain for
+        // you!") even though results are already presented above. The
+        // deterministic count phrase is enough; future-tense kicker breaks
+        // the "results are in" feel of the response.
       } else if (userContext) {
         // 0 results — compose a richer diagnosis just like the regular path.
         try {

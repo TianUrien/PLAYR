@@ -72,8 +72,11 @@ export default function NoResultsCard({
   return (
     <div className="bg-white border border-gray-200/80 rounded-2xl rounded-tl-md px-4 py-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       {applied && <AppliedSearchStrip applied={applied} />}
-      <p className="text-[14px] text-gray-800 leading-[1.55]">{headline}</p>
-      {subline && <p className="mt-1 text-[12px] text-gray-500 leading-relaxed">{subline}</p>}
+      {/* Phase 4 audit P0-1: whitespace-pre-line preserves the \n\n
+          paragraph breaks from the no-results compose pass. Without it,
+          multi-paragraph diagnoses render as a wall of text. */}
+      <p className="text-[14px] text-gray-800 leading-[1.55] whitespace-pre-line">{headline}</p>
+      {subline && <p className="mt-1 text-[12px] text-gray-500 leading-relaxed whitespace-pre-line">{subline}</p>}
       <ActionChipRow actions={actions} onAction={onAction} />
     </div>
   )

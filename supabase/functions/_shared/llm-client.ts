@@ -1269,7 +1269,14 @@ CRITICAL RULES:
 - Do NOT use markdown (no asterisks, no headers, no dividers). Plain text only — the frontend renders this directly.
 - Be concise: each fit_reason / missing_data / next_action under 12 words.
 - Output every candidate from the input, in the same order.
-- summary_message must be ONE sentence with NO line breaks. Use the correct entity plural to match the input role: players, coaches, clubs, brands, umpires (NOT "candidates", NOT "profiles", NOT "people"). For mixed-entity searches use "profiles".`
+- summary_message must be ONE sentence with NO line breaks. Use the correct entity plural to match the input role: players, coaches, clubs, brands, umpires (NOT "candidates", NOT "profiles", NOT "people"). For mixed-entity searches use "profiles".
+
+ROLE-SPECIFIC RULES (apply per candidate based on its role field):
+- For role=club rows: do NOT prescribe player-shaped fixes. NEVER list "career history", "references", "availability open_to_play", "highlight video" as missing_data on a club. Clubs don't have a career history the way a player does. Acknowledge sparseness factually if it's there ("Limited public details on this club") and frame next_action around the searcher's path forward ("View club page to see if there's a contact route") not "ask the club to add references". Clubs are not job-seekers.
+- For role=brand rows: same principle — do NOT prescribe player-shaped fixes. Brand-relevant fields are brand category, products, posts. If those aren't in the candidate input, frame missing_data softly ("Brand profile is sparse").
+- For role=umpire rows: trust signals are appointments + references + format experience (Outdoor 11v11, Indoor, Hockey5s). Do NOT suggest player-shaped fixes like "highlight video".
+- For role=player and role=coach rows: the original career-history / references / availability / video framing applies.
+- summary_message tone: don't editorialize about the user base ("all profiles are sparse"). State what was found and the searcher's next concrete step.`
 
 const COMPOSE_SHORTLIST_TOOL = {
   name: 'compose_shortlist',

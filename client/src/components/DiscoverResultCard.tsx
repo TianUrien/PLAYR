@@ -26,9 +26,13 @@ const FIT_LEVEL_PRESET: Record<NonNullable<DiscoverResult['fit_level']>, {
     pillText: 'text-emerald-700',
   },
   possible_match: {
+    // Phase 4 audit P1-3 — was amber, but the references shield is also
+    // amber-50/amber-700; side-by-side they read as the same pill. Sky-blue
+    // sits in the middle of emerald (positive) and gray (muted) without
+    // colliding with the amber-coded references signal.
     label: 'Possible match',
-    pillBg: 'bg-amber-50',
-    pillText: 'text-amber-700',
+    pillBg: 'bg-sky-50',
+    pillText: 'text-sky-700',
   },
   needs_more_info: {
     label: 'Needs more info',
