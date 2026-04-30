@@ -127,9 +127,18 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
   )
 
   const renderEmpty = () => (
+    // Phase 4 References UX Plan #2.2 — visitor empty state on the public
+    // profile. Reframe from "X hasn't added any" (mildly negative) to a
+    // brief explanation of what trust references mean on HOCKIA. The
+    // visitor (often a club scouting) leaves with a clearer mental model
+    // even on profiles that don't have references yet — and is more likely
+    // to weight a profile that DOES have them next time.
     <div className="rounded-2xl border border-dashed border-gray-200 bg-white/80 p-6 text-center">
-      <p className="text-sm text-gray-600">
-        {primaryName ? `${primaryName} hasn't published any trusted references yet.` : 'No trusted references yet.'}
+      <p className="text-sm font-medium text-gray-700">No vouches yet</p>
+      <p className="mt-1 text-xs text-gray-500">
+        {primaryName
+          ? `${primaryName} hasn't received any trusted references yet — these are vouches from coaches, teammates, or clubs that verify a member's hockey on HOCKIA.`
+          : 'Trusted references are vouches from coaches, teammates, or clubs that verify a member\'s hockey on HOCKIA.'}
       </p>
     </div>
   )

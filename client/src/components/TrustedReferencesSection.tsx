@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { format } from 'date-fns'
-import { ShieldCheck, Plus, Clock3, AlertTriangle } from 'lucide-react'
+import { ShieldCheck, Plus, Clock3, AlertTriangle, UserPlus, ArrowRight } from 'lucide-react'
 import { logger } from '@/lib/logger'
 import Avatar from './Avatar'
 import RoleBadge from './RoleBadge'
@@ -279,7 +279,15 @@ export default function TrustedReferencesSection({
           </div>
         ) : acceptedReferences.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-gray-200 bg-white/90 p-5 text-center">
-            <p className="text-sm text-gray-600">No trusted references yet. This user hasn&apos;t added any references on HOCKIA.</p>
+            {/* Phase 4 References UX Plan #2.1 — visitor-side empty state.
+                Reframe from "they haven't added any" to a brief educational
+                line about what trust on HOCKIA means, so the visitor walks
+                away with a mental model of the feature even on profiles
+                that don't yet have it. */}
+            <p className="text-sm font-medium text-gray-700">No vouches yet</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Trusted references are how coaches, teammates, and clubs vouch for a player on HOCKIA.
+            </p>
           </div>
         ) : (
           <>
@@ -418,10 +426,96 @@ export default function TrustedReferencesSection({
               </div>
             ))
           ) : acceptedReferences.length === 0 ? (
-            <div className="min-w-full rounded-2xl border border-dashed border-gray-200 bg-white/80 p-4 text-center text-sm text-gray-500">
-              {canCollectReferences
-                ? 'No trusted references yet. Send a request to get started.'
-                : 'You do not have any trusted references selected.'}
+            // Phase 4 References UX Plan #2.1 — empty-state rewrite. Three
+            // scenarios get distinct copy + CTA so the user always knows the
+            // single next step. The big education win: when the user has no
+            // friends, the empty state explains the friendship dependency
+            // explicitly and routes them to /community to fix it — instead
+            // of silently failing in the modal dropdown later.
+            <div className="min-w-full rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/40 p-6 text-center">
+              {(() => {
+                if (!canCollectReferences) {
+                  return (
+                    <p className="text-sm text-gray-600">
+                      You do not have any trusted references selected.
+                    </p>
+                  )
+                }
+                // Owner who CAN collect — split by friendship state.
+                const hasFriends = friendOptions.length > 0
+                const hasAvailableFriends = availableFriends.length > 0
+
+                if (!hasFriends) {
+                  // No accepted friendships at all → explain the prerequisite,
+                  // route to /community.
+                  return (
+                    <div className="space-y-3">
+                      <ShieldCheck className="mx-auto h-8 w-8 text-emerald-500" aria-hidden="true" />
+                      <p className="text-sm font-semibold text-gray-900">
+                        References are how clubs verify your hockey
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Coaches, teammates, and clubs can vouch for you on HOCKIA — but you need to be connected with them first.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/community')}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-[#8026FA] px-4 py-2 text-sm font-semibold text-white hover:bg-[#924CEC] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8026FA]/40"
+                      >
+                        <UserPlus className="h-4 w-4" aria-hidden="true" />
+                        Find people on HOCKIA
+                      </button>
+                    </div>
+                  )
+                }
+
+                if (!hasAvailableFriends) {
+                  // Has friends, but already asked all of them. Guide toward
+                  // expanding their network rather than retrying the same
+                  // people.
+                  return (
+                    <div className="space-y-3">
+                      <ShieldCheck className="mx-auto h-8 w-8 text-emerald-500" aria-hidden="true" />
+                      <p className="text-sm font-semibold text-gray-900">
+                        You've asked everyone in your network
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Pending requests will appear here once accepted. Add more friends on HOCKIA to expand your trust circle.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/community')}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+                      >
+                        <UserPlus className="h-4 w-4" aria-hidden="true" />
+                        Find more people
+                      </button>
+                    </div>
+                  )
+                }
+
+                // Default: has friends, has eligible options. Standard "ask
+                // someone to vouch" empty state with strong value prop.
+                return (
+                  <div className="space-y-3">
+                    <ShieldCheck className="mx-auto h-8 w-8 text-emerald-500" aria-hidden="true" />
+                    <p className="text-sm font-semibold text-gray-900">
+                      References are how clubs verify your hockey
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Ask 1-2 of your {friendOptions.length} {friendOptions.length === 1 ? 'connection' : 'connections'} to vouch for you. Clubs scouting on HOCKIA see your references on your profile.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setAddModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
+                    >
+                      Choose a connection
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  </div>
+                )
+              })()}
             </div>
           ) : (
             <>

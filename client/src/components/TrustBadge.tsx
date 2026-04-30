@@ -63,9 +63,14 @@ export default function TrustBadge({
     ? `Trusted by ${count}`
     : 'Get vouches'
 
+  // Phase 4 References UX Plan #2.4 — richer tooltip prose for the empty
+  // owner state. The "Tap to ask a connection" hint makes the friendship
+  // dependency visible at the badge level so the empty state is never a
+  // mystery: hover/long-press on the badge tells the user what to do next
+  // and that they need a HOCKIA connection to do it.
   const tooltip = hasReferences
     ? `${count} ${count === 1 ? 'person has' : 'people have'} vouched for you on HOCKIA. Tap to see endorsements.`
-    : 'Get your first reference and clubs can verify your hockey. Tap to ask a connection.'
+    : 'References are vouches from coaches, teammates, or clubs you\'re connected with on HOCKIA. Tap to ask a connection.'
 
   // Always render as a button when clickable; falls back to span when no
   // onClick is wired (defensive — should not happen in current usage).

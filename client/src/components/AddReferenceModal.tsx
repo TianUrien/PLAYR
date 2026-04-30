@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { Search, UserPlus, X, CheckCircle, ChevronDown } from 'lucide-react'
+import { Search, Shield, UserPlus, X, CheckCircle, ChevronDown } from 'lucide-react'
 import Modal from './Modal'
 import Avatar from './Avatar'
 import RoleBadge from './RoleBadge'
@@ -403,6 +403,18 @@ export default function AddReferenceModal({ isOpen, onClose, friends, onSubmit, 
                 as your <span className="font-semibold text-gray-900">{relationshipType}</span>
               </p>
             )}
+
+            {/* Phase 4 References UX Plan #2.3 — "why this matters" inline
+                note. Connects the action to its real-world value so users
+                understand WHY they're sending the request, not just what
+                the button does. Sits above the submit button so it's the
+                last thing the user reads before tapping Send. */}
+            <p className="flex items-start gap-1.5 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-2.5 text-xs text-emerald-800 leading-relaxed">
+              <Shield className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+              <span>
+                Once accepted, this vouch shows on your profile — clubs and coaches scouting on HOCKIA see your references when they look at you.
+              </span>
+            </p>
 
             {/* Submit button */}
             <button
