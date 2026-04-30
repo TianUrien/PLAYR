@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { Users, UserPlus, Check, X, Loader2, UserMinus } from 'lucide-react'
@@ -12,7 +12,7 @@ import Avatar from './Avatar'
 import RoleBadge from './RoleBadge'
 import TrustedReferencesSection from './TrustedReferencesSection'
 import type { ReferenceFriendOption } from './AddReferenceModal'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 
 interface FriendsTabProps {
   profileId: string
@@ -36,6 +36,19 @@ export default function FriendsTab({ profileId, readOnly = false, profileRole }:
   const [connections, setConnections] = useState<FriendConnection[]>([])
   const [loading, setLoading] = useState(true)
   const [actionTarget, setActionTarget] = useState<string | null>(null)
+
+  // Phase 4 audit B2 fix — read ?section= deep-link query param so notification
+  // taps land at the right sub-area instead of dumping the user at the top of
+  // the Friends tab. Recognised values: "requests" (incoming reference
+  // requests), "accepted" (newly-accepted reference), "references" (the
+  // TrustedReferencesSection top). All three resolve to the trusted-references
+  // wrapper today; the section is shown by TrustedReferencesSection itself,
+  // which already orders pending requests above accepted ones, so a user
+  // tapping a "your reference was accepted" notification lands above the
+  // accepted carousel and the requested-area both.
+  const [searchParams] = useSearchParams()
+  const requestedSection = searchParams.get('section')
+  const trustedReferencesRef = useRef<HTMLDivElement | null>(null)
 
   const fetchConnections = useCallback(async () => {
     setLoading(true)
@@ -86,6 +99,25 @@ export default function FriendsTab({ profileId, readOnly = false, profileRole }:
   useEffect(() => {
     void fetchConnections()
   }, [fetchConnections])
+
+  // Phase 4 audit B2 — when ?section= deep-links into the trust subarea,
+  // scroll the references wrapper into view AFTER the connections fetch
+  // has settled. The 'requests' / 'accepted' / 'references' values all
+  // resolve to the same TrustedReferencesSection wrapper today; if we
+  // later add per-subsection anchors we can branch by value here.
+  useEffect(() => {
+    if (loading) return
+    const section = requestedSection
+    const KNOWN = ['requests', 'accepted', 'references']
+    if (section && KNOWN.includes(section) && trustedReferencesRef.current) {
+      // requestAnimationFrame so we scroll AFTER the new layout is committed
+      // (avoids a flicker where the page briefly shows the top before scrolling).
+      const id = requestAnimationFrame(() => {
+        trustedReferencesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+      return () => cancelAnimationFrame(id)
+    }
+  }, [loading, requestedSection])
 
   const acceptedConnections = useMemo(
     () => connections.filter((connection) => connection.status === 'accepted'),
@@ -310,12 +342,20 @@ export default function FriendsTab({ profileId, readOnly = false, profileRole }:
   return (
     <div className="space-y-8">
       {canShowTrustedReferences && (
-        <TrustedReferencesSection
-          profileId={profileId}
-          friendOptions={referenceFriendOptions}
-          profileRole={profileRole}
-          readOnly={readOnly}
-        />
+        <div
+          ref={trustedReferencesRef}
+          data-deeplink-section="trusted-references"
+          // scroll-mt-[88px] gives smooth-scrolled targets headroom under any
+          // sticky header so the section doesn't dock under it.
+          className="scroll-mt-[88px]"
+        >
+          <TrustedReferencesSection
+            profileId={profileId}
+            friendOptions={referenceFriendOptions}
+            profileRole={profileRole}
+            readOnly={readOnly}
+          />
+        </div>
       )}
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
