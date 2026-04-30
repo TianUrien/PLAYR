@@ -31,6 +31,7 @@ interface RecentlyConnectedCardProps {
 }
 
 const DISMISS_KEY_PREFIX = 'hockia-recently-connected-dismiss:'
+const LEGACY_CLEANUP_FLAG = 'hockia-recently-connected-cleanup-v1'
 const DISMISS_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000
 const DEFAULT_WINDOW_DAYS = 14
 
@@ -38,6 +39,36 @@ function getDismissKey(ownerId: string, friendId: string): string {
   // Scope the key by owner — otherwise dismissals leak across sign-ins on
   // shared browsers. Format: hockia-recently-connected-dismiss:<owner>:<friend>
   return `${DISMISS_KEY_PREFIX}${ownerId}:${friendId}`
+}
+
+/**
+ * One-shot cleanup of legacy unscoped dismiss keys from before the owner-id
+ * scoping fix. Format used to be `hockia-recently-connected-dismiss:<friendId>`
+ * (one colon, no owner). Those keys are dead after the migration but persist
+ * in localStorage forever. Sweep them on first mount of the post-fix code,
+ * then set a flag so we don't iterate again on every render.
+ *
+ * Cheap (one localStorage scan per browser, ever) and prevents indefinite
+ * key accumulation. Scoped keys (two colons) are kept.
+ */
+function cleanupLegacyDismissKeys(): void {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return
+    if (window.localStorage.getItem(LEGACY_CLEANUP_FLAG)) return
+    const toDelete: string[] = []
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i)
+      if (!key || !key.startsWith(DISMISS_KEY_PREFIX)) continue
+      // Legacy format had exactly ONE colon after the prefix (separator
+      // before the friendId). New format has two: prefix:owner:friend.
+      const tail = key.slice(DISMISS_KEY_PREFIX.length)
+      if (!tail.includes(':')) toDelete.push(key)
+    }
+    toDelete.forEach((k) => window.localStorage.removeItem(k))
+    window.localStorage.setItem(LEGACY_CLEANUP_FLAG, '1')
+  } catch (err) {
+    logger.error('[RecentlyConnectedCard] legacy key cleanup failed', err)
+  }
 }
 
 function isDismissed(ownerId: string, friendId: string, now: number = Date.now()): boolean {
@@ -99,6 +130,11 @@ export default function RecentlyConnectedCard({
     setSessionDismissed(new Set())
   }, [ownerProfileId])
 
+  // Run the legacy-key cleanup once per browser session.
+  useEffect(() => {
+    cleanupLegacyDismissKeys()
+  }, [])
+
   const candidate = useMemo(() => {
     if (!ownerProfileId) return null
     if (acceptedReferenceCount > 0) return null
@@ -112,6 +148,12 @@ export default function RecentlyConnectedCard({
         // (CHECK constraint on profile_friendships), but if data corruption
         // ever creates one, this prevents a "Ask Yourself to vouch" card.
         if (f.id === ownerProfileId) return false
+        // Skip friends whose display name fell back to the generic
+        // "HOCKIA Member" placeholder (set by useReferenceFriendOptions /
+        // FriendsTab when full_name AND username are both null). The card
+        // would otherwise read "Ask HOCKIA for a reference?" — confusing
+        // and unbranded. These are rare orphan profiles; better to skip.
+        if (!f.fullName || f.fullName === 'HOCKIA Member') return false
         if (excludeIds?.has(f.id)) return false
         if (sessionDismissed.has(f.id)) return false
         if (isDismissed(ownerProfileId, f.id)) return false
@@ -182,7 +224,10 @@ export default function RecentlyConnectedCard({
         type="button"
         onClick={handleDismiss}
         aria-label="Dismiss this nudge"
-        className="absolute top-2.5 right-2.5 p-1.5 rounded-full text-emerald-700/60 hover:text-emerald-900 hover:bg-emerald-100 transition-colors"
+        // 44x44 minimum tap target (Apple HIG); icon stays visually small
+        // via the inner span. p-1.5 alone gave ~28px which fails accessibility
+        // and is hard to hit on mobile with a thumb.
+        className="absolute top-1 right-1 inline-flex h-11 w-11 items-center justify-center rounded-full text-emerald-700/60 hover:text-emerald-900 hover:bg-emerald-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
       >
         <X className="w-4 h-4" />
       </button>

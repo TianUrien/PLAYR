@@ -276,7 +276,8 @@ export default function AddReferenceModal({ isOpen, onClose, friends, onSubmit, 
                   <button
                     type="button"
                     onClick={handleClearSelection}
-                    className="rounded-lg p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                    // 44x44 minimum tap target (Apple HIG); icon stays small.
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                     aria-label="Change selection"
                   >
                     <X className="h-4 w-4" />

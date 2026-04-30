@@ -92,6 +92,47 @@ describe('RecentlyConnectedCard', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
+  it('renders nothing when the friend\'s display name is the orphan-profile placeholder', () => {
+    // useReferenceFriendOptions / FriendsTab fall back to "HOCKIA Member"
+    // when full_name AND username are both null. Surfacing such a friend
+    // would render "Ask HOCKIA for a reference?" which reads wrong and
+    // exposes orphan / abandoned profiles to the nudge.
+    const orphan: ReferenceFriendOption = { ...baseFriend, fullName: 'HOCKIA Member' }
+    const { container } = render(
+      <RecentlyConnectedCard
+        friendOptions={[orphan]}
+        ownerProfileId={OWNER_ID}
+        acceptedReferenceCount={0}
+        onAsk={vi.fn()}
+      />,
+    )
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('runs a one-shot legacy localStorage cleanup on first mount', () => {
+    // Before the owner-scope migration, dismiss keys looked like
+    // "hockia-recently-connected-dismiss:<friendId>" (one colon). After
+    // the migration the format has two colons. Legacy keys are dead but
+    // would otherwise sit forever — sweep them on first mount.
+    window.localStorage.setItem('hockia-recently-connected-dismiss:legacy-friend-1', new Date().toISOString())
+    window.localStorage.setItem('hockia-recently-connected-dismiss:owner-9:friend-9', new Date().toISOString())
+
+    render(
+      <RecentlyConnectedCard
+        friendOptions={[baseFriend]}
+        ownerProfileId={OWNER_ID}
+        acceptedReferenceCount={0}
+        onAsk={vi.fn()}
+      />,
+    )
+
+    expect(window.localStorage.getItem('hockia-recently-connected-dismiss:legacy-friend-1')).toBeNull()
+    // Scoped keys (two colons) survive.
+    expect(window.localStorage.getItem('hockia-recently-connected-dismiss:owner-9:friend-9')).not.toBeNull()
+    // Cleanup flag set so the sweep doesn't repeat.
+    expect(window.localStorage.getItem('hockia-recently-connected-cleanup-v1')).toBe('1')
+  })
+
   it('renders nothing when friend acceptedAt is malformed', () => {
     const malformed: ReferenceFriendOption = { ...baseFriend, acceptedAt: 'not-a-date' }
     const { container } = render(

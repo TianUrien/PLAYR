@@ -133,24 +133,36 @@ export default function FriendsTab({ profileId, readOnly = false, profileRole }:
     }
   }, [loading, requestedSection])
 
-  // Phase 3 (post-friendship prompt) — when ?ask=<friendId> deep-links into
-  // FriendsTab (RecentlyConnectedCard CTA from the dashboard), seed the
-  // existing per-friend Ask flow and immediately strip the param so a
-  // refresh doesn't re-open the modal.
-  useEffect(() => {
-    if (loading) return
-    const friendId = searchParams.get('ask')
-    if (!friendId || !canAskForReferences) return
-    setAskVouchFor(friendId)
-    const next = new URLSearchParams(searchParams)
-    next.delete('ask')
-    setSearchParams(next, { replace: true })
-  }, [loading, searchParams, setSearchParams, canAskForReferences])
-
   const acceptedConnections = useMemo(
     () => connections.filter((connection) => connection.status === 'accepted'),
     [connections]
   )
+
+  // Phase 3 (post-friendship prompt) — when ?ask=<friendId> deep-links into
+  // FriendsTab (RecentlyConnectedCard CTA from the dashboard, or a stale
+  // link a user pasted), seed the existing per-friend Ask flow and
+  // immediately strip the param so a refresh doesn't re-open the modal.
+  // Validate the id against the current accepted-friend list — a stale id
+  // (friend unfriended, blocked, or already in pending/accepted refs) gets
+  // a soft toast instead of a silently-empty modal.
+  useEffect(() => {
+    if (loading) return
+    const friendId = searchParams.get('ask')
+    if (!friendId || !canAskForReferences) return
+
+    const isAcceptedFriend = acceptedConnections.some((c) => c.friend_id === friendId)
+    if (isAcceptedFriend) {
+      setAskVouchFor(friendId)
+    } else {
+      addToast(
+        'That connection is no longer available. Pick someone from your list to send a reference request.',
+        'info',
+      )
+    }
+    const next = new URLSearchParams(searchParams)
+    next.delete('ask')
+    setSearchParams(next, { replace: true })
+  }, [loading, searchParams, setSearchParams, canAskForReferences, acceptedConnections, addToast])
 
   const referenceFriendOptions = useMemo<ReferenceFriendOption[]>(() => {
     const options: ReferenceFriendOption[] = []
