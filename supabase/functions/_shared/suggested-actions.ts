@@ -243,6 +243,16 @@ export function getSelfAdviceActions(userRole: string | null): SuggestedAction[]
         { label: 'Browse Marketplace', intent: { type: 'free_text', query: 'Show me products' } },
         { label: 'Improve my brand profile', intent: { type: 'free_text', query: "What's missing from my brand profile?" } },
       ]
+    case 'umpire':
+      // Phase 4 — umpire role was previously falling through to the default
+      // (empty chip array), leaving self-advice replies with no forward
+      // step. Chip targets reflect the umpire mental model: peer network,
+      // appointments for credibility, profile-improvement loop.
+      return [
+        { label: 'Find other officials', intent: { type: 'free_text', query: 'Find other umpires near me' } },
+        { label: 'Add an appointment', intent: { type: 'free_text', query: 'How do I add an appointment to my profile?' } },
+        { label: 'Improve my umpire profile', intent: { type: 'free_text', query: "What's missing from my umpire profile?" } },
+      ]
     default:
       // Unknown role / unauthenticated. No chips beats wrong chips.
       return []

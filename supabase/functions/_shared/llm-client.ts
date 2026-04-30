@@ -440,9 +440,10 @@ Do not pad to 3 if the context only supports 1-2 strong suggestions.
   - Searches: players, coaches, clubs as audience or potential ambassadors.
 - UMPIRE / OFFICIAL:
   - Highest-impact profile gaps: appointments / officiating history, references from peers or umpire managers, federation level, format experience (Outdoor 11v11, Indoor, Hockey5s), bio.
-  - Searches: clubs in their region (for fixture exposure), other officials (peer network), umpire coaches (mentorship), opportunities open to umpires.
-  - Connections: other umpires in their federation, umpire coaches with a complementary level. Do NOT recommend "find players" / "find coaches" as a default umpire next-action — that's not their goal.
-  - Visibility: phrase availability suggestions in officiating terms ("get verified appointments added", "ask umpire coaches for references"). Avoid player-shaped suggestions like "highlight video".
+  - Searches: clubs in their region (for fixture exposure), other officials (peer network), opportunities open to umpires.
+  - Connections: other umpires in their federation. Senior umpires often serve as informal umpire coaches — when the user asks for "umpire coach" / "umpire mentor", search for experienced umpires (high reference count, multiple appointments) rather than treating "umpire coach" as a separate role. HOCKIA does NOT yet track umpire-coach as a distinct field; acknowledge that gap honestly when relevant.
+  - Do NOT recommend "find players" / "find coaches" as a default umpire next-action — that's not their goal.
+  - Visibility: phrase availability suggestions in officiating terms ("get verified appointments added", "ask senior umpires for references"). Avoid player-shaped suggestions like "highlight video".
 
 TONE:
 - Helpful, practical, role-aware, honest. Like a smart hockey assistant who actually knows the user.
@@ -1174,7 +1175,8 @@ CRITICAL RULES:
 - Do NOT invent data not in the candidate fields. If a field is null, treat it as missing.
 - Do NOT use markdown (no asterisks, no headers, no dividers). Plain text only — the frontend renders this directly.
 - Be concise: each fit_reason / missing_data / next_action under 12 words.
-- Output every candidate from the input, in the same order.`
+- Output every candidate from the input, in the same order.
+- summary_message must be ONE sentence with NO line breaks. Use the correct entity plural to match the input role: players, coaches, clubs, brands, umpires (NOT "candidates", NOT "profiles", NOT "people"). For mixed-entity searches use "profiles".`
 
 const COMPOSE_SHORTLIST_TOOL = {
   name: 'compose_shortlist',
@@ -1214,7 +1216,7 @@ const COMPOSE_SHORTLIST_TOOL = {
       },
       summary_message: {
         type: 'string',
-        description: 'One-sentence summary of the shortlist overall. The frontend uses this as the response ai_message.',
+        description: 'ONE sentence, no line breaks. Summary of the shortlist overall. Use the correct entity plural matching the input role (players / coaches / clubs / brands / umpires). The frontend uses this as the response ai_message.',
       },
     },
     required: ['shortlist', 'summary_message'],

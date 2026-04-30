@@ -33,6 +33,32 @@ import {
 import { detectRecoveryQuery } from '../_shared/recovery.ts'
 import { detectClarifyingNeed } from '../_shared/clarifying.ts'
 
+// EU passport country code list — single source of truth for eu_passport
+// derivation. discover_profiles uses the same set internally to filter, but
+// it does NOT project an eu_passport column, so we mirror the derivation
+// here for both UserContext (caller's own EU status) and the Phase 4 MVP-A
+// shortlist builder (per-row EU status).
+const EU_PASSPORT_CODES = new Set([
+  'AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT',
+  'LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE',
+])
+
+// Map raw coach_specialization enum values to human-readable labels for the
+// shortlist prompt. Mirrors the client-side label map in
+// client/src/lib/coachSpecializations.ts so the LLM sees natural prose
+// regardless of provider — defends against future model swaps that might
+// echo enum strings back to users.
+const COACH_SPECIALIZATION_LABEL: Record<string, string> = {
+  head_coach: 'head coach',
+  assistant_coach: 'assistant coach',
+  goalkeeper_coach: 'goalkeeper coach',
+  youth_coach: 'youth coach',
+  strength_conditioning: 'strength & conditioning coach',
+  performance_analyst: 'performance analyst',
+  sports_scientist: 'sports scientist',
+  other: 'other',
+}
+
 interface DiscoveryEventParams {
   user_id: string
   role: string | null
@@ -628,9 +654,9 @@ Deno.serve(async (req) => {
 
     try {
       // NOTE — eu_passport is NOT a column on profiles. discover_profiles
-      // computes it dynamically by matching nationality_country_id against
-      // the EU country code list. We mirror that derivation below from the
-      // resolved country codes so the LLM gets a consistent EU flag.
+      // computes it dynamically when filtering, but does NOT return it in
+      // result rows. We mirror that derivation below using EU_PASSPORT_CODES
+      // (declared at module scope so the shortlist builder can reuse it).
       const { data: userProfile, error: profileFetchError } = await adminClient
         .from('profiles')
         .select(`
@@ -759,14 +785,15 @@ Deno.serve(async (req) => {
         )
 
         // EU passport eligibility — mirror discover_profiles' derivation from
-        // nationality codes. Single source of truth: the country code list.
-        const EU_CODES = new Set(['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'])
+        // nationality codes. Uses the module-level EU_PASSPORT_CODES set
+        // (single source of truth for both the user-context build below and
+        // the per-row shortlist build later).
         const codeForId = new Map(
           ((countriesRes.data || []) as any[]).map((c: any) => [c.id, c.code])
         )
         const euPassport =
-          (userProfile.nationality_country_id !== null && EU_CODES.has(codeForId.get(userProfile.nationality_country_id))) ||
-          (userProfile.nationality2_country_id !== null && EU_CODES.has(codeForId.get(userProfile.nationality2_country_id)))
+          (userProfile.nationality_country_id !== null && EU_PASSPORT_CODES.has(codeForId.get(userProfile.nationality_country_id))) ||
+          (userProfile.nationality2_country_id !== null && EU_PASSPORT_CODES.has(codeForId.get(userProfile.nationality2_country_id)))
 
         const club = clubRes.data as any
         let currentLeague: string | null = null
@@ -1449,32 +1476,68 @@ Deno.serve(async (req) => {
     if (result.results.length > 0) {
       try {
         const top = result.results.slice(0, 5)
-        const candidates: ShortlistCandidate[] = top.map((r: any) => ({
-          profile_id: r.id,
-          full_name: r.full_name ?? null,
-          role: r.role ?? 'unknown',
-          position: r.position ?? null,
-          secondary_position: r.secondary_position ?? null,
-          // Phase 3e — playing_category is primary; coach/umpire use
-          // their respective arrays. We send a single representative
-          // category string to keep the shortlist prompt compact.
-          category: (r.playing_category
-            ?? (Array.isArray(r.coaching_categories) && r.coaching_categories.length > 0 ? r.coaching_categories.join(', ') : null)
-            ?? (Array.isArray(r.umpiring_categories) && r.umpiring_categories.length > 0 ? r.umpiring_categories.join(', ') : null)
-            ?? null) as string | null,
-          age: r.age ?? null,
-          base_country: r.base_country_name ?? null,
-          nationality: r.nationality_name ?? null,
-          nationality2: r.nationality2_name ?? null,
-          eu_passport: !!r.eu_passport,
-          current_club: r.current_club ?? null,
-          open_to_play: !!r.open_to_play,
-          open_to_coach: !!r.open_to_coach,
-          open_to_opportunities: !!r.open_to_opportunities,
-          reference_count: r.accepted_reference_count ?? 0,
-          career_entry_count: r.career_entry_count ?? 0,
-          coach_specialization: r.coach_specialization_custom?.trim() || r.coach_specialization || null,
-        }))
+
+        // F1 fix: eu_passport is NOT projected by discover_profiles. Compute
+        // it per-row by looking up nationality codes from the countries
+        // table and matching against EU_PASSPORT_CODES. Without this, every
+        // candidate is told to the LLM as eu_passport=false, which silently
+        // wrecks fit reasoning on EU-passport-targeted searches.
+        const nationalityIds = new Set<number>()
+        for (const r of top) {
+          if (typeof r.nationality_country_id === 'number') nationalityIds.add(r.nationality_country_id)
+          if (typeof r.nationality2_country_id === 'number') nationalityIds.add(r.nationality2_country_id)
+        }
+        const codeByCountryId = new Map<number, string>()
+        if (nationalityIds.size > 0) {
+          const { data: nationalityRows } = await adminClient
+            .from('countries')
+            .select('id, code')
+            .in('id', Array.from(nationalityIds))
+          for (const c of (nationalityRows || []) as Array<{ id: number; code: string }>) {
+            codeByCountryId.set(c.id, c.code)
+          }
+        }
+        const rowHasEuPassport = (r: any): boolean => {
+          const code1 = typeof r.nationality_country_id === 'number' ? codeByCountryId.get(r.nationality_country_id) : undefined
+          const code2 = typeof r.nationality2_country_id === 'number' ? codeByCountryId.get(r.nationality2_country_id) : undefined
+          return (code1 != null && EU_PASSPORT_CODES.has(code1)) || (code2 != null && EU_PASSPORT_CODES.has(code2))
+        }
+
+        const candidates: ShortlistCandidate[] = top.map((r: any) => {
+          // F5 fix: render coach_specialization as a human label, not the
+          // raw enum value. Custom value (free text) takes precedence.
+          const customSpec = (r.coach_specialization_custom as string | null)?.trim() || null
+          const enumSpec = r.coach_specialization as string | null
+          const coachSpec = customSpec
+            || (enumSpec ? (COACH_SPECIALIZATION_LABEL[enumSpec] ?? enumSpec) : null)
+
+          return {
+            profile_id: r.id,
+            full_name: r.full_name ?? null,
+            role: r.role ?? 'unknown',
+            position: r.position ?? null,
+            secondary_position: r.secondary_position ?? null,
+            // Phase 3e — playing_category is primary; coach/umpire use
+            // their respective arrays. We send a single representative
+            // category string to keep the shortlist prompt compact.
+            category: (r.playing_category
+              ?? (Array.isArray(r.coaching_categories) && r.coaching_categories.length > 0 ? r.coaching_categories.join(', ') : null)
+              ?? (Array.isArray(r.umpiring_categories) && r.umpiring_categories.length > 0 ? r.umpiring_categories.join(', ') : null)
+              ?? null) as string | null,
+            age: r.age ?? null,
+            base_country: r.base_country_name ?? null,
+            nationality: r.nationality_name ?? null,
+            nationality2: r.nationality2_name ?? null,
+            eu_passport: rowHasEuPassport(r),
+            current_club: r.current_club ?? null,
+            open_to_play: !!r.open_to_play,
+            open_to_coach: !!r.open_to_coach,
+            open_to_opportunities: !!r.open_to_opportunities,
+            reference_count: r.accepted_reference_count ?? 0,
+            career_entry_count: r.career_entry_count ?? 0,
+            coach_specialization: coachSpec,
+          }
+        })
 
         const { result: shortlistResult, meta: smeta } = await composeShortlist(candidates, parsed, query)
         shortlistMeta = smeta

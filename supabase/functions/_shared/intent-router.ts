@@ -74,6 +74,11 @@ const SELF_ADVICE = [
   /\bwhat should i (search|look) for\b/i,
   /\bwhere (should|do) i (start|begin)\b/i,
   /\bwhat can i do( next)?\??\s*$/i,  // bare "what can I do?" / "what can I do next?"
+  // Phase 4 audit fix — also catch "what can I do to improve / fix / complete
+  // / grow / build my profile/brand/page/club". Previously only the bare
+  // form matched, so "What can I do to improve my profile?" fell through to
+  // 'unknown' and the response shipped without role-aware chips.
+  /\bwhat can i do (to|about) (improve|fix|complete|grow|build|update|enhance|make).*(profile|brand|page|club|visibility|presence|account)\b/i,
 ]
 
 // ── Hockey knowledge (rules / explanations / how-to) ──
