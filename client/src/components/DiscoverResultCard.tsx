@@ -132,21 +132,30 @@ export default function DiscoverResultCard({ result }: DiscoverResultCardProps) 
                 {result.accepted_reference_count}
               </span>
             )}
-            {isWorldClub && (
-              <span
-                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 ${
-                  result.claimed
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'bg-blue-50 text-blue-700'
-                }`}
-                title={result.claimed
-                  ? 'Active on HOCKIA — you can message them inside the platform'
-                  : 'In the global directory — not yet active on HOCKIA, reach out externally'}
-              >
-                <Globe2 className="w-2.5 h-2.5" aria-hidden="true" />
-                {result.claimed ? 'Claimed' : 'Directory'}
-              </span>
-            )}
+            {isWorldClub && (() => {
+              // Phase 4 audit P2-3: the pill must reflect the actual click
+              // destination. A claimed world_club without a claimed_profile_id
+              // is a data edge — the click handler falls back to the country
+              // directory, so the pill must say "Directory" too. Tying the
+              // pill state to (claimed && claimed_profile_id) prevents the
+              // pill copy from ever lying about where the user lands.
+              const isMessageable = result.claimed && !!result.claimed_profile_id
+              return (
+                <span
+                  className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 ${
+                    isMessageable
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-blue-50 text-blue-700'
+                  }`}
+                  title={isMessageable
+                    ? 'Active on HOCKIA — you can message them inside the platform'
+                    : 'In the global directory — not yet active on HOCKIA, reach out externally'}
+                >
+                  <Globe2 className="w-2.5 h-2.5" aria-hidden="true" />
+                  {isMessageable ? 'Claimed' : 'Directory'}
+                </span>
+              )
+            })()}
             {fitPreset && (
               <span
                 className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 ml-auto ${fitPreset.pillBg} ${fitPreset.pillText}`}

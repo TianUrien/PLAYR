@@ -99,14 +99,30 @@ export default function AssistantMessage({ msg }: AssistantMessageProps) {
           />
         )
 
-      case 'clarifying_question':
+      case 'clarifying_question': {
+        // Phase 4 audit P2-1: when the LLM emits clarifying_question with
+        // an empty options array, the card renders as a question with no
+        // buttons under it — a dead end. Fall through to TextResponse so
+        // any suggested_actions chips become the user's forward path
+        // instead of leaving them stuck.
+        const opts = msg.clarifying_options ?? []
+        if (opts.length === 0) {
+          return (
+            <TextResponse
+              message={msg.content}
+              suggestedActions={msg.suggested_actions}
+              onAction={handleAction}
+            />
+          )
+        }
         return (
           <ClarifyingQuestionCard
             question={msg.content}
-            options={msg.clarifying_options ?? []}
+            options={opts}
             onPick={(option) => submitAction({ type: 'free_text', query: option.routed_query })}
           />
         )
+      }
 
       case 'canned_redirect':
         return <CannedRedirectCard message={msg.content} />
@@ -145,7 +161,16 @@ export default function AssistantMessage({ msg }: AssistantMessageProps) {
       >
         <Bot className="w-4 h-4 text-white" />
       </div>
-      <div className="flex-1 min-w-0 max-w-[85%] sm:max-w-[75%]">
+      <div
+        className={
+          // Phase 4 audit P2-5: no-results bubbles carry the multi-paragraph
+          // compose-pass diagnoses (P0-1 fixed the line breaks; P2-5 widens
+          // the column so the prose doesn't feel cramped on mobile).
+          msg.kind === 'no_results'
+            ? 'flex-1 min-w-0 max-w-[92%] sm:max-w-[80%]'
+            : 'flex-1 min-w-0 max-w-[85%] sm:max-w-[75%]'
+        }
+      >
         {body}
       </div>
     </div>

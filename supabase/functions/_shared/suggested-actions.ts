@@ -267,10 +267,50 @@ export function getSelfAdviceActions(userRole: string | null): SuggestedAction[]
   }
 }
 
-/** Single chip after a greeting — invites the user to ask something useful.
- *  Phase 4 — label = query so the bubble matches the chip the user clicked. */
-export function getGreetingActions(): SuggestedAction[] {
-  return [
-    { label: 'What can you do?', intent: { type: 'free_text', query: 'What can you do?' } },
-  ]
+/** Greeting chips — role-aware, 3 chips per role. Phase 4 audit P3-2: the
+ *  single "What can you do?" chip felt lonely on first contact. Adding two
+ *  role-shaped starter actions gives the user a real menu without forcing
+ *  them to type a free-text query. label === query throughout (chip alignment
+ *  invariant). */
+export function getGreetingActions(userRole: string | null = null): SuggestedAction[] {
+  // Common across all roles — capability help.
+  const help: SuggestedAction = {
+    label: 'What can you do?',
+    intent: { type: 'free_text', query: 'What can you do?' },
+  }
+  switch (userRole) {
+    case 'player':
+      return [
+        help,
+        { label: 'Find clubs for me', intent: { type: 'free_text', query: 'Find clubs for me' } },
+        { label: 'Improve my profile', intent: { type: 'free_text', query: 'Improve my profile' } },
+      ]
+    case 'coach':
+      return [
+        help,
+        { label: 'Find clubs hiring', intent: { type: 'free_text', query: 'Find clubs hiring' } },
+        { label: 'Improve my profile', intent: { type: 'free_text', query: 'Improve my profile' } },
+      ]
+    case 'club':
+      return [
+        help,
+        { label: 'Find players for my team', intent: { type: 'free_text', query: 'Find players for my team' } },
+        { label: 'Find coaches', intent: { type: 'free_text', query: 'Find coaches' } },
+      ]
+    case 'brand':
+      return [
+        help,
+        { label: 'Find ambassadors', intent: { type: 'free_text', query: 'Find ambassadors' } },
+        { label: 'Browse Marketplace', intent: { type: 'free_text', query: 'Browse Marketplace' } },
+      ]
+    case 'umpire':
+      return [
+        help,
+        { label: 'Find other officials', intent: { type: 'free_text', query: 'Find other officials' } },
+        { label: 'Improve my umpire profile', intent: { type: 'free_text', query: 'Improve my umpire profile' } },
+      ]
+    default:
+      // Unknown role / unauthenticated — keep the single capability chip.
+      return [help]
+  }
 }

@@ -35,7 +35,10 @@ function iconFor(label: string): LucideIcon {
   if (l.includes('show all') || l.startsWith('show ')) return Users
   if (l.includes('country')) return MapPin
   if (l.includes('remove') || l.includes('without')) return X
-  if (l.includes('opportunit')) return Briefcase
+  // Phase 4 audit P3-1: was includes('opportunit') — fragile substring that
+  // could silently match unrelated typo'd labels. Match the actual word forms
+  // we ship in the catalog.
+  if (l.includes('opportunity') || l.includes('opportunities')) return Briefcase
   if (l.includes('marketplace')) return ShoppingBag
   if (l.includes('improve') || l.includes("what's missing")) return Sparkles
   if (l.includes('club')) return Building2

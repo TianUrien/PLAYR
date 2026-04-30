@@ -1101,7 +1101,9 @@ Deno.serve(async (req) => {
       if (intent.entity_type === 'self_advice') {
         convoActions = getSelfAdviceActions(userContext?.role ?? null)
       } else if (intent.entity_type === 'greeting') {
-        convoActions = getGreetingActions()
+        // Phase 4 audit P3-2: role-aware greeting chips so first contact has
+        // a real menu, not just a single capability chip.
+        convoActions = getGreetingActions(userContext?.role ?? null)
       }
 
       const convoMeta = {
