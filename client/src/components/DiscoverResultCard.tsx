@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, Shield, Check, AlertCircle, ArrowRight } from 'lucide-react'
+import { ChevronRight, Shield, Check, AlertCircle, ArrowRight, Globe2 } from 'lucide-react'
 import Avatar from '@/components/Avatar'
 import RoleBadge from '@/components/RoleBadge'
 import AvailabilityPill from '@/components/AvailabilityPill'
@@ -40,7 +40,25 @@ const FIT_LEVEL_PRESET: Record<NonNullable<DiscoverResult['fit_level']>, {
 export default function DiscoverResultCard({ result }: DiscoverResultCardProps) {
   const navigate = useNavigate()
 
+  // Phase 4 MVP-B — World directory rows have a different shape and a
+  // different navigation target than profile rows. result_type defaults
+  // to 'profile' when absent (back-compat with the legacy envelope).
+  const isWorldClub = result.result_type === 'world_club'
+
   const handleClick = () => {
+    if (isWorldClub) {
+      // Claimed world_clubs link to a HOCKIA club profile (you can message
+      // them); unclaimed ones go to the country directory page where the
+      // user can browse the full club roster for that region.
+      if (result.claimed && result.claimed_profile_id) {
+        navigate(`/clubs/id/${result.claimed_profile_id}?ref=discover`)
+      } else if (result.country_code) {
+        navigate(`/world/${result.country_code.toLowerCase()}?ref=discover`)
+      } else {
+        navigate('/world?ref=discover')
+      }
+      return
+    }
     if (result.role === 'brand') {
       navigate('/marketplace')
     } else if (result.role === 'club') {
@@ -54,20 +72,22 @@ export default function DiscoverResultCard({ result }: DiscoverResultCardProps) 
     }
   }
 
-  const specializationLabel = result.role === 'coach' && result.coach_specialization
+  const specializationLabel = !isWorldClub && result.role === 'coach' && result.coach_specialization
     ? getSpecializationLabel(result.coach_specialization, result.coach_specialization_custom)
     : null
 
-  const subtitle = [
-    specializationLabel || result.position,
-    result.base_location || result.base_country_name,
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  // World-club subtitle: league + country (or just country). Profile
+  // subtitle: position/specialization + location.
+  const subtitle = isWorldClub
+    ? [result.league_name, result.province_name, result.base_country_name].filter(Boolean).join(' · ')
+    : [
+        specializationLabel || result.position,
+        result.base_location || result.base_country_name,
+      ].filter(Boolean).join(' · ')
 
-  const availabilityPill = result.open_to_play
+  const availabilityPill = !isWorldClub && result.open_to_play
     ? <AvailabilityPill variant="play" size="sm" />
-    : result.open_to_coach
+    : !isWorldClub && result.open_to_coach
       ? <AvailabilityPill variant="coach" size="sm" />
       : null
 
@@ -102,10 +122,25 @@ export default function DiscoverResultCard({ result }: DiscoverResultCardProps) 
               {result.full_name ?? 'Unknown'}
             </span>
             <RoleBadge role={result.role} className="flex-shrink-0" />
-            {result.accepted_reference_count > 0 && (
+            {!isWorldClub && result.accepted_reference_count > 0 && (
               <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-medium flex-shrink-0">
                 <Shield className="w-2.5 h-2.5" />
                 {result.accepted_reference_count}
+              </span>
+            )}
+            {isWorldClub && (
+              <span
+                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0 ${
+                  result.claimed
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : 'bg-blue-50 text-blue-700'
+                }`}
+                title={result.claimed
+                  ? 'Active on HOCKIA — you can message them inside the platform'
+                  : 'In the global directory — not yet active on HOCKIA, reach out externally'}
+              >
+                <Globe2 className="w-2.5 h-2.5" aria-hidden="true" />
+                {result.claimed ? 'Claimed' : 'Directory'}
               </span>
             )}
             {fitPreset && (

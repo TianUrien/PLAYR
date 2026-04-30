@@ -1067,7 +1067,7 @@ Deno.serve(async (req) => {
     // intents are excluded by entity type.
     const PROFILE_ENTITIES = new Set(['clubs', 'players', 'coaches', 'brands', 'umpires'])
     const HAS_SEARCH_IMPERATIVE = /\b(find|show|look(ing)? for|recommend|search( for)?|browse|list|get me)\b/i.test(query)
-    const llmSelectedTool: 'search' | 'conversation' | 'knowledge' = parseResult.type
+    const llmSelectedTool: 'search' | 'conversation' | 'knowledge' | 'world_club_search' = parseResult.type
     let backendForcedSearch = false
     let forcedReason: string | null = null
 
@@ -1147,6 +1147,249 @@ Deno.serve(async (req) => {
           kind: 'text' as ResponseKind,
           applied: null,
           suggested_actions: convoActions,
+        }),
+        { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // ── Phase 4 MVP-B: World directory club search ──────────────────
+    // The new search_world_clubs_directory tool routes here. We query
+    // public.world_clubs directly (no RPC needed — the table is small
+    // and the filters map cleanly to JS-builder calls). Results merge
+    // into `data[]` with result_type='world_club' so the frontend can
+    // render claimed and unclaimed clubs side-by-side.
+    if (llmResult.type === 'world_club_search') {
+      const wcFilters = llmResult.filters
+
+      // Resolve country names → IDs (same shape as the regular search path).
+      let wcCountryIds: number[] | null = null
+      if (wcFilters.country_names?.length) {
+        const orConditions = wcFilters.country_names.map(n =>
+          `name.ilike.%${n}%,common_name.ilike.%${n}%,nationality_name.ilike.%${n}%`
+        ).join(',')
+        const { data } = await adminClient.from('countries').select('id').or(orConditions)
+        if (data?.length) wcCountryIds = data.map((c: any) => c.id)
+      }
+
+      // Resolve province names → IDs (optional).
+      let wcProvinceIds: number[] | null = null
+      if (wcFilters.province_names?.length) {
+        const orConditions = wcFilters.province_names.map(p => `name.ilike.%${p}%`).join(',')
+        const { data } = await adminClient.from('world_provinces').select('id').or(orConditions)
+        if (data?.length) wcProvinceIds = data.map((p: any) => p.id)
+      }
+
+      // Resolve league names → IDs (optional). World_clubs has separate
+      // men's and women's league columns; we match either.
+      let wcLeagueIds: number[] | null = null
+      if (wcFilters.league_names?.length) {
+        const orConditions = wcFilters.league_names.map(l => `name.ilike.%${l}%`).join(',')
+        const { data } = await adminClient.from('world_leagues').select('id').or(orConditions)
+        if (data?.length) wcLeagueIds = data.map((l: any) => l.id)
+      }
+
+      // Build the query. Order: claimed first (clubs you can message inside
+      // HOCKIA are most actionable), then alphabetic. Cap at 20 results so
+      // the UI doesn't drown the user.
+      let wcQuery = adminClient
+        .from('world_clubs')
+        .select(`
+          id, club_name, avatar_url, is_claimed, claimed_profile_id,
+          country:countries!world_clubs_country_id_fkey(id, name, code, flag_emoji),
+          province:world_provinces!world_clubs_province_id_fkey(id, name, slug),
+          men_league:world_leagues!world_clubs_men_league_id_fkey(id, name, tier),
+          women_league:world_leagues!world_clubs_women_league_id_fkey(id, name, tier)
+        `)
+        .order('is_claimed', { ascending: false })
+        .order('club_name', { ascending: true })
+        .limit(20)
+
+      if (wcCountryIds) wcQuery = wcQuery.in('country_id', wcCountryIds)
+      if (wcProvinceIds) wcQuery = wcQuery.in('province_id', wcProvinceIds)
+      if (wcLeagueIds && wcLeagueIds.length > 0) {
+        // Either league column is in the filter set.
+        wcQuery = wcQuery.or(
+          `men_league_id.in.(${wcLeagueIds.join(',')}),women_league_id.in.(${wcLeagueIds.join(',')})`
+        )
+      }
+      if (wcFilters.text_query?.trim()) {
+        wcQuery = wcQuery.ilike('club_name_normalized', `%${wcFilters.text_query.toLowerCase().trim()}%`)
+      }
+      if (wcFilters.claimed_only === true) {
+        wcQuery = wcQuery.eq('is_claimed', true)
+      }
+
+      const { data: wcRows, error: wcErr } = await wcQuery
+      if (wcErr) {
+        captureException(wcErr, { functionName: 'nl-search', correlationId, extra: { phase: 'world_club_search' } })
+      }
+
+      // Map to a unified DiscoverResult-shaped row. The frontend switches
+      // on result_type to render the world-club variant (no avatar pills,
+      // claimed/unclaimed badge, navigates to /world/... or /clubs/id/...).
+      const mapped = ((wcRows || []) as any[]).map((wc: any) => ({
+        id: wc.id,
+        full_name: wc.club_name ?? null,
+        username: null,
+        avatar_url: wc.avatar_url ?? null,
+        role: 'club',
+        position: null,
+        secondary_position: null,
+        gender: null,
+        playing_category: null,
+        coaching_categories: null,
+        umpiring_categories: null,
+        age: null,
+        nationality_country_id: wc.country?.id ?? null,
+        nationality2_country_id: null,
+        nationality_name: wc.country?.name ?? null,
+        nationality2_name: null,
+        flag_emoji: wc.country?.flag_emoji ?? null,
+        flag_emoji2: null,
+        base_location: wc.province?.name ?? null,
+        base_country_name: wc.country?.name ?? null,
+        current_club: null,
+        current_world_club_id: wc.id,
+        open_to_play: false,
+        open_to_coach: false,
+        open_to_opportunities: false,
+        accepted_reference_count: 0,
+        career_entry_count: 0,
+        accepted_friend_count: 0,
+        last_active_at: null,
+        coach_specialization: null,
+        coach_specialization_custom: null,
+        // Phase 4 MVP-B fields
+        result_type: 'world_club' as const,
+        claimed: !!wc.is_claimed,
+        claimed_profile_id: wc.claimed_profile_id ?? null,
+        league_name: wc.women_league?.name || wc.men_league?.name || null,
+        province_name: wc.province?.name || null,
+        country_code: wc.country?.code ?? null,
+      }))
+
+      const claimedCount = mapped.filter((r: any) => r.claimed).length
+      const unclaimedCount = mapped.length - claimedCount
+      const locationLabel = wcFilters.country_names?.[0] || null
+
+      // Compose ai_message. With results, give a quick count summary that
+      // names the claimed/unclaimed split — it's the most actionable insight
+      // for the user. With 0, run composeNoResults for proactive diagnosis.
+      let wcAiMessage: string
+      let wcNoResultsFollowUp: string | null = null
+      let wcNoResultsMeta: LLMCallMeta | null = null
+      if (mapped.length > 0) {
+        const noun = mapped.length === 1 ? 'club' : 'clubs'
+        const where = locationLabel ? ` in ${locationLabel}` : wcFilters.text_query ? ` matching "${wcFilters.text_query}"` : ''
+        if (claimedCount > 0 && unclaimedCount > 0) {
+          wcAiMessage = `${mapped.length} ${noun}${where} — ${claimedCount} ${claimedCount === 1 ? 'is' : 'are'} active on HOCKIA (you can message ${claimedCount === 1 ? 'them' : 'them'} directly), and ${unclaimedCount} ${unclaimedCount === 1 ? 'is' : 'are'} in the directory but not yet claimed (you'll need to reach out externally).`
+        } else if (claimedCount > 0) {
+          wcAiMessage = `${mapped.length} ${noun}${where} — all active on HOCKIA, you can message ${mapped.length === 1 ? 'them' : 'any of them'} directly.`
+        } else {
+          wcAiMessage = `${mapped.length} ${noun}${where} in HOCKIA's directory. None are claimed yet, so you'll need to reach out externally — but they're real clubs to explore.`
+        }
+        if (llmResult.message) {
+          wcAiMessage = `${wcAiMessage} ${llmResult.message}`
+        }
+      } else if (userContext) {
+        // 0 results — compose a richer diagnosis just like the regular path.
+        try {
+          const syntheticFilters: ParsedFilters = {
+            roles: ['club'],
+            countries: wcFilters.country_names,
+            text_query: wcFilters.text_query,
+          }
+          const { result: nrResult, meta: nrMeta } = await composeNoResults({
+            userQuery: query,
+            searchCriteria: syntheticFilters,
+            effectiveCategory: null,
+            categorySource: 'none',
+            entityNoun: 'clubs',
+            userContext,
+          })
+          wcNoResultsMeta = nrMeta
+          wcAiMessage = nrResult.ai_message?.trim() || `I couldn't find any clubs matching that in HOCKIA's directory.`
+          if (nrResult.follow_up_query?.trim()) wcNoResultsFollowUp = nrResult.follow_up_query.trim()
+        } catch (nrErr) {
+          captureException(nrErr, { functionName: 'nl-search', correlationId, extra: { phase: 'compose_no_results_world_club' } })
+          wcAiMessage = `I couldn't find any clubs matching that in HOCKIA's directory${locationLabel ? ` for ${locationLabel}` : ''}.`
+        }
+      } else {
+        wcAiMessage = `I couldn't find any clubs matching that in HOCKIA's directory${locationLabel ? ` for ${locationLabel}` : ''}.`
+      }
+
+      const wcApplied: AppliedSearch = {
+        entity: 'clubs',
+        category_label: null,
+        gender_label: null,
+        location_label: locationLabel,
+        role_summary: locationLabel ? `clubs in ${locationLabel}` : 'clubs',
+      }
+      const wcResponseKind: ResponseKind = mapped.length === 0 ? 'no_results' : 'results'
+      let wcSuggestedActions: SuggestedAction[] = wcResponseKind === 'no_results'
+        ? getNoResultsActions(wcApplied, userContext?.role ?? null)
+        : []
+      if (wcNoResultsFollowUp) {
+        const fLabel = wcNoResultsFollowUp.length > 38
+          ? wcNoResultsFollowUp.slice(0, 35).trim() + '…'
+          : wcNoResultsFollowUp
+        const wcFollowUpAction: SuggestedAction = {
+          label: fLabel,
+          intent: { type: 'free_text', query: wcNoResultsFollowUp },
+        }
+        wcSuggestedActions = [wcFollowUpAction, ...wcSuggestedActions].slice(0, 4)
+      }
+
+      // Telemetry — distinguishable from the regular search path via
+      // llm_selected_tool=search_world_clubs_directory.
+      const wcParsedWithMeta = {
+        ...wcFilters,
+        _meta: {
+          router_entity_type: intent.entity_type,
+          router_confidence: intent.confidence,
+          router_signals: intent.matched_signals,
+          llm_selected_tool: 'world_club_search',
+          backend_forced_search: false,
+          kind: wcResponseKind,
+          applied_role_summary: wcApplied.role_summary,
+          suggested_actions_count: wcSuggestedActions.length,
+          world_club_search: true,
+          world_club_total: mapped.length,
+          world_club_claimed: claimedCount,
+          world_club_unclaimed: unclaimedCount,
+        },
+      }
+      fireAndForget(logDiscoveryEvent(adminClient, {
+        user_id: user.id,
+        role: userContext?.role ?? null,
+        query_text: query,
+        intent: 'search',
+        parsed_filters: wcParsedWithMeta as any,
+        result_count: mapped.length,
+        has_qualitative: false,
+        llm_provider: llmProvider,
+        response_time_ms: Date.now() - startTime,
+        error_message: null,
+        prompt_tokens: sumNullable(parseMeta.usage?.prompt_tokens ?? null, wcNoResultsMeta?.usage?.prompt_tokens ?? null),
+        completion_tokens: sumNullable(parseMeta.usage?.completion_tokens ?? null, wcNoResultsMeta?.usage?.completion_tokens ?? null),
+        cached_tokens: sumNullable(parseMeta.usage?.cached_tokens ?? null, wcNoResultsMeta?.usage?.cached_tokens ?? null),
+        prompt_version: PROMPT_VERSION,
+        fallback_used: false,
+        retry_count: parseMeta.retry_count + (wcNoResultsMeta?.retry_count ?? 0),
+      }))
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: mapped,
+          total: mapped.length,
+          has_more: false,
+          parsed_filters: wcFilters,
+          summary: wcFilters.summary || `${mapped.length} club result${mapped.length === 1 ? '' : 's'}.`,
+          ai_message: wcAiMessage,
+          kind: wcResponseKind,
+          applied: wcApplied,
+          suggested_actions: wcSuggestedActions,
         }),
         { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
       )

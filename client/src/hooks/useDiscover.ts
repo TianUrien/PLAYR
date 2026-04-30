@@ -45,6 +45,18 @@ export interface DiscoverResult {
   fit_reasons?: string[]
   missing_data?: string[]
   next_action?: string
+  // Phase 4 MVP-B — World directory club row. When result_type is
+  // 'world_club', the row represents an entry from the World directory
+  // (a global field-hockey club registry) rather than a claimed HOCKIA
+  // profile. result_type defaults to 'profile' when absent. Claimed
+  // world_clubs link to a profile via claimed_profile_id; unclaimed ones
+  // navigate to the country directory page.
+  result_type?: 'profile' | 'world_club'
+  claimed?: boolean
+  claimed_profile_id?: string | null
+  league_name?: string | null
+  province_name?: string | null
+  country_code?: string | null
 }
 
 export interface ParsedFilters {

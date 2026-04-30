@@ -49,6 +49,28 @@ export interface SearchIntent {
   include_qualitative?: boolean
 }
 
+// Phase 4 MVP-B — separate intent for "find clubs in {country/league}" style
+// queries. The LLM picks the new search_world_clubs_directory tool when the
+// query is location/league-led for clubs (vs. "Find players from Argentina"
+// which stays on search_profiles). The world_clubs table has both claimed
+// (active on HOCKIA) and unclaimed (real club, not yet active) rows; the
+// brief's hero complaint ("Find clubs in Spain → 0") was caused by Discovery
+// only ever seeing claimed clubs.
+export interface WorldClubSearchFilters {
+  country_names?: string[]
+  province_names?: string[]
+  league_names?: string[]
+  text_query?: string
+  claimed_only?: boolean
+  summary?: string
+}
+
+export interface WorldClubSearchIntent {
+  type: 'world_club_search'
+  filters: WorldClubSearchFilters
+  message: string
+}
+
 export interface ConversationIntent {
   type: 'conversation'
   message: string
@@ -59,7 +81,7 @@ export interface KnowledgeIntent {
   message: string
 }
 
-export type LLMResult = SearchIntent | ConversationIntent | KnowledgeIntent
+export type LLMResult = SearchIntent | ConversationIntent | KnowledgeIntent | WorldClubSearchIntent
 
 export class LLMRateLimitError extends Error {
   constructor() {
@@ -347,17 +369,20 @@ function buildUserContextBlock(ctx: UserContext): string {
 
 const SYSTEM_PROMPT = `You are HOCKIA Assistant, a friendly and knowledgeable AI for HOCKIA — a field hockey platform connecting players, coaches, clubs, brands, and umpires. You are also a field hockey expert.
 
-You have three tools:
-1. search_profiles — Use when the user wants to find or discover people/profiles. Extract structured filters from their query. Always include a conversational "message" field describing what you're looking for.
-2. answer_hockey_question — Use when the user asks about field hockey knowledge: rules, positions, tactics, formations, tournament formats (Olympics, World Cup, Pro League, EHL), FIH regulations, equipment (sticks, goalkeeping gear, balls, turf types), hockey history, training concepts, terminology (drag flick, aerial, jab tackle, penalty corner, etc.), or differences between indoor and outdoor hockey. Provide accurate, helpful answers. You can be detailed (multiple paragraphs) when the question warrants it.
-3. respond — Use for greetings, platform questions, help requests, AND for any personalised question about the user themselves ("Who am I?", "What's in my profile?", "What should I improve?", "What can I do next on HOCKIA?", "How do I get more visibility?", "Who should I connect with?"). When responding to self-reflection questions, use the CURRENT USER CONTEXT block as the only source of truth.
+You have four tools:
+1. search_profiles — Use when the user wants to find or discover PEOPLE: players, coaches, brands, umpires. Or claimed clubs by criteria like position-recruiting / specific named-search. Extract structured filters from their query. Always include a conversational "message" field describing what you're looking for.
+2. search_world_clubs_directory — Use when the user wants to find CLUBS by LOCATION (country, region), LEAGUE, or by club NAME. HOCKIA's directory has both claimed clubs (active on the platform — can be messaged) and unclaimed (real clubs in the directory but not yet active on HOCKIA). PREFER this over search_profiles for any location-led club query — search_profiles only finds claimed clubs, which is a tiny subset of the real club world. Examples: "Find clubs in Spain", "I want to play in Italy", "Show me clubs in the Bundesliga", "Find the Holcombe Hockey Club".
+3. answer_hockey_question — Use when the user asks about field hockey knowledge: rules, positions, tactics, formations, tournament formats (Olympics, World Cup, Pro League, EHL), FIH regulations, equipment (sticks, goalkeeping gear, balls, turf types), hockey history, training concepts, terminology (drag flick, aerial, jab tackle, penalty corner, etc.), or differences between indoor and outdoor hockey. Provide accurate, helpful answers. You can be detailed (multiple paragraphs) when the question warrants it.
+4. respond — Use for greetings, platform questions, help requests, AND for any personalised question about the user themselves ("Who am I?", "What's in my profile?", "What should I improve?", "What can I do next on HOCKIA?", "How do I get more visibility?", "Who should I connect with?"). When responding to self-reflection questions, use the CURRENT USER CONTEXT block as the only source of truth.
 
 TOOL SELECTION RULES:
 - "Find defenders" or "best players in England" → search_profiles (looking for people)
+- "Find clubs in Spain" / "I want to play in Italy" / "Clubs in the Premier Division" / "Holcombe Hockey Club" → search_world_clubs_directory (location/league/name-led club query — pulls from the directory, includes unclaimed)
+- "Find clubs hiring head coaches" → search_profiles with roles=['club'] (recruiting-led query — claimed clubs only, since only claimed clubs can post opportunities)
 - "What does a defender do?" or "rules of penalty corner" → answer_hockey_question (hockey knowledge)
 - "Hi" or "What is HOCKIA?" → respond (greeting or platform question)
 - "Who am I?" / "What do you know about me?" / "What's in my profile?" / "What should I improve?" / "How can I get more visibility?" / "What can I do next?" / "Who should I connect with?" → respond (use the CURRENT USER CONTEXT block at the end of this prompt)
-- "What clubs would suit me?" / "Recommend players for my team" / "Show me {role} for me" → search_profiles, with filters seeded from the user's context
+- "What clubs would suit me?" / "Recommend players for my team" / "Show me {role} for me" → search_profiles, with filters seeded from the user's context. EXCEPTION: if "what clubs would suit me" reads as a location/league discovery (e.g. user is open to relocate, no specific recruiting need), use search_world_clubs_directory.
 - For medical/injury advice, say you'd recommend consulting a sports medicine professional.
 - For non-hockey, non-HOCKIA topics (weather, coding, cooking, etc.), politely redirect: you're a field hockey assistant and can help with hockey questions or discovering profiles.
 
@@ -560,6 +585,53 @@ const RESPOND_TOOL = {
   },
 }
 
+// Phase 4 MVP-B — World directory tool. Finds clubs by location, league, or
+// name. Returns BOTH claimed and unclaimed clubs so the user gets the real
+// world picture. The LLM should NOT auto-seed target_category here — clubs
+// generally have both men's and women's teams, and the directory entry
+// itself is gender-agnostic.
+const WORLD_CLUBS_TOOL = {
+  name: 'search_world_clubs_directory',
+  description: 'Search HOCKIA\'s World directory of field hockey clubs. Use for location-led, league-led, or name-led club queries. Returns BOTH claimed (active on HOCKIA — can be messaged) and unclaimed (real clubs in the directory, not yet active) clubs.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      country_names: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Country names where the user wants to find clubs. Plural OK. Example: ["Spain"], ["Spain","Italy"], ["United Kingdom"].',
+      },
+      province_names: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Province / state / region names if the user named one. Example: ["Catalonia"], ["New South Wales"].',
+      },
+      league_names: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'League names if the user named one. Example: ["Hoofdklasse"], ["Premier Division"].',
+      },
+      text_query: {
+        type: 'string',
+        description: 'Partial club name match. Use when the user names a club ("Holcombe", "Real Club de Polo").',
+      },
+      claimed_only: {
+        type: 'boolean',
+        description: 'Set true ONLY if the user explicitly said they want clubs they can message inside HOCKIA. Otherwise leave unset to include both claimed and unclaimed.',
+      },
+      summary: {
+        type: 'string',
+        description: 'Human-readable summary, e.g. "Showing clubs in Spain (claimed and directory)."',
+      },
+      message: {
+        type: 'string',
+        description: 'A short conversational message about the search. 1-2 sentences. The backend may overwrite this with a richer message after the search runs.',
+      },
+    },
+    required: ['message', 'summary'],
+  },
+}
+
 const HOCKEY_KNOWLEDGE_TOOL = {
   name: 'answer_hockey_question',
   description: 'Answer field hockey knowledge questions: rules, positions, tactics, formations, tournaments, FIH regulations, equipment, history, training, terminology, indoor vs outdoor hockey. Use when the user asks about the sport itself, NOT when searching for profiles.',
@@ -609,6 +681,7 @@ async function callGemini(query: string, history: HistoryTurn[] = [], userContex
         tools: [{
           function_declarations: [
             { name: SEARCH_TOOL.name, description: SEARCH_TOOL.description, parameters: SEARCH_TOOL.input_schema },
+            { name: WORLD_CLUBS_TOOL.name, description: WORLD_CLUBS_TOOL.description, parameters: WORLD_CLUBS_TOOL.input_schema },
             { name: RESPOND_TOOL.name, description: RESPOND_TOOL.description, parameters: RESPOND_TOOL.input_schema },
             { name: HOCKEY_KNOWLEDGE_TOOL.name, description: HOCKEY_KNOWLEDGE_TOOL.description, parameters: HOCKEY_KNOWLEDGE_TOOL.input_schema },
           ],
@@ -651,6 +724,13 @@ async function callGemini(query: string, history: HistoryTurn[] = [], userContex
   }
   if (name === 'answer_hockey_question') {
     return { result: { type: 'knowledge', message: args.message || "I couldn't generate an answer. Try rephrasing your question." }, meta }
+  }
+  if (name === WORLD_CLUBS_TOOL.name) {
+    const { message, ...filters } = args
+    return {
+      result: { type: 'world_club_search', filters: filters as WorldClubSearchFilters, message: message || filters.summary || '' },
+      meta,
+    }
   }
 
   const { message, include_qualitative, ...filters } = args
@@ -704,6 +784,7 @@ async function callClaude(
         system: systemBlocks,
         tools: [
           { name: SEARCH_TOOL.name, description: SEARCH_TOOL.description, input_schema: SEARCH_TOOL.input_schema },
+          { name: WORLD_CLUBS_TOOL.name, description: WORLD_CLUBS_TOOL.description, input_schema: WORLD_CLUBS_TOOL.input_schema },
           { name: RESPOND_TOOL.name, description: RESPOND_TOOL.description, input_schema: RESPOND_TOOL.input_schema },
           { name: HOCKEY_KNOWLEDGE_TOOL.name, description: HOCKEY_KNOWLEDGE_TOOL.description, input_schema: HOCKEY_KNOWLEDGE_TOOL.input_schema },
         ],
@@ -761,6 +842,13 @@ async function callClaude(
   if (toolUse.name === 'answer_hockey_question') {
     return { result: { type: 'knowledge', message: toolUse.input.message || "I couldn't generate an answer. Try rephrasing your question." }, meta }
   }
+  if (toolUse.name === WORLD_CLUBS_TOOL.name) {
+    const { message, ...filters } = toolUse.input
+    return {
+      result: { type: 'world_club_search', filters: filters as WorldClubSearchFilters, message: message || filters.summary || '' },
+      meta,
+    }
+  }
 
   const { message, include_qualitative, ...filters } = toolUse.input
   return {
@@ -799,6 +887,7 @@ async function callOpenAI(query: string, history: HistoryTurn[] = [], userContex
       messages,
       tools: [
         { type: 'function', function: { name: SEARCH_TOOL.name, description: SEARCH_TOOL.description, parameters: SEARCH_TOOL.input_schema } },
+        { type: 'function', function: { name: WORLD_CLUBS_TOOL.name, description: WORLD_CLUBS_TOOL.description, parameters: WORLD_CLUBS_TOOL.input_schema } },
         { type: 'function', function: { name: RESPOND_TOOL.name, description: RESPOND_TOOL.description, parameters: RESPOND_TOOL.input_schema } },
         { type: 'function', function: { name: HOCKEY_KNOWLEDGE_TOOL.name, description: HOCKEY_KNOWLEDGE_TOOL.description, parameters: HOCKEY_KNOWLEDGE_TOOL.input_schema } },
       ],
@@ -825,6 +914,10 @@ async function callOpenAI(query: string, history: HistoryTurn[] = [], userContex
   }
   if (toolCall.function.name === 'answer_hockey_question') {
     return { type: 'knowledge', message: args.message || 'I couldn\'t generate an answer. Try rephrasing your question.' }
+  }
+  if (toolCall.function.name === WORLD_CLUBS_TOOL.name) {
+    const { message, ...filters } = args
+    return { type: 'world_club_search', filters: filters as WorldClubSearchFilters, message: message || filters.summary || '' }
   }
 
   const { message, include_qualitative, ...filters } = args
