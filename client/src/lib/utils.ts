@@ -147,6 +147,19 @@ export function truncate(str: string, length: number): string {
 }
 
 /**
+ * Title-case a relationship_type for display.
+ *
+ * The references bug-bundle migration normalises stored values to lowercase
+ * so server-side dedup/comparison is reliable. Display-side we want the
+ * original presentation (e.g. "head coach" → "Head Coach"), so capitalise
+ * the first letter of every word at render time.
+ */
+export function formatRelationshipType(value: string | null | undefined): string {
+  if (!value) return ''
+  return value.replace(/\b\p{L}/gu, (c) => c.toUpperCase())
+}
+
+/**
  * Generate random ID
  */
 export function generateId(): string {

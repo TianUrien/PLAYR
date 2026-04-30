@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import Modal from './Modal'
+import { formatRelationshipType } from '@/lib/utils'
 
 interface ReferenceEndorsementModalProps {
   isOpen: boolean
@@ -70,7 +71,7 @@ export default function ReferenceEndorsementModal({
 
         <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 text-sm text-gray-600">
           <p className="font-semibold text-gray-800">Relationship</p>
-          <p>{relationshipType}</p>
+          <p>{formatRelationshipType(relationshipType)}</p>
           {!isEditMode && requestNote && (
             <div className="mt-3">
               <p className="font-semibold text-gray-800">Their note</p>

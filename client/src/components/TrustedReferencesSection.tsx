@@ -15,7 +15,7 @@ import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import { useNavigate } from 'react-router-dom'
 import { useNotificationStore } from '@/lib/notifications'
-import { cn } from '@/lib/utils'
+import { cn, formatRelationshipType } from '@/lib/utils'
 import type { Profile } from '@/lib/supabase'
 
 interface TrustedReferencesSectionProps {
@@ -391,7 +391,7 @@ export default function TrustedReferencesSection({
                   <p className="text-sm font-semibold text-gray-900">{pending.profile?.fullName ?? 'HOCKIA Member'}</p>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                     <RoleBadge role={pending.profile?.role ?? undefined} />
-                    <span>{pending.relationshipType}</span>
+                    <span>{formatRelationshipType(pending.relationshipType)}</span>
                     {pending.createdAt && (
                       <span className="inline-flex items-center gap-1">
                         <Clock3 className="h-3 w-3" />
@@ -604,7 +604,7 @@ export default function TrustedReferencesSection({
                         <p className="font-semibold text-gray-900">{request.requesterProfile?.fullName ?? 'HOCKIA Member'}</p>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                           <RoleBadge role={request.requesterProfile?.role ?? undefined} />
-                          <span>{request.relationshipType}</span>
+                          <span>{formatRelationshipType(request.relationshipType)}</span>
                         </div>
                       </div>
                     </div>
@@ -655,7 +655,7 @@ export default function TrustedReferencesSection({
                       />
                       <div>
                         <p className="font-semibold text-gray-900">{reference.requesterProfile?.fullName ?? 'HOCKIA Member'}</p>
-                        <p className="text-xs text-gray-500">{reference.relationshipType}</p>
+                        <p className="text-xs text-gray-500">{formatRelationshipType(reference.relationshipType)}</p>
                       </div>
                     </div>
                     {reference.endorsementText && (

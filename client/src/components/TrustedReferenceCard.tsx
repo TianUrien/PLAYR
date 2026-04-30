@@ -3,7 +3,7 @@ import { ShieldCheck, MessageCircle, Loader2, Quote } from 'lucide-react'
 import Avatar from './Avatar'
 import RoleBadge from './RoleBadge'
 import { NationalityFlagsInline } from './DualNationalityDisplay'
-import { cn } from '@/lib/utils'
+import { cn, formatRelationshipType } from '@/lib/utils'
 import type { ReferenceCard, PublicReferenceCard } from '@/hooks/useTrustedReferences'
 
 type ReferenceLike = Pick<ReferenceCard, 'id' | 'relationshipType' | 'endorsementText' | 'profile'>
@@ -152,7 +152,7 @@ export default function TrustedReferenceCard({
         {/* Role badge + Relationship type */}
         <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
           <RoleBadge role={reference.profile?.role ?? undefined} className="px-2 py-0.5 text-[11px]" />
-          <span className="text-xs font-medium text-slate-500">{reference.relationshipType}</span>
+          <span className="text-xs font-medium text-slate-500">{formatRelationshipType(reference.relationshipType)}</span>
         </div>
 
         {/* Nationality flags (preferred) or location fallback */}

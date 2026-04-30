@@ -25,7 +25,7 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, MapPin, Calendar, Shield, Flag, Edit2, Eye, Languages as LanguagesIcon, Activity, MessageCircle } from 'lucide-react'
+import { ArrowLeft, MapPin, Calendar, Shield, Flag, Edit2, Eye, Languages as LanguagesIcon, Activity, MessageCircle, Award } from 'lucide-react'
 import Header from '@/components/Header'
 import {
   Avatar,
@@ -329,7 +329,7 @@ export default function UmpireDashboard({
                 />
                 {profile.umpire_level && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
-                    <Shield className="w-3 h-3" />
+                    <Award className="w-3 h-3" />
                     {profile.umpire_level}
                   </span>
                 )}

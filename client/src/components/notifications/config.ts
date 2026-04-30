@@ -19,6 +19,7 @@ import {
   UserX,
 } from 'lucide-react'
 import type { NotificationKind, NotificationRecord } from '@/lib/api/notifications'
+import { formatRelationshipType } from '@/lib/utils'
 
 export type NotificationRenderConfig = {
   icon: LucideIcon
@@ -124,7 +125,7 @@ const notificationConfigs: Partial<Record<NotificationKind, NotificationRenderCo
     badgeText: 'Reference request',
     accentClassName: 'bg-emerald-50 text-emerald-700',
     getTitle: (notification) => `${getActorName(notification)} requested a reference`,
-    getDescription: (notification) => getMetadataString(notification, 'relationship_type'),
+    getDescription: (notification) => formatRelationshipType(getMetadataString(notification, 'relationship_type')) || null,
     getRoute: () => friendRequestsRoute,
   },
   reference_request_accepted: {
@@ -140,7 +141,7 @@ const notificationConfigs: Partial<Record<NotificationKind, NotificationRenderCo
     badgeText: 'Reference update',
     accentClassName: 'bg-rose-50 text-rose-600',
     getTitle: (notification) => `${getActorName(notification)} declined your reference request`,
-    getDescription: (notification) => getMetadataString(notification, 'relationship_type'),
+    getDescription: (notification) => formatRelationshipType(getMetadataString(notification, 'relationship_type')) || null,
     getRoute: () => referencesRoute,
   },
   reference_updated: {
