@@ -2,11 +2,14 @@ import { useEffect, useState, useRef } from 'react'
 import { ArrowLeft, MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail, Plus } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
-import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, NextStepCard, FreshnessCard, SearchAppearancesCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, DualNationalityDisplay, AvailabilityPill, TierBadge, TrustBadge, VerifiedBadge, CategoryConfirmationBanner } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, NextStepCard, FreshnessCard, RecentlyConnectedCard, SearchAppearancesCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, DualNationalityDisplay, AvailabilityPill, TierBadge, TrustBadge, VerifiedBadge, CategoryConfirmationBanner } from '@/components'
 import { calculateTier } from '@/lib/profileTier'
 import { useProfileFreshness } from '@/hooks/useProfileFreshness'
 import type { FreshnessNudge } from '@/lib/profileFreshness'
 import { useSearchAppearances } from '@/hooks/useSearchAppearances'
+import { useReferenceFriendOptions } from '@/hooks/useReferenceFriendOptions'
+import { useTrustedReferences } from '@/hooks/useTrustedReferences'
+import { trackReferenceBadgeClick } from '@/lib/analytics'
 import ProfileActionMenu from '@/components/ProfileActionMenu'
 import Header from '@/components/Header'
 import MediaTab from '@/components/MediaTab'
@@ -101,6 +104,13 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
   const { summary: searchAppearances } = useSearchAppearances({
     profileId: readOnly ? null : (profileData?.id ?? authProfile?.id ?? null),
   })
+  // Phase 3 — RecentlyConnectedCard data (owner-only).
+  const { friendOptions: nudgeFriendOptions } = useReferenceFriendOptions(
+    readOnly ? null : (profileData?.id ?? authProfile?.id ?? null),
+  )
+  const { acceptedReferences: nudgeAccepted, pendingReferences: nudgePending } = useTrustedReferences(
+    readOnly ? '' : (profileData?.id ?? authProfile?.id ?? ''),
+  )
 
   // Shared handler for NextStepCard — routes a bucket to the right deep-link.
   const handleStrengthBucketAction = (bucket: CoachStrengthBucket) => {
@@ -330,6 +340,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                       count={(profile as Partial<Profile>).accepted_reference_count ?? 0}
                       isOwner={!readOnly}
                       onClick={() => {
+                        trackReferenceBadgeClick('coach', (profile as Partial<Profile>).accepted_reference_count ?? 0)
                         if (!readOnly) {
                           setActiveTab('friends')
                           const next = new URLSearchParams(searchParams)
@@ -475,6 +486,25 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
             />
             <div className="mt-3">
               <FreshnessCard nudge={freshnessNudge} onAction={handleFreshnessAction} />
+            </div>
+            {/* Phase 4 References UX Plan — Phase 3.1 (post-friendship prompt). */}
+            <div className="mt-3">
+              <RecentlyConnectedCard
+                friendOptions={nudgeFriendOptions}
+                excludeIds={new Set([
+                  ...nudgeAccepted.map((r) => r.profile?.id).filter((id): id is string => Boolean(id)),
+                  ...nudgePending.map((r) => r.profile?.id).filter((id): id is string => Boolean(id)),
+                ])}
+                acceptedReferenceCount={nudgeAccepted.length}
+                onAsk={(friendId) => {
+                  setActiveTab('friends')
+                  const next = new URLSearchParams(searchParams)
+                  next.set('tab', 'friends')
+                  next.set('section', 'references')
+                  next.set('ask', friendId)
+                  setSearchParams(next, { replace: false })
+                }}
+              />
             </div>
             {searchAppearances && searchAppearances.total > 0 && (
               <div className="mt-3">

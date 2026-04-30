@@ -7,6 +7,7 @@ import { useAuthStore } from '@/lib/auth'
 import { useToastStore } from '@/lib/toast'
 import { extractErrorMessage } from '@/lib/utils'
 import { trackDbEvent } from '@/lib/trackDbEvent'
+import { trackReferenceRequestSent, trackReferenceRequestResponded } from '@/lib/analytics'
 
 const MAX_REFERENCES = 5 as const
 
@@ -259,6 +260,7 @@ export function useTrustedReferences(profileId: string) {
 
         if (error) throw error
         trackDbEvent('reference_request', 'reference', params.referenceId, { relationship_type: params.relationshipType })
+        trackReferenceRequestSent(authProfile?.role ?? 'unknown', params.relationshipType)
         addToast('Reference request sent.', 'success')
         await fetchReferences()
         return true
@@ -270,7 +272,7 @@ export function useTrustedReferences(profileId: string) {
         setMutating(null)
       }
     },
-    [isOwner, canAddMore, addToast, fetchReferences]
+    [isOwner, canAddMore, addToast, fetchReferences, authProfile?.role]
   )
 
   const respondToRequest = useCallback(
@@ -285,6 +287,7 @@ export function useTrustedReferences(profileId: string) {
 
         if (error) throw error
         trackDbEvent('reference_respond', 'reference', params.referenceId, { accepted: params.accept })
+        trackReferenceRequestResponded(params.accept ? 'accept' : 'decline')
         addToast(params.accept ? 'Reference accepted.' : 'Reference declined.', 'success')
         await fetchReferences()
         return true

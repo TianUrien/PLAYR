@@ -16,6 +16,7 @@ import { useToastStore } from '@/lib/toast'
 import { useNavigate } from 'react-router-dom'
 import { useNotificationStore } from '@/lib/notifications'
 import { cn, formatRelationshipType } from '@/lib/utils'
+import { trackReferenceModalOpen } from '@/lib/analytics'
 import type { Profile } from '@/lib/supabase'
 
 interface TrustedReferencesSectionProps {
@@ -359,7 +360,10 @@ export default function TrustedReferencesSection({
         {canCollectReferences && canAddMore && (
           <button
             type="button"
-            onClick={() => setAddModalOpen(true)}
+            onClick={() => {
+              trackReferenceModalOpen('header_cta')
+              setAddModalOpen(true)
+            }}
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-500/30"
           >
             <Plus className="h-4 w-4" />
@@ -507,7 +511,10 @@ export default function TrustedReferencesSection({
                     </p>
                     <button
                       type="button"
-                      onClick={() => setAddModalOpen(true)}
+                      onClick={() => {
+                        trackReferenceModalOpen('empty_state')
+                        setAddModalOpen(true)
+                      }}
                       className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40"
                     >
                       Choose a connection
@@ -543,7 +550,10 @@ export default function TrustedReferencesSection({
               {canCollectReferences && canAddMore && (
                 <button
                   type="button"
-                  onClick={() => setAddModalOpen(true)}
+                  onClick={() => {
+                    trackReferenceModalOpen('header_cta')
+                    setAddModalOpen(true)
+                  }}
                   className="min-w-[260px] flex-shrink-0 snap-center rounded-3xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-5 text-center text-emerald-700"
                 >
                   <Plus className="mx-auto mb-2 h-6 w-6" />

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { ArrowLeft, MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail, Award } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
-import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, NextStepCard, FreshnessCard, SearchAppearancesCard, DualNationalityDisplay, AvailabilityPill, TierBadge, TrustBadge, VerifiedBadge, CategoryConfirmationBanner } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, NextStepCard, FreshnessCard, RecentlyConnectedCard, SearchAppearancesCard, DualNationalityDisplay, AvailabilityPill, TierBadge, TrustBadge, VerifiedBadge, CategoryConfirmationBanner } from '@/components'
 import { calculateTier } from '@/lib/profileTier'
 import { useProfileFreshness } from '@/hooks/useProfileFreshness'
 import type { FreshnessNudge } from '@/lib/profileFreshness'
@@ -26,6 +26,9 @@ import { useNotificationStore } from '@/lib/notifications'
 import { derivePublicContactEmail } from '@/lib/profile'
 import type { SocialLinks } from '@/lib/socialLinks'
 import { useProfileStrength, type ProfileStrengthBucket } from '@/hooks/useProfileStrength'
+import { useReferenceFriendOptions } from '@/hooks/useReferenceFriendOptions'
+import { useTrustedReferences } from '@/hooks/useTrustedReferences'
+import { trackReferenceBadgeClick } from '@/lib/analytics'
 import { ProfileViewersSection } from '@/components/ProfileViewersSection'
 import AvailabilityToggleStrip from '@/components/AvailabilityToggleStrip'
 import ClubLinkPrompt from '@/components/ClubLinkPrompt'
@@ -93,6 +96,15 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
   const { summary: searchAppearances } = useSearchAppearances({
     profileId: readOnly ? null : profile?.id ?? null,
   })
+  // Phase 3 — RecentlyConnectedCard data. Pull friend options + references
+  // so we can compute "recently accepted, not yet asked" candidates and hide
+  // the nudge once the owner has any accepted reference. Owner-only.
+  const { friendOptions: nudgeFriendOptions } = useReferenceFriendOptions(
+    readOnly ? null : profile?.id ?? null,
+  )
+  const { acceptedReferences: nudgeAccepted, pendingReferences: nudgePending } = useTrustedReferences(
+    readOnly ? '' : profile?.id ?? '',
+  )
   const prevPercentageRef = useRef<number | null>(null)
   const clearCommentNotifications = useNotificationStore((state) => state.clearCommentNotifications)
   const commentHighlightVersion = useNotificationStore((state) => state.commentHighlightVersion)
@@ -478,6 +490,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
                   count={profile.accepted_reference_count ?? 0}
                   isOwner={!readOnly}
                   onClick={() => {
+                    trackReferenceBadgeClick('player', profile.accepted_reference_count ?? 0)
                     if (!readOnly) {
                       // Owner — go to friends tab, scroll references into view.
                       setActiveTab('friends')
@@ -512,6 +525,28 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
             />
             <div className="mt-3">
               <FreshnessCard nudge={freshnessNudge} onAction={handleFreshnessAction} />
+            </div>
+            {/* Phase 4 References UX Plan — Phase 3.1 (post-friendship prompt).
+                Surfaces a single recent connection as a vouch candidate on the
+                Profile tab, the surface owners actually visit. Hidden once the
+                owner has any accepted reference. */}
+            <div className="mt-3">
+              <RecentlyConnectedCard
+                friendOptions={nudgeFriendOptions}
+                excludeIds={new Set([
+                  ...nudgeAccepted.map((r) => r.profile?.id).filter((id): id is string => Boolean(id)),
+                  ...nudgePending.map((r) => r.profile?.id).filter((id): id is string => Boolean(id)),
+                ])}
+                acceptedReferenceCount={nudgeAccepted.length}
+                onAsk={(friendId) => {
+                  setActiveTab('friends')
+                  const next = new URLSearchParams(searchParams)
+                  next.set('tab', 'friends')
+                  next.set('section', 'references')
+                  next.set('ask', friendId)
+                  setSearchParams(next, { replace: false })
+                }}
+              />
             </div>
             {searchAppearances && searchAppearances.total > 0 && (
               <div className="mt-3">

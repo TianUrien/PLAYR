@@ -13,6 +13,7 @@ import RoleBadge from './RoleBadge'
 import TrustedReferencesSection from './TrustedReferencesSection'
 import type { ReferenceFriendOption } from './AddReferenceModal'
 import { Link, useSearchParams } from 'react-router-dom'
+import { trackReferenceModalOpen } from '@/lib/analytics'
 
 interface FriendsTabProps {
   profileId: string
@@ -46,7 +47,7 @@ export default function FriendsTab({ profileId, readOnly = false, profileRole }:
   // which already orders pending requests above accepted ones, so a user
   // tapping a "your reference was accepted" notification lands above the
   // accepted carousel and the requested-area both.
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const requestedSection = searchParams.get('section')
   const trustedReferencesRef = useRef<HTMLDivElement | null>(null)
 
@@ -132,6 +133,20 @@ export default function FriendsTab({ profileId, readOnly = false, profileRole }:
     }
   }, [loading, requestedSection])
 
+  // Phase 3 (post-friendship prompt) — when ?ask=<friendId> deep-links into
+  // FriendsTab (RecentlyConnectedCard CTA from the dashboard), seed the
+  // existing per-friend Ask flow and immediately strip the param so a
+  // refresh doesn't re-open the modal.
+  useEffect(() => {
+    if (loading) return
+    const friendId = searchParams.get('ask')
+    if (!friendId || !canAskForReferences) return
+    setAskVouchFor(friendId)
+    const next = new URLSearchParams(searchParams)
+    next.delete('ask')
+    setSearchParams(next, { replace: true })
+  }, [loading, searchParams, setSearchParams, canAskForReferences])
+
   const acceptedConnections = useMemo(
     () => connections.filter((connection) => connection.status === 'accepted'),
     [connections]
@@ -152,6 +167,7 @@ export default function FriendsTab({ profileId, readOnly = false, profileRole }:
         role: friend.role,
         baseLocation: friend.base_location,
         currentClub: friend.current_club ?? null,
+        acceptedAt: connection.accepted_at ?? null,
       })
     })
     return options
@@ -256,7 +272,10 @@ export default function FriendsTab({ profileId, readOnly = false, profileRole }:
             {canAskForReferences && showActions && connection.friend_id && connection.accepted_at && (
               <button
                 type="button"
-                onClick={() => setAskVouchFor(connection.friend_id)}
+                onClick={() => {
+                  trackReferenceModalOpen('friend_row')
+                  setAskVouchFor(connection.friend_id)
+                }}
                 className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
                 title={`Ask ${connection.friend?.full_name ?? 'them'} to vouch for you on HOCKIA`}
               >

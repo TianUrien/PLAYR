@@ -26,19 +26,24 @@ export function useReferenceFriendOptions(profileId: string | null) {
     try {
       const { data: edges, error: edgeError } = await supabase
         .from('profile_friend_edges')
-        .select('friend_id')
+        .select('friend_id, accepted_at')
         .eq('profile_id', profileId)
         .eq('status', 'accepted')
 
       if (edgeError) throw edgeError
 
-      const friendIds = Array.from(
-        new Set(
-          (edges ?? [])
-            .map((e) => e.friend_id)
-            .filter((id): id is string => Boolean(id))
-        )
-      )
+      // Most-recent accepted_at wins per friend (the underlying view emits two
+      // rows per friendship; both share the same accepted_at, but be defensive).
+      const acceptedAtByFriend = new Map<string, string | null>()
+      for (const edge of edges ?? []) {
+        if (!edge.friend_id) continue
+        const existing = acceptedAtByFriend.get(edge.friend_id)
+        if (!existing || (edge.accepted_at && edge.accepted_at > existing)) {
+          acceptedAtByFriend.set(edge.friend_id, edge.accepted_at ?? null)
+        }
+      }
+
+      const friendIds = Array.from(acceptedAtByFriend.keys())
 
       if (friendIds.length === 0) {
         setFriendOptions([])
@@ -60,6 +65,7 @@ export function useReferenceFriendOptions(profileId: string | null) {
         role: p.role,
         baseLocation: p.base_location,
         currentClub: p.current_club ?? null,
+        acceptedAt: acceptedAtByFriend.get(p.id) ?? null,
       }))
 
       setFriendOptions(options)

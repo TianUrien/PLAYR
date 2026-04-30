@@ -292,3 +292,64 @@ export function trackPushPromptDismiss(): void {
     category: 'notifications',
   })
 }
+
+// ============================================
+// References funnel
+// ============================================
+// Phase 4 References UX Plan — analytics so we can measure whether the
+// visibility/education pushes actually moved the funnel:
+//   badge_click → modal_open → request_sent → request_responded
+// Categorised under 'references' with a `source` label on the modal-open
+// event so we can attribute opens to the surface they came from.
+
+export type ReferenceModalSource =
+  | 'header_cta'
+  | 'friend_row'
+  | 'recently_connected'
+  | 'empty_state'
+
+/** TrustBadge clicked (header pill on dashboards). */
+export function trackReferenceBadgeClick(role: string, count: number): void {
+  trackEvent({
+    action: 'reference_badge_click',
+    category: 'references',
+    label: role,
+    value: count,
+  })
+}
+
+/** Add-reference modal opened. `source` distinguishes which CTA triggered it. */
+export function trackReferenceModalOpen(source: ReferenceModalSource): void {
+  trackEvent({
+    action: 'reference_modal_open',
+    category: 'references',
+    label: source,
+  })
+}
+
+/** Reference request successfully submitted (server returned ok). */
+export function trackReferenceRequestSent(requesterRole: string, relationshipType: string): void {
+  trackEvent({
+    action: 'reference_request_sent',
+    category: 'references',
+    label: requesterRole,
+    relationship_type: relationshipType,
+  })
+}
+
+/** Reference request responded — accept or decline. */
+export function trackReferenceRequestResponded(action: 'accept' | 'decline'): void {
+  trackEvent({
+    action: 'reference_request_responded',
+    category: 'references',
+    label: action,
+  })
+}
+
+/** Recently-connected nudge dismissed via the X button. */
+export function trackReferenceNudgeDismiss(): void {
+  trackEvent({
+    action: 'reference_nudge_dismiss',
+    category: 'references',
+  })
+}

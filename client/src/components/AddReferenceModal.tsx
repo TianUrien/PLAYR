@@ -13,6 +13,10 @@ export type ReferenceFriendOption = {
   role: string | null
   baseLocation: string | null
   currentClub: string | null
+  /** When this friendship was accepted. Drives the "recently connected"
+   *  nudge surface so we can prompt users to ask for a vouch while the
+   *  connection is still fresh. */
+  acceptedAt: string | null
 }
 
 /** Relationship options keyed by [requester role][reference role] */

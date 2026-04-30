@@ -38,6 +38,7 @@ vi.mock('@/components', () => ({
   VerifiedBadge: () => <span data-testid="verified-badge" />,
   NextStepCard: () => <div data-testid="next-step-card">Next Step</div>,
   FreshnessCard: () => <div data-testid="freshness-card" />,
+  RecentlyConnectedCard: () => <div data-testid="recently-connected-card" />,
   CategoryConfirmationBanner: () => null,
   CountryDisplay: ({ fallbackText, className }: { countryId?: number | null; fallbackText?: string | null; showNationality?: boolean; className?: string }) => (
     <span data-testid="country-display" className={className}>{fallbackText}</span>
@@ -96,6 +97,18 @@ vi.mock('@/components/ProfilePostsTab', () => ({
 
 vi.mock('@/hooks/useProfileFreshness', () => ({
   useProfileFreshness: () => ({ nudge: null, loading: false, refresh: vi.fn() }),
+}))
+
+vi.mock('@/hooks/useReferenceFriendOptions', () => ({
+  useReferenceFriendOptions: () => ({ friendOptions: [], loading: false, refresh: vi.fn() }),
+}))
+
+vi.mock('@/hooks/useTrustedReferences', () => ({
+  useTrustedReferences: () => ({
+    acceptedReferences: [],
+    pendingReferences: [],
+    loading: false,
+  }),
 }))
 
 vi.mock('@/hooks/useProfileStrength', () => ({

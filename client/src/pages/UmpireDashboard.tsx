@@ -44,6 +44,7 @@ import {
   TrustBadge,
   VerifiedBadge,
   DualNationalityDisplay,
+  RecentlyConnectedCard,
 } from '@/components'
 import { categoriesToDisplay } from '@/lib/hockeyCategories'
 import UmpireAppointmentsSection from '@/components/UmpireAppointmentsSection'
@@ -59,7 +60,10 @@ import { useToastStore } from '@/lib/toast'
 import { calculateAge, formatDateOfBirth } from '@/lib/utils'
 import { calculateTier } from '@/lib/profileTier'
 import { useUmpireProfileStrength } from '@/hooks/useUmpireProfileStrength'
+import { useReferenceFriendOptions } from '@/hooks/useReferenceFriendOptions'
+import { useTrustedReferences } from '@/hooks/useTrustedReferences'
 import { getUmpireActivity } from '@/lib/umpireActivity'
+import { trackReferenceBadgeClick } from '@/lib/analytics'
 
 export type UmpireProfileShape =
   Partial<Profile> &
@@ -176,6 +180,14 @@ export default function UmpireDashboard({
   // `estimateMemberStrength(umpire)`, so community cards and dashboard agree.
   const { percentage } = useUmpireProfileStrength({ profile })
   const tier = profile ? calculateTier(percentage) : null
+
+  // Phase 3 — RecentlyConnectedCard data (owner-only).
+  const { friendOptions: nudgeFriendOptions } = useReferenceFriendOptions(
+    readOnly ? null : profile?.id ?? null,
+  )
+  const { acceptedReferences: nudgeAccepted, pendingReferences: nudgePending } = useTrustedReferences(
+    readOnly ? '' : profile?.id ?? '',
+  )
 
   useEffect(() => {
     document.title = profile?.full_name
@@ -316,6 +328,7 @@ export default function UmpireDashboard({
                   isOwner={!readOnly}
                   size="sm"
                   onClick={() => {
+                    trackReferenceBadgeClick('umpire', profile.accepted_reference_count ?? 0)
                     if (!readOnly) {
                       setActiveTab('friends')
                       const next = new URLSearchParams(searchParams)
@@ -390,6 +403,28 @@ export default function UmpireDashboard({
             </div>
           </div>
         </div>
+
+        {/* Phase 4 References UX Plan — Phase 3.1 (post-friendship prompt). */}
+        {!readOnly && (
+          <div className="mt-6">
+            <RecentlyConnectedCard
+              friendOptions={nudgeFriendOptions}
+              excludeIds={new Set([
+                ...nudgeAccepted.map((r) => r.profile?.id).filter((id): id is string => Boolean(id)),
+                ...nudgePending.map((r) => r.profile?.id).filter((id): id is string => Boolean(id)),
+              ])}
+              acceptedReferenceCount={nudgeAccepted.length}
+              onAsk={(friendId) => {
+                setActiveTab('friends')
+                const next = new URLSearchParams(searchParams)
+                next.set('tab', 'friends')
+                next.set('section', 'references')
+                next.set('ask', friendId)
+                setSearchParams(next, { replace: false })
+              }}
+            />
+          </div>
+        )}
 
         {/* ── Always-visible empty-state CTA for owners missing credentials ── */}
         {!readOnly && !hasCertification && (
