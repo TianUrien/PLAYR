@@ -128,7 +128,7 @@ describe('RecentlyConnectedCard', () => {
       />,
     )
     expect(screen.getByText('Jamie Keeper')).toBeInTheDocument()
-    expect(screen.getByText(/Ask Jamie to vouch/i)).toBeInTheDocument()
+    expect(screen.getByText(/Ask Jamie for a reference/i)).toBeInTheDocument()
   })
 
   it('picks the most recent friend when multiple are eligible', () => {
@@ -183,11 +183,13 @@ describe('RecentlyConnectedCard', () => {
     expect(onAsk).toHaveBeenCalledWith('friend-1')
   })
 
-  it('auto-dismisses the friend on Ask click so the card does not re-suggest the same friend on remount', () => {
-    // The dashboard's useTrustedReferences instance does not refetch on
-    // mutation (separate hook instance from TrustedReferencesSection's), so
-    // without the auto-dismiss the card would stay visible after submission
-    // and a double-tap could attempt a duplicate request.
+  it('hides the friend in-session after Ask click but does NOT persist (so cancel/error does not silently suppress the nudge)', () => {
+    // Tapping Ask should not write to localStorage — only the X button does.
+    // If the user opens the modal and cancels, or the server rejects the
+    // request (rate limit, etc.), the candidate must come back on next mount
+    // so the user can try again. The session-only suppression handles the
+    // common case where they DO submit successfully and we want the card to
+    // disappear immediately while the parent's references hook catches up.
     const { unmount } = render(
       <RecentlyConnectedCard
         friendOptions={[baseFriend]}
@@ -197,9 +199,13 @@ describe('RecentlyConnectedCard', () => {
       />,
     )
     fireEvent.click(screen.getByRole('button', { name: /ask to vouch/i }))
+    expect(screen.queryByText('Jamie Keeper')).not.toBeInTheDocument()
     unmount()
 
-    const { container } = render(
+    // Simulating a fresh navigation back to the dashboard with the same data
+    // (e.g., user cancelled the modal). Friend should reappear because the
+    // Ask click only suppressed the candidate for the in-memory session.
+    render(
       <RecentlyConnectedCard
         friendOptions={[baseFriend]}
         ownerProfileId={OWNER_ID}
@@ -207,7 +213,7 @@ describe('RecentlyConnectedCard', () => {
         onAsk={vi.fn()}
       />,
     )
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.getByText('Jamie Keeper')).toBeInTheDocument()
   })
 
   it('hides the card after dismiss and remembers the dismissal across remount', () => {

@@ -150,8 +150,8 @@ export function generateAcceptedEmailHtml(
 
   <div style="padding: 0 0 24px 0;">
 
-    <h1 style="color: #1f2937; margin: 0 0 8px 0; font-size: 22px; font-weight: 700;">${escapeHtml(displayName)} accepted your reference request</h1>
-    <p style="color: #6b7280; margin: 0 0 24px 0; font-size: 16px;">Their endorsement is now live on your profile.</p>
+    <h1 style="color: #1f2937; margin: 0 0 8px 0; font-size: 22px; font-weight: 700;">${escapeHtml(displayName)} vouched for you on HOCKIA</h1>
+    <p style="color: #6b7280; margin: 0 0 24px 0; font-size: 16px;">Their reference is now live on your profile.</p>
 
     <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px;">
       <table cellpadding="0" cellspacing="0" border="0" width="100%">
@@ -198,9 +198,9 @@ export function generateAcceptedEmailText(
   const preview = endorsementPreview(endorsementText)
 
   const lines = [
-    `${displayName} accepted your reference request`,
+    `${displayName} vouched for you on HOCKIA`,
     '',
-    `Their endorsement is now live on your profile.`,
+    `Their reference is now live on your profile.`,
   ]
 
   if (relationshipType) {

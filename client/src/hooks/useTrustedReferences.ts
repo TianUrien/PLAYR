@@ -294,6 +294,16 @@ export function useTrustedReferences(profileId: string) {
       } catch (error) {
         logger.error('Failed to respond to reference request', error)
         addToast(extractErrorMessage(error, 'Unable to update reference. Please try again.'), 'error')
+        // Refetch on error too — the bug-bundle migration's friendship-lost
+        // re-check (#4a) means the request can fail because the requester is
+        // no longer a friend. Without a refetch the now-orphaned pending row
+        // sits in the UI as a ghost the user can never resolve. Reload the
+        // truth from the server on every error path.
+        try {
+          await fetchReferences()
+        } catch (refetchError) {
+          logger.error('Refetch after respond_reference error also failed', refetchError)
+        }
         return false
       } finally {
         setMutating(null)

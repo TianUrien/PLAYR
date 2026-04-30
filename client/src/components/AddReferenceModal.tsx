@@ -416,7 +416,9 @@ export default function AddReferenceModal({ isOpen, onClose, friends, onSubmit, 
             <p className="flex items-start gap-1.5 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-2.5 text-xs text-emerald-800 leading-relaxed">
               <Shield className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
               <span>
-                Once accepted, this vouch shows on your profile — clubs and coaches scouting on HOCKIA see your references when they look at you.
+                {selectedFriend
+                  ? `Once ${selectedFriend.fullName.split(' ')[0]} accepts, this reference appears on your profile and helps clubs scouting on HOCKIA trust your background.`
+                  : 'Once accepted, this reference appears on your profile and helps clubs scouting on HOCKIA trust your background.'}
               </span>
             </p>
 

@@ -71,6 +71,17 @@ export default function PublicReferencesSection({ profileId, profileName }: Publ
 
   if (!profileId) return null
 
+  // Phase 4 References UX Plan — visitor-side silence rule. TrustBadge
+  // intentionally hides itself for visitors on a profile with 0 references
+  // ("no need to advertise the empty state to scouts"). Rendering a full
+  // empty-state card here while the badge stays silent contradicts that —
+  // the visitor reads "Jamie has no vouches" loud and clear right after we
+  // tried to keep it quiet. Hide the entire section once loading completes
+  // and there are zero references. The owner sees their own dedicated
+  // section + RecentlyConnectedCard nudge on the dashboard, so the empty
+  // state is still surfaced where it matters.
+  if (!loading && acceptedReferences.length === 0) return null
+
   const handleMessage = async (targetId: string | null) => {
     if (!targetId) return
 

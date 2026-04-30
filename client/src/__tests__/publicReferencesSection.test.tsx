@@ -110,17 +110,14 @@ beforeEach(() => {
 })
 
 describe('PublicReferencesSection', () => {
-  it('shows the empty state when there are no references', () => {
-    renderSection()
-
-    // Phase 4 References UX Plan #2.2 — empty-state rewrite. Header line
-    // is "No vouches yet" + an educational subline that teaches what
-    // trust references are on HOCKIA. Visitor walks away with a clearer
-    // mental model even when the profile has no references.
-    expect(screen.getByText('No vouches yet')).toBeInTheDocument()
-    expect(
-      screen.getByText(/Jamie hasn't received any trusted references yet/),
-    ).toBeInTheDocument()
+  it('renders nothing for visitors on a profile with zero references', () => {
+    // Phase 4 References UX Plan — visitor-side silence rule. TrustBadge
+    // intentionally hides on a visitor's view of an empty-references
+    // profile; rendering a full "no vouches" empty state here would
+    // contradict that silence. The component now returns null after
+    // loading completes if there are no references.
+    const { container } = renderSection()
+    expect(container).toBeEmptyDOMElement()
   })
 
   it('requires sign-in before messaging a reference', async () => {

@@ -261,7 +261,11 @@ Deno.serve(async (req: Request) => {
         reference.relationship_type,
         reference.endorsement_text,
       )
-      subject = `${endorserName} accepted your reference request`
+      // Subject is what determines open rate. Lead with the endorser's name
+      // and a warm verb ("vouched for you") instead of the generic
+      // "accepted your reference request" — references are a trust/scouting
+      // signal on HOCKIA, the email should reflect that.
+      subject = `${endorserName} vouched for you on HOCKIA`
       logger.info('Falling back to hardcoded template')
     }
 

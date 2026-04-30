@@ -59,18 +59,18 @@ export default function TrustBadge({
     ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
     : 'bg-[#8026FA]/10 text-[#8026FA] hover:bg-[#8026FA]/15 border border-[#8026FA]/20'
 
+  // Standardise on "references" as the noun (consistent with the rest of
+  // the app) and keep "vouch" as the verb. The empty-owner label is
+  // self-explanatory enough that mobile users who never see a title=
+  // tooltip still understand the affordance — important because Capacitor
+  // / iOS Safari do not render `title` on tap.
   const label = hasReferences
     ? `Trusted by ${count}`
-    : 'Get vouches'
+    : 'Get references'
 
-  // Phase 4 References UX Plan #2.4 — richer tooltip prose for the empty
-  // owner state. The "Tap to ask a connection" hint makes the friendship
-  // dependency visible at the badge level so the empty state is never a
-  // mystery: hover/long-press on the badge tells the user what to do next
-  // and that they need a HOCKIA connection to do it.
   const tooltip = hasReferences
     ? `${count} ${count === 1 ? 'person has' : 'people have'} vouched for you on HOCKIA. Tap to see endorsements.`
-    : 'References are vouches from coaches, teammates, or clubs you\'re connected with on HOCKIA. Tap to ask a connection.'
+    : 'References are vouches from coaches, teammates or clubs you\'re connected with. Tap to ask a connection.'
 
   // Always render as a button when clickable; falls back to span when no
   // onClick is wired (defensive — should not happen in current usage).

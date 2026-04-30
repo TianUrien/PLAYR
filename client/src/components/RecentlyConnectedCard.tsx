@@ -141,14 +141,17 @@ export default function RecentlyConnectedCard({
   }
 
   const handleAsk = () => {
-    // Mark this friend dismissed at the moment we hand off to the modal flow.
-    // The dashboard's useTrustedReferences instance does NOT refetch when the
-    // user submits the request inside FriendsTab (it's a separate hook
-    // instance), so without this dismissal the same friend would re-appear in
-    // the nudge after the user navigates back to the Profile tab — and a
-    // double-tap would attempt a duplicate request. The 14-day cooldown gives
-    // the friend time to accept/decline before this candidate could resurface.
-    recordDismiss(ownerProfileId, candidate.id)
+    // Session-only dismiss so the same candidate doesn't re-appear before
+    // the dashboard's useTrustedReferences instance picks up the new pending
+    // row (it's a separate hook instance from TrustedReferencesSection's and
+    // does NOT refetch on mutation). We do NOT persist this dismissal:
+    //   - if the user submits, the friend ends up in pendingReferences and
+    //     gets filtered into excludeIds on the next mount → still hidden.
+    //   - if the user cancels the modal or the submit errors out (rate
+    //     limit, no-longer-friends, etc.), persisting would silently
+    //     suppress the nudge for 14 days even though the user took no
+    //     action. Keep the persistent X dismissal as the only durable
+    //     "don't ask me about this person again" signal.
     setSessionDismissed((prev) => {
       const next = new Set(prev)
       next.add(candidate.id)
@@ -158,7 +161,20 @@ export default function RecentlyConnectedCard({
     onAsk(candidate.id)
   }
 
-  const firstName = candidate.fullName?.split(' ')[0] ?? candidate.fullName ?? 'them'
+  const firstName = candidate.fullName?.split(' ')[0] || candidate.fullName || 'them'
+  const acceptedAtMs = candidate.acceptedAt ? Date.parse(candidate.acceptedAt) : null
+  const daysSinceConnected =
+    acceptedAtMs && !Number.isNaN(acceptedAtMs)
+      ? Math.max(0, Math.floor((Date.now() - acceptedAtMs) / (24 * 60 * 60 * 1000)))
+      : null
+  const connectedLabel =
+    daysSinceConnected === null
+      ? 'Recently connected'
+      : daysSinceConnected === 0
+        ? 'Connected today'
+        : daysSinceConnected === 1
+          ? 'Connected yesterday'
+          : `Connected ${daysSinceConnected} days ago`
 
   return (
     <div className="relative rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50/80 via-white to-emerald-50/40 p-4 sm:p-5 shadow-sm">
@@ -177,14 +193,14 @@ export default function RecentlyConnectedCard({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
-            Recently connected
+            {connectedLabel}
           </p>
           <p className="mt-1 text-sm font-semibold text-gray-900">
-            Ask {firstName} to vouch for your hockey?
+            Ask {firstName} for a reference?
           </p>
           <p className="mt-1 text-xs text-gray-600">
-            Trusted references from coaches, teammates, or clubs are visible on your profile —
-            clubs scouting on HOCKIA see them when they look at you.
+            References from coaches, teammates and clubs appear on your profile and help
+            clubs scouting on HOCKIA trust your background.
           </p>
 
           <div className="mt-3 flex items-center gap-3 rounded-lg border border-emerald-100 bg-white/80 p-2.5">
