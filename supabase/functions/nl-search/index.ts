@@ -1493,8 +1493,13 @@ Deno.serve(async (req) => {
     // skip the UserContext seeding entirely. Updated regex to match the
     // new chip wording ("Remove [Adult Women] filter", "Show all categories")
     // plus the legacy gender phrasings still in flight.
+    // Phase 4 chip-label fix — extended to match the short "Remove X filter"
+    // chip queries that ship from the no-results catalog when label === query
+    // (e.g. "Remove Adult Women filter", "Remove Girls filter"). Without
+    // matching these, the auto-seed re-applies on the broaden tap and the
+    // chip silently does nothing.
     const QUERY_FORBIDS_CATEGORY_SEED =
-      /\b(any (gender|category)|all (genders?|categories?)|without (a |any )?(gender|category)( filter)?|regardless of (gender|category)|gender[- ]neutral|both genders|men[''']?s and women[''']?s|men and women|show all (clubs|players|coaches|umpires|categories))\b/i.test(query)
+      /\b(any (gender|category)|all (genders?|categories?)|without (a |any )?(gender|category)( filter)?|regardless of (gender|category)|gender[- ]neutral|both genders|men[''']?s and women[''']?s|men and women|show all (clubs|players|coaches|umpires|categories)|remove (the )?(adult women|adult men|girls|boys|mixed|category|gender) filter)\b/i.test(query)
 
     if (
       !effectiveCategory &&

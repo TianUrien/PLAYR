@@ -79,6 +79,14 @@ const SELF_ADVICE = [
   // form matched, so "What can I do to improve my profile?" fell through to
   // 'unknown' and the response shipped without role-aware chips.
   /\bwhat can i do (to|about) (improve|fix|complete|grow|build|update|enhance|make).*(profile|brand|page|club|visibility|presence|account)\b/i,
+  // Phase 4 chip-label fix — bare imperative forms produced by aligning
+  // chip label = query. "Improve my profile", "Improve my brand profile",
+  // "Improve my club profile", "Improve my umpire profile". Without this
+  // pattern these short queries fall through to 'unknown' and the
+  // response ships with no chips.
+  /\b(improve|complete|fix|update|enhance) my (profile|brand profile|club profile|umpire profile|page|account|visibility)\b/i,
+  // Phase 4 — short umpire-specific self-advice prompt from the chip catalog.
+  /\badd (an |a |my )?appointment\b/i,
 ]
 
 // ── Hockey knowledge (rules / explanations / how-to) ──

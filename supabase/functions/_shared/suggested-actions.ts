@@ -96,22 +96,26 @@ export function buildRoleSummary(applied: Pick<AppliedSearch, 'entity' | 'catego
   return parts.join(' ')
 }
 
-/** Cross-entity suggestion based on (what they searched FOR × what they ARE). */
+/** Cross-entity suggestion based on (what they searched FOR × what they ARE).
+ *  Phase 4 chip-label fix — `query` matches `label` exactly so the bubble
+ *  the user sees after clicking matches the chip they tapped. The LLM is
+ *  capable of expanding short queries from user context; if a short form
+ *  needs to be recognized by the intent router, we add a pattern there. */
 function crossEntityChip(entity: string | null | undefined, userRole: string | null): SuggestedAction | null {
   if (entity === 'clubs' && (userRole === 'player' || userRole === 'coach')) {
-    return { label: 'Find opportunities', intent: { type: 'free_text', query: 'Find opportunities for my position' } }
+    return { label: 'Find opportunities', intent: { type: 'free_text', query: 'Find opportunities' } }
   }
   if (entity === 'players' && userRole === 'club') {
-    return { label: 'Find coaches', intent: { type: 'free_text', query: 'Find coaches with head-coach experience' } }
+    return { label: 'Find coaches', intent: { type: 'free_text', query: 'Find coaches' } }
   }
   if (entity === 'coaches' && (userRole === 'player' || userRole === 'club')) {
-    return { label: 'Find clubs', intent: { type: 'free_text', query: 'Find clubs hiring' } }
+    return { label: 'Find clubs', intent: { type: 'free_text', query: 'Find clubs' } }
   }
   if (entity === 'players' && userRole === 'brand') {
-    return { label: 'Browse Marketplace', intent: { type: 'free_text', query: 'Show me products' } }
+    return { label: 'Browse Marketplace', intent: { type: 'free_text', query: 'Browse Marketplace' } }
   }
   if (entity === 'brands' && (userRole === 'player' || userRole === 'coach' || userRole === 'club')) {
-    return { label: 'Browse Marketplace', intent: { type: 'free_text', query: 'Show me products' } }
+    return { label: 'Browse Marketplace', intent: { type: 'free_text', query: 'Browse Marketplace' } }
   }
   return null
 }
@@ -128,21 +132,22 @@ export function getNoResultsActions(applied: AppliedSearch | null, userRole: str
   const actions: SuggestedAction[] = []
   const entity = applied?.entity ?? 'clubs'
 
-  // 1. Show all of the entity (drops most filters).
-  // Phase 3e — query phrasing now uses "all categories" so the backend's
-  // QUERY_FORBIDS_CATEGORY_SEED regex skips the auto-seed and the broaden
-  // actually broadens. The legacy "regardless of gender" phrasing is also
-  // accepted by that regex so older clients keep working.
+  // 1. Show all of the entity (drops most filters). Phase 4 — query
+  // matches the label exactly. The QUERY_FORBIDS_CATEGORY_SEED regex in
+  // nl-search/index.ts is patterned to match `show all ${entity}` so the
+  // broaden still bypasses auto-seed.
   actions.push({
     label: `Show all ${entity}`,
-    intent: { type: 'free_text', query: `Show me all ${entity} regardless of category` },
+    intent: { type: 'free_text', query: `Show all ${entity}` },
   })
 
-  // 2. Search by country — only when location wasn't already part of the query.
+  // 2. Search by country — only when location wasn't already part of the
+  // query. Phase 4 — label = query. The user gets clarified by the LLM
+  // (e.g. "Which country?") which keeps the conversational shape honest.
   if (!applied?.location_label) {
     actions.push({
       label: 'Search by country',
-      intent: { type: 'free_text', query: `Find ${entity} in Spain` },
+      intent: { type: 'free_text', query: 'Search by country' },
     })
   }
 
@@ -150,6 +155,9 @@ export function getNoResultsActions(applied: AppliedSearch | null, userRole: str
   //    category name ("Adult Women", "Girls", etc.) instead of "men/women".
   //    Falls back to legacy gender_label so any AppliedSearch produced before
   //    the category_label rollout still generates a sensible chip.
+  //    Phase 4 — query matches label exactly. The QUERY_FORBIDS_CATEGORY_SEED
+  //    regex is extended to match `remove ... filter` patterns so this
+  //    broaden chip still skips the auto-seed re-application.
   const seededLabel = applied?.category_label
     ? categoryDisplay(applied.category_label)
     : applied?.gender_label
@@ -158,7 +166,7 @@ export function getNoResultsActions(applied: AppliedSearch | null, userRole: str
   if (seededLabel) {
     actions.push({
       label: `Remove ${seededLabel} filter`,
-      intent: { type: 'free_text', query: `Find ${entity} regardless of category` },
+      intent: { type: 'free_text', query: `Remove ${seededLabel} filter` },
     })
   }
 
@@ -190,8 +198,8 @@ export function getRecoveryActions(lastApplied: AppliedSearch | null, userRole: 
 export function getSoftErrorActions(): SuggestedAction[] {
   return [
     { label: 'Retry', intent: { type: 'retry' } },
-    { label: 'Broaden search', intent: { type: 'free_text', query: 'Find clubs near me' } },
-    { label: 'Browse opportunities', intent: { type: 'free_text', query: 'Find opportunities for my position' } },
+    { label: 'Broaden search', intent: { type: 'free_text', query: 'Broaden search' } },
+    { label: 'Browse opportunities', intent: { type: 'free_text', query: 'Browse opportunities' } },
     { label: 'Start over', intent: { type: 'clear' } },
   ]
 }
@@ -206,8 +214,8 @@ export function getSoftErrorActions(): SuggestedAction[] {
 export function getRepeatedSoftErrorActions(): SuggestedAction[] {
   return [
     { label: 'Start over', intent: { type: 'clear' } },
-    { label: 'Browse opportunities', intent: { type: 'free_text', query: 'Find opportunities for my position' } },
-    { label: 'Search clubs', intent: { type: 'free_text', query: 'Find clubs' } },
+    { label: 'Browse opportunities', intent: { type: 'free_text', query: 'Browse opportunities' } },
+    { label: 'Search clubs', intent: { type: 'free_text', query: 'Search clubs' } },
     { label: 'Try again', intent: { type: 'retry' } },
   ]
 }
@@ -222,26 +230,26 @@ export function getSelfAdviceActions(userRole: string | null): SuggestedAction[]
     case 'player':
       return [
         { label: 'Find clubs for me', intent: { type: 'free_text', query: 'Find clubs for me' } },
-        { label: 'Find coaches', intent: { type: 'free_text', query: 'Find coaches in my position' } },
-        { label: 'Improve my profile', intent: { type: 'free_text', query: 'What should I improve in my profile?' } },
+        { label: 'Find coaches', intent: { type: 'free_text', query: 'Find coaches' } },
+        { label: 'Improve my profile', intent: { type: 'free_text', query: 'Improve my profile' } },
       ]
     case 'coach':
       return [
-        { label: 'Find clubs hiring', intent: { type: 'free_text', query: 'Find clubs hiring head coaches' } },
-        { label: 'Find players to recommend', intent: { type: 'free_text', query: 'Find players for my staff' } },
-        { label: 'Improve my profile', intent: { type: 'free_text', query: 'What should I improve in my profile?' } },
+        { label: 'Find clubs hiring', intent: { type: 'free_text', query: 'Find clubs hiring' } },
+        { label: 'Find players to recommend', intent: { type: 'free_text', query: 'Find players to recommend' } },
+        { label: 'Improve my profile', intent: { type: 'free_text', query: 'Improve my profile' } },
       ]
     case 'club':
       return [
         { label: 'Find players for my team', intent: { type: 'free_text', query: 'Find players for my team' } },
-        { label: 'Find coaches', intent: { type: 'free_text', query: 'Find coaches with head-coach experience' } },
-        { label: 'Improve my club profile', intent: { type: 'free_text', query: "What's missing from my club profile?" } },
+        { label: 'Find coaches', intent: { type: 'free_text', query: 'Find coaches' } },
+        { label: 'Improve my club profile', intent: { type: 'free_text', query: 'Improve my club profile' } },
       ]
     case 'brand':
       return [
-        { label: 'Find ambassadors', intent: { type: 'free_text', query: 'Find player ambassadors' } },
-        { label: 'Browse Marketplace', intent: { type: 'free_text', query: 'Show me products' } },
-        { label: 'Improve my brand profile', intent: { type: 'free_text', query: "What's missing from my brand profile?" } },
+        { label: 'Find ambassadors', intent: { type: 'free_text', query: 'Find ambassadors' } },
+        { label: 'Browse Marketplace', intent: { type: 'free_text', query: 'Browse Marketplace' } },
+        { label: 'Improve my brand profile', intent: { type: 'free_text', query: 'Improve my brand profile' } },
       ]
     case 'umpire':
       // Phase 4 — umpire role was previously falling through to the default
@@ -249,9 +257,9 @@ export function getSelfAdviceActions(userRole: string | null): SuggestedAction[]
       // step. Chip targets reflect the umpire mental model: peer network,
       // appointments for credibility, profile-improvement loop.
       return [
-        { label: 'Find other officials', intent: { type: 'free_text', query: 'Find other umpires near me' } },
-        { label: 'Add an appointment', intent: { type: 'free_text', query: 'How do I add an appointment to my profile?' } },
-        { label: 'Improve my umpire profile', intent: { type: 'free_text', query: "What's missing from my umpire profile?" } },
+        { label: 'Find other officials', intent: { type: 'free_text', query: 'Find other officials' } },
+        { label: 'Add an appointment', intent: { type: 'free_text', query: 'Add an appointment' } },
+        { label: 'Improve my umpire profile', intent: { type: 'free_text', query: 'Improve my umpire profile' } },
       ]
     default:
       // Unknown role / unauthenticated. No chips beats wrong chips.
@@ -259,9 +267,10 @@ export function getSelfAdviceActions(userRole: string | null): SuggestedAction[]
   }
 }
 
-/** Single chip after a greeting — invites the user to ask something useful. */
+/** Single chip after a greeting — invites the user to ask something useful.
+ *  Phase 4 — label = query so the bubble matches the chip the user clicked. */
 export function getGreetingActions(): SuggestedAction[] {
   return [
-    { label: 'What can you do?', intent: { type: 'free_text', query: 'What can you help me with?' } },
+    { label: 'What can you do?', intent: { type: 'free_text', query: 'What can you do?' } },
   ]
 }
