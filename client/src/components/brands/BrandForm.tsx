@@ -27,7 +27,11 @@ interface BrandFormProps {
 export interface BrandFormData {
   name: string
   slug: string
-  category: BrandCategory
+  // Empty string = placeholder ("Choose a category…") still shown.
+  // Required at submit time (validation below); we no longer auto-default
+  // to 'equipment' which silently mis-categorised brands that didn't notice
+  // the dropdown.
+  category: BrandCategory | ''
   bio: string
   logo_url: string
   website_url: string
@@ -61,6 +65,42 @@ function generateSlug(name: string): string {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
+}
+
+/**
+ * Validate a website / social URL. Returns an error string, or null if OK.
+ * Empty input is OK (the field is optional).
+ *
+ * Uses the WHATWG URL constructor for parsing — that catches malformed
+ * structures like "not a url" → after the auto-https-prefix becomes
+ * "https://not a url" which DOES parse (the URL spec is permissive about
+ * hostnames) but fails the secondary checks (no dot, no path, contains
+ * whitespace). Belt + braces.
+ */
+function validateBrandUrl(rawValue: string): string | null {
+  const value = rawValue.trim()
+  if (!value) return null // optional field
+  // Prefix-aware: the onBlur handler already adds https:// if missing,
+  // but on submit we may still see raw input. Try both shapes.
+  const candidate = value.startsWith('http://') || value.startsWith('https://')
+    ? value
+    : `https://${value}`
+  let parsed: URL
+  try {
+    parsed = new URL(candidate)
+  } catch {
+    return 'That doesn\'t look like a valid URL.'
+  }
+  // Reject obvious garbage. Real domains have at least one dot AND don't
+  // contain whitespace in the host.
+  const host = parsed.hostname
+  if (!host || host.includes(' ') || !host.includes('.')) {
+    return 'That doesn\'t look like a valid URL.'
+  }
+  if (/\s/.test(parsed.pathname)) {
+    return 'URLs cannot contain spaces.'
+  }
+  return null
 }
 
 const STORAGE_PREFIX = 'hockia_brand_draft_'
@@ -105,7 +145,7 @@ export function BrandForm({
           return {
             name: parsed.name || brand?.name || '',
             slug: parsed.slug || brand?.slug || '',
-            category: parsed.category || brand?.category || 'equipment',
+            category: parsed.category || brand?.category || '',
             bio: parsed.bio || brand?.bio || '',
             logo_url: parsed.logo_url || brand?.logo_url || '',
             website_url: parsed.website_url || brand?.website_url || '',
@@ -119,7 +159,7 @@ export function BrandForm({
     return {
       name: brand?.name || '',
       slug: brand?.slug || '',
-      category: brand?.category || 'equipment',
+      category: brand?.category || '',
       bio: brand?.bio || '',
       logo_url: brand?.logo_url || '',
       website_url: brand?.website_url || '',
@@ -133,6 +173,11 @@ export function BrandForm({
   // settled. Surface state inline below the slug input so collisions don't
   // explode at submit. Skip entirely for existing brands (slug is locked).
   const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle')
+  // Inline URL validation errors. Surfaces below each field on blur so a
+  // user typing "not a url" sees feedback before submit instead of a
+  // permanently-broken link on their public brand page.
+  const [websiteError, setWebsiteError] = useState<string | null>(null)
+  const [instagramError, setInstagramError] = useState<string | null>(null)
 
   // Persist form data to localStorage when it changes
   useEffect(() => {
@@ -288,6 +333,11 @@ export function BrandForm({
       return
     }
 
+    if (!formData.category) {
+      setError('Please choose a category for your brand.')
+      return
+    }
+
     const trimmedSlug = formData.slug.trim()
     if (!trimmedSlug) {
       setError('Brand URL slug is required')
@@ -322,8 +372,27 @@ export function BrandForm({
       }
     }
 
+    // Validate optional URL fields at submit time. The onBlur handler
+    // already shows inline errors, but a user who never blurred (e.g.
+    // pasted then clicked Save) wouldn't have triggered the validation.
+    const websiteValidation = validateBrandUrl(formData.website_url)
+    if (websiteValidation) {
+      setWebsiteError(websiteValidation)
+      setError('Please fix the website URL before saving.')
+      return
+    }
+    const instagramValidation = validateBrandUrl(formData.instagram_url)
+    if (instagramValidation) {
+      setInstagramError(instagramValidation)
+      setError('Please fix the Instagram URL before saving.')
+      return
+    }
+
     try {
-      await onSubmit(formData)
+      // formData.category was narrowed to BrandCategory by the empty-string
+      // check above; cast to satisfy the onSubmit signature (which still
+      // requires the strict BrandCategory union).
+      await onSubmit({ ...formData, category: formData.category as BrandCategory })
       clearDraft() // Clear saved draft on successful submission
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save brand')
@@ -438,10 +507,14 @@ export function BrandForm({
         <select
           id="brand-category"
           value={formData.category}
-          onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value as BrandCategory }))}
+          onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value as BrandCategory | '' }))}
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           required
         >
+          {/* Explicit placeholder so brands don't silently land on
+              "Equipment" without realising. Browsers won't let `required`
+              submit while value=""; submit-time validation also catches it. */}
+          <option value="" disabled>Choose a category…</option>
           {CATEGORY_OPTIONS.map(option => (
             <option key={option.value} value={option.value}>
               {option.label}
@@ -478,15 +551,23 @@ export function BrandForm({
           id="brand-website"
           type="text"
           value={formData.website_url}
-          onChange={(e) => setFormData(prev => ({ ...prev, website_url: e.target.value }))}
+          onChange={(e) => {
+            setFormData(prev => ({ ...prev, website_url: e.target.value }))
+            if (websiteError) setWebsiteError(null)
+          }}
           onBlur={(e) => {
             const value = e.target.value.trim()
             if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
               setFormData(prev => ({ ...prev, website_url: `https://${value}` }))
             }
+            // Validate after auto-prefix so we evaluate the canonical shape.
+            setWebsiteError(validateBrandUrl(value))
           }}
           placeholder="www.your-brand.com"
         />
+        {websiteError && (
+          <p className="mt-1 text-xs text-red-600">{websiteError}</p>
+        )}
       </div>
 
       {/* Instagram */}
@@ -498,15 +579,22 @@ export function BrandForm({
           id="brand-instagram"
           type="text"
           value={formData.instagram_url}
-          onChange={(e) => setFormData(prev => ({ ...prev, instagram_url: e.target.value }))}
+          onChange={(e) => {
+            setFormData(prev => ({ ...prev, instagram_url: e.target.value }))
+            if (instagramError) setInstagramError(null)
+          }}
           onBlur={(e) => {
             const value = e.target.value.trim()
             if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
               setFormData(prev => ({ ...prev, instagram_url: `https://${value}` }))
             }
+            setInstagramError(validateBrandUrl(value))
           }}
           placeholder="instagram.com/yourbrand"
         />
+        {instagramError && (
+          <p className="mt-1 text-xs text-red-600">{instagramError}</p>
+        )}
       </div>
 
       {/* Submit Button */}

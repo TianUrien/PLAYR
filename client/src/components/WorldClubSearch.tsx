@@ -349,6 +349,21 @@ export default function WorldClubSearch({
 
       {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
 
+      {/* Soft nudge: user typed a club name but didn't pick a suggestion or
+          use "Add new". Profile saves but `current_world_club_id` stays null,
+          which means: no club logo on the dashboard, AI Discovery filters
+          that key on club id miss the user, and World directory member
+          lists don't include them. We don't BLOCK submission — testers may
+          legitimately type ahead while the dropdown loads — but a hint
+          encourages picking a suggestion or using "Add new club" so the
+          structured link is established. Hidden when a club is already
+          linked, when the input is empty, or when an error is shown. */}
+      {!error && !selectedClubId && value.trim().length > 0 && !disabled && (
+        <p className="mt-1 text-xs text-gray-500">
+          Tip: pick a suggestion or use <span className="font-medium">Add new club</span> so your club logo and links work.
+        </p>
+      )}
+
       {/* ── Dropdown ── */}
       {showDropdown && !isLinked && (
         <div className="absolute z-50 mt-1 w-full rounded-xl border border-gray-200 bg-white shadow-lg">

@@ -80,7 +80,13 @@ describe('BrandForm', () => {
     it('renders all 10 expanded categories in the dropdown', () => {
       render(<BrandForm onSubmit={vi.fn()} />)
       const select = screen.getByLabelText(/category/i) as HTMLSelectElement
-      const labels = Array.from(select.options).map((o) => o.label)
+      // First option is now the disabled "Choose a category…" placeholder
+      // (added 2026-05-01 to stop the dropdown silently defaulting to
+      // "Equipment"). Filter it out so the assertion still verifies the
+      // 10 real categories.
+      const labels = Array.from(select.options)
+        .filter((o) => o.value !== '')
+        .map((o) => o.label)
       expect(labels).toEqual([
         'Equipment',
         'Apparel',
@@ -95,6 +101,12 @@ describe('BrandForm', () => {
       ])
     })
 
+    it('starts with no category selected (placeholder shown)', () => {
+      render(<BrandForm onSubmit={vi.fn()} />)
+      const select = screen.getByLabelText(/category/i) as HTMLSelectElement
+      expect(select.value).toBe('')
+    })
+
     it('includes the three new values introduced by the category expansion', () => {
       render(<BrandForm onSubmit={vi.fn()} />)
       const select = screen.getByLabelText(/category/i) as HTMLSelectElement
@@ -106,10 +118,20 @@ describe('BrandForm', () => {
   })
 
   describe('validation', () => {
+    // Helper: many validation tests need a category to be set so the
+    // category-required gate (added 2026-05-01) doesn't fire first.
+    // Tests that specifically check name/slug validation set this so the
+    // submit reaches the field they're actually testing.
+    const selectAnyCategory = async () => {
+      const select = screen.getByLabelText(/category/i) as HTMLSelectElement
+      await user.selectOptions(select, 'equipment')
+    }
+
     it('blocks submit and shows an error when name is empty', async () => {
       const onSubmit = vi.fn()
       render(<BrandForm onSubmit={onSubmit} submitLabel="Create" />)
 
+      await selectAnyCategory()
       await user.click(screen.getByRole('button', { name: /create/i }))
 
       expect(await screen.findByText(/brand name is required/i)).toBeInTheDocument()
@@ -121,9 +143,22 @@ describe('BrandForm', () => {
       render(<BrandForm onSubmit={onSubmit} submitLabel="Create" />)
 
       await user.type(screen.getByLabelText(/brand name/i), '   ')
+      await selectAnyCategory()
       await user.click(screen.getByRole('button', { name: /create/i }))
 
       expect(await screen.findByText(/brand name is required/i)).toBeInTheDocument()
+      expect(onSubmit).not.toHaveBeenCalled()
+    })
+
+    it('blocks submit and shows an error when category is not chosen', async () => {
+      const onSubmit = vi.fn()
+      render(<BrandForm onSubmit={onSubmit} submitLabel="Create" />)
+
+      await user.type(screen.getByLabelText(/brand name/i), 'My Brand')
+      // Deliberately do NOT select a category
+      await user.click(screen.getByRole('button', { name: /create/i }))
+
+      expect(await screen.findByText(/choose a category/i)).toBeInTheDocument()
       expect(onSubmit).not.toHaveBeenCalled()
     })
 
@@ -132,6 +167,7 @@ describe('BrandForm', () => {
       render(<BrandForm onSubmit={onSubmit} submitLabel="Create" />)
 
       await user.type(screen.getByLabelText(/brand name/i), 'My Brand')
+      await selectAnyCategory()
 
       const slugInput = screen.getByLabelText(/url slug/i) as HTMLInputElement
       await user.clear(slugInput)
@@ -147,6 +183,7 @@ describe('BrandForm', () => {
       render(<BrandForm onSubmit={onSubmit} submitLabel="Create" />)
 
       await user.type(screen.getByLabelText(/brand name/i), 'Admin')
+      await selectAnyCategory()
 
       // 'admin' is a reserved slug per the server allowlist
       await user.click(screen.getByRole('button', { name: /create/i }))
@@ -160,6 +197,7 @@ describe('BrandForm', () => {
       render(<BrandForm onSubmit={onSubmit} submitLabel="Create" />)
 
       await user.type(screen.getByLabelText(/brand name/i), 'My Brand')
+      await selectAnyCategory()
 
       // Force an invalid slug (leading hyphen) — the onChange filter strips
       // most bad chars but a leading hyphen can slip through paste or
@@ -245,6 +283,8 @@ describe('BrandForm', () => {
       render(<BrandForm onSubmit={onSubmit} persistKey="test-clear" submitLabel="Create" />)
 
       await user.type(screen.getByLabelText(/brand name/i), 'Finished')
+      // Category required as of 2026-05-01.
+      await user.selectOptions(screen.getByLabelText(/category/i), 'equipment')
       await user.click(screen.getByRole('button', { name: /create/i }))
 
       expect(localStorage.getItem('hockia_brand_draft_test-clear')).toBeNull()
@@ -255,6 +295,7 @@ describe('BrandForm', () => {
       render(<BrandForm onSubmit={onSubmit} persistKey="test-keep" submitLabel="Create" />)
 
       await user.type(screen.getByLabelText(/brand name/i), 'Will Fail')
+      await user.selectOptions(screen.getByLabelText(/category/i), 'equipment')
       await user.click(screen.getByRole('button', { name: /create/i }))
 
       expect(await screen.findByText(/brand slug already taken/i)).toBeInTheDocument()
