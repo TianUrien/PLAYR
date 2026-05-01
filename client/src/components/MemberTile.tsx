@@ -7,6 +7,7 @@ import SignInPromptModal from '@/components/SignInPromptModal'
 import { useAuthStore } from '@/lib/auth'
 import { useWorldClubLogo } from '@/hooks/useWorldClubLogo'
 import { getImageUrl } from '@/lib/imageUrl'
+import RolePlaceholder from './RolePlaceholder'
 
 const BRAND_CATEGORY_LABELS: Record<string, string> = {
   equipment: 'Equipment',
@@ -61,9 +62,9 @@ export default function MemberTile(props: MemberTileProps) {
     (props.role === 'player' && props.open_to_play) ||
     (props.role === 'coach' && props.open_to_coach)
 
-  const initials = props.full_name
-    ? props.full_name.trim().split(/\s+/).filter(Boolean).map(n => n[0]).join('').slice(0, 2).toUpperCase()
-    : '?'
+  // Initials block was the previous fallback when no avatar — now replaced
+  // by RolePlaceholder. Computation removed; the role + name are surfaced
+  // by the card header instead.
 
   const handleClick = () => {
     // Preview takes precedence — it handles auth-gating on its own CTAs,
@@ -144,8 +145,12 @@ export default function MemberTile(props: MemberTileProps) {
               decoding="async"
             />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#8026FA] to-[#924CEC] text-white font-semibold text-2xl sm:text-3xl select-none">
-              {initials}
+            // Role-tinted placeholder. Replaces the previous purple
+            // "initials block" — same role-color family as RoleBadge, soft
+            // gradient + person silhouette. Profile is still flagged as
+            // photo-missing in the DB (this is purely visual).
+            <div className="absolute inset-0">
+              <RolePlaceholder role={props.role} label="" />
             </div>
           )}
           {showGreenDot && (

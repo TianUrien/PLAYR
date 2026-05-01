@@ -129,6 +129,7 @@ export default function ConversationList({
                     enablePreview
                     previewTitle={participantName}
                     previewInteraction="pointer"
+                    role={conversation.otherParticipant?.role}
                   />
                   {isUnread && (
                     <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-purple-500 ring-2 ring-white" />

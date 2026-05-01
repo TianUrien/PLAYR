@@ -166,6 +166,9 @@ export default function MemberCard({
           size="xl"
           enablePreview
           previewTitle={full_name}
+          // Role-tinted placeholder when no avatar uploaded; falls back to
+          // initials when role isn't recognised.
+          role={role}
         />
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-gray-900 truncate flex items-center gap-1">

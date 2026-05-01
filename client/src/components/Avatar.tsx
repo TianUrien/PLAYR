@@ -3,6 +3,8 @@ import type { KeyboardEvent, MouseEvent } from 'react'
 import { cn } from '@/lib/utils'
 import { getImageUrl, AVATAR_SIZE_MAP } from '@/lib/imageUrl'
 import { useProfileImagePreview } from './ProfileImagePreviewProvider'
+import RolePlaceholder from './RolePlaceholder'
+import { isRoleAvatarRole } from '@/lib/roleAvatar'
 
 interface AvatarProps {
   src?: string | null
@@ -14,6 +16,14 @@ interface AvatarProps {
   enablePreview?: boolean
   previewTitle?: string
   previewInteraction?: 'auto' | 'pointer'
+  /** When the user has no avatar uploaded AND we know their role, render a
+   *  role-tinted RolePlaceholder instead of the generic initials block.
+   *  Purely cosmetic — `profiles.avatar_url` is still NULL and every
+   *  profile-strength scorer correctly counts the photo as missing. Pass
+   *  the user's `role` when known; omit for contexts where role isn't in
+   *  scope (chat counterparts not yet loaded, etc.) and the existing
+   *  initials fallback will be used. */
+  role?: string | null
 }
 
 const sizeClasses = {
@@ -33,9 +43,15 @@ export default function Avatar({
   enablePreview = false,
   previewTitle,
   previewInteraction = 'auto',
+  role,
 }: AvatarProps) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
+  // When the image path doesn't render AND we know the role, swap the
+  // generic purple/initials block for a role-tinted SVG placeholder.
+  // Purely cosmetic — `profiles.avatar_url` is still NULL in the DB and
+  // every profile-strength scorer correctly counts the photo as missing.
+  const showRolePlaceholder = (!src || imageError) && isRoleAvatarRole(role)
   const { openPreview } = useProfileImagePreview()
   const canPreview = Boolean(enablePreview && src)
 
@@ -82,7 +98,12 @@ export default function Avatar({
   return (
     <div
       className={cn(
-        'relative aspect-square rounded-full overflow-hidden bg-gradient-to-br from-[#8026FA] to-[#924CEC] font-semibold text-white flex items-center justify-center flex-shrink-0',
+        'relative aspect-square rounded-full overflow-hidden font-semibold text-white flex items-center justify-center flex-shrink-0',
+        // When a RolePlaceholder will fill the box, skip the purple gradient
+        // background so the role-tinted SVG isn't sandwiched on top of it.
+        // Otherwise keep the legacy purple block as the bg for the initials
+        // / "?" fallback (preserves prior look for callers without a role).
+        !showRolePlaceholder && 'bg-gradient-to-br from-[#8026FA] to-[#924CEC]',
         canPreview &&
           (previewInteraction === 'auto'
             ? 'cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-[#8026FA]'
@@ -110,6 +131,10 @@ export default function Avatar({
             onError={() => setImageError(true)}
           />
         </>
+      ) : showRolePlaceholder && isRoleAvatarRole(role) ? (
+        // The accessible name is provided by the parent (e.g. a card or
+        // button labelled with the user's name), so mark the SVG decorative.
+        <RolePlaceholder role={role} label="" />
       ) : initials ? (
         <span>{initials}</span>
       ) : (

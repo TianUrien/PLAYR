@@ -119,6 +119,7 @@ export default function DiscoverResultCard({ result }: DiscoverResultCardProps) 
           alt={result.full_name ?? undefined}
           initials={result.full_name?.charAt(0)}
           size="md"
+          role={result.role}
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5">

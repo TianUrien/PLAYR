@@ -119,6 +119,7 @@ export default function TrustedReferenceCard({
               initials={profileInitials}
               size="lg"
               className="shadow-md"
+              role={reference.profile?.role}
             />
           </button>
         ) : (
@@ -128,6 +129,7 @@ export default function TrustedReferenceCard({
             initials={profileInitials}
             size="lg"
             className="shadow-md"
+            role={reference.profile?.role}
           />
         )}
 

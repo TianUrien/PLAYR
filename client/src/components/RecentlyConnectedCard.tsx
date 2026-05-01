@@ -254,6 +254,7 @@ export default function RecentlyConnectedCard({
               alt={candidate.fullName}
               initials={candidate.fullName.slice(0, 2)}
               size="sm"
+              role={candidate.role}
             />
             <div className="flex-1 min-w-0">
               <p className="truncate text-sm font-medium text-gray-900">{candidate.fullName}</p>
