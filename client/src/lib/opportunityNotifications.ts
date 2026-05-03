@@ -16,6 +16,12 @@ interface OpportunityNotificationState {
   lastSeenAt: string | null
   /** Number of active subscribers - used for cleanup */
   _subscriberCount: number
+  /** True once initialize() has run for the current userId — guards against
+   * NotificationBridge + Header + MobileBottomNav each firing the same
+   * RPC + opportunity_inbox_state query on mount (3× fan-out in prod,
+   * 6× under React Strict Mode in dev). The 60s polling interval keeps
+   * state fresh after first init, so re-running on every mount is wasted. */
+  _initialized: boolean
   initialize: (userId: string | null) => Promise<void>
   refresh: (options?: RefreshOptions) => Promise<number>
   markSeen: () => Promise<void>
@@ -82,6 +88,7 @@ export const useOpportunityNotificationStore = create<OpportunityNotificationSta
   userId: null,
   lastSeenAt: null,
   _subscriberCount: 0,
+  _initialized: false,
 
   subscribe: () => {
     set((state) => ({ _subscriberCount: state._subscriberCount + 1 }))
@@ -104,7 +111,7 @@ export const useOpportunityNotificationStore = create<OpportunityNotificationSta
       clearInterval(refreshInterval)
       refreshInterval = null
     }
-    set({ count: 0, loading: false, userId: null, lastSeenAt: null, _subscriberCount: 0 })
+    set({ count: 0, loading: false, userId: null, lastSeenAt: null, _subscriberCount: 0, _initialized: false })
   },
 
   refresh: async (options?: RefreshOptions) => {
@@ -121,19 +128,28 @@ export const useOpportunityNotificationStore = create<OpportunityNotificationSta
   },
 
   initialize: async (userId: string | null) => {
-    const { userId: currentUserId, refresh, _subscriberCount } = get()
+    const { userId: currentUserId, refresh, _subscriberCount, _initialized } = get()
 
     if (!userId) {
       get().reset()
       return
     }
 
-    if (currentUserId !== userId) {
-      set({ userId })
-      await refresh({ bypassCache: true })
-    } else {
-      await refresh({ bypassCache: true })
+    // Short-circuit if already initialized for this user. NotificationBridge,
+    // Header, and MobileBottomNav all mount this hook in the same render
+    // tree — without this guard each one re-fires get_opportunity_alerts +
+    // opportunity_inbox_state on every page load. Polling interval below
+    // keeps state fresh; no need to refetch on every mount.
+    if (_initialized && currentUserId === userId) {
+      return
     }
+
+    // Set userId + initialized flag synchronously so concurrent mounts that
+    // race past the guard above (e.g. all 3 hooks fire in the same tick)
+    // see _initialized=true on their next read and bail out of the network
+    // calls below.
+    set({ userId, _initialized: true })
+    await refresh({ bypassCache: true })
 
     // Fetch lastSeenAt for NEW badge computation
     try {
