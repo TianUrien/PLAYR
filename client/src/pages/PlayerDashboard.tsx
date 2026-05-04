@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { ArrowLeft, MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail, Award } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
-import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, NextStepCard, FreshnessCard, RecentlyConnectedCard, SearchAppearancesCard, DualNationalityDisplay, AvailabilityPill, TierBadge, TrustBadge, VerifiedBadge, CategoryConfirmationBanner } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, FriendsTab, FriendshipButton, ProfileSnapshot, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, NextStepCard, FreshnessCard, RecentlyConnectedCard, SearchAppearancesCard, DualNationalityDisplay, AvailabilityPill, TierBadge, TrustBadge, VerifiedBadge, CategoryConfirmationBanner } from '@/components'
 import { calculateTier } from '@/lib/profileTier'
 import { useProfileFreshness } from '@/hooks/useProfileFreshness'
 import type { FreshnessNudge } from '@/lib/profileFreshness'
@@ -215,6 +215,27 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
       setShowEditModal(true)
     } else if (nudge.action.type === 'tab') {
       handleTabChange(nudge.action.tab as TabType)
+    }
+  }
+
+  // Handler for ProfileSnapshot missing-signal taps. Action ids are plain
+  // strings emitted by the snapshot per-role (e.g. 'edit-profile',
+  // 'add-video', 'tab:friends'). The dispatcher mirrors the existing
+  // NextStepCard pattern so all owner-side nudges route consistently.
+  const handleSnapshotAction = (actionId: string) => {
+    if (actionId === 'edit-profile') {
+      setShowEditModal(true)
+      return
+    }
+    if (actionId === 'add-video') {
+      if (activeTab !== 'profile') handleTabChange('profile')
+      setShowAddVideoModal(true)
+      return
+    }
+    if (actionId.startsWith('tab:')) {
+      const tabName = actionId.slice(4) as TabType
+      handleTabChange(tabName)
+      return
     }
   }
 
@@ -530,6 +551,18 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Profile Snapshot — Phase 1A.3 (v5 plan). Renders for both owners
+            (full signal list with ✓ + missing-action affordance) and visitors
+            (✓-only, hidden when nothing to show). The component handles the
+            mode switch internally, so this single mount serves both views. */}
+        <div className="mb-3">
+          <ProfileSnapshot
+            profile={profile as Profile | null}
+            mode={readOnly ? 'public' : 'owner'}
+            onSignalAction={handleSnapshotAction}
+          />
         </div>
 
         {/* Next-step prompt — visible on every tab while the profile is incomplete (owner only) */}
@@ -866,7 +899,7 @@ export default function PlayerDashboard({ profileData, readOnly = false, isOwnPr
         isOpen={showSignInPrompt}
         onClose={() => setShowSignInPrompt(false)}
         title="Sign in to message"
-        message="Sign in or create a free HOCKIA account to connect with this player."
+        message="Sign in to message this player and see more about their profile."
       />
     </div>
   )

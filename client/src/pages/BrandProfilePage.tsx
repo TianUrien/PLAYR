@@ -8,7 +8,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Loader2, Store, MessageCircle, UserPlus, UserCheck, Award } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { Header, Layout, Button, Avatar } from '@/components'
+import { Header, Layout, Button, Avatar, ProfileSnapshot } from '@/components'
+import type { Profile } from '@/lib/supabase'
 import { BrandHeader, ProductCard, BrandPostCard } from '@/components/brands'
 import Breadcrumbs from '@/components/Breadcrumbs'
 import { useBrand } from '@/hooks/useBrand'
@@ -171,6 +172,30 @@ export default function BrandProfilePage() {
                   {brand && <ProfileActionMenu targetId={brand.profile_id} targetName={brand.name ?? 'this brand'} />}
                 </div>
               )}
+
+              {/* Profile Snapshot — Phase 1A.3. Public-side signal block.
+                  Public mode hides missing signals, so visitors only see
+                  what's actually present on the brand profile.
+                  TODO Phase 1A.4+: thread the brand owner's
+                  nationality_country_id through useBrand so the Country
+                  signal can render publicly. Today we pass a synthetic
+                  profile with role='brand' and no country — Country signal
+                  will simply not render in public mode. */}
+              <div className="mb-6">
+                <ProfileSnapshot
+                  profile={{ id: brand.profile_id, role: 'brand' } as unknown as Profile}
+                  mode="public"
+                  brand={{
+                    logo_url: brand.logo_url,
+                    bio: brand.bio,
+                    website_url: brand.website_url,
+                    instagram_url: brand.instagram_url,
+                  }}
+                  brandProductCount={products.length}
+                  brandAmbassadorCount={ambassadorTotal}
+                  brandPostCount={posts.length}
+                />
+              </div>
 
               {/* About Section */}
               {brand.bio && (

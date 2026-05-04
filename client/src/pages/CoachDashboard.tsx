@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { ArrowLeft, MapPin, Calendar, Edit2, Eye, MessageCircle, Landmark, Mail, Plus } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
-import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, NextStepCard, FreshnessCard, RecentlyConnectedCard, SearchAppearancesCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, DualNationalityDisplay, AvailabilityPill, TierBadge, TrustBadge, VerifiedBadge, CategoryConfirmationBanner } from '@/components'
+import { Avatar, DashboardMenu, EditProfileModal, JourneyTab, CommentsTab, FriendsTab, FriendshipButton, NextStepCard, FreshnessCard, ProfileSnapshot, RecentlyConnectedCard, SearchAppearancesCard, PublicReferencesSection, PublicViewBanner, RoleBadge, ScrollableTabs, DualNationalityDisplay, AvailabilityPill, TierBadge, TrustBadge, VerifiedBadge, CategoryConfirmationBanner } from '@/components'
 import { calculateTier } from '@/lib/profileTier'
 import { useProfileFreshness } from '@/hooks/useProfileFreshness'
 import type { FreshnessNudge } from '@/lib/profileFreshness'
@@ -150,6 +150,24 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
       const tab = nudge.action.tab as TabType
       setActiveTab(tab)
       setSearchParams({ tab })
+    }
+  }
+
+  // Handler for ProfileSnapshot missing-signal taps. Snapshot emits action
+  // ids in the standard form ('edit-profile' | 'add-video' | 'tab:<name>')
+  // — coach has no add-video flow, so video signal is omitted from coach
+  // signals upstream, and the dispatcher only handles the cases the coach
+  // snapshot actually emits.
+  const handleSnapshotAction = (actionId: string) => {
+    if (actionId === 'edit-profile') {
+      setShowEditModal(true)
+      return
+    }
+    if (actionId.startsWith('tab:')) {
+      const tab = actionId.slice(4) as TabType
+      setActiveTab(tab)
+      setSearchParams({ tab })
+      return
     }
   }
 
@@ -484,6 +502,16 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
           </div>
         </div>
 
+        {/* Profile Snapshot — Phase 1A.3. Visible to both owner (full list
+            with missing-action affordance) and visitors (✓-only). */}
+        <div className="mb-3">
+          <ProfileSnapshot
+            profile={profile as Profile | null}
+            mode={readOnly ? 'public' : 'owner'}
+            onSignalAction={handleSnapshotAction}
+          />
+        </div>
+
         {/* Next-step prompt — visible on every tab while the profile is incomplete (owner only) */}
         {!readOnly && (
           <>
@@ -767,7 +795,7 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
         isOpen={showSignInPrompt}
         onClose={() => setShowSignInPrompt(false)}
         title="Sign in to message"
-        message="Sign in or create a free HOCKIA account to connect with this coach."
+        message="Sign in to message this coach and see more about their profile."
       />
     </div>
   )

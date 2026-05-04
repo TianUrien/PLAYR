@@ -36,6 +36,7 @@ import {
   EditProfileModal,
   FriendsTab,
   FriendshipButton,
+  ProfileSnapshot,
   PublicReferencesSection,
   PublicViewBanner,
   RoleBadge,
@@ -137,6 +138,21 @@ export default function UmpireDashboard({
     const next = new URLSearchParams(searchParams)
     next.set('tab', tab)
     setSearchParams(next, { replace: true })
+  }
+
+  // Handler for ProfileSnapshot missing-signal taps. Umpire snapshot emits
+  // 'edit-profile' (level / federation / specialization / languages / photo
+  // / bio fields) and 'tab:officiating' / 'tab:friends' (appointments + refs).
+  const handleSnapshotAction = (actionId: string) => {
+    if (actionId === 'edit-profile') {
+      setShowEditModal(true)
+      return
+    }
+    if (actionId.startsWith('tab:')) {
+      const tab = actionId.slice(4) as TabType
+      handleTabChange(tab)
+      return
+    }
   }
 
   const handleSendMessage = async () => {
@@ -433,6 +449,20 @@ export default function UmpireDashboard({
           </div>
         )}
 
+        {/* Profile Snapshot — Phase 1A.3. Visible to both owner (full list)
+            and visitors (✓-only). Sits BELOW the credentials empty-state
+            CTA when present so the credentials nudge stays the strongest
+            owner-side signal for new umpires. UmpireProfileShape is a
+            partial Profile (matches the public-fetch field set), so we
+            cast — same pattern PlayerDashboard uses for PlayerProfileShape. */}
+        <div className="mt-6">
+          <ProfileSnapshot
+            profile={profile as unknown as Profile | null}
+            mode={readOnly ? 'public' : 'owner'}
+            onSignalAction={handleSnapshotAction}
+          />
+        </div>
+
         {/* ── Always-visible empty-state CTA for owners missing credentials ── */}
         {!readOnly && !hasCertification && (
           <section className="mt-6 bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl p-5 md:p-6">
@@ -643,7 +673,7 @@ export default function UmpireDashboard({
         isOpen={showSignInPrompt}
         onClose={() => setShowSignInPrompt(false)}
         title="Sign in to message"
-        message="Sign in or create a free HOCKIA account to connect with this umpire."
+        message="Sign in to message this umpire and see more about their profile."
       />
     </div>
   )

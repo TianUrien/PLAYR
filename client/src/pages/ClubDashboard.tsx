@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { ArrowLeft, MapPin, Calendar, Plus, Eye, MessageCircle, Edit, Loader2 } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '@/components/Header'
-import { Avatar, Button, CountryDisplay, DashboardMenu, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, NextStepCard, FreshnessCard, SearchAppearancesCard, PublicViewBanner, RoleBadge, ScrollableTabs, TierBadge, VerifiedBadge } from '@/components'
+import { Avatar, Button, CountryDisplay, DashboardMenu, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, NextStepCard, FreshnessCard, ProfileSnapshot, SearchAppearancesCard, PublicViewBanner, RoleBadge, ScrollableTabs, TierBadge, VerifiedBadge } from '@/components'
 import { calculateTier } from '@/lib/profileTier'
 import { useProfileFreshness } from '@/hooks/useProfileFreshness'
 import type { FreshnessNudge } from '@/lib/profileFreshness'
@@ -118,6 +118,22 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
       const tab = nudge.action.tab as TabType
       setActiveTab(tab)
       setSearchParams({ tab })
+    }
+  }
+
+  // Handler for ProfileSnapshot missing-signal taps. Club snapshot only
+  // emits 'edit-profile' actions today (no tab actions in the club signal
+  // list), so the dispatcher is small.
+  const handleSnapshotAction = (actionId: string) => {
+    if (actionId === 'edit-profile') {
+      setShowEditModal(true)
+      return
+    }
+    if (actionId.startsWith('tab:')) {
+      const tab = actionId.slice(4) as TabType
+      setActiveTab(tab)
+      setSearchParams({ tab })
+      return
     }
   }
 
@@ -427,6 +443,16 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
           </div>
         </div>
 
+        {/* Profile Snapshot — Phase 1A.3. Visible to both owner (full list)
+            and visitors (✓-only). */}
+        <div className="mb-3">
+          <ProfileSnapshot
+            profile={profile as Profile | null}
+            mode={readOnly ? 'public' : 'owner'}
+            onSignalAction={handleSnapshotAction}
+          />
+        </div>
+
         {/* Next-step prompt — visible on every tab while the profile is incomplete (owner only) */}
         {!readOnly && (
           <>
@@ -656,7 +682,7 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
         isOpen={showSignInPrompt}
         onClose={() => setShowSignInPrompt(false)}
         title="Sign in to message"
-        message="Sign in or create a free HOCKIA account to connect with this club."
+        message="Sign in to message and follow this club."
       />
     </div>
   )

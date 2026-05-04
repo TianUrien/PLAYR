@@ -9,7 +9,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { Globe, Instagram, ExternalLink, Eye, Edit, Store, Package, Users, Plus, FileText, Loader2, Award, X } from 'lucide-react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import Header from '@/components/Header'
-import { Avatar, Button, DashboardMenu, NextStepCard, FreshnessCard, SearchAppearancesCard, RoleBadge, ScrollableTabs, TierBadge, VerifiedBadge } from '@/components'
+import { Avatar, Button, DashboardMenu, NextStepCard, FreshnessCard, ProfileSnapshot, SearchAppearancesCard, RoleBadge, ScrollableTabs, TierBadge, VerifiedBadge } from '@/components'
 import { calculateTier } from '@/lib/profileTier'
 import { useProfileFreshness } from '@/hooks/useProfileFreshness'
 import type { FreshnessNudge } from '@/lib/profileFreshness'
@@ -170,6 +170,21 @@ export default function BrandDashboard() {
     } else if (bucket.actionId === 'add-ambassador') {
       handleTabChange('ambassadors')
       setShowAddAmbassadorModal(true)
+    }
+  }
+
+  // Handler for ProfileSnapshot missing-signal taps. Brand snapshot emits
+  // 'edit-brand' (opens edit modal) and 'tab:<name>' (products / ambassadors
+  // / posts) — wired here to the existing tab + modal triggers.
+  const handleSnapshotAction = (actionId: string) => {
+    if (actionId === 'edit-brand') {
+      setShowEditModal(true)
+      return
+    }
+    if (actionId.startsWith('tab:')) {
+      const tab = actionId.slice(4) as TabType
+      handleTabChange(tab)
+      return
     }
   }
 
@@ -522,6 +537,28 @@ export default function BrandDashboard() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Profile Snapshot — Phase 1A.3. Owner-only on BrandDashboard;
+            the public-side equivalent renders inside BrandProfilePage.
+            Brand-specific fields (logo, bio, website, instagram) live on
+            the brands table — passed in as `brand` rather than synthesized
+            onto the profile. */}
+        <div className="mb-3">
+          <ProfileSnapshot
+            profile={profile}
+            mode="owner"
+            onSignalAction={handleSnapshotAction}
+            brand={brand ? {
+              logo_url: brand.logo_url,
+              bio: brand.bio,
+              website_url: brand.website_url,
+              instagram_url: brand.instagram_url,
+            } : null}
+            brandProductCount={products.length}
+            brandAmbassadorCount={acceptedAmbassadors.length}
+            brandPostCount={posts.length}
+          />
         </div>
 
         {/* Tabs */}
