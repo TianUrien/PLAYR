@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Sparkles, Send, Loader2, RotateCcw, ChevronLeft } from 'lucide-react'
 import { useDiscoverChat } from '@/hooks/useDiscover'
 import DiscoverChat from '@/components/DiscoverChat'
@@ -50,6 +50,7 @@ const ROLE_EXAMPLES: Record<string, string[]> = {
 
 export default function DiscoverPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { messages, sendMessage, clearChat, isPending } = useDiscoverChat()
   const profile = useAuthStore(s => s.profile)
   const [input, setInput] = useState('')
@@ -58,6 +59,11 @@ export default function DiscoverPage() {
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  // Phase 1A.4 (v5 plan): consume the ?q= seed once. Without the ref guard,
+  // Strict-Mode double-mount in dev would auto-send the same seeded query
+  // twice. Once consumed, we strip the param from the URL so refresh /
+  // back-nav doesn't re-trigger the seeded send.
+  const seededQueryConsumedRef = useRef(false)
 
   const hasMessages = messages.length > 0
 
@@ -103,6 +109,21 @@ export default function DiscoverPage() {
     }, 4000)
     return () => clearInterval(interval)
   }, [hasMessages, exampleQueries.length])
+
+  // Seeded query — when DiscoverPage is opened from a deep-link with `?q=…`
+  // (e.g. ClubDashboard's "Find candidates" CTA pre-seeded from the most
+  // recent vacancy), auto-send the query once and strip it from the URL.
+  // The ref guard prevents Strict-Mode double-mount from sending twice.
+  useEffect(() => {
+    if (seededQueryConsumedRef.current) return
+    const q = searchParams.get('q')
+    if (!q || !q.trim()) return
+    seededQueryConsumedRef.current = true
+    sendMessage(q.trim())
+    const next = new URLSearchParams(searchParams)
+    next.delete('q')
+    setSearchParams(next, { replace: true })
+  }, [searchParams, sendMessage, setSearchParams])
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {

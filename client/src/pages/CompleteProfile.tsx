@@ -102,6 +102,10 @@ export default function CompleteProfile() {
     // and umpire pick many (multi-select with optional [any] sentinel).
     playingCategory: '' as PlayingCategory | '',
     coachingCategories: [] as CoachUmpireCategory[],
+    // Phase 1A.4 (v5 plan): coach dual-mode flag. Opt-in via the Step 3
+    // question "Do you also recruit for a team?" — drives the recruiter
+    // UX on CoachDashboard + AI Discovery example ordering. Default false.
+    coachRecruitsForTeam: false,
     umpiringCategories: [] as CoachUmpireCategory[],
     yearFounded: '',
     womensLeagueDivision: '',
@@ -386,6 +390,7 @@ export default function CompleteProfile() {
           next.coachSpecialization = (profile.coach_specialization ?? prev.coachSpecialization) as CoachSpecialization | ''
           next.coachSpecializationCustom = profile.coach_specialization_custom ?? prev.coachSpecializationCustom
           next.coachBio = profile.bio ?? prev.coachBio
+          next.coachRecruitsForTeam = profile.coach_recruits_for_team ?? prev.coachRecruitsForTeam
           if (isValidCategoryArray(profile.coaching_categories)) {
             next.coachingCategories = (profile.coaching_categories ?? []) as CoachUmpireCategory[]
           }
@@ -857,6 +862,10 @@ export default function CompleteProfile() {
           // Same rationale as the player branch — default new coaches to
           // open so they appear in availability-filtered Discovery results.
           open_to_coach: true,
+          // Phase 1A.4 (v5 plan): coach dual-mode flag captured on step 3.
+          // Drives recruiter UX on CoachDashboard + DiscoverPage example
+          // ordering. Editable later in Settings.
+          coach_recruits_for_team: formData.coachRecruitsForTeam,
         }
       } else if (userRole === 'umpire') {
         // Use the flushed snapshot (see "Flush any uncommitted language chip
@@ -1636,6 +1645,44 @@ export default function CompleteProfile() {
                           spellCheck
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#8026FA] focus:border-transparent resize-none"
                         />
+                      </div>
+
+                      {/* Phase 1A.4 (v5 plan): coach dual-mode opt-in question.
+                          Optional. Default = "Not right now" (treats coach as
+                          candidate-only). Saying yes opts into the recruiter
+                          UX on CoachDashboard + AI Discovery example ordering.
+                          Editable later in Settings. */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Do you also recruit players for a team? <span className="text-gray-400 font-normal">(Optional)</span>
+                        </label>
+                        <p className="text-xs text-gray-500 mb-3">
+                          Many coaches scout players for their own teams. Saying yes unlocks recruiter shortcuts on your dashboard. You can change this anytime.
+                        </p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, coachRecruitsForTeam: true })}
+                            className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                              formData.coachRecruitsForTeam
+                                ? 'border-[#8026FA] bg-purple-50 text-[#8026FA]'
+                                : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                            }`}
+                          >
+                            Yes, I recruit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, coachRecruitsForTeam: false })}
+                            className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                              !formData.coachRecruitsForTeam
+                                ? 'border-[#8026FA] bg-purple-50 text-[#8026FA]'
+                                : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                            }`}
+                          >
+                            Not right now
+                          </button>
+                        </div>
                       </div>
                     </>
                   )}

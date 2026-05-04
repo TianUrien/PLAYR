@@ -79,6 +79,9 @@ type ProfileFormData = {
   brand_representation: string
   coach_specialization: CoachSpecialization | ''
   coach_specialization_custom: string
+  // Phase 1A.4 (v5 plan): coach dual-mode flag. Toggled here for existing
+  // coaches; new coaches set it on onboarding step 3.
+  coach_recruits_for_team: boolean
   // Umpire-specific (only surfaced when role='umpire')
   umpire_level: string
   federation: string
@@ -193,6 +196,7 @@ const buildInitialFormData = (profile?: Profile | null): ProfileFormData => ({
   brand_representation: profile?.brand_representation || '',
   coach_specialization: (profile?.coach_specialization as CoachSpecialization) || '',
   coach_specialization_custom: profile?.coach_specialization_custom || '',
+  coach_recruits_for_team: Boolean(profile?.coach_recruits_for_team),
   umpire_level: profile?.umpire_level ?? '',
   federation: profile?.federation ?? '',
   umpire_since: profile?.umpire_since?.toString() ?? '',
@@ -578,6 +582,7 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
       optimisticUpdate.coach_specialization_custom = formData.coach_specialization === 'other'
         ? formData.coach_specialization_custom.trim() || null
         : null
+      optimisticUpdate.coach_recruits_for_team = formData.coach_recruits_for_team
     } else if (role === 'umpire') {
       const umpireSinceYear = formSnapshot.umpire_since ? parseInt(formSnapshot.umpire_since, 10) : null
       optimisticUpdate.nationality = formSnapshot.nationality
@@ -1047,6 +1052,43 @@ export default function EditProfileModal({ isOpen, onClose, role }: EditProfileM
                     value={formData.coaching_categories.length > 0 ? formData.coaching_categories : null}
                     onChange={(next) => setFormData({ ...formData, coaching_categories: next })}
                   />
+                </div>
+
+                {/* Phase 1A.4 (v5 plan): coach dual-mode flag toggle.
+                    Lets existing coaches opt into recruiter UX (dashboard
+                    + AI Discovery example ordering). New coaches set this
+                    on onboarding step 3. Editable here anytime. */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Do you also recruit players for a team?
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Saying yes unlocks recruiter shortcuts on your dashboard and AI Discovery.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, coach_recruits_for_team: true })}
+                      className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                        formData.coach_recruits_for_team
+                          ? 'border-[#8026FA] bg-purple-50 text-[#8026FA]'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      }`}
+                    >
+                      Yes, I recruit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, coach_recruits_for_team: false })}
+                      className={`p-3 rounded-lg border-2 text-sm font-medium transition-all ${
+                        !formData.coach_recruits_for_team
+                          ? 'border-[#8026FA] bg-purple-50 text-[#8026FA]'
+                          : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                      }`}
+                    >
+                      Not right now
+                    </button>
+                  </div>
                 </div>
 
                 <Input

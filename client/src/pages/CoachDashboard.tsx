@@ -578,18 +578,41 @@ export default function CoachDashboard({ profileData, readOnly = false, isOwnPro
                 )}
                 {!readOnly && <ClubLinkPrompt />}
 
+                {/* Phase 1A.4 (v5 plan): coach dual-mode Quick Actions split.
+                    Card A (always shown): build the candidate-side profile.
+                    Card B (only when coach_recruits_for_team=true): post a
+                    vacancy to recruit. Both render side-by-side on wide
+                    screens, stacked on mobile. The split keeps the
+                    candidate-side coach unaware of recruiter affordances by
+                    default (opt-in via onboarding step 3 or Settings). */}
                 {!readOnly && (
-                  <div className="bg-gradient-to-br from-[#8026FA] to-[#924CEC] rounded-xl p-6 text-white">
-                    <h3 className="text-lg font-semibold mb-2">Quick Actions</h3>
-                    <p className="text-purple-100 mb-4 text-sm">Find coaching opportunities, or recruit players for your team</p>
-                    <button
-                      type="button"
-                      onClick={handleCreateVacancyClick}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#8026FA] rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Post an opportunity
-                    </button>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="bg-gradient-to-br from-[#8026FA] to-[#924CEC] rounded-xl p-6 text-white">
+                      <h3 className="text-lg font-semibold mb-2">Build your coaching profile</h3>
+                      <p className="text-purple-100 mb-4 text-sm">A complete profile gets you found and contacted by clubs.</p>
+                      <button
+                        type="button"
+                        onClick={() => setShowEditModal(true)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#8026FA] rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        Edit profile
+                      </button>
+                    </div>
+                    {(profile?.coach_recruits_for_team ?? false) && (
+                      <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-xl p-6 text-white">
+                        <h3 className="text-lg font-semibold mb-2">Recruit players for your team</h3>
+                        <p className="text-emerald-100 mb-4 text-sm">Post an opportunity and review applicants with full context.</p>
+                        <button
+                          type="button"
+                          onClick={handleCreateVacancyClick}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-white text-emerald-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Post an opportunity
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 

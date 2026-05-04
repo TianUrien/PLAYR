@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { ArrowLeft, MapPin, Calendar, Plus, Eye, MessageCircle, Edit, Loader2 } from 'lucide-react'
+import { ArrowLeft, MapPin, Calendar, Plus, Eye, MessageCircle, Edit, Loader2, Sparkles } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Header from '@/components/Header'
 import { Avatar, Button, CountryDisplay, DashboardMenu, EditProfileModal, CommentsTab, FriendsTab, FriendshipButton, NextStepCard, FreshnessCard, ProfileSnapshot, SearchAppearancesCard, PublicViewBanner, RoleBadge, ScrollableTabs, TierBadge, VerifiedBadge } from '@/components'
@@ -494,17 +494,38 @@ export default function ClubDashboard({ profileData, readOnly = false, isOwnProf
               <div className="space-y-8 animate-fade-in">
                 {!readOnly && <ProfileViewersSection />}
 
+                {/* Phase 1A.4 (v5 plan): Quick Actions split into two cards.
+                    Card A: post a vacancy (existing recruitment funnel).
+                    Card B: jump straight into AI Discovery seeded with a
+                    generic candidate search — clubs land in Discovery and
+                    can refine. Phase 4 will enhance the seed to derive
+                    from the most-recent open vacancy. */}
                 {!readOnly && (
-                  <div className="bg-gradient-to-br from-[#8026FA] to-[#924CEC] rounded-xl p-6 text-white">
-                    <h3 className="text-lg font-semibold mb-2">Quick Actions</h3>
-                    <p className="text-purple-100 mb-4 text-sm">Recruit your next player or coach with full context</p>
-                    <button
-                      onClick={handleCreateVacancyClick}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#8026FA] rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Post a vacancy
-                    </button>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="bg-gradient-to-br from-[#8026FA] to-[#924CEC] rounded-xl p-6 text-white">
+                      <h3 className="text-lg font-semibold mb-2">Post an opportunity</h3>
+                      <p className="text-purple-100 mb-4 text-sm">Recruit your next player or coach with full context.</p>
+                      <button
+                        type="button"
+                        onClick={handleCreateVacancyClick}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#8026FA] rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Post a vacancy
+                      </button>
+                    </div>
+                    <div className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-xl p-6 text-white">
+                      <h3 className="text-lg font-semibold mb-2">Find candidates</h3>
+                      <p className="text-emerald-100 mb-4 text-sm">Open Scout View in AI Discovery to find players and coaches who could fit.</p>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/discover?q=' + encodeURIComponent('Show me available players I could recruit'))}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-white text-emerald-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        Open Scout View
+                      </button>
+                    </div>
                   </div>
                 )}
 

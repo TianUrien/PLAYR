@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { Search, Award, UserPlus, Loader2 } from 'lucide-react'
+import { Search, Award, UserPlus, Loader2, Shield, X } from 'lucide-react'
 import Modal from '@/components/Modal'
 import Avatar from '@/components/Avatar'
 import RoleBadge from '@/components/RoleBadge'
@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/lib/auth'
 import { logger } from '@/lib/logger'
 import { cn } from '@/lib/utils'
+import { PLAYING_CATEGORIES, CATEGORY_LABELS, type PlayingCategory } from '@/lib/hockeyCategories'
 
 interface PlayerResult {
   id: string
@@ -15,6 +16,8 @@ interface PlayerResult {
   position: string | null
   base_location: string | null
   current_club: string | null
+  playing_category: string | null
+  accepted_reference_count: number | null
 }
 
 interface AddAmbassadorModalProps {
@@ -31,6 +34,12 @@ export function AddAmbassadorModal({ isOpen, onClose, onAdd, existingPlayerIds }
   const [isSearching, setIsSearching] = useState(false)
   const [addingId, setAddingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Phase 1A.4 (v5 plan): filter chips. Both default to "no filter" so the
+  // existing search-only flow keeps working unchanged.
+  // TODO Phase 1A.5+: add a country filter (needs CountrySelect component
+  // wiring; deferred to keep this PR scoped).
+  const [categoryFilter, setCategoryFilter] = useState<PlayingCategory | null>(null)
+  const [requireReferences, setRequireReferences] = useState(false)
 
   // Search players with debounce
   const searchPlayers = useCallback(async (query: string) => {
@@ -44,7 +53,7 @@ export function AddAmbassadorModal({ isOpen, onClose, onAdd, existingPlayerIds }
       const searchPattern = `%${query}%`
       let q = supabase
         .from('profiles')
-        .select('id, full_name, avatar_url, position, base_location, current_club')
+        .select('id, full_name, avatar_url, position, base_location, current_club, playing_category, accepted_reference_count')
         .eq('role', 'player')
         .eq('onboarding_completed', true)
         .neq('id', user?.id || '')
@@ -54,6 +63,15 @@ export function AddAmbassadorModal({ isOpen, onClose, onAdd, existingPlayerIds }
       // Exclude already-added ambassadors
       if (existingPlayerIds.length > 0) {
         q = q.not('id', 'in', `(${existingPlayerIds.join(',')})`)
+      }
+
+      // Phase 1A.4 filter chips — apply server-side so the LIMIT 10 is
+      // respected against the filtered set, not the unfiltered set.
+      if (categoryFilter) {
+        q = q.eq('playing_category', categoryFilter)
+      }
+      if (requireReferences) {
+        q = q.gte('accepted_reference_count', 1)
       }
 
       const { data, error: queryError } = await q
@@ -66,7 +84,7 @@ export function AddAmbassadorModal({ isOpen, onClose, onAdd, existingPlayerIds }
     } finally {
       setIsSearching(false)
     }
-  }, [user?.id, existingPlayerIds])
+  }, [user?.id, existingPlayerIds, categoryFilter, requireReferences])
 
   // Debounced search
   useEffect(() => {
@@ -104,6 +122,8 @@ export function AddAmbassadorModal({ isOpen, onClose, onAdd, existingPlayerIds }
     setResults([])
     setError(null)
     setAddingId(null)
+    setCategoryFilter(null)
+    setRequireReferences(false)
     onClose()
   }
 
@@ -153,6 +173,47 @@ export function AddAmbassadorModal({ isOpen, onClose, onAdd, existingPlayerIds }
               <div className="w-4 h-4 border-2 border-[#8026FA] border-t-transparent rounded-full animate-spin" />
             </div>
           )}
+        </div>
+
+        {/* Phase 1A.4 (v5 plan): filter chips. Tap a category to filter
+            results to players in that hockey category; toggle the trust chip
+            to require ≥1 accepted reference. Both default to off so existing
+            search behavior is preserved. */}
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setRequireReferences((v) => !v)}
+            className={cn(
+              'inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+              requireReferences
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+            )}
+            aria-pressed={requireReferences ? 'true' : 'false'}
+          >
+            <Shield className="w-3 h-3" aria-hidden="true" />
+            With references
+          </button>
+          {PLAYING_CATEGORIES.map((cat) => {
+            const active = categoryFilter === cat
+            return (
+              <button
+                type="button"
+                key={cat}
+                onClick={() => setCategoryFilter((curr) => (curr === cat ? null : cat))}
+                className={cn(
+                  'inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
+                  active
+                    ? 'bg-purple-50 border-purple-200 text-[#8026FA]'
+                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                )}
+                aria-pressed={active ? 'true' : 'false'}
+              >
+                {CATEGORY_LABELS[cat]}
+                {active && <X className="w-3 h-3" aria-hidden="true" />}
+              </button>
+            )
+          })}
         </div>
 
         {/* Section Label */}

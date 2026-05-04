@@ -2420,6 +2420,7 @@ export type Database = {
           category_confirmation_needed: boolean
           club_bio: string | null
           club_history: string | null
+          coach_recruits_for_team: boolean
           coach_specialization: string | null
           coach_specialization_custom: string | null
           coaching_categories: string[] | null
@@ -4642,6 +4643,7 @@ export type Database = {
           category_confirmation_needed: boolean
           club_bio: string | null
           club_history: string | null
+          coach_recruits_for_team: boolean
           coach_specialization: string | null
           coach_specialization_custom: string | null
           coaching_categories: string[] | null
@@ -4778,6 +4780,7 @@ export type Database = {
           category_confirmation_needed: boolean
           club_bio: string | null
           club_history: string | null
+          coach_recruits_for_team: boolean
           coach_specialization: string | null
           coach_specialization_custom: string | null
           coaching_categories: string[] | null
